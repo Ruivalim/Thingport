@@ -338,7 +338,7 @@ describe("modelPreviewCache -- memory safety", () => {
     await generateModelPreviewGlb(plateId, fixture);
     expect(modelPreviewGlbExists(plateId)).toBe(false);
     const errorPath = path.join(path.dirname(modelPreviewGlbPath("x")), `${plateId}.error`);
-    expect(fsSync.readFileSync(errorPath, "utf-8")).toBe("unparseable-or-too-complex");
+    expect(fsSync.readFileSync(errorPath, "utf-8")).toBe("permanent: unparseable-or-too-complex");
   });
 
   it("resolves a two-level wrapper chain to exactly one copy of the geometry", async () => {

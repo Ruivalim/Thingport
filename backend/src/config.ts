@@ -30,6 +30,12 @@ export const PREVIEWS = path.join(STORAGE, "previews");
 // Pre-rendered GLB caches for the interactive 3D preview (see services/modelPreviewCache.ts) --
 // generated once per .3mf Plate so the viewer never has to re-parse a huge raw 3MF on every open.
 export const MODEL_PREVIEWS = path.join(STORAGE, "model-previews");
+// Limits on the worker thread that renders one of those GLBs: past either, the thread is killed
+// and that plate falls back to the viewer's live parser. Memory is how much the whole process may
+// grow while a render runs (and the worker's heap cap) -- a watchdog check, so a fast allocation
+// burst can overshoot it briefly.
+export const MODEL_PREVIEW_MAX_MEMORY_MB = envInt("MODEL_PREVIEW_MAX_MEMORY_MB", 2048);
+export const MODEL_PREVIEW_TIMEOUT_SECONDS = envInt("MODEL_PREVIEW_TIMEOUT_SECONDS", 180);
 
 // Base URL this instance is publicly reachable at -- needed to build absolute links in outgoing
 // emails (e.g. the email-verification link), which unlike API responses can't rely on the
