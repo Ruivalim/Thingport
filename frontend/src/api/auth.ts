@@ -1,5 +1,6 @@
 import { authHeaders } from "../utils/auth";
 import { apiBase, assertOk, readErrorMessage, EmailNotVerifiedError, UnauthorizedError } from "./client";
+import type { CaptchaAnswer } from "./captcha";
 
 export type AuthUser = {
   id: string;
@@ -49,15 +50,24 @@ async function postAuth<T>(path: string, body: unknown): Promise<T> {
 }
 
 export const authApi = {
-  login: (email: string, password: string): Promise<AuthResult> => postAuth("/login", { email, password }),
+  // `captcha` only when Administration > Captcha asks for one on login.
+  login: (email: string, password: string, captcha?: CaptchaAnswer | null): Promise<AuthResult> =>
+    postAuth("/login", { email, password, ...captcha }),
 
   // `inviteToken` comes from an invitation link -- the only way in while registrations are closed.
-  register: (payload: { displayName: string; email: string; password: string; inviteToken?: string }): Promise<RegisterResult> =>
+  register: (payload: {
+    displayName: string;
+    email: string;
+    password: string;
+    inviteToken?: string;
+    captcha?: CaptchaAnswer | null;
+  }): Promise<RegisterResult> =>
     postAuth("/register", {
       displayName: payload.displayName,
       email: payload.email,
       password: payload.password,
       ...(payload.inviteToken ? { invite_token: payload.inviteToken } : {}),
+      ...payload.captcha,
     }),
 
   /** Checks an invitation link before its form is filled in -- rejects if it's invalid or expired. */

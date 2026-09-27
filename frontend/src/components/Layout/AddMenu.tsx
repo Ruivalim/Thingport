@@ -1,3 +1,7 @@
+import Box from "@mui/material/Box";
+import type { CaptchaAnswer } from "../../api/captcha";
+import CaptchaField from "../CaptchaField";
+import { useCaptchaSettings } from "../../hooks/useCaptchaSettings";
 import React from "react";
 import { useTranslation } from "react-i18next";
 import Button from "@mui/material/Button";
@@ -55,6 +59,9 @@ export default function AddMenu({ categoryId, makerworldCookie, onUploaded, onUn
   const [exampleProvider, setExampleProvider] = React.useState<ImportProviderKey | null>(null);
   const { isImporting } = useImportJob();
   const upload = useUploadImport({ categoryId, makerworldCookie, onUploaded, onUnauthorized });
+  const captchaSettings = useCaptchaSettings();
+  const [captcha, setCaptcha] = React.useState<CaptchaAnswer | null>(null);
+  const needsCaptcha = Boolean(captchaSettings?.import);
 
   const detectedProvider = detectImportProvider(linkValue);
   const isBlockedCollection = isMakerworldCollectionUrl(linkValue);
@@ -80,7 +87,9 @@ export default function AddMenu({ categoryId, makerworldCookie, onUploaded, onUn
 
   const submitImport = async () => {
     if (!linkValue.trim() || isBlockedCollection) return;
-    await upload.submitImport(linkValue);
+    if (needsCaptcha && !captcha?.captcha_answer.trim()) return;
+    // The dialog closes either way; reopening it shows a fresh captcha (each one works once).
+    await upload.submitImport(linkValue, needsCaptcha ? captcha : null);
     setImportOpen(false);
   };
 
@@ -170,13 +179,18 @@ export default function AddMenu({ categoryId, makerworldCookie, onUploaded, onUn
             placeholder={t("uploadBar.linkPlaceholder") ?? undefined}
             disabled={upload.importing}
           />
+          {needsCaptcha && (
+            <Box sx={{ mt: 2 }}>
+              <CaptchaField onChange={setCaptcha} disabled={upload.importing} />
+            </Box>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={closeImport} disabled={upload.importing}>{t("common:cancel")}</Button>
           <Button
             variant="contained"
             onClick={submitImport}
-            disabled={upload.importing || !linkValue.trim() || isBlockedCollection}
+            disabled={upload.importing || !linkValue.trim() || isBlockedCollection || (needsCaptcha && !captcha?.captcha_answer.trim())}
             startIcon={upload.importing ? <CircularProgress size={14} /> : undefined}
           >
             {upload.importing ? t("uploadBar.importing") : t("common:import")}

@@ -1,3 +1,4 @@
+import type { CaptchaAnswer } from "../../api/captcha";
 import React, { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -194,7 +195,7 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
     showToast({ message: t(key, { name }) });
   };
 
-  const submitImport = async (rawUrl: string) => {
+  const submitImport = async (rawUrl: string, captcha?: CaptchaAnswer | null) => {
     const url = rawUrl.trim();
     if (!url) return;
     setImporting(true);
@@ -204,6 +205,7 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
         url,
         category_id: categoryId || undefined,
         makerworld_cookie: cookie || undefined,
+        ...captcha,
       };
 
       if (isMakerworldCollectionUrl(url)) {

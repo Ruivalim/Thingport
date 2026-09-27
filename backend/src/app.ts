@@ -4,6 +4,7 @@ import { resolveCorsOrigins } from "./cors";
 import { HttpError } from "./utils/fileUtils";
 
 import healthRoutes from "./routes/health";
+import captchaRoutes from "./routes/captcha";
 import authRoutes from "./routes/auth";
 import printsRoutes from "./routes/prints";
 import authorsRoutes from "./routes/authors";
@@ -38,6 +39,7 @@ export function createApp(): Express {
   // Mounted under /api because the frontend is served separately by its own nginx container,
   // which reverse-proxies /api/* here unmodified (see frontend/nginx.conf).
   app.use("/api", healthRoutes);
+  app.use("/api", captchaRoutes);
   app.use("/api", authRoutes);
   app.use("/api", settingsRoutes);
   app.use("/api", printsRoutes);

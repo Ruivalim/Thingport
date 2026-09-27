@@ -395,6 +395,30 @@
       "connections": {
         "heading": "Connections"
       },
+      "captcha": {
+        "heading": "Captcha",
+        "placesHeading": "Ask for a captcha on",
+        "subtitle": "An image with a few characters to type in, to slow down automated sign-in attempts, sign-ups and imports. Off everywhere by default.",
+        "places": {
+          "login": {
+            "label": "Sign in",
+            "help": "Asked on every sign-in attempt, before the password is checked."
+          },
+          "register": {
+            "label": "Registration",
+            "help": "Asked when creating an account, including from an invitation link."
+          },
+          "import": {
+            "label": "Import",
+            "help": "Asked in the Import dialog before an import starts. Uploading your own files isn't affected."
+          }
+        },
+        "loadFailed": "Unable to load the captcha settings.",
+        "saveFailed": "Failed to save the captcha settings",
+        "previewHeading": "What people will see",
+        "previewHelp": "Letters and numbers, with easily confused ones like 0/O and 1/I left out. Not case-sensitive. Each image works once and expires after 10 minutes.",
+        "extensionNote": "Thingport Grab, the browser extension, is never asked for a captcha: it signs in and imports in the background, with nowhere to show one."
+      },
       "smtp": {
         "tabLabel": "SMTP",
         "helpText": "Used to send the account-verification email on registration. Leave Host blank to turn email verification off entirely — new accounts are then verified and signed in immediately.",
@@ -531,6 +555,12 @@
           "note": "If macOS still refuses to run it, open System Settings -> Privacy & Security and allow it there instead."
         }
       }
+    },
+    "captcha": {
+      "imageAlt": "Captcha: the characters to type",
+      "newImage": "New image",
+      "label": "Characters in the image",
+      "loadFailed": "Couldn't load the image. Try a new one."
     }
   },
   "common": {

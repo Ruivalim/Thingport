@@ -7,6 +7,9 @@ import Button from "@mui/material/Button";
 import Alert from "@mui/material/Alert";
 import { authApi, type AuthUser } from "../../api/auth";
 import { EmailNotVerifiedError } from "../../api/client";
+import type { CaptchaAnswer } from "../../api/captcha";
+import CaptchaField from "../../components/CaptchaField";
+import { useCaptchaSettings } from "../../hooks/useCaptchaSettings";
 import ResendVerificationButton from "./ResendVerificationButton";
 
 type Props = {
@@ -20,6 +23,9 @@ export default function SignInPanel({ onSuccess }: Props) {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [needsVerification, setNeedsVerification] = React.useState(false);
+  const captchaSettings = useCaptchaSettings();
+  const [captcha, setCaptcha] = React.useState<CaptchaAnswer | null>(null);
+  const [captchaKey, setCaptchaKey] = React.useState(0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,10 +33,12 @@ export default function SignInPanel({ onSuccess }: Props) {
     setNeedsVerification(false);
     setLoading(true);
     try {
-      const res = await authApi.login(email, password);
+      const res = await authApi.login(email, password, captchaSettings?.login ? captcha : null);
       onSuccess(res.token, res.expires_in, res.user);
     } catch (err) {
       console.error(err);
+      // Every attempt uses the captcha up, right or wrong -- show a fresh one.
+      if (captchaSettings?.login) setCaptchaKey((k) => k + 1);
       if (err instanceof EmailNotVerifiedError) {
         setNeedsVerification(true);
         setError(err.message);
@@ -67,6 +75,7 @@ export default function SignInPanel({ onSuccess }: Props) {
           fullWidth
           size="small"
         />
+        {captchaSettings?.login && <CaptchaField key={captchaKey} onChange={setCaptcha} disabled={loading} />}
         <Button type="submit" variant="contained" disabled={loading} fullWidth size="large">
           {loading ? t("auth.signIn.submitting") : t("auth.signIn.submit")}
         </Button>

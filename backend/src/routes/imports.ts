@@ -7,6 +7,7 @@ import { HttpError } from "../utils/fileUtils";
 import { normalizeImportUrl } from "../utils/urlUtils";
 import { parseBody } from "../utils/validate";
 import { asyncHandler } from "../utils/asyncHandler";
+import { requireCaptcha } from "../services/captchaService";
 import { checkImportStatus, downloadImportToTemp, findImportedExternalIds, importPrintFromUrl, inspectImportLink } from "../services/importService";
 import { resolveMakerworldCookie } from "../services/importResolvers";
 import { extractMakerworldBearerToken, MakerworldAuthError, MakerworldCaptchaError } from "../services/makerworldCloudApi";
@@ -68,6 +69,7 @@ async function withStoredMakerworldCookie<T extends { makerworld_cookie?: string
 
 router.post(
   "/import",
+  requireCaptcha("import"),
   asyncHandler(async (req, res) => {
     const body = await withStoredMakerworldCookie(req.userId!, parseBody(importRequestSchema, req.body));
     const url = await normalizeImportUrl(body.url);
@@ -296,6 +298,7 @@ const collectionImportRequestSchema = importRequestSchema.extend({ design_ids: z
 
 router.post(
   "/import/collection",
+  requireCaptcha("import"),
   asyncHandler(async (req, res) => {
     const body = await withStoredMakerworldCookie(req.userId!, parseBody(collectionImportRequestSchema, req.body));
     await assertNoActiveJob(req.userId!);
@@ -314,6 +317,7 @@ const thingiverseLikesImportRequestSchema = importRequestSchema.extend({ thing_i
 
 router.post(
   "/import/thingiverse-likes",
+  requireCaptcha("import"),
   asyncHandler(async (req, res) => {
     const body = parseBody(thingiverseLikesImportRequestSchema, req.body);
     await assertNoActiveJob(req.userId!);
@@ -332,6 +336,7 @@ router.post(
 
 router.post(
   "/import/thingiverse-collection",
+  requireCaptcha("import"),
   asyncHandler(async (req, res) => {
     const body = parseBody(thingiverseLikesImportRequestSchema, req.body);
     await assertNoActiveJob(req.userId!);
@@ -352,6 +357,7 @@ const printablesCollectionImportRequestSchema = importRequestSchema.extend({ mod
 
 router.post(
   "/import/printables-collection",
+  requireCaptcha("import"),
   asyncHandler(async (req, res) => {
     const body = parseBody(printablesCollectionImportRequestSchema, req.body);
     await assertNoActiveJob(req.userId!);
@@ -372,6 +378,7 @@ const zipExtractRequestSchema = importRequestSchema.extend({ entries: z.array(z.
 
 router.post(
   "/import/zip",
+  requireCaptcha("import"),
   asyncHandler(async (req, res) => {
     const body = parseBody(zipExtractRequestSchema, req.body);
     await assertNoActiveJob(req.userId!);

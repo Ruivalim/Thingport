@@ -10,6 +10,7 @@ import { asyncHandler } from "../utils/asyncHandler";
 import { getAllowRegistrations, isSmtpConfigured } from "../services/settingsService";
 import { sendVerificationEmail } from "../services/mailer";
 import { findValidInvitation } from "../services/invitationService";
+import { checkCaptcha } from "../services/captchaService";
 import { createLog } from "../services/auditLog";
 import { seedDefaultCategories } from "../services/categoryService";
 import { toUserOut } from "../dto";
@@ -41,6 +42,7 @@ const loginSchema = z.object({
 router.post(
   "/register",
   asyncHandler(async (req, res) => {
+    await checkCaptcha(req, "register");
     const body = parseBody(registerSchema, req.body);
     const email = body.email.toLowerCase();
 
@@ -119,6 +121,8 @@ router.post(
 router.post(
   "/login",
   asyncHandler(async (req, res) => {
+    // Before the password check, so guessing passwords costs a solved captcha per attempt.
+    await checkCaptcha(req, "login");
     const body = parseBody(loginSchema, req.body);
     const email = body.email.toLowerCase();
     const user = await prisma.user.findUnique({ where: { email } });

@@ -18,6 +18,7 @@ import HistoryIcon from "@mui/icons-material/History";
 import BoltIcon from "@mui/icons-material/Bolt";
 import CableIcon from "@mui/icons-material/Cable";
 import PublicIcon from "@mui/icons-material/Public";
+import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
 import UpdateCheckSection from "./UpdateCheckSection";
 import { adminApi, type StorageUsage } from "../../api/admin";
 import { UnauthorizedError } from "../../api/client";
@@ -36,6 +37,7 @@ const SECTIONS: Section[] = [
   { path: "/admin-logs", icon: <HistoryIcon fontSize="small" />, labelKey: "adminSettings.logs.heading" },
   { path: "/admin-triggers", icon: <BoltIcon fontSize="small" />, labelKey: "adminSettings.triggers.heading" },
   { path: "/admin-connections", icon: <CableIcon fontSize="small" />, labelKey: "adminSettings.connections.heading" },
+  { path: "/admin-captcha", icon: <VerifiedUserIcon fontSize="small" />, labelKey: "adminSettings.captcha.heading" },
 ];
 
 type Props = {

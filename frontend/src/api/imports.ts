@@ -62,6 +62,10 @@ type ImportLinkPayload = {
   category_id?: string;
   filename?: string;
   makerworld_cookie?: string;
+  // Solved captcha, when Administration > Captcha asks for one on import. Travels with the payload
+  // through every step, and is checked (and used up) by whichever request starts the import.
+  captcha_id?: string;
+  captcha_answer?: string;
 };
 
 /** What POST /import did -- "profile_added" when a MakerWorld model already in the library
