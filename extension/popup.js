@@ -14,6 +14,11 @@ const saveBtn = document.getElementById("save-btn");
 const cancelBtn = document.getElementById("cancel-btn");
 const errorEl = document.getElementById("error");
 
+// Set when background.js's handleOpenSetup had to open this page in a tab (the browser wouldn't
+// open the toolbar popup for it) from a page's setup modal: once saved, go back to that page --
+// its icon has already switched to the active one -- instead of leaving this tab behind.
+const returnTabId = Number.parseInt(new URLSearchParams(location.search).get("returnTab") ?? "", 10);
+
 function sendMessage(type, payload) {
   return chrome.runtime.sendMessage({ type, payload });
 }
@@ -165,6 +170,12 @@ setupForm.addEventListener("submit", async (event) => {
     });
     if (!res.ok) {
       showError(res.error);
+      return;
+    }
+    if (Number.isInteger(returnTabId)) {
+      await chrome.tabs.update(returnTabId, { active: true }).catch(() => undefined);
+      const self = await chrome.tabs.getCurrent();
+      if (self) await chrome.tabs.remove(self.id);
       return;
     }
     await refresh();

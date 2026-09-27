@@ -48,9 +48,17 @@
     await injectStyles(shadowRoot);
 
     const button = document.createElement("button");
+    button.innerHTML = `<img src="${ICON_URL}" alt="" />`;
+    if (context.setupRequired) {
+      button.className = "tg-fab tg-fab-inactive";
+      button.setAttribute("aria-label", "Set up Thingport Grab to import this");
+      button.title = "Thingport Grab isn't set up yet";
+      button.addEventListener("click", openSetupModal);
+      shadowRoot.appendChild(button);
+      return;
+    }
     button.className = context.library ? "tg-fab tg-fab-in-library" : "tg-fab";
     button.setAttribute("aria-label", context.library ? "Add this print profile to Thingport" : "Import to Thingport");
-    button.innerHTML = `<img src="${ICON_URL}" alt="" />`;
     button.addEventListener("click", togglePanel);
     shadowRoot.appendChild(button);
 
@@ -88,6 +96,81 @@
       panelEl.dataset.loaded = "1";
       void loadPanel();
     }
+  }
+
+  // -- Setup modal (grayed-out icon: supported page, extension not configured yet) --------------
+  //
+  // Explains what's missing and hands off to the extension's own setup form (see background.js's
+  // handleOpenSetup) rather than collecting anything here: saving needs a host-permission prompt
+  // that only an extension page can show, and the password never goes into this page's DOM.
+  // Saving writes the config to storage, which the storage.onChanged listener below turns into
+  // unmount() + init(): the modal goes away and the normal, active icon takes its place.
+
+  let setupModal = null;
+
+  function openSetupModal() {
+    if (setupModal || !shadowRoot) return;
+    const backdrop = document.createElement("div");
+    backdrop.className = "tg-modal-backdrop";
+    backdrop.innerHTML = `
+      <div class="tg-modal" role="dialog" aria-modal="true" aria-labelledby="tg-setup-title">
+        <button class="tg-close" type="button" aria-label="Close">×</button>
+        <div class="tg-modal-header">
+          <img alt="" />
+          <div class="tg-title" id="tg-setup-title">Connect Thingport Grab</div>
+        </div>
+        <div class="tg-hint">
+          To import from this page, Thingport Grab needs to know where your Thingport instance is
+          and how to sign in to it:
+        </div>
+        <ul class="tg-modal-list">
+          <li><strong>Instance URL</strong>, e.g. https://thingport.example.com</li>
+          <li><strong>Email</strong> and <strong>password</strong> of your Thingport account</li>
+        </ul>
+        <div class="tg-hint">
+          They're stored only in this browser's extension storage and sent only to your own
+          instance. You can also open this any time from the Thingport Grab icon in your browser
+          toolbar.
+        </div>
+        <button class="tg-btn" type="button" data-action="open-setup">Open setup</button>
+        <div class="tg-hint tg-modal-status" hidden></div>
+      </div>
+    `;
+    backdrop.querySelector(".tg-modal-header img").src = ICON_URL;
+
+    const openBtn = backdrop.querySelector("[data-action=open-setup]");
+    const statusEl = backdrop.querySelector(".tg-modal-status");
+    openBtn.addEventListener("click", async () => {
+      openBtn.disabled = true;
+      const res = await call("OPEN_SETUP");
+      openBtn.disabled = false;
+      if (res && res.ok && res.data === "popup") return;
+      statusEl.hidden = false;
+      statusEl.textContent = res && res.ok
+        ? "Setup opened in a new tab -- you'll be brought back here once it's saved."
+        : "Couldn't open setup automatically -- click the Thingport Grab icon in your browser toolbar (it may be under the Extensions menu).";
+    });
+
+    const onKeydown = (event) => {
+      if (event.key === "Escape") closeSetupModal();
+    };
+    document.addEventListener("keydown", onKeydown, true);
+
+    backdrop.querySelector(".tg-close").addEventListener("click", closeSetupModal);
+    backdrop.addEventListener("click", (event) => {
+      if (event.target === backdrop) closeSetupModal();
+    });
+
+    shadowRoot.appendChild(backdrop);
+    setupModal = { backdrop, onKeydown };
+    openBtn.focus();
+  }
+
+  function closeSetupModal() {
+    if (!setupModal) return;
+    document.removeEventListener("keydown", setupModal.onKeydown, true);
+    setupModal.backdrop.remove();
+    setupModal = null;
   }
 
   function renderPanel(html) {
@@ -804,6 +887,7 @@
   }
 
   function unmount() {
+    closeSetupModal();
     const host = document.getElementById("thingport-grab-host");
     if (host) host.remove();
     shadowRoot = null;
@@ -899,13 +983,24 @@
 
     const stateRes = await call("GET_STATE");
     if (myToken !== initToken) return;
-    if (!stateRes.ok || !stateRes.data.configured || stateRes.data.disabled) {
+    if (!stateRes.ok || stateRes.data.disabled) {
       reportTabIconState(false);
       return;
     }
 
     const classification = thingportClassifyUrl(location.href);
     if (!classification) {
+      reportTabIconState(false);
+      return;
+    }
+
+    // Not set up yet: still show the icon on a page it could import from, grayed out, so the
+    // extension is discoverable where it matters -- clicking it explains what's missing and offers
+    // the setup form (see openSetupModal). The toolbar icon stays inactive until it's configured.
+    if (!stateRes.data.configured) {
+      context = { url: location.href, classification, setupRequired: true };
+      await mount();
+      if (myToken !== initToken) return;
       reportTabIconState(false);
       return;
     }

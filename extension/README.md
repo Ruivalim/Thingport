@@ -48,7 +48,9 @@ what lets Firefox treat later versions as updates to the same install instead of
 ## Setup
 
 The popup asks for your instance URL (e.g. `https://thingport.example.com`) and your Thingport
-email/password once. Saving it requests permission to reach that one origin and validates the
+email/password once. Until that's done, importable pages show a grayed-out Thingport icon instead
+of the normal one; clicking it explains what's needed and opens that same setup form (the toolbar
+popup, or the same form in a tab where the browser won't let the extension open its popup itself). Saving it requests permission to reach that one origin and validates the
 login before storing anything. After that, the toolbar icon turns from the dark/inactive icon to
 the color/active one, and the floating icon starts appearing on importable pages. Reopen the popup
 any time to **Change URL** or check **Disable extension** (unchecked by default) to pause it
