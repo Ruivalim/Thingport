@@ -12,6 +12,11 @@ import { getLiveMakerworldCookie, maybeSyncMakerworldCookie } from "./makerworld
 
 const TOKEN_REFRESH_MARGIN_MS = 5 * 60 * 1000;
 
+// Identifies these requests as Thingport Grab's, which the instance never asks for a captcha
+// (Administration > Captcha): the extension signs in and imports in the background, with nowhere
+// to show one. See the backend's services/captchaService.ts isExtensionRequest.
+const CLIENT_HEADERS = { "X-Thingport-Client": "grab" };
+
 type Credentials = Pick<ConfiguredConfig, "instanceUrl" | "email" | "password">;
 
 async function errorDetail(res: Response, fallback: string): Promise<string> {
@@ -30,7 +35,7 @@ async function errorDetail(res: Response, fallback: string): Promise<string> {
 export async function loginAndStoreToken(credentials: Credentials): Promise<string> {
   const res = await fetch(apiUrl(credentials.instanceUrl, "/login"), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { ...CLIENT_HEADERS, "Content-Type": "application/json" },
     body: JSON.stringify({ email: credentials.email, password: credentials.password }),
   });
   if (!res.ok) throw new Error(await errorDetail(res, "Could not sign in to this Thingport instance"));
@@ -76,6 +81,7 @@ export async function apiCall<T = unknown>(method: string, path: string, body?: 
     fetch(apiUrl(config.instanceUrl, path), {
       method,
       headers: {
+        ...CLIENT_HEADERS,
         Authorization: `Bearer ${token}`,
         ...(finalBody ? { "Content-Type": "application/json" } : {}),
       },
@@ -92,7 +98,7 @@ export async function apiCall<T = unknown>(method: string, path: string, body?: 
 /** Authenticated GET of a binary resource on the instance (e.g. a thumbnail). */
 export async function apiFetchBlob(config: ConfiguredConfig, path: string): Promise<Blob | null> {
   const res = await fetch(apiUrl(config.instanceUrl, path), {
-    headers: { Authorization: `Bearer ${await ensureToken(config)}` },
+    headers: { ...CLIENT_HEADERS, Authorization: `Bearer ${await ensureToken(config)}` },
   });
   return res.ok ? res.blob() : null;
 }
