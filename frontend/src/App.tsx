@@ -28,6 +28,7 @@ import LogsPage from "./pages/LogsPage";
 import TriggersPage from "./pages/TriggersPage";
 import ConnectionsPage from "./pages/ConnectionsPage";
 import CaptchaPage from "./pages/CaptchaPage";
+import RenderingPage from "./pages/RenderingPage";
 import { healthApi, type HealthInfo } from "./api/health";
 import { authApi, type AuthUser } from "./api/auth";
 import { settingsApi, type PreviewMode } from "./api/settings";
@@ -213,7 +214,15 @@ function AppShell({
           path="/admin-settings"
           element={
             isAdmin
-              ? <AdminSettingsPage onUnauthorized={onUnauthorized} onPreviewModeChanged={setPreviewMode} />
+              ? <AdminSettingsPage onUnauthorized={onUnauthorized} />
+              : <Navigate to="/" replace />
+          }
+        />
+        <Route
+          path="/admin-rendering"
+          element={
+            isAdmin
+              ? <RenderingPage onUnauthorized={onUnauthorized} onPreviewModeChanged={setPreviewMode} />
               : <Navigate to="/" replace />
           }
         />

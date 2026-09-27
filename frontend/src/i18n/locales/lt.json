@@ -515,6 +515,24 @@
           "collection_item_added": "Pridėta į kolekciją",
           "collection_item_removed": "Pašalinta iš kolekcijos"
         }
+      },
+      "rendering": {
+        "heading": "Atvaizdavimas",
+        "simplify": {
+          "heading": "Supaprastinti modelius prieš peržiūrą",
+          "subtitle": "Kurti lengvesnes labai detalių modelių 3D peržiūras.",
+          "infoTitle": "Kaip veikia supaprastinimas",
+          "infoWhat": "Jei modelis turi daugiau nei 1 milijoną trikampių, jo 3D peržiūra sumažinama iki maždaug 1 milijono. Forma nepakinta daugiau nei 1% modelio dydžio, todėl ekrane peržiūra atrodo taip pat.",
+          "infoFiles": "Supaprastinama tik peržiūra. Modelių failai, atsisiuntimai ir tai, kas siunčiama į pjaustyklę, niekada nekeičiami.",
+          "infoBenefit": "Sunkios peržiūros greičiau atsisiunčiamos ir sklandžiai sukasi telefonuose, planšetėse ir senesniuose kompiuteriuose.",
+          "infoCost": "Sunkaus modelio peržiūros kūrimas serveryje užtrunka keliomis sekundėmis ilgiau. Modeliams, turintiems mažiau nei 1 milijoną trikampių, tai neturi įtakos.",
+          "infoChange": "Pakeitus šį nustatymą, perkuriamos tik tos peržiūros, kurias jis paveikia, kai modelis bus atidarytas kitą kartą.",
+          "label": "Supaprastinti modelių, turinčių daugiau nei 1 milijoną trikampių, peržiūras",
+          "helpOn": "Įjungta: modelių, turinčių daugiau nei 1 milijoną trikampių, peržiūros supaprastinamos.",
+          "helpOff": "Išjungta: peržiūros visada rodo visas modelio detales.",
+          "loadFailed": "Nepavyko įkelti atvaizdavimo nustatymų.",
+          "saveFailed": "Nepavyko išsaugoti atvaizdavimo nustatymų."
+        }
       }
     },
     "download": {

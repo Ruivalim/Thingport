@@ -5,6 +5,7 @@ import path from "node:path";
 import { Worker } from "node:worker_threads";
 import { MODEL_PREVIEWS, MODEL_PREVIEW_MAX_MEMORY_MB, MODEL_PREVIEW_TIMEOUT_SECONDS } from "../config";
 import type { ModelPreviewWorkerInput, ModelPreviewWorkerResult } from "./modelPreviewWorker";
+import { getSimplifyPreviews } from "./settingsService";
 
 // Owns the pre-rendered GLB cache for the interactive 3D preview: which plates have one, which
 // failed, and running the render itself -- in a worker thread (modelPreviewWorker.ts ->
@@ -82,6 +83,13 @@ const WORKER_BOOTSTRAP = WORKER_FILE.endsWith(".ts")
   : `require(${JSON.stringify(WORKER_FILE)});`;
 
 const MEMORY_POLL_MS = 250;
+
+// With Administration > Rendering's "simplify" on, a heavier model's preview is reduced to about
+// this many triangles (see modelPreviewRender.ts's simplifyGroupMeshes). 3D printing models are
+// often far denser than a screen shows: 1M triangles still looks the same, while shrinking the
+// file the viewer downloads and what a phone's GPU has to hold. Lighter models are untouched.
+// Defined here rather than in the renderer so the server thread never loads the renderer.
+export const SIMPLIFY_TARGET_TRIANGLES = 1_000_000;
 
 type RenderOutcome =
   | { status: "ok" }
@@ -204,7 +212,12 @@ async function runGeneration(plateId: string, srcPath: string): Promise<void> {
   const tmp = `${dest}.${process.pid}.${Date.now()}.tmp`;
   try {
     await fs.writeFile(pendingPath, new Date().toISOString());
-    const outcome = await renderInWorker({ srcPath, destPath: tmp });
+    const simplify = await getSimplifyPreviews();
+    const outcome = await renderInWorker({
+      srcPath,
+      destPath: tmp,
+      options: { simplifyTo: simplify ? SIMPLIFY_TARGET_TRIANGLES : null },
+    });
     switch (outcome.status) {
       case "ok":
         await fs.rename(tmp, dest);
@@ -235,4 +248,70 @@ async function runGeneration(plateId: string, srcPath: string): Promise<void> {
     await fs.rm(pendingPath, { force: true }).catch(() => undefined);
     inFlight.delete(plateId);
   }
+}
+
+// ---- Simplification setting changes -----------------------------------------------------------
+
+type GlbSummary = { triangles: number; simplified: boolean };
+
+/** Reads just a cached GLB's JSON chunk (not its geometry): how many triangles it holds, and
+ *  whether the renderer simplified it (the `simplified` note it leaves in the preview's
+ *  metadata). Null for a file that isn't a GLB this renderer wrote. */
+async function readGlbSummary(file: string): Promise<GlbSummary | null> {
+  const handle = await fs.open(file, "r");
+  try {
+    const header = Buffer.alloc(20);
+    await handle.read(header, 0, 20, 0);
+    // "glTF" magic, then the first chunk must be JSON ("JSON" = 0x4e4f534a).
+    if (header.readUInt32LE(0) !== 0x46546c67 || header.readUInt32LE(16) !== 0x4e4f534a) return null;
+    const json = Buffer.alloc(header.readUInt32LE(12));
+    await handle.read(json, 0, json.length, 20);
+    const gltf = JSON.parse(json.toString("utf-8")) as {
+      accessors?: { count: number }[];
+      meshes?: { primitives: { indices?: number }[] }[];
+      nodes?: { extras?: { thingportPreview?: string } }[];
+    };
+    let triangles = 0;
+    for (const mesh of gltf.meshes ?? []) {
+      for (const primitive of mesh.primitives) {
+        if (primitive.indices !== undefined) triangles += (gltf.accessors?.[primitive.indices]?.count ?? 0) / 3;
+      }
+    }
+    const meta = gltf.nodes?.find((node) => typeof node.extras?.thingportPreview === "string")?.extras?.thingportPreview;
+    const simplified = meta ? Boolean((JSON.parse(meta) as { simplified?: unknown }).simplified) : false;
+    return { triangles, simplified };
+  } finally {
+    await handle.close();
+  }
+}
+
+/** After the Rendering "simplify" setting changes, removes the cached previews that would now
+ *  come out differently -- turned on: the ones over the triangle budget; turned off: the ones
+ *  that were simplified -- so they're rebuilt the next time they're viewed. Every other preview
+ *  is left as it is. Returns how many were removed. */
+export async function dropPreviewsAffectedBySimplification(simplify: boolean): Promise<number> {
+  const suffix = `.v${PREVIEW_FORMAT_VERSION}.glb`;
+  let removed = 0;
+  let names: string[];
+  try {
+    names = await fs.readdir(MODEL_PREVIEWS);
+  } catch {
+    return 0;
+  }
+  for (const name of names) {
+    if (!name.endsWith(suffix)) continue;
+    const file = path.join(MODEL_PREVIEWS, name);
+    try {
+      const summary = await readGlbSummary(file);
+      if (!summary) continue;
+      const affected = simplify ? !summary.simplified && summary.triangles > SIMPLIFY_TARGET_TRIANGLES : summary.simplified;
+      if (affected) {
+        await fs.rm(file, { force: true });
+        removed++;
+      }
+    } catch (err) {
+      console.warn(`Couldn't check cached preview ${name} after a simplification change`, err);
+    }
+  }
+  return removed;
 }

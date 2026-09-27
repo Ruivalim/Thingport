@@ -13,6 +13,9 @@ export type StorageSettings = {
 
 export type PreviewMode = "automatic" | "on-demand" | "disabled";
 
+/** Administration > Rendering (admin-only). */
+export type RenderingSettings = { simplify_previews: boolean };
+
 export type AuthSettings = {
   token_ttl_seconds: number;
 };
@@ -98,6 +101,24 @@ export const settingsApi = {
   getPreviews: async (): Promise<{ mode: PreviewMode }> => {
     const res = await fetch(`${apiBase()}/settings/previews`, { headers: authHeaders() });
     assertOk(res, "Failed to load preview settings");
+    return res.json();
+  },
+
+  getRendering: async (): Promise<RenderingSettings> => {
+    const res = await fetch(`${apiBase()}/settings/rendering`, { headers: authHeaders() });
+    if (res.status === 401) throw new UnauthorizedError();
+    assertOk(res, "Failed to load rendering settings");
+    return res.json();
+  },
+
+  updateRendering: async (settings: RenderingSettings): Promise<RenderingSettings> => {
+    const res = await fetch(`${apiBase()}/settings/rendering`, {
+      method: "PATCH",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(settings),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to update rendering settings"));
     return res.json();
   },
 

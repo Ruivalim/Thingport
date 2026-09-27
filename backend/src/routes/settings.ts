@@ -9,11 +9,13 @@ import {
   setCaptchaSettings,
   getAuthTokenTtl,
   getPreviewMode,
+  getSimplifyPreviews,
   getSmtpSettings,
   getThingiverseAccessToken,
   setAllowRegistrations,
   setAuthTokenTtl,
   setPreviewMode,
+  setSimplifyPreviews,
   setSmtpSettings,
   setThingiverseAccessToken,
   type SmtpSettings,
@@ -35,6 +37,7 @@ import { SLICER_IDS, getUserSlicer, setUserSlicer } from "../services/slicerPref
 import { THEME_SELECTIONS, getUserTheme, setUserTheme } from "../services/themePreferenceService";
 import { getUserAuthorPreviewEnabled, setUserAuthorPreviewEnabled } from "../services/authorPreviewPreferenceService";
 import { checkForUpdates } from "../services/versionService";
+import { dropPreviewsAffectedBySimplification } from "../services/modelPreviewCache";
 
 const router = Router();
 router.use(requireAuth);
@@ -165,6 +168,33 @@ router.post(
     const body = parseBody(previewsSchema, req.body);
     await setPreviewMode(body.mode);
     res.json({ mode: body.mode });
+  }),
+);
+
+// Administration > Rendering. A change removes just the cached previews it would alter (in the
+// background -- it reads every cached preview's header), so they're rebuilt on their next view.
+router.get(
+  "/settings/rendering",
+  requireAdmin,
+  asyncHandler(async (_req, res) => {
+    res.json({ simplify_previews: await getSimplifyPreviews() });
+  }),
+);
+
+const renderingSchema = z.object({ simplify_previews: z.boolean() });
+router.patch(
+  "/settings/rendering",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const body = parseBody(renderingSchema, req.body);
+    const previous = await getSimplifyPreviews();
+    await setSimplifyPreviews(body.simplify_previews);
+    if (previous !== body.simplify_previews) {
+      void dropPreviewsAffectedBySimplification(body.simplify_previews).catch((err) =>
+        console.error("Couldn't refresh previews after a simplification change", err),
+      );
+    }
+    res.json({ simplify_previews: body.simplify_previews });
   }),
 );
 

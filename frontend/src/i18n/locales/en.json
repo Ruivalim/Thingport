@@ -513,6 +513,24 @@
           "collection_item_added": "Added to collection",
           "collection_item_removed": "Removed from collection"
         }
+      },
+      "rendering": {
+        "heading": "Rendering",
+        "simplify": {
+          "heading": "Simplify models before preview",
+          "subtitle": "Make lighter 3D previews of very detailed models.",
+          "infoTitle": "How simplification works",
+          "infoWhat": "When a model has more than 1 million triangles, its 3D preview is reduced to about 1 million. The shape stays the same to within 1% of the model's size, so the preview looks the same on screen.",
+          "infoFiles": "Only the preview is simplified. Model files, downloads and anything sent to a slicer are never changed.",
+          "infoBenefit": "Heavy previews download faster and rotate smoothly on phones, tablets and older computers.",
+          "infoCost": "Making the preview of a heavy model takes a few seconds longer on the server. Models under 1 million triangles are not affected.",
+          "infoChange": "Changing this setting rebuilds only the previews it affects, the next time each model is opened.",
+          "label": "Simplify previews of models over 1 million triangles",
+          "helpOn": "On: previews of models over 1 million triangles are simplified.",
+          "helpOff": "Off: previews always show a model's full detail.",
+          "loadFailed": "Failed to load rendering settings.",
+          "saveFailed": "Failed to save rendering settings."
+        }
       }
     },
     "download": {

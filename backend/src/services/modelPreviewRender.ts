@@ -788,14 +788,106 @@ async function buildGlbGroup(parsed: ParsedModel): Promise<import("three").Group
   return root;
 }
 
+// ---- Simplification (Administration > Rendering, off by default) --------------------------------
+
+// The triangle budget itself comes in through RenderOptions (modelPreviewCache.ts's
+// SIMPLIFY_TARGET_TRIANGLES), shared between a model's merged meshes in proportion to their size.
+// Meshes this small are left alone -- nothing to gain, and a small part would lose its shape.
+const SIMPLIFY_MIN_MESH_TRIANGLES = 2_000;
+// The simplifier stops short of its target rather than change the shape by more than this
+// fraction of the mesh's size (1%).
+const SIMPLIFY_MAX_ERROR = 0.01;
+const UNUSED_VERTEX = 0xffffffff;
+
+export type SimplifiedSummary = { from: number; to: number };
+
+function meshTriangleCount(mesh: import("three").Mesh): number {
+  return (mesh.geometry.index?.count ?? 0) / 3;
+}
+
+/** Simplifies every merged mesh under `root` (in place) when their total exceeds `budget`
+ *  triangles, with meshoptimizer's edge-collapse simplifier; returns the before/after triangle
+ *  counts, or null when the model was already within budget. Normals are recomputed from the
+ *  simplified surface. */
+async function simplifyGroupMeshes(
+  root: import("three").Group,
+  budget: number,
+): Promise<SimplifiedSummary | null> {
+  const THREE = await import("three");
+  const meshes: InstanceType<typeof THREE.Mesh>[] = [];
+  root.traverse((obj) => {
+    if ((obj as InstanceType<typeof THREE.Mesh>).isMesh) meshes.push(obj as InstanceType<typeof THREE.Mesh>);
+  });
+  const total = meshes.reduce((sum, mesh) => sum + meshTriangleCount(mesh), 0);
+  if (total <= budget) return null;
+
+  // ESM-only; this CommonJS build turns the import() into require(), which loads ES modules from
+  // Node 20.19 on (hence package.json's engines).
+  const { MeshoptSimplifier } = await import("meshoptimizer");
+  await MeshoptSimplifier.ready;
+
+  let after = 0;
+  for (const mesh of meshes) {
+    const count = meshTriangleCount(mesh);
+    const index = mesh.geometry.index;
+    if (!index || count <= SIMPLIFY_MIN_MESH_TRIANGLES) {
+      after += count;
+      continue;
+    }
+    const target = Math.max(SIMPLIFY_MIN_MESH_TRIANGLES, Math.floor((count * budget) / total));
+    const positions = mesh.geometry.getAttribute("position").array as Float32Array;
+    const indices = index.array instanceof Uint32Array ? index.array : Uint32Array.from(index.array);
+    const [simplified] = MeshoptSimplifier.simplify(indices, positions, 3, target * 3, SIMPLIFY_MAX_ERROR, ["LockBorder"]);
+    // Drop the vertices no triangle uses any more, so the GLB really gets smaller: compactMesh
+    // renumbers `simplified` in place and says where each old vertex went.
+    const [remap, uniqueVertices] = MeshoptSimplifier.compactMesh(simplified);
+    const compacted = new Float32Array(uniqueVertices * 3);
+    for (let oldIndex = 0; oldIndex < remap.length; oldIndex++) {
+      const newIndex = remap[oldIndex];
+      if (newIndex === UNUSED_VERTEX) continue;
+      compacted[newIndex * 3] = positions[oldIndex * 3];
+      compacted[newIndex * 3 + 1] = positions[oldIndex * 3 + 1];
+      compacted[newIndex * 3 + 2] = positions[oldIndex * 3 + 2];
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(compacted, 3));
+    geometry.setIndex(new THREE.BufferAttribute(simplified, 1));
+    geometry.computeVertexNormals();
+    mesh.geometry.dispose();
+    mesh.geometry = geometry;
+    after += simplified.length / 3;
+  }
+  return { from: total, to: after };
+}
+
 // ---- Entry point (called from the worker) ----------------------------------------------------
+
+export type RenderOptions = {
+  /** Simplify a model over this many triangles down to about that many (see
+   *  simplifyGroupMeshes); null keeps its exact geometry. */
+  simplifyTo: number | null;
+};
 
 /** Parses `srcPath` and writes the preview GLB to `destPath`, or says why it didn't (see
  * PreviewRefusal) -- decided before any geometry is built. */
-export async function renderModelPreviewGlb(srcPath: string, destPath: string): Promise<"ok" | PreviewRefusal> {
+export async function renderModelPreviewGlb(
+  srcPath: string,
+  destPath: string,
+  options: RenderOptions = { simplifyTo: null },
+): Promise<"ok" | PreviewRefusal> {
   const parsed = await parseThreeMfFast(srcPath);
   if (typeof parsed === "string") return parsed;
   const group = await buildGlbGroup(parsed);
+  if (options.simplifyTo) {
+    const simplified = await simplifyGroupMeshes(group, options.simplifyTo);
+    // Recorded in the preview itself, so a later change of the setting can tell which cached
+    // previews it affects without re-rendering them (modelPreviewCache.ts's
+    // dropPreviewsAffectedBySimplification).
+    if (simplified) {
+      const meta = JSON.parse(group.userData.thingportPreview as string) as Record<string, unknown>;
+      group.userData.thingportPreview = JSON.stringify({ ...meta, simplified });
+    }
+  }
   const { GLTFExporter } = await import("three/examples/jsm/exporters/GLTFExporter.js");
   const result = await new GLTFExporter().parseAsync(group, { binary: true });
   await fs.writeFile(destPath, Buffer.from(result as ArrayBuffer));

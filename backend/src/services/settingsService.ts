@@ -50,6 +50,19 @@ export async function setAllowRegistrations(value: boolean): Promise<void> {
   await setBoolSetting(ALLOW_REGISTRATIONS_KEY, value);
 }
 
+// Administration > Rendering: reduce a heavy model's triangle count in its 3D preview (see
+// modelPreviewRender.ts's simplifyGroupMeshes). Off by default -- previews then show the model's
+// exact geometry, as they always have.
+const SIMPLIFY_PREVIEWS_KEY = "simplify_previews";
+
+export async function getSimplifyPreviews(): Promise<boolean> {
+  return getBoolSetting(SIMPLIFY_PREVIEWS_KEY, false);
+}
+
+export async function setSimplifyPreviews(value: boolean): Promise<void> {
+  await setBoolSetting(SIMPLIFY_PREVIEWS_KEY, value);
+}
+
 export type PreviewMode = "automatic" | "on-demand" | "disabled";
 const PREVIEW_MODES = new Set<PreviewMode>(["automatic", "on-demand", "disabled"]);
 const PREVIEW_MODE_KEY = "preview_mode";

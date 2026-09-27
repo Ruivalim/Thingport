@@ -1,10 +1,10 @@
 import { parentPort, workerData } from "node:worker_threads";
-import { renderModelPreviewGlb } from "./modelPreviewRender";
+import { renderModelPreviewGlb, type RenderOptions } from "./modelPreviewRender";
 
 // Worker-thread entry point for one preview render (spawned per job by modelPreviewCache.ts, which
 // enforces the memory/time limits). Reports exactly one message, then lets the thread exit.
 
-export type ModelPreviewWorkerInput = { srcPath: string; destPath: string };
+export type ModelPreviewWorkerInput = { srcPath: string; destPath: string; options: RenderOptions };
 export type ModelPreviewWorkerResult =
   | { status: "ok" }
   | { status: "too-complex" }
@@ -12,10 +12,10 @@ export type ModelPreviewWorkerResult =
   | { status: "error"; error: string };
 
 async function run(): Promise<void> {
-  const { srcPath, destPath } = workerData as ModelPreviewWorkerInput;
+  const { srcPath, destPath, options } = workerData as ModelPreviewWorkerInput;
   let result: ModelPreviewWorkerResult;
   try {
-    result = { status: await renderModelPreviewGlb(srcPath, destPath) };
+    result = { status: await renderModelPreviewGlb(srcPath, destPath, options) };
   } catch (err) {
     result = { status: "error", error: err instanceof Error ? err.stack ?? err.message : String(err) };
   }
