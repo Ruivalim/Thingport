@@ -273,6 +273,25 @@ describe("plate add/remove/reorder/rename", () => {
     res = await auth(request(app).delete(`/api/print/${printId}/plates/${lastPlateId}`));
     expect(res.status).toBe(409);
   });
+
+  // The Edit dialog's order for swapping a model's only file for an edited copy of the same name.
+  it("replaces the only plate with a same-named file: upload, delete the old one, rename back", async () => {
+    let res = await auth(request(app).get(`/api/print/${printId}`));
+    const [original] = res.body.plates;
+
+    res = await auth(request(app).post(`/api/print/${printId}/plates`)).attach(
+      "files",
+      tmpFile(original.filename, "solid replacement endsolid"),
+    );
+    const added = res.body.print.plates.find((p: any) => p.id !== original.id);
+    expect(added.filename).not.toBe(original.filename); // suffixed while the old one exists
+
+    res = await auth(request(app).delete(`/api/print/${printId}/plates/${original.id}`));
+    expect(res.status).toBe(200);
+    res = await auth(request(app).post(`/api/print/${printId}/plate/${added.id}/rename`)).send({ filename: original.filename });
+    expect(res.status).toBe(200);
+    expect(res.body.print.plates).toEqual([expect.objectContaining({ id: added.id, filename: original.filename })]);
+  });
 });
 
 describe("category CRUD + cycle rejection", () => {

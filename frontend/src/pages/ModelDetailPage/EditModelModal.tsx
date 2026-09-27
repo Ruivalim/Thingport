@@ -247,25 +247,36 @@ export default function EditModelModal({ print, onClose, onUnauthorized, onUpdat
         latest = reorderRes.print ?? latest;
       }
 
-      // Model files (plates): same delete -> upload -> reorder sequence. Always at least one
-      // plate stays staged locally (removePlateItem refuses to drop the last one), matching the
-      // backend's own "can't remove the only plate" rule.
-      const keptPlateIds = new Set(plateItems.filter((p) => p.kind === "existing").map((p) => p.id));
-      for (const original of print.plates) {
-        if (keptPlateIds.has(original.id)) continue;
-        const res = await printsApi.deletePlate(print.id, original.id);
-        latest = res.print ?? latest;
-      }
+      // Model files (plates): upload -> delete -> rename -> reorder. Uploading first is what lets
+      // a model's only file be swapped for a new one in a single save -- deleting first would
+      // briefly leave it with none, which the backend refuses ("can't remove the only plate").
       const newPlateFiles = plateItems.filter((p) => p.kind === "new").map((p) => p.file);
       let newPlateIdsInOrder: string[] = [];
       if (newPlateFiles.length) {
         const beforeIds = new Set(latest.plates.map((p) => p.id));
         const uploadRes = await printsApi.addPlates(print.id, newPlateFiles);
         latest = uploadRes.print;
+        // The backend appends them in upload order, so this lines up with newPlateFiles.
         newPlateIdsInOrder = latest.plates
           .filter((p) => !beforeIds.has(p.id))
           .toSorted((a, b) => a.position - b.position)
           .map((p) => p.id);
+      }
+      const keptPlateIds = new Set(plateItems.filter((p) => p.kind === "existing").map((p) => p.id));
+      for (const original of print.plates) {
+        if (keptPlateIds.has(original.id)) continue;
+        const res = await printsApi.deletePlate(print.id, original.id);
+        latest = res.print ?? latest;
+      }
+      // A replacement usually has the same name as the file it replaces, and while that one still
+      // existed the backend gave it a " (2)" suffix. Now it's gone, ask for the name as uploaded:
+      // the backend keeps the suffix if another of the model's files still has that name.
+      for (const [index, plateId] of newPlateIdsInOrder.entries()) {
+        const wanted = newPlateFiles[index].name;
+        const current = latest.plates.find((p) => p.id === plateId);
+        if (!current || current.filename === wanted) continue;
+        const res = await printsApi.renamePlate(print.id, plateId, wanted);
+        latest = res.print ?? latest;
       }
       {
         let nextNew = 0;
