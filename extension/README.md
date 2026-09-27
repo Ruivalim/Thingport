@@ -7,7 +7,8 @@ opens a small panel to pick what to import (and, for a single model, an optional
 collection), then imports it the same way Thingport's own "+ Add > Import" does.
 
 It talks directly to your Thingport instance's API from the extension's background script -- no
-separate server, no data sent anywhere else.
+separate server, no data sent anywhere else. See the [privacy policy](PRIVACY.md) for exactly what
+it stores and sends.
 
 ## Screenshots
 

@@ -72,6 +72,14 @@ export const DOCS = [
     description: "Import MakerWorld, Printables and Thingiverse models straight from their own pages.",
   },
   {
+    slug: "grab/privacy",
+    source: "extension/PRIVACY.md",
+    group: "Companion apps",
+    title: "Thingport Grab privacy policy",
+    nav: "Thingport Grab privacy",
+    description: "What the Thingport Grab browser extension stores, what it sends, and where.",
+  },
+  {
     slug: "bridge",
     source: "bridge/README.md",
     group: "Companion apps",
