@@ -1,10 +1,20 @@
 import { prisma } from "../db";
 
 // Slicers offered for a future "open in {slicer}" launch. Most register their own URL protocol
-// (e.g. bambustudio://); a couple (bambustudio, prusaslicer, cura) instead route through the
-// Thingport Bridge helper -- see frontend's utils/slicerLaunch.ts BRIDGED_SLICERS for why.
+// (e.g. bambustudio://); some (bambustudio, prusaslicer, cura, anycubicslicernext) instead route
+// through the Thingport Bridge helper -- see frontend's utils/slicerLaunch.ts BRIDGED_SLICERS.
 // Anything else falls under "other".
-export const SLICER_IDS = ["bambustudio", "orcaslicer", "prusaslicer", "cura", "crealityprintlink", "other"] as const;
+export const SLICER_IDS = [
+  "bambustudio",
+  "orcaslicer",
+  "prusaslicer",
+  "cura",
+  "crealityprintlink",
+  "anycubicslicernext",
+  "elegooslicer",
+  "snapmaker-orca",
+  "other",
+] as const;
 export type SlicerId = (typeof SLICER_IDS)[number];
 
 function isSlicerId(value: string): value is SlicerId {

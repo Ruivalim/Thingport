@@ -11,6 +11,9 @@ handlers won't take a link straight from a self-hosted Thingport instance:
 - Cura's `cura://open` handler isn't domain-restricted, but its OS protocol registration is
   unreliable across its AppImage/Flatpak/Microsoft Store builds, so it's routed the same way for
   consistency.
+- Anycubic Slicer Next is an OrcaSlicer fork that handles the same links, but it registers
+  OrcaSlicer's own `orcaslicer://` protocol instead of one of its own -- with both installed, only
+  one of them gets those links. The Bridge launches it by path, so the slicer you picked opens.
 
 OrcaSlicer's protocol handler accepts any HTTP(S) URL directly with no such restriction, so it's
 launched straight from the browser and never needs this bridge.
@@ -169,11 +172,21 @@ Environment override (per slicer): `THINGPORT_SLICER_BAMBUSTUDIO=/path/to/BambuS
   value and `config.json`/env-var override key)
 - prusaslicer
 - cura
+- anycubicslicernext (Anycubic Slicer Next -- an OrcaSlicer fork that registers OrcaSlicer's own
+  `orcaslicer://` protocol, so it's launched by path to avoid opening OrcaSlicer instead when both
+  are installed)
 - other (opens with the OS default app)
 
 Cura's AppImage and Flatpak builds aren't on `PATH` and won't be auto-detected. If "Open in Cura"
 falls back to opening with your OS default app, add a `cura` entry to `config.json` (see
 `config.example.json`) or set `THINGPORT_SLICER_CURA=/path/to/cura`.
+
+Anycubic Slicer Next is looked for as `AnycubicSlicerNext.app` or `Anycubic Slicer Next.app` in
+`/Applications` or `~/Applications` on macOS, under Program Files / AppData on Windows, and on `PATH`
+on Linux. If yours is elsewhere (e.g. an AppImage), add an `anycubicslicernext` entry to
+`config.json` or set `THINGPORT_SLICER_ANYCUBICSLICERNEXT=/path/to/it`.
+
+On macOS, apps are looked for in both `/Applications` and your own `~/Applications`.
 
 ## Testing
 

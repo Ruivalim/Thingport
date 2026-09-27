@@ -12,6 +12,9 @@ export const SLICER_OPTIONS: SlicerOption[] = [
   { id: "prusaslicer", label: "PrusaSlicer" },
   { id: "cura", label: "Cura" },
   { id: "crealityprintlink", label: "Creality Print" },
+  { id: "anycubicslicernext", label: "Anycubic Slicer Next" },
+  { id: "elegooslicer", label: "Elegoo Slicer" },
+  { id: "snapmaker-orca", label: "Snapmaker Orca" },
   { id: "other", label: "Other / Manual" },
 ];
 

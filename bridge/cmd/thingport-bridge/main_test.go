@@ -59,6 +59,40 @@ func TestFindWindowsCommandResolvesVersionedCuraInstall(t *testing.T) {
 	}
 }
 
+func TestFindWindowsCommandResolvesAnycubicSlicerNext(t *testing.T) {
+	base := t.TempDir()
+	t.Setenv("ProgramFiles", base)
+	t.Setenv("ProgramFiles(x86)", "")
+	t.Setenv("LOCALAPPDATA", "")
+
+	// The folder name isn't documented, so an unexpected one must still be found by the glob.
+	dir := filepath.Join(base, "Anycubic Slicer Next 1.3")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	exePath := filepath.Join(dir, "AnycubicSlicerNext.exe")
+	if err := os.WriteFile(exePath, nil, 0644); err != nil {
+		t.Fatalf("write exe: %v", err)
+	}
+
+	if got := findWindowsCommand("anycubicslicernext", windowsCandidates()); got != exePath {
+		t.Fatalf("findWindowsCommand(\"anycubicslicernext\", ...) = %q, expected %q", got, exePath)
+	}
+}
+
+func TestFindMacCommandChecksUserApplications(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	appPath := filepath.Join(home, "Applications", "AnycubicSlicerNext.app")
+	if err := os.MkdirAll(appPath, 0755); err != nil {
+		t.Fatalf("mkdir app: %v", err)
+	}
+	candidates := map[string][]string{"anycubicslicernext": {"/Applications/AnycubicSlicerNext.app"}}
+	if got := findMacCommand("anycubicslicernext", candidates); got != appPath {
+		t.Fatalf("findMacCommand(...) = %q, expected %q", got, appPath)
+	}
+}
+
 func TestHandleProtocolRejectsUntrustedShapesBeforeDownload(t *testing.T) {
 	tests := []string{
 		"https://thingport.example/file",

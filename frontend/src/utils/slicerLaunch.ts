@@ -12,12 +12,34 @@ const BRIDGE_SCHEME = "thingport";
 // consistency. All three are handed to the Bridge instead, which downloads the file itself and
 // execs the local slicer directly, bypassing both the domain check and protocol registration.
 // OrcaSlicer accepts any HTTP(S) URL through its own handler, so it still bypasses the Bridge.
-const BRIDGED_SLICERS = new Set(["bambustudio", "prusaslicer", "cura"]);
+// Anycubic Slicer Next is an OrcaSlicer fork and understands the same links -- but it registers
+// OrcaSlicer's own orcaslicer:// protocol rather than one of its own, so with both installed only
+// one of them gets those links. Routing it through the Bridge, which launches it by path, opens
+// the one the user actually picked.
+const BRIDGED_SLICERS = new Set(["bambustudio", "prusaslicer", "cura", "anycubicslicernext"]);
 
 /** Whether slicerId launches through the Thingport Bridge helper app rather than the slicer's
  *  own URL protocol -- used to show the "install the Bridge" hint for the right slicers. */
 export function isBridgedSlicer(slicerId: string): boolean {
   return BRIDGED_SLICERS.has(slicerId);
+}
+
+// Elegoo Slicer (elegooslicer://) and Snapmaker Orca (snapmaker-orca://) are OrcaSlicer forks
+// that, unlike Anycubic's, register a protocol of their own and accept any HTTP(S) URL through
+// it, so they launch directly like OrcaSlicer. Both name the downloaded file after the URL's last
+// path segment, which a prepared print's URL (.../prepared-print) doesn't end in -- so each is
+// also passed the filename the way its handler reads it: Elegoo from a filename= query parameter
+// on the file URL itself, Snapmaker Orca from a name= parameter after the file= one.
+function withFilenameHint(slicerId: string, fileUrl: string, filename: string): { fileUrl: string; extra: string } {
+  if (slicerId === "elegooslicer") {
+    const url = new URL(fileUrl, window.location.origin);
+    url.searchParams.set("filename", filename);
+    return { fileUrl: url.toString(), extra: "" };
+  }
+  if (slicerId === "snapmaker-orca") {
+    return { fileUrl, extra: `&name=${encodeURIComponent(filename)}` };
+  }
+  return { fileUrl, extra: "" };
 }
 
 // Builds the URL that "Open in {Slicer}" navigates to: either the slicer's own registered
@@ -30,5 +52,6 @@ export function slicerLaunchUrl(slicerId: string, fileUrl: string, filename?: st
     if (filename) params.set("filename", filename);
     return `${BRIDGE_SCHEME}://open?${params.toString()}`;
   }
-  return `${slicerId}://open?file=${encodeURIComponent(fileUrl)}`;
+  const hinted = filename ? withFilenameHint(slicerId, fileUrl, filename) : { fileUrl, extra: "" };
+  return `${slicerId}://open?file=${encodeURIComponent(hinted.fileUrl)}${hinted.extra}`;
 }

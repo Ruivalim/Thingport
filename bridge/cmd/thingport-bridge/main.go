@@ -340,10 +340,18 @@ func findLinuxCommand(id string, candidates map[string][]string) string {
 	return ""
 }
 
+// findMacCommand checks each candidate app bundle in /Applications and then in the user's own
+// ~/Applications (a common drag-to-install target that needs no admin rights).
 func findMacCommand(id string, candidates map[string][]string) string {
+	home, _ := os.UserHomeDir()
 	for _, appPath := range candidates[id] {
 		if fileExists(appPath) {
 			return appPath
+		}
+		if home != "" && strings.HasPrefix(appPath, "/Applications/") {
+			if userApp := filepath.Join(home, appPath); fileExists(userApp) {
+				return userApp
+			}
 		}
 	}
 	return ""
@@ -362,6 +370,15 @@ func windowsCandidates() map[string][]string {
 			"Ultimaker Cura */UltiMaker-Cura.exe",
 			"Ultimaker Cura */Cura.exe",
 		},
+		// Anycubic's fork of OrcaSlicer. Its own orcaslicer:// handler would work too, but it
+		// shares that protocol with OrcaSlicer itself (whichever registered last wins), so it's
+		// launched by path instead. The install folder's exact name isn't documented, hence the
+		// variants and the trailing glob.
+		"anycubicslicernext": {
+			"AnycubicSlicerNext\\AnycubicSlicerNext.exe",
+			"Anycubic Slicer Next\\AnycubicSlicerNext.exe",
+			"Anycubic*/AnycubicSlicerNext.exe", // "/" in globs, like Cura's: Windows accepts it too
+		},
 	}
 }
 
@@ -374,6 +391,8 @@ func linuxCandidates() map[string][]string {
 		// AppImage and Flatpak builds aren't discoverable this way and need a config.json entry
 		// or THINGPORT_SLICER_CURA override instead (see bridge/README.md).
 		"cura": {"cura", "UltiMaker-Cura"},
+		// Same PATH-only caveat as Cura: an AppImage needs a config.json entry instead.
+		"anycubicslicernext": {"AnycubicSlicerNext", "anycubicslicernext", "anycubic-slicer-next"},
 	}
 }
 
@@ -383,7 +402,8 @@ func macCandidates() map[string][]string {
 		"orcaslicer":  {"/Applications/OrcaSlicer.app"},
 		"prusaslicer": {"/Applications/PrusaSlicer.app", "/Applications/Original Prusa Drivers/PrusaSlicer.app"},
 		// Rebranded from "Ultimaker Cura" to "UltiMaker Cura" around version 5.7.
-		"cura": {"/Applications/UltiMaker Cura.app", "/Applications/Ultimaker Cura.app"},
+		"cura":               {"/Applications/UltiMaker Cura.app", "/Applications/Ultimaker Cura.app"},
+		"anycubicslicernext": {"/Applications/AnycubicSlicerNext.app", "/Applications/Anycubic Slicer Next.app"},
 	}
 }
 
