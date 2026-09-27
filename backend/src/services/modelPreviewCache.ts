@@ -2,8 +2,8 @@ import fs from "node:fs/promises";
 import fsSync from "node:fs";
 import path from "node:path";
 import * as cheerio from "cheerio";
-import { MODEL_PREVIEWS, IMPORT_MAX_BYTES } from "../config";
-import { readZipEntry, walkZipEntries } from "../utils/zipReader";
+import { MODEL_PREVIEWS } from "../config";
+import { listZipEntries, readZipEntry, walkZipEntries } from "../utils/zipReader";
 
 // Generates the cached GLB the interactive 3D preview loads instead of re-parsing a raw .3mf
 // on every open (see frontend/src/utils/bambuThreeMf.ts, whose *rules* this file mirrors -- same
@@ -260,6 +260,90 @@ const ITEM_RE = /<item\b([^>]*)\/?>/g;
 
 type InternalComponentRef = { refId: string; transform: number[] | null; extruder: number };
 
+const MAX_COMPONENT_DEPTH = 8;
+
+/** Counts <triangle .../> tags without the per-match array a `match(/.../g)` would allocate
+ * (millions of strings for a big model). "<triangles>" (the container) is skipped. */
+function countTriangleTags(xml: string): number {
+  let count = 0;
+  let i = xml.indexOf("<triangle");
+  while (i !== -1) {
+    const next = xml.charCodeAt(i + 9);
+    // whitespace, "/" or ">" -- anything else is "<triangles" or some other tag
+    if (next === 32 || next === 9 || next === 10 || next === 13 || next === 47 || next === 62) count++;
+    i = xml.indexOf("<triangle", i + 9);
+  }
+  return count;
+}
+
+/** Triangles the preview would actually materialize: every build item's object, including
+ * geometry pulled in through p:path components (where Bambu files keep all their meshes) and
+ * same-document component references, counted once per placement -- the same expansion
+ * parseMainModel + buildGlbGroup perform, but on tag counts instead of real arrays. Checked
+ * before any mesh is parsed so an over-budget file never allocates its geometry. */
+async function countRenderedTriangles(
+  xml: string,
+  loadExternalModel: (path: string) => Promise<string | null>,
+): Promise<number> {
+  const ownCount = new Map<string, number>();
+  const internalRefs = new Map<string, string[]>();
+  const externalCount = new Map<string, number>();
+
+  OBJECT_RE.lastIndex = 0;
+  let om: RegExpExecArray | null;
+  while ((om = OBJECT_RE.exec(xml))) {
+    const objectId = getAttr(om[1], "id");
+    if (!objectId) continue;
+    const inner = om[2];
+    let count = countTriangleTags(inner);
+    const refs: string[] = [];
+    COMPONENT_RE.lastIndex = 0;
+    let cm: RegExpExecArray | null;
+    while ((cm = COMPONENT_RE.exec(inner))) {
+      const cAttrs = cm[1];
+      const extPath = getAttr(cAttrs, "p:path") ?? getAttr(cAttrs, "path");
+      const compObjectId = getAttr(cAttrs, "objectid");
+      if (extPath) {
+        if (!externalCount.has(extPath)) {
+          const extXml = await loadExternalModel(extPath);
+          externalCount.set(extPath, extXml ? countTriangleTags(extXml) : 0);
+        }
+        count += externalCount.get(extPath)!;
+      } else if (compObjectId) {
+        refs.push(compObjectId);
+      }
+    }
+    ownCount.set(objectId, count);
+    if (refs.length > 0) internalRefs.set(objectId, refs);
+  }
+
+  // Memoized by (object, depth) so a pathological fan-out can't make the count itself explode.
+  const memo = new Map<string, number>();
+  const totalFor = (objectId: string, depth: number): number => {
+    const key = `${objectId}:${depth}`;
+    const cached = memo.get(key);
+    if (cached !== undefined) return cached;
+    let total = ownCount.get(objectId) ?? 0;
+    if (depth < MAX_COMPONENT_DEPTH) {
+      for (const ref of internalRefs.get(objectId) ?? []) total += totalFor(ref, depth + 1);
+    }
+    memo.set(key, total);
+    return total;
+  };
+
+  let rendered = 0;
+  const buildMatch = xml.match(/<build\b[\s\S]*?<\/build>/);
+  if (buildMatch) {
+    ITEM_RE.lastIndex = 0;
+    let im: RegExpExecArray | null;
+    while ((im = ITEM_RE.exec(buildMatch[0]))) {
+      const objectId = getAttr(im[1], "objectid");
+      if (objectId) rendered += totalFor(objectId, 0);
+    }
+  }
+  return rendered;
+}
+
 async function parseMainModel(
   xml: string,
   structural: StructuralData,
@@ -330,7 +414,6 @@ async function parseMainModel(
   // A bounded depth guard (rather than a visited-set) is enough protection against a malformed/
   // cyclic file without needing per-object cycle bookkeeping -- real Bambu wrapper chains are
   // one level deep.
-  const MAX_COMPONENT_DEPTH = 8;
   const resolveInternalRefs = (objectId: string, depth: number): FastMesh[] => {
     const refs = internalRefsByObjectId.get(objectId);
     if (!refs || depth >= MAX_COMPONENT_DEPTH) return [];
@@ -349,9 +432,16 @@ async function parseMainModel(
     }
     return resolved;
   };
+  // Resolve everything first, append after: appending as we go would put an inner object's
+  // already-resolved meshes into target.meshes, and an outer object referencing it would then
+  // pick them up twice (once from target.meshes, once from recursing) -- doubling per level.
+  const resolvedByObjectId = new Map<string, FastMesh[]>();
   for (const objectId of internalRefsByObjectId.keys()) {
+    resolvedByObjectId.set(objectId, resolveInternalRefs(objectId, 0));
+  }
+  for (const [objectId, resolved] of resolvedByObjectId) {
     const object = objects.get(objectId);
-    if (object) object.meshes.push(...resolveInternalRefs(objectId, 0));
+    if (object) for (const mesh of resolved) object.meshes.push(mesh);
   }
 
   const buildItems: BuildItem[] = [];
@@ -388,12 +478,27 @@ type ParsedModel = {
 };
 
 const MAIN_MODEL_PATH = "3D/3dmodel.model";
-const MAX_TRIANGLES = 8_000_000; // generous safety cap -- see generateModelPreviewGlb
+// Rendered triangles, i.e. after expanding external/internal components and every build-item
+// placement (see countRenderedTriangles) -- not just tags in the main model, which for a Bambu
+// file (meshes live in 3D/Objects/*.model) is close to zero no matter how heavy the model is.
+const MAX_TRIANGLES = 8_000_000;
+// Model XML is read whole into strings; V8 can't hold a single string past ~512MB anyway, and the
+// sum bounds how much the parse holds at once. Checked from the zip's central directory before
+// anything is decompressed.
+const MAX_MODEL_ENTRY_BYTES = 500 * 1024 * 1024;
+const MAX_MODEL_TOTAL_BYTES = 1024 * 1024 * 1024;
 
 /** Reads and fast-parses a Bambu Studio project .3mf. Returns null for anything not worth
  * caching (no main model, no objects, or over the complexity cap) -- callers fall back to the
  * existing live client-side parser exactly as they do today. */
 async function parseThreeMfFast(srcPath: string): Promise<ParsedModel | null> {
+  const modelEntries = (await listZipEntries(srcPath)).filter(
+    (entry) => !entry.isDirectory && entry.name.toLowerCase().endsWith(".model"),
+  );
+  if (!modelEntries.some((entry) => entry.name === MAIN_MODEL_PATH)) return null;
+  if (modelEntries.some((entry) => entry.size > MAX_MODEL_ENTRY_BYTES)) return null;
+  if (modelEntries.reduce((sum, entry) => sum + entry.size, 0) > MAX_MODEL_TOTAL_BYTES) return null;
+
   let modelSettingsText: string | null = null;
   let projectSettingsText: string | null = null;
   let mainModelText: string | null = null;
@@ -454,20 +559,19 @@ async function parseThreeMfFast(srcPath: string): Promise<ParsedModel | null> {
     }
   }
 
-  // Quick complexity check before doing the real work: a single fast pass counting triangle
-  // tags, so a pathological file fails immediately instead of after minutes of parsing.
-  const triangleCount = (mainModelXml.match(/<triangle\b/g) || []).length;
-  if (triangleCount > MAX_TRIANGLES) return null;
-
   const externalModelCache = new Map<string, string | null>();
   const loadExternalModel = async (rawPath: string): Promise<string | null> => {
     const normalized = rawPath.startsWith("/") ? rawPath.slice(1) : rawPath;
     if (externalModelCache.has(normalized)) return externalModelCache.get(normalized) ?? null;
-    const buf = await readZipEntry(srcPath, normalized, IMPORT_MAX_BYTES);
+    const buf = await readZipEntry(srcPath, normalized, MAX_MODEL_ENTRY_BYTES);
     const text = buf ? buf.toString("utf-8") : null;
     externalModelCache.set(normalized, text);
     return text;
   };
+
+  // Complexity check before any geometry is allocated, so an over-budget file fails after a few
+  // string scans instead of after exhausting the host's memory.
+  if ((await countRenderedTriangles(mainModelXml, loadExternalModel)) > MAX_TRIANGLES) return null;
 
   const { objects, buildItems } = await parseMainModel(mainModelXml, structural, plateAssignmentsByName, loadExternalModel);
   if (objects.size === 0) return null;
@@ -535,7 +639,7 @@ async function buildGlbGroup(parsed: ParsedModel): Promise<import("three").Group
         }
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute("position", new THREE.BufferAttribute(swapped, 3));
-        geometry.setIndex(Array.from(mesh.triangles));
+        geometry.setIndex(new THREE.BufferAttribute(mesh.triangles, 1));
         geometry.computeVertexNormals();
         if (!geometriesByExtruder.has(mesh.extruder)) geometriesByExtruder.set(mesh.extruder, []);
         geometriesByExtruder.get(mesh.extruder)!.push(geometry);
@@ -606,6 +710,13 @@ function modelPreviewErrorPath(plateId: string): string {
   return path.join(MODEL_PREVIEWS, `${plateId}.error`);
 }
 
+/** Written before generation starts and removed when it ends (either way). Still being there
+ * with nothing in flight means the process died mid-generation (OOM kill, container restart), so
+ * that plate is never retried automatically -- delete this file to allow another attempt. */
+function modelPreviewPendingPath(plateId: string): string {
+  return path.join(MODEL_PREVIEWS, `${plateId}.pending`);
+}
+
 export function modelPreviewGlbExists(plateId: string): boolean {
   return fsSync.existsSync(modelPreviewGlbPath(plateId));
 }
@@ -622,14 +733,38 @@ function recentlyFailed(plateId: string): boolean {
 }
 
 const inFlight = new Set<string>();
+const crashWarned = new Set<string>();
+
+// One generation at a time, process-wide: a multi-profile import creates several .3mf plates at
+// once, and running their parses in parallel multiplies peak memory for no real gain (the work is
+// CPU-bound on the same event loop either way).
+let queue: Promise<void> = Promise.resolve();
 
 /** Generates (or refuses to, gracefully) the cached GLB for one plate. Always resolves --
  * never throws -- so callers can fire-and-forget it without a .catch(). Safe to call
- * concurrently for the same plateId (subsequent calls no-op while one is already running). */
+ * concurrently for the same plateId (subsequent calls no-op while one is queued or running). */
 export async function generateModelPreviewGlb(plateId: string, srcPath: string): Promise<void> {
   if (modelPreviewGlbExists(plateId) || inFlight.has(plateId) || recentlyFailed(plateId)) return;
+  if (fsSync.existsSync(modelPreviewPendingPath(plateId))) {
+    if (!crashWarned.has(plateId)) {
+      crashWarned.add(plateId);
+      console.warn(
+        `Model preview for plate ${plateId} was interrupted by a previous crash; not retrying. ` +
+          `Delete ${modelPreviewPendingPath(plateId)} to allow another attempt.`,
+      );
+    }
+    return;
+  }
   inFlight.add(plateId);
+  const run = queue.then(() => runGeneration(plateId, srcPath));
+  queue = run;
+  await run;
+}
+
+async function runGeneration(plateId: string, srcPath: string): Promise<void> {
+  const pendingPath = modelPreviewPendingPath(plateId);
   try {
+    await fs.writeFile(pendingPath, new Date().toISOString());
     const parsed = await parseThreeMfFast(srcPath);
     if (!parsed) {
       await fs.writeFile(modelPreviewErrorPath(plateId), "unparseable-or-too-complex");
@@ -649,6 +784,7 @@ export async function generateModelPreviewGlb(plateId: string, srcPath: string):
     console.error(`Model preview generation failed for plate ${plateId}:`, err);
     await fs.writeFile(modelPreviewErrorPath(plateId), String(err)).catch(() => undefined);
   } finally {
+    await fs.rm(pendingPath, { force: true }).catch(() => undefined);
     inFlight.delete(plateId);
   }
 }

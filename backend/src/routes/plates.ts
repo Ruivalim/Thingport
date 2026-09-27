@@ -19,6 +19,7 @@ import { availablePlateFilename, plateThumbPath, relocatePrint, saveThumbFromByt
 import { addGeneratedPreviewImageIfNone } from "../services/previewImageService";
 import { printOutById } from "../services/printLoader";
 import { generateModelPreviewGlb, modelPreviewGlbPath } from "../services/modelPreviewCache";
+import { getPreviewMode } from "../services/settingsService";
 
 const router = Router();
 router.use(requireAuth);
@@ -171,7 +172,10 @@ router.get(
       // Self-heal for a plate that predates this cache (or whose background generation hasn't
       // finished/started yet): kick it off and let the client fall back to the live parser for
       // this one request -- generateModelPreviewGlb no-ops if it's already running or exists.
-      const srcPath = plate.filename.toLowerCase().endsWith(".3mf") ? resolvePlateFilePath(plate) : null;
+      // "disabled" never generates server-side; the viewer just uses the live parser.
+      const srcPath = plate.filename.toLowerCase().endsWith(".3mf") && (await getPreviewMode()) !== "disabled"
+        ? resolvePlateFilePath(plate)
+        : null;
       if (srcPath) void generateModelPreviewGlb(plate.id, srcPath);
       throw new HttpError(404, "Not found");
     }

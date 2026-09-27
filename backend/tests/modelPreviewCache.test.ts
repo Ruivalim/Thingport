@@ -280,3 +280,110 @@ describe("modelPreviewCache -- internal <component> references", () => {
     expect(meshes["extruder-0"].positions).toEqual([5, 0, 0, 15, 0, 0, 5, 0, -10]);
   });
 });
+
+async function buildModelOnly3mf(destPath: string, modelXml: string): Promise<void> {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "thingport-3mf-model-only-"));
+  const modelPath = path.join(dir, "3dmodel.model");
+  await fs.writeFile(modelPath, modelXml);
+  await writeZip(destPath, [{ arcname: "3D/3dmodel.model", filePath: modelPath }]);
+}
+
+const ONE_TRIANGLE_MESH = `<mesh><vertices><vertex x="0" y="0" z="0" /><vertex x="10" y="0" z="0" /><vertex x="0" y="10" z="0" /></vertices><triangles><triangle v1="0" v2="1" v3="2" /></triangles></mesh>`;
+
+function singleItemModelXml(objects: string, buildItemObjectId: string): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<model xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02" unit="millimeter">
+ <resources>${objects}</resources>
+ <build><item objectid="${buildItemObjectId}" /></build>
+</model>
+`;
+}
+
+/** A <components> block referencing `refId` 20 times. */
+function fanOut(refId: string): string {
+  return `<components>${Array.from({ length: 20 }, () => `<component objectid="${refId}" />`).join("")}</components>`;
+}
+
+describe("modelPreviewCache -- memory safety", () => {
+  let outDir: string;
+  const plateIds: string[] = [];
+  const newPlateId = (label: string) => {
+    const id = `test-fixture-${label}-${Date.now()}`;
+    plateIds.push(id);
+    return id;
+  };
+
+  beforeAll(async () => {
+    await fs.mkdir(path.dirname(modelPreviewGlbPath("x")), { recursive: true });
+    outDir = await fs.mkdtemp(path.join(os.tmpdir(), "thingport-3mf-safety-out-"));
+  });
+
+  afterAll(async () => {
+    for (const id of plateIds) {
+      for (const ext of [".v2.glb", ".error", ".pending"]) {
+        await fs.rm(path.join(path.dirname(modelPreviewGlbPath("x")), `${id}${ext}`), { force: true });
+      }
+    }
+  });
+
+  it("refuses a file whose rendered triangle count explodes through nested component references", async () => {
+    // One triangle, referenced 20x per level, six levels deep: 64M rendered triangles from a
+    // few-KB file. Must bail on the count, not by materializing the geometry.
+    let objects = `<object id="1" type="model">${ONE_TRIANGLE_MESH}</object>`;
+    for (let id = 2; id <= 7; id++) objects += `<object id="${id}" type="model">${fanOut(String(id - 1))}</object>`;
+    const fixture = path.join(outDir, "fanout.3mf");
+    await buildModelOnly3mf(fixture, singleItemModelXml(objects, "7"));
+
+    const plateId = newPlateId("fanout");
+    await generateModelPreviewGlb(plateId, fixture);
+    expect(modelPreviewGlbExists(plateId)).toBe(false);
+    const errorPath = path.join(path.dirname(modelPreviewGlbPath("x")), `${plateId}.error`);
+    expect(fsSync.readFileSync(errorPath, "utf-8")).toBe("unparseable-or-too-complex");
+  });
+
+  it("resolves a two-level wrapper chain to exactly one copy of the geometry", async () => {
+    const objects =
+      `<object id="1" type="model">${ONE_TRIANGLE_MESH}</object>` +
+      `<object id="2" type="model"><components><component objectid="1" /></components></object>` +
+      `<object id="3" type="model"><components><component objectid="2" /></components></object>`;
+    const fixture = path.join(outDir, "chain.3mf");
+    await buildModelOnly3mf(fixture, singleItemModelXml(objects, "3"));
+
+    const plateId = newPlateId("chain");
+    await generateModelPreviewGlb(plateId, fixture);
+    expect(modelPreviewGlbExists(plateId)).toBe(true);
+
+    const { GLTFLoader } = await import("three/examples/jsm/loaders/GLTFLoader.js");
+    const buf = fsSync.readFileSync(modelPreviewGlbPath(plateId));
+    const arrayBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+    const gltf = await new Promise<any>((resolve, reject) => {
+      new GLTFLoader().parse(arrayBuffer, "", resolve, reject);
+    });
+    const meshes: any[] = [];
+    gltf.scene.traverse((obj: any) => {
+      if (obj.isMesh) meshes.push(obj);
+    });
+    expect(meshes).toHaveLength(1);
+    expect(positionsOf(meshes[0])).toEqual([0, 0, 0, 10, 0, 0, 0, 0, -10]);
+  });
+
+  it("never retries a plate whose previous generation died mid-run", async () => {
+    const fixture = path.join(outDir, "crashed.3mf");
+    await buildModelOnly3mf(fixture, singleItemModelXml(`<object id="1" type="model">${ONE_TRIANGLE_MESH}</object>`, "1"));
+
+    const plateId = newPlateId("crashed");
+    await fs.writeFile(path.join(path.dirname(modelPreviewGlbPath("x")), `${plateId}.pending`), "left by a killed process");
+    await generateModelPreviewGlb(plateId, fixture);
+    expect(modelPreviewGlbExists(plateId)).toBe(false);
+  });
+
+  it("removes its in-progress marker once generation finishes", async () => {
+    const fixture = path.join(outDir, "ok.3mf");
+    await buildModelOnly3mf(fixture, singleItemModelXml(`<object id="1" type="model">${ONE_TRIANGLE_MESH}</object>`, "1"));
+
+    const plateId = newPlateId("ok");
+    await generateModelPreviewGlb(plateId, fixture);
+    expect(modelPreviewGlbExists(plateId)).toBe(true);
+    expect(fsSync.existsSync(path.join(path.dirname(modelPreviewGlbPath("x")), `${plateId}.pending`))).toBe(false);
+  });
+});
