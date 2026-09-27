@@ -51,8 +51,21 @@ async function postAuth<T>(path: string, body: unknown): Promise<T> {
 export const authApi = {
   login: (email: string, password: string): Promise<AuthResult> => postAuth("/login", { email, password }),
 
-  register: (payload: { displayName: string; email: string; password: string }): Promise<RegisterResult> =>
-    postAuth("/register", { displayName: payload.displayName, email: payload.email, password: payload.password }),
+  // `inviteToken` comes from an invitation link -- the only way in while registrations are closed.
+  register: (payload: { displayName: string; email: string; password: string; inviteToken?: string }): Promise<RegisterResult> =>
+    postAuth("/register", {
+      displayName: payload.displayName,
+      email: payload.email,
+      password: payload.password,
+      ...(payload.inviteToken ? { invite_token: payload.inviteToken } : {}),
+    }),
+
+  /** Checks an invitation link before its form is filled in -- rejects if it's invalid or expired. */
+  getInvitation: async (token: string): Promise<{ email: string; expires_at: string }> => {
+    const res = await fetch(`${apiBase()}/invitations/${encodeURIComponent(token)}`);
+    if (!res.ok) return readAuthError(res);
+    return res.json();
+  },
 
   verifyEmail: (token: string): Promise<AuthResult> => postAuth("/verify-email", { token }),
 

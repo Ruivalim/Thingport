@@ -3,7 +3,11 @@ import { prisma } from "../db";
 import { requireAdmin, requireAuth } from "../auth";
 import { HttpError } from "../utils/fileUtils";
 import { asyncHandler } from "../utils/asyncHandler";
+import { z } from "zod";
+import { parseBody } from "../utils/validate";
 import { deleteAllPrintsForUser, getStorageUsage, listLogs, listUsersWithPrintCounts } from "../services/adminService";
+import { createLog } from "../services/auditLog";
+import { INVITATION_TTL_DAYS, inviteUser } from "../services/invitationService";
 
 const router = Router();
 router.use(requireAuth);
@@ -64,6 +68,27 @@ router.get(
         created_at: l.createdAt,
       })),
     );
+  }),
+);
+
+// Administration > Users > "Invite users" -- only while registrations are closed and SMTP
+// is set up (inviteUser enforces both). Inviting an already-invited address sends a fresh link
+// and retires the old one.
+const inviteSchema = z.object({ email: z.string().trim().email("Enter a valid email address") });
+router.post(
+  "/admin/invitations",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(inviteSchema, req.body);
+    const admin = await prisma.user.findUnique({ where: { id: req.userId! } });
+    if (!admin) throw new HttpError(401, "Invalid or expired token");
+    const invitation = await inviteUser({
+      email: body.email,
+      invitedById: admin.id,
+      inviterName: admin.displayName,
+      origin: req.get("origin") ?? null,
+    });
+    void createLog({ userId: admin.id, action: "user_invited", details: { email: invitation.email } });
+    res.json({ email: invitation.email, expires_at: invitation.expiresAt, expires_in_days: INVITATION_TTL_DAYS });
   }),
 );
 

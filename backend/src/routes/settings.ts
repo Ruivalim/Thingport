@@ -95,8 +95,8 @@ router.get(
   }),
 );
 
-// No admin UI calls this yet -- added now so the "admin panel later" plan has a working
-// endpoint to build against without another backend change.
+// Administration > Users. Closing registrations makes POST /register refuse everyone but
+// invitees (see services/invitationService.ts) and the very first account.
 const registrationsSchema = z.object({ allow_registrations: z.boolean() });
 router.post(
   "/settings/registrations",

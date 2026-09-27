@@ -29,7 +29,9 @@
         "failed": "Registration failed",
         "passwordMismatch": "Passwords do not match",
         "passwordTooShort": "Password must be at least 8 characters",
-        "disabled": "New registrations are currently disabled."
+        "invited": "You've been invited to Thingport. Pick a display name and password to create your account.",
+        "inviteEmailLocked": "Your invitation is for this address.",
+        "inviteInvalid": "This invitation link is invalid or has expired. Ask whoever invited you for a new one."
       },
       "checkEmail": {
         "heading": "Check your email",
@@ -297,6 +299,25 @@
         "savedNoApply": "Storage structure saved for new and updated models.",
         "failed": "Failed to save storage settings."
       },
+      "registrations": {
+        "allowLabel": "Allow new registrations",
+        "openHelp": "Anyone who can reach this instance can create an account from the sign-in page.",
+        "closedHelp": "The sign-in page has no Register option, and new accounts can only be created from an invitation.",
+        "inviteButton": "Invite users",
+        "inviteHelp": "Sends a registration link by email. It works for one address, once, for 7 days.",
+        "failed": "Failed to update registration settings",
+        "invite": {
+          "title": "Invite a user",
+          "description": "They'll get an email with a link to create their account. Only this address can use it.",
+          "emailLabel": "Email address",
+          "send": "Send invitation",
+          "sending": "Sending...",
+          "close": "Close",
+          "sent_one": "Invitation sent to {{email}}. The link works for {{count}} day.",
+          "sent_other": "Invitation sent to {{email}}. The link works for {{count}} days.",
+          "failed": "Failed to send the invitation"
+        }
+      },
       "previews": {
         "heading": "Model Previews",
         "subtitle": "Control background preview generation for the whole instance.",
@@ -446,6 +467,7 @@
         "action": {
           "user_logged_in": "Logged in",
           "user_logged_out": "Logged out",
+          "user_invited": "Invited a user",
           "model_uploaded": "Model uploaded",
           "model_imported": "Model imported",
           "import_completed": "Import completed",

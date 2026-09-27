@@ -10,17 +10,23 @@ import Alert from "@mui/material/Alert";
 import type { AuthUser } from "../../api/auth";
 import Wordmark from "../../components/Wordmark";
 import SignInPanel from "./SignInPanel";
-import RegisterPanel from "./RegisterPanel";
+import RegisterPanel, { type Invite } from "./RegisterPanel";
 
 type Props = {
   onSuccess: (token: string, expires_in: number, user: AuthUser) => void;
   apiUp: boolean | null;
   allowRegistrations: boolean;
+  /** From an invitation link -- opens on the register form for that address, even while
+   *  registrations are closed. */
+  invite?: Invite | null;
 };
 
-export default function AuthPage({ onSuccess, apiUp, allowRegistrations }: Props) {
+export default function AuthPage({ onSuccess, apiUp, allowRegistrations, invite = null }: Props) {
   const { t } = useTranslation("app");
-  const [tab, setTab] = React.useState<"signIn" | "register">("signIn");
+  const [tab, setTab] = React.useState<"signIn" | "register">(invite ? "register" : "signIn");
+  // Closed registrations drop the Register tab altogether -- there's nothing to fill in -- unless
+  // this visit came from an invitation.
+  const canRegister = allowRegistrations || invite !== null;
 
   return (
     <Paper
@@ -49,20 +55,22 @@ export default function AuthPage({ onSuccess, apiUp, allowRegistrations }: Props
         </Alert>
       )}
 
-      <Tabs
-        value={tab}
-        onChange={(_e, value) => setTab(value)}
-        variant="fullWidth"
-        sx={{ mb: 3, borderBottom: "1px solid", borderColor: "divider" }}
-      >
-        <Tab value="signIn" label={t("auth.signInTab")} />
-        <Tab value="register" label={t("auth.registerTab")} />
-      </Tabs>
+      {canRegister && (
+        <Tabs
+          value={tab}
+          onChange={(_e, value) => setTab(value)}
+          variant="fullWidth"
+          sx={{ mb: 3, borderBottom: "1px solid", borderColor: "divider" }}
+        >
+          <Tab value="signIn" label={t("auth.signInTab")} />
+          <Tab value="register" label={t("auth.registerTab")} />
+        </Tabs>
+      )}
 
-      {tab === "signIn" ? (
-        <SignInPanel onSuccess={onSuccess} />
+      {tab === "register" && canRegister ? (
+        <RegisterPanel onSuccess={onSuccess} invite={invite} />
       ) : (
-        <RegisterPanel onSuccess={onSuccess} allowRegistrations={allowRegistrations} />
+        <SignInPanel onSuccess={onSuccess} />
       )}
     </Paper>
   );

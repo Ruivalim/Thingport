@@ -58,8 +58,25 @@ model User {
   logs                     Log[]
   authorLinks              AuthorLink[]
   bookmarks                Bookmark[]
+  invitationsSent          Invitation[]
   createdAt                DateTime       @default(now())
   updatedAt                DateTime       @updatedAt
+}
+
+// A pending invitation to register while new registrations are turned off (Administration >
+// Users). The emailed link carries `token`; registering with it is the only way in for
+// that email, and it's deleted the moment the account is created. One per email -- inviting the
+// same address again replaces the token, so only the newest link works. See
+// services/invitationService.ts.
+model Invitation {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  token       String   @unique
+  invitedById String?
+  invitedBy   User?    @relation(fields: [invitedById], references: [id], onDelete: SetNull)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Category {
@@ -101,18 +118,18 @@ model Category {
 }
 
 model Print {
-  id               String           @id @default(cuid())
+  id               String                   @id @default(cuid())
   userId           String
-  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user             User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name             String
   nameNormalized   String
   title            String?
   notes            String?
   creator          String?
   collection       String?
-  tags             String[]         @default([])
-  viewCount        Int              @default(0)
-  printCount       Int              @default(0)
+  tags             String[]                 @default([])
+  viewCount        Int                      @default(0)
+  printCount       Int                      @default(0)
   // Backs the two built-in "Favourites"/"Browsing History" pseudo-collections (see
   // routes/collections.ts's SYSTEM_COLLECTIONS) -- not a real Collection/CollectionItem row.
   // lastViewedAt is stamped on every GET /print/:id alongside viewCount, so "Browsing History"
@@ -126,19 +143,19 @@ model Print {
   sourceProvider   String?
   sourceExternalId String?
   categoryId       String?
-  category         Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  category         Category?                @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   authorId         String?
-  author           Author?          @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  author           Author?                  @relation(fields: [authorId], references: [id], onDelete: SetNull)
   sourcePath       String?
   plates           Plate[]
   previewImages    PreviewImage[]
-  files            PrintFile[]      @relation("PrintFiles")
-  preparedFileId   String?          @unique
-  preparedFile     PrintFile?       @relation("PreparedFile", fields: [preparedFileId], references: [id], onDelete: SetNull)
+  files            PrintFile[]              @relation("PrintFiles")
+  preparedFileId   String?                  @unique
+  preparedFile     PrintFile?               @relation("PreparedFile", fields: [preparedFileId], references: [id], onDelete: SetNull)
   preparedMetadata Json?
   collectionItems  CollectionItem[]
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
   // Generated column (name/title weight A, tags weight B, notes weight C, creator weight D) that
   // backs the global search box -- see services/searchService.ts and the hand-written migration
   // that actually creates it (`GENERATED ALWAYS AS (...) STORED`, plus its own GIN index).
@@ -162,17 +179,17 @@ model Print {
 /// on nameNormalized so re-importing the same MakerWorld collection reuses the same row
 /// instead of creating a duplicate.
 model Collection {
-  id             String           @id @default(cuid())
+  id             String                   @id @default(cuid())
   userId         String
-  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name           String
   nameNormalized String
   description    String?
-  tags           String[]         @default([])
+  tags           String[]                 @default([])
   items          CollectionItem[]
   bookmarks      Bookmark[]
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
   // Same generated-tsvector search column as Print.searchVector above (name weight A, tags
   // weight B, description weight C) -- see that field's comment and services/searchService.ts.
   searchVector   Unsupported("tsvector")?
@@ -302,21 +319,21 @@ model Notification {
 /// duplicate. Print.creator stays as the plain display string for backward compatibility and
 /// non-provider sources; this table is the richer record clickable author pages will use.
 model Author {
-  id            String   @id
+  id            String      @id
   provider      String
   externalId    String
   name          String?
   handle        String?
   bio           String?
   bioTranslated String?
-  links         String[] @default([])
+  links         String[]    @default([])
   avatarUrl     String?
   backgroundUrl String?
   prints        Print[]
   // At most one Thingport account can claim to be this real-world creator -- see AuthorLink.
   link          AuthorLink?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 
   @@unique([provider, externalId])
 }

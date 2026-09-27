@@ -114,6 +114,27 @@ export const settingsApi = {
     return res.json();
   },
 
+  // Instance-wide: whether anyone may register. Closed means only invited emails (adminApi.inviteUser)
+  // -- and the very first account -- can.
+  getRegistrations: async (): Promise<{ allow_registrations: boolean }> => {
+    const res = await fetch(`${apiBase()}/settings/registrations`, { headers: authHeaders() });
+    assertOk(res, "Failed to load registration settings");
+    return res.json();
+  },
+
+  updateRegistrations: async (allowRegistrations: boolean): Promise<{ allow_registrations: boolean }> => {
+    const res = await fetch(`${apiBase()}/settings/registrations`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ allow_registrations: allowRegistrations }),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) {
+      throw new Error(await readErrorMessage(res, "Failed to update registration settings"));
+    }
+    return res.json();
+  },
+
   // Instance-wide Thingiverse Developer API Access Token, shared by every user's Thingiverse
   // imports -- write-only like any other API secret: GET only ever reports whether one is
   // configured, never the value itself.

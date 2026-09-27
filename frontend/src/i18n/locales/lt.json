@@ -29,7 +29,9 @@
         "failed": "Registracija nepavyko",
         "passwordMismatch": "Slaptažodžiai nesutampa",
         "passwordTooShort": "Slaptažodis turi būti bent 8 simbolių",
-        "disabled": "Šiuo metu naujos registracijos yra išjungtos."
+        "invited": "Jūs pakviesti į Thingport. Pasirinkite rodomą vardą ir slaptažodį, kad sukurtumėte paskyrą.",
+        "inviteEmailLocked": "Kvietimas skirtas šiam adresui.",
+        "inviteInvalid": "Ši kvietimo nuoroda negalioja arba jos galiojimas baigėsi. Paprašykite jus pakvietusio žmogaus naujos."
       },
       "checkEmail": {
         "heading": "Patikrinkite savo el. paštą",
@@ -298,6 +300,26 @@
         "savedNoApply": "Saugojimo struktūra išsaugota naujiems ir atnaujintiems modeliams.",
         "failed": "Nepavyko išsaugoti saugojimo nustatymų."
       },
+      "registrations": {
+        "allowLabel": "Leisti naujas registracijas",
+        "openHelp": "Bet kas, pasiekiantis šį serverį, gali susikurti paskyrą prisijungimo puslapyje.",
+        "closedHelp": "Prisijungimo puslapyje nėra registracijos, o naujas paskyras galima sukurti tik gavus kvietimą.",
+        "inviteButton": "Kviesti naudotojus",
+        "inviteHelp": "El. paštu išsiunčia registracijos nuorodą. Ją vieną kartą gali panaudoti tik vienas adresas, 7 dienas.",
+        "failed": "Nepavyko atnaujinti registracijos nustatymų",
+        "invite": {
+          "title": "Pakviesti naudotoją",
+          "description": "Gavėjas gaus el. laišką su nuoroda paskyrai sukurti. Ja gali pasinaudoti tik šis adresas.",
+          "emailLabel": "El. pašto adresas",
+          "send": "Siųsti kvietimą",
+          "sending": "Siunčiama...",
+          "close": "Uždaryti",
+          "sent_one": "Kvietimas išsiųstas adresu {{email}}. Nuoroda galios {{count}} dieną.",
+          "sent_few": "Kvietimas išsiųstas adresu {{email}}. Nuoroda galios {{count}} dienas.",
+          "sent_other": "Kvietimas išsiųstas adresu {{email}}. Nuoroda galios {{count}} dienų.",
+          "failed": "Nepavyko išsiųsti kvietimo"
+        }
+      },
       "previews": {
         "heading": "Modelių peržiūros",
         "subtitle": "Valdykite fono peržiūrų generavimą visai sistemai.",
@@ -447,6 +469,7 @@
         "action": {
           "user_logged_in": "Prisijungė",
           "user_logged_out": "Atsijungė",
+          "user_invited": "Pakvietė naudotoją",
           "model_uploaded": "Modelis įkeltas",
           "model_imported": "Modelis importuotas",
           "import_completed": "Importas baigtas",

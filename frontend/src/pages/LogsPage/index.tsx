@@ -30,6 +30,7 @@ type ActionColor = "success" | "error" | "info" | "warning" | "default";
 const ACTION_COLORS: Record<LogAction, ActionColor> = {
   user_logged_in: "success",
   user_logged_out: "default",
+  user_invited: "info",
   model_uploaded: "info",
   model_imported: "info",
   import_completed: "info",
@@ -102,6 +103,8 @@ export default function LogsPage({ onUnauthorized }: Props) {
       case "collection_item_added":
       case "collection_item_removed":
         return typeof d.name === "string" ? d.name : "";
+      case "user_invited":
+        return typeof d.email === "string" ? d.email : "";
       case "model_edited":
         return typeof d.field === "string" ? t("adminSettings.logs.editedField", { field: d.field }) : "";
       case "import_completed": {

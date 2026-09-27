@@ -9,6 +9,7 @@ import { parseBody } from "../utils/validate";
 import { asyncHandler } from "../utils/asyncHandler";
 import { getAllowRegistrations, isSmtpConfigured } from "../services/settingsService";
 import { sendVerificationEmail } from "../services/mailer";
+import { findValidInvitation } from "../services/invitationService";
 import { createLog } from "../services/auditLog";
 import { seedDefaultCategories } from "../services/categoryService";
 import { toUserOut } from "../dto";
@@ -27,6 +28,9 @@ const registerSchema = z.object({
   displayName: z.string().trim().min(1, "Display name is required"),
   email: z.string().trim().email("Enter a valid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
+  // From an invitation link (services/invitationService.ts) -- the only way to register while
+  // registrations are closed.
+  invite_token: z.string().min(1).optional(),
 });
 
 const loginSchema = z.object({
@@ -46,7 +50,17 @@ router.post(
     const adminExists = (await prisma.user.count({ where: { role: "ADMIN" } })) > 0;
     const bootstrapping = !adminExists;
 
-    if (!bootstrapping && !(await getAllowRegistrations(true))) {
+    // An invitation lets its own email in even while registrations are closed, and only that
+    // email: the token has to match an unexpired invitation *for the address being registered*.
+    const invitation = body.invite_token ? await findValidInvitation(body.invite_token) : null;
+    if (body.invite_token && !invitation) {
+      throw new HttpError(400, "This invitation link is invalid or has expired. Ask for a new one.");
+    }
+    if (invitation && invitation.email !== email) {
+      throw new HttpError(400, "This invitation is for a different email address.");
+    }
+
+    if (!bootstrapping && !invitation && !(await getAllowRegistrations(true))) {
       throw new HttpError(403, "Registration is currently disabled");
     }
     if (await prisma.user.findUnique({ where: { email } })) {
@@ -60,7 +74,9 @@ router.post(
     // Otherwise, email verification only actually happens when SMTP is configured; unconfigured
     // instances create fully-verified accounts immediately so this feature is opt-in, not a
     // requirement that breaks self-hosters who never set up a mail server.
-    const smtpConfigured = !bootstrapping && (await isSmtpConfigured());
+    // An invited user skips it too: they reached this form through a link sent to that very
+    // address, which already proves they own the mailbox.
+    const smtpConfigured = !bootstrapping && !invitation && (await isSmtpConfigured());
     const verification = smtpConfigured ? newVerificationToken() : null;
 
     // Wrapped together so an account never ends up missing its starter categories (or vice
@@ -78,6 +94,8 @@ router.post(
         },
       });
       await seedDefaultCategories(tx, created.id);
+      // Single use: the invitation goes away with the account it created.
+      if (invitation) await tx.invitation.delete({ where: { id: invitation.id } });
       return created;
     }, { timeout: 15000 }); // seedDefaultCategories is ~80 sequential inserts -- Prisma's 5s default is too tight
 
@@ -117,6 +135,17 @@ router.post(
     const { token, expiresIn } = await issueToken(user.id, user.role);
     res.json({ token, expires_in: expiresIn, user: toUserOut(user) });
     void createLog({ userId: user.id, action: "user_logged_in", details: { email: user.email } });
+  }),
+);
+
+// Backs the invitation link's registration form: confirms the link is still good before the
+// invitee fills anything in. Returns only the invited email, which the link already contains.
+router.get(
+  "/invitations/:token",
+  asyncHandler(async (req, res) => {
+    const invitation = await findValidInvitation(req.params.token);
+    if (!invitation) throw new HttpError(404, "This invitation link is invalid or has expired. Ask for a new one.");
+    res.json({ email: invitation.email, expires_at: invitation.expiresAt });
   }),
 );
 

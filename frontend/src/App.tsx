@@ -373,6 +373,15 @@ export default function App() {
     // pre-login from the link in the verification email -- is checked directly against
     // window.location rather than via a route.
     const isVerifyEmailPath = typeof window !== "undefined" && window.location.pathname === "/verify-email";
+    // Same for /register?email=...&invite=... -- the link in an invitation email (see the backend's
+    // services/invitationService.ts), which opens the register form for that one address even
+    // while registrations are closed.
+    const inviteParams = typeof window !== "undefined" && window.location.pathname === "/register"
+      ? new URLSearchParams(window.location.search)
+      : null;
+    const invite = inviteParams?.get("invite")
+      ? { token: inviteParams.get("invite")!, email: inviteParams.get("email") ?? "" }
+      : null;
     return (
       <ThemeProvider theme={muiTheme}>
         <CssBaseline />
@@ -393,6 +402,7 @@ export default function App() {
               onSuccess={handleLogin}
               apiUp={apiUp}
               allowRegistrations={health?.allow_registrations ?? true}
+              invite={invite}
             />
           )}
         </Box>

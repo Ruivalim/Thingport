@@ -5,21 +5,29 @@ import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
 import Alert from "@mui/material/Alert";
+import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
 import { authApi, type AuthUser } from "../../api/auth";
 import CheckEmailPanel from "./CheckEmailPanel";
 
 const MIN_PASSWORD_LENGTH = 8;
 
+/** From an invitation link's query string (see App.tsx). */
+export type Invite = { token: string; email: string };
+
 type Props = {
   onSuccess: (token: string, expires_in: number, user: AuthUser) => void;
-  allowRegistrations: boolean;
+  invite?: Invite | null;
 };
 
-export default function RegisterPanel({ onSuccess, allowRegistrations }: Props) {
+export default function RegisterPanel({ onSuccess, invite = null }: Props) {
   const { t } = useTranslation("app");
   const [displayName, setDisplayName] = React.useState("");
-  const [email, setEmail] = React.useState("");
+  const [email, setEmail] = React.useState(invite?.email ?? "");
+  // An invitation is checked with the backend before the form opens: "checking" until then,
+  // "valid" (email locked to the invited address) or "invalid" (form stays closed).
+  const [inviteState, setInviteState] = React.useState<"checking" | "valid" | "invalid">(invite ? "checking" : "valid");
+  const [inviteError, setInviteError] = React.useState<string | null>(null);
   const [password, setPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
   const [loading, setLoading] = React.useState(false);
@@ -27,6 +35,25 @@ export default function RegisterPanel({ onSuccess, allowRegistrations }: Props) 
   // Set once the backend confirms this instance requires email verification -- replaces the
   // form with CheckEmailPanel instead of ever calling onSuccess.
   const [pendingEmail, setPendingEmail] = React.useState<string | null>(null);
+
+  // Keyed on the token string, not the invite object -- App.tsx builds that afresh every render.
+  const inviteToken = invite?.token ?? null;
+  React.useEffect(() => {
+    if (!inviteToken) return;
+    let active = true;
+    authApi.getInvitation(inviteToken)
+      .then(res => {
+        if (!active) return;
+        setEmail(res.email);
+        setInviteState("valid");
+      })
+      .catch(err => {
+        if (!active) return;
+        setInviteError(err instanceof Error ? err.message : t("auth.register.inviteInvalid"));
+        setInviteState("invalid");
+      });
+    return () => { active = false; };
+  }, [inviteToken, t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,10 +68,13 @@ export default function RegisterPanel({ onSuccess, allowRegistrations }: Props) 
     }
     setLoading(true);
     try {
-      const res = await authApi.register({ displayName, email, password });
+      const res = await authApi.register({ displayName, email, password, inviteToken: invite?.token });
       if ("email_verification_required" in res) {
         setPendingEmail(res.email);
       } else {
+        // Leave /register?invite=... behind: the signed-in app doesn't have that route, and the
+        // one-time link shouldn't linger in the address bar or history.
+        if (invite) window.history.replaceState(null, "", "/");
         onSuccess(res.token, res.expires_in, res.user);
       }
     } catch (err) {
@@ -59,10 +89,22 @@ export default function RegisterPanel({ onSuccess, allowRegistrations }: Props) 
     return <CheckEmailPanel email={pendingEmail} />;
   }
 
+  if (inviteState === "checking") {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+        <CircularProgress size={28} />
+      </Box>
+    );
+  }
+
+  if (inviteState === "invalid") {
+    return <Alert severity="error">{inviteError ?? t("auth.register.inviteInvalid")}</Alert>;
+  }
+
   return (
     <Box component="form" onSubmit={handleSubmit}>
       <Stack spacing={2}>
-        {!allowRegistrations && <Alert severity="info">{t("auth.register.disabled")}</Alert>}
+        {invite && <Alert severity="info">{t("auth.register.invited")}</Alert>}
         {error && <Alert severity="error">{error}</Alert>}
         <TextField
           label={t("auth.register.displayNameLabel")}
@@ -72,7 +114,6 @@ export default function RegisterPanel({ onSuccess, allowRegistrations }: Props) 
           required
           fullWidth
           size="small"
-          disabled={!allowRegistrations}
         />
         <TextField
           type="email"
@@ -83,7 +124,8 @@ export default function RegisterPanel({ onSuccess, allowRegistrations }: Props) 
           required
           fullWidth
           size="small"
-          disabled={!allowRegistrations}
+          disabled={invite !== null}
+          helperText={invite ? t("auth.register.inviteEmailLocked") : undefined}
         />
         <Stack spacing={0.5}>
           <TextField
@@ -95,7 +137,6 @@ export default function RegisterPanel({ onSuccess, allowRegistrations }: Props) 
             required
             fullWidth
             size="small"
-            disabled={!allowRegistrations}
           />
           <Typography variant="caption" color="text.secondary">
             {t("auth.register.passwordHelp")}
@@ -110,9 +151,8 @@ export default function RegisterPanel({ onSuccess, allowRegistrations }: Props) 
           required
           fullWidth
           size="small"
-          disabled={!allowRegistrations}
         />
-        <Button type="submit" variant="contained" disabled={loading || !allowRegistrations} fullWidth size="large">
+        <Button type="submit" variant="contained" disabled={loading} fullWidth size="large">
           {loading ? t("auth.register.submitting") : t("auth.register.submit")}
         </Button>
       </Stack>

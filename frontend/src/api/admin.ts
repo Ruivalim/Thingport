@@ -15,6 +15,7 @@ export type AdminUser = {
 export type LogAction =
   | "user_logged_in"
   | "user_logged_out"
+  | "user_invited"
   | "model_uploaded"
   | "model_imported"
   | "import_completed"
@@ -46,6 +47,17 @@ export const adminApi = {
   getStorageUsage: async (): Promise<StorageUsage> => {
     const res = await fetch(`${apiBase()}/admin/storage`, { headers: authHeaders() });
     assertOk(res, "Failed to load storage usage");
+    return res.json();
+  },
+
+  /** Emails an invitation to register (only while registrations are closed and SMTP is set up). */
+  inviteUser: async (email: string): Promise<{ email: string; expires_at: string; expires_in_days: number }> => {
+    const res = await fetch(`${apiBase()}/admin/invitations`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ email }),
+    });
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to send the invitation"));
     return res.json();
   },
 

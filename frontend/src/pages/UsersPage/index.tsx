@@ -13,12 +13,14 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import { UnauthorizedError } from "../../api/client";
 import { adminApi, type AdminUser } from "../../api/admin";
+import RegistrationsPanel from "./RegistrationsPanel";
 
 type Props = {
   onUnauthorized?: () => void;
 };
 
-/** Admin-only, read-only roster of every account on the instance. Models/Collections are
+/** Admin-only roster of every account on the instance, under the instance-wide registration
+ *  switch and invitations (RegistrationsPanel). The roster itself is read-only. Models/Collections are
  *  per-user counts; MakerWorld is a connected/not-connected flag (each user's own MakerWorld
  *  session cookie, saved server-side from Settings -> Imports -- see
  *  services/makerworldCookieService.ts). The "delete all models for a user" action lives on the
@@ -53,6 +55,8 @@ export default function UsersPage({ onUnauthorized }: Props) {
 
   return (
     <Stack spacing={3}>
+      <RegistrationsPanel onUnauthorized={onUnauthorized} />
+
       {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
 
       {loading ? (
