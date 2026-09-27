@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import dotenv from "dotenv";
 
@@ -23,6 +25,30 @@ function envInt(name: string, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+/** The container's memory limit in bytes (cgroup v2, then v1), or null when there's none. An
+ *  unlimited cgroup reports "max" (v2) or a near-2^63 sentinel (v1); anything at or above the
+ *  machine's RAM is treated the same way. */
+function cgroupMemoryLimitBytes(): number | null {
+  for (const file of ["/sys/fs/cgroup/memory.max", "/sys/fs/cgroup/memory/memory.limit_in_bytes"]) {
+    try {
+      const value = Number(fs.readFileSync(file, "utf-8").trim());
+      if (Number.isFinite(value) && value > 0 && value < os.totalmem()) return value;
+    } catch {
+      // Not this cgroup version, or not Linux.
+    }
+  }
+  return null;
+}
+
+/** Default preview-render memory budget: half the memory this process can really use -- the
+ *  container's limit if it has one, else the machine's RAM -- capped at 2 GB, floored at 256 MB.
+ *  A fixed 2 GB let a render on a small NAS or a 2 GB container run the whole host out of memory
+ *  before the watchdog stepped in. */
+function defaultPreviewMemoryMb(): number {
+  const available = cgroupMemoryLimitBytes() ?? os.totalmem();
+  return Math.min(2048, Math.max(256, Math.floor(available / 2 / (1024 * 1024))));
+}
+
 export const STORAGE = path.resolve(process.env.FILE_STORAGE || "./storage");
 export const THUMBS = path.join(STORAGE, "thumbs");
 export const BUNDLES = path.join(STORAGE, "bundles");
@@ -31,10 +57,10 @@ export const PREVIEWS = path.join(STORAGE, "previews");
 // generated once per .3mf Plate so the viewer never has to re-parse a huge raw 3MF on every open.
 export const MODEL_PREVIEWS = path.join(STORAGE, "model-previews");
 // Limits on the worker thread that renders one of those GLBs: past either, the thread is killed
-// and that plate falls back to the viewer's live parser. Memory is how much the whole process may
-// grow while a render runs (and the worker's heap cap) -- a watchdog check, so a fast allocation
-// burst can overshoot it briefly.
-export const MODEL_PREVIEW_MAX_MEMORY_MB = envInt("MODEL_PREVIEW_MAX_MEMORY_MB", 2048);
+// and that plate gets no 3D preview. Memory is how much the whole process may grow while a render
+// runs (and the worker's heap cap) -- a watchdog check, so a fast allocation burst can overshoot
+// it briefly. Unset, it's half the memory actually available (see defaultPreviewMemoryMb).
+export const MODEL_PREVIEW_MAX_MEMORY_MB = envInt("MODEL_PREVIEW_MAX_MEMORY_MB", defaultPreviewMemoryMb());
 export const MODEL_PREVIEW_TIMEOUT_SECONDS = envInt("MODEL_PREVIEW_TIMEOUT_SECONDS", 180);
 
 // Base URL this instance is publicly reachable at -- needed to build absolute links in outgoing
