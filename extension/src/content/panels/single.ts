@@ -8,8 +8,8 @@ import { ctx } from "../context";
 import { resolveMakerworldDownloadUrl, resolveMakerworldProfileDownload } from "../makerworld/downloadResolver";
 import {
   currentMakerworldProfileTitle,
+  loadMakerworldDesignForPage,
   makerworldProfileIds,
-  readMakerworldDesignForPage,
   type MakerworldProfileScope,
 } from "../makerworld/pageData";
 import { api, escapeHtml } from "../runtime";
@@ -33,23 +33,24 @@ function guessPageTitle(): string | null {
 // itself, but several in a quick burst still read as automated to MakerWorld.
 const PROFILE_GAP_MS = 2000;
 
-/** The "Print profiles" choice, on a MakerWorld model page with more than one profile: the link's
- *  own (the default), every profile the designer uploaded, or those plus the community's. */
-function profilesPickerHtml(): string {
+/** The "Print profiles" choice, on a MakerWorld model page with more than one profile: the one
+ *  selected on the page (the default -- the web app calls it "Print profile from the link"),
+ *  then whichever of "all the designer's" and "the designer's and the community's" would import
+ *  more than that -- the latter only when there are community ones. */
+async function profilesPickerHtml(): Promise<string> {
   const { url, classification } = ctx();
   if (classification.provider !== "makerworld" || classification.type !== "model") return "";
-  const page = readMakerworldDesignForPage(url);
+  const page = await loadMakerworldDesignForPage(url);
   if (!page) return "";
   const all = makerworldProfileIds(page.design, "all", page.requestedInstanceId).length;
   if (all < 2) return "";
   const designer = makerworldProfileIds(page.design, "designer", page.requestedInstanceId).length;
+  const options = [`<option value="url">Currently selected print profile</option>`];
+  if (designer > 1) options.push(`<option value="designer">All designer print profiles (${designer})</option>`);
+  if (all > designer) options.push(`<option value="all">Designer &amp; community print profiles (${all})</option>`);
   return `
     <label class="tg-label" for="tg-profiles">Print profiles</label>
-    <select id="tg-profiles" class="tg-select">
-      <option value="url">Print profile from the link</option>
-      <option value="designer">All designer print profiles (${designer})</option>
-      <option value="all">Designer &amp; community print profiles (${all})</option>
-    </select>
+    <select id="tg-profiles" class="tg-select">${options.join("")}</select>
   `;
 }
 
@@ -72,7 +73,7 @@ export async function loadSingleItem(): Promise<void> {
   // Nothing inspect would tell us matters for an add-profile (a MakerWorld profile is always a
   // single 3MF), and inspecting would make the backend resolve the download just to show the panel.
   if (ctx().library) {
-    renderPanel(addProfileHtml());
+    renderPanel(addProfileHtml(await profilesPickerHtml()));
     onPanelAction("import", () => void runDirectImport());
     return;
   }
@@ -100,7 +101,7 @@ export async function loadSingleItem(): Promise<void> {
   if (zipFilename === null) {
     renderPanel(`
       <div class="tg-title">${importHeading()}</div>
-      ${profilesPickerHtml()}
+      ${await profilesPickerHtml()}
       ${await collectionPickerHtml()}
       <button class="tg-btn" type="button" data-action="import">Import</button>
     `);
@@ -122,7 +123,7 @@ export async function loadSingleItem(): Promise<void> {
 /** The model's already in the library, but this page's print profile isn't known to be -- each
  *  MakerWorld profile has its own 3MF, stored as its own file on the one model. No collection
  *  picker: the model's collections are already whatever they are. */
-function addProfileHtml(): string {
+function addProfileHtml(profilesPicker: string): string {
   const { library, url, instanceUrl } = ctx();
   const profileName = currentMakerworldProfileTitle(url);
   const profileLabel = profileName ? `the "${escapeHtml(profileName)}" profile` : "this print profile";
@@ -134,7 +135,7 @@ function addProfileHtml(): string {
   return `
     <div class="tg-title">In your library</div>
     <div class="tg-hint">${hint}</div>
-    ${profilesPickerHtml()}
+    ${profilesPicker}
     <button class="tg-btn" type="button" data-action="import">Add profile</button>
     <a class="tg-btn tg-btn--secondary" href="${escapeHtml(modelLink)}" target="_blank" rel="noopener noreferrer">Open model in Thingport</a>
   `;
@@ -211,7 +212,7 @@ async function runDirectImport(opts?: { entries?: string[] }): Promise<void> {
  *  for a single import. Stops early on a MakerWorld CAPTCHA, which would fail every later one. */
 async function runProfilesImport(scope: MakerworldProfileScope, collectionId: string | null): Promise<void> {
   const { url, instanceUrl, title } = ctx();
-  const page = readMakerworldDesignForPage(url);
+  const page = await loadMakerworldDesignForPage(url);
   const ids = page ? makerworldProfileIds(page.design, scope, page.requestedInstanceId) : [];
   if (!ids.length) {
     renderPanel(errorHtml(new Error("Couldn't read this model's print profiles. Reload the page and try again.")));

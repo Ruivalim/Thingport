@@ -35,23 +35,57 @@ function getPath(obj: unknown, ...keys: string[]): unknown {
   return current;
 }
 
+/** The design and nonce out of a __NEXT_DATA__ blob, if it's for `designId`. */
+function designFromNextData(nextData: unknown, designId: string): Omit<MakerworldPage, "requestedInstanceId"> | null {
+  const design = getPath(nextData, "props", "pageProps", "design") as MakerworldDesign | undefined;
+  if (!design || typeof design !== "object" || design.id == null || String(design.id) !== designId) return null;
+  const nonce = getPath(nextData, "props", "pageProps", "x-nonce");
+  return { design, nonce: typeof nonce === "string" && nonce.trim() ? nonce : null };
+}
+
+// Page data fetched for models reached by a client-side route change (see
+// loadMakerworldDesignForPage), by design id -- for this tab's lifetime.
+const fetchedDesigns = new Map<string, Omit<MakerworldPage, "requestedInstanceId">>();
+
 /** The page's MakerWorld design data, or null if missing -- or stale: Next.js only writes
  *  __NEXT_DATA__ on a full page load, so after a client-side route change from one model to
  *  another it still describes the first-loaded design, and resolving from it would pair this
- *  page's metadata with that other model's 3MF. */
+ *  page's metadata with that other model's 3MF. Then the model's own page data, if
+ *  loadMakerworldDesignForPage has fetched it. */
 export function readMakerworldDesignForPage(pageUrl: string): MakerworldPage | null {
-  const nextData = readNextData();
-  if (!nextData) return null;
-  const design = getPath(nextData, "props", "pageProps", "design") as MakerworldDesign | undefined;
-  if (!design || typeof design !== "object") return null;
   const expected = parseMakerworldModelUrl(pageUrl);
-  if (!expected || design.id == null || String(design.id) !== expected.designId) return null;
-  const nonce = getPath(nextData, "props", "pageProps", "x-nonce");
-  return {
-    design,
-    nonce: typeof nonce === "string" && nonce.trim() ? nonce : null,
-    requestedInstanceId: expected.requestedInstanceId,
-  };
+  if (!expected) return null;
+  const found = designFromNextData(readNextData(), expected.designId) ?? fetchedDesigns.get(expected.designId) ?? null;
+  return found ? { ...found, requestedInstanceId: expected.requestedInstanceId } : null;
+}
+
+const PAGE_FETCH_TIMEOUT_MS = 10000;
+
+/** readMakerworldDesignForPage, fetching the model's own page when the one in the tab is stale --
+ *  i.e. when the user got here by clicking through MakerWorld, which is the usual way. The same
+ *  request a reload would make (same origin, the user's own session), made once per model: without
+ *  it there's no profile list to offer and nothing to resolve downloads from. */
+export async function loadMakerworldDesignForPage(pageUrl: string): Promise<MakerworldPage | null> {
+  const current = readMakerworldDesignForPage(pageUrl);
+  if (current) return current;
+  const expected = parseMakerworldModelUrl(pageUrl);
+  if (!expected) return null;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), PAGE_FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(pageUrl.split("#")[0], { headers: { Accept: "text/html" }, signal: controller.signal });
+    if (!res.ok) return null;
+    const html = await res.text();
+    const el = new DOMParser().parseFromString(html, "text/html").getElementById("__NEXT_DATA__");
+    const found = el?.textContent ? designFromNextData(JSON.parse(el.textContent), expected.designId) : null;
+    if (!found) return null;
+    fetchedDesigns.set(expected.designId, found);
+    return { ...found, requestedInstanceId: expected.requestedInstanceId };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 /** Same precedence as the backend's resolveMakerworldViaCloudApi: the requested profile (only if
