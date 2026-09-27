@@ -2,12 +2,18 @@
 
 import { parseMakerworldModelUrl } from "../../shared/urls";
 
-export type MakerworldInstance = { id?: string | number; title?: string };
+export type MakerworldCreator = { uid?: string | number; name?: string };
+export type MakerworldInstance = { id?: string | number; title?: string; instanceCreator?: MakerworldCreator };
 export type MakerworldDesign = {
   id?: string | number;
   defaultInstanceId?: string | number;
+  designCreator?: MakerworldCreator;
   instances?: MakerworldInstance[];
 };
+
+/** Which print profiles an import takes -- the panel's "Print profiles" choice. Same meaning as the
+ *  backend's MakerworldProfileScope. */
+export type MakerworldProfileScope = "url" | "designer" | "all";
 export type MakerworldPage = { design: MakerworldDesign; nonce: string | null; requestedInstanceId: string | null };
 
 function readNextData(): unknown {
@@ -55,6 +61,21 @@ export function pickMakerworldInstanceId(design: MakerworldDesign, requestedInst
   if (requestedInstanceId && instances.some((inst) => String(inst.id) === requestedInstanceId)) return requestedInstanceId;
   if (design.defaultInstanceId) return String(design.defaultInstanceId);
   return instances.length ? String(instances[0].id) : null;
+}
+
+/** Profile ids to import for `scope` -- mirrors the backend's selectMakerworldProfiles: the
+ *  link's profile (else the default) first, then the designer's own profiles (a profile whose
+ *  instanceCreator is the design's designCreator), or every profile. */
+export function makerworldProfileIds(design: MakerworldDesign, scope: MakerworldProfileScope, requestedInstanceId: string | null): string[] {
+  const primary = pickMakerworldInstanceId(design, requestedInstanceId);
+  if (!primary) return [];
+  if (scope === "url") return [primary];
+  const designerUid = design.designCreator?.uid != null ? String(design.designCreator.uid) : null;
+  const instances = Array.isArray(design.instances) ? design.instances.filter((inst) => inst && inst.id != null) : [];
+  const wanted = instances
+    .filter((inst) => scope === "all" || (designerUid !== null && inst.instanceCreator?.uid != null && String(inst.instanceCreator.uid) === designerUid))
+    .map((inst) => String(inst.id));
+  return [primary, ...wanted.filter((id) => id !== primary)];
 }
 
 /** The title of the print profile named in the page URL's hash -- null when there's no hash or

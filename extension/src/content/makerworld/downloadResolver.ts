@@ -78,6 +78,11 @@ async function captureViaRealClick(): Promise<string | null> {
   return res && res.ok ? res.data : null;
 }
 
+async function fetchInstanceDownloadUrl(instanceId: string, nonce: string | null): Promise<string | null> {
+  const apiUrl = `https://makerworld.com/api/v1/design-service/instance/${instanceId}/f3mf?type=download&fileType=`;
+  return extractDownloadUrl(await fetchMakerworldApiJson(apiUrl, nonce));
+}
+
 /** Mirrors the backend's two-step resolution (importResolvers.ts's resolveMakerworldDownloadUrl)
  *  -- instance-scoped endpoint first, model-scoped as a fallback -- run from the page instead. */
 async function resolveFromPageApi(pageUrl: string): Promise<ResolvedDownload | null> {
@@ -86,8 +91,7 @@ async function resolveFromPageApi(pageUrl: string): Promise<ResolvedDownload | n
   const { design, nonce } = page;
   const instanceId = pickMakerworldInstanceId(design, page.requestedInstanceId);
   if (instanceId) {
-    const apiUrl = `https://makerworld.com/api/v1/design-service/instance/${instanceId}/f3mf?type=download&fileType=`;
-    const downloadUrl = extractDownloadUrl(await fetchMakerworldApiJson(apiUrl, nonce));
+    const downloadUrl = await fetchInstanceDownloadUrl(instanceId, nonce);
     if (downloadUrl) return { downloadUrl, instanceId };
   }
   // Model-level, i.e. the default profile's file.
@@ -109,4 +113,14 @@ export async function resolveMakerworldDownloadUrl(pageUrl: string): Promise<Res
     return { downloadUrl: viaClick, instanceId: pickMakerworldInstanceId(page.design, page.requestedInstanceId) };
   }
   return resolveFromPageApi(pageUrl).catch(() => null);
+}
+
+/** One particular print profile's file, resolved from the page like the rest (for importing
+ *  several profiles -- the page's Download button only ever gives the selected one). Null when it
+ *  can't be; the backend then resolves that profile from a #profileId- link itself. */
+export async function resolveMakerworldProfileDownload(pageUrl: string, instanceId: string): Promise<ResolvedDownload | null> {
+  const page = readMakerworldDesignForPage(pageUrl);
+  if (!page) return null;
+  const downloadUrl = await fetchInstanceDownloadUrl(instanceId, page.nonce).catch(() => null);
+  return downloadUrl ? { downloadUrl, instanceId } : null;
 }
