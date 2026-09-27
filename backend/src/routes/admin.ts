@@ -8,6 +8,7 @@ import { parseBody } from "../utils/validate";
 import { deleteAllPrintsForUser, getStorageUsage, listLogs, listUsersWithPrintCounts } from "../services/adminService";
 import { createLog } from "../services/auditLog";
 import { INVITATION_TTL_DAYS, inviteUser } from "../services/invitationService";
+import { authorLinkingSummary, currentAuthorLinkingRun, startAuthorLinking } from "../services/authorLinkingService";
 
 const router = Router();
 router.use(requireAuth);
@@ -102,6 +103,27 @@ router.post(
     if (!user) throw new HttpError(404, "User not found");
     const deleted = await deleteAllPrintsForUser(user.id);
     res.json({ ok: true, deleted });
+  }),
+);
+
+// Administration > Triggers > "Link missing authors" (see authorLinkingService.ts), across the
+// whole instance. The GET says how many models it could link by name (`linkable`) and how many
+// need their author looked up on their site (`lookup`) -- the trigger is only shown when either
+// is non-zero -- plus the current or last run, which the page polls while it's running. The POST
+// starts a run in the background.
+router.get(
+  "/admin/triggers/link-authors",
+  asyncHandler(async (_req, res) => {
+    res.json({ ...(await authorLinkingSummary()), run: currentAuthorLinkingRun() });
+  }),
+);
+
+router.post(
+  "/admin/triggers/link-authors",
+  asyncHandler(async (req, res) => {
+    const run = startAuthorLinking(req.userId!);
+    if (!run) throw new HttpError(409, "Linking is already running");
+    res.json({ run });
   }),
 );
 

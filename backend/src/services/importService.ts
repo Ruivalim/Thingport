@@ -23,12 +23,14 @@ import {
   resolveMakerworldCookie,
   resolveMakerworldDownloadUrl,
   type ImportCookies,
+  type ImportedAuthorInfo,
   type ImportedPageMetadata,
 } from "./importResolvers";
 import {
   extractMakerworldBearerToken,
   MakerworldAuthError,
   MakerworldCaptchaError,
+  makerworldCaptchaCooloffActive,
   parseMakerworldModelUrl,
   resolveMakerworldViaCloudApi,
   completeMakerworldAuthor,
@@ -165,6 +167,29 @@ async function fetchWithGuard(url: string, headers: Record<string, string>): Pro
 }
 
 export type OpenImportResult = { response: Response; finalUrl: string; meta: ImportedPageMetadata };
+
+/** A MakerWorld design's author from its model page -- the fallback to
+ * makerworldCloudApi.ts's fetchMakerworldDesignAuthor when there's no MakerWorld login to use its
+ * API. The page is often behind Cloudflare's challenge for a server (FlareSolverr gets through);
+ * null when it can't be read. */
+export async function fetchMakerworldPageAuthor(
+  designId: string,
+  cookie: string | null,
+  paceMs?: number,
+): Promise<ImportedAuthorInfo | null> {
+  if (makerworldCaptchaCooloffActive()) throw new MakerworldCaptchaError();
+  const url = `https://makerworld.com/en/models/${designId}`;
+  await maybeSleep(paceMs);
+  let res: Response;
+  try {
+    res = await fetchWithGuard(url, { "User-Agent": IMPORT_USER_AGENT, Accept: "*/*", ...makerworldHtmlHeaders(url, cookie) });
+  } catch {
+    return null;
+  }
+  if (!isHtmlContentType(res.headers.get("content-type") || "")) return null;
+  const { buffer } = await readCapped(res, IMPORT_HTML_MAX_BYTES);
+  return completeMakerworldAuthor(extractPageMetadata(buffer.toString("utf-8"), "makerworld.com").author, paceMs);
+}
 
 type MakerworldCloudShortcut = { downloadUrl: string; meta: ImportedPageMetadata };
 

@@ -31,6 +31,7 @@ const ACTION_COLORS: Record<LogAction, ActionColor> = {
   user_logged_in: "success",
   user_logged_out: "default",
   user_invited: "info",
+  authors_linked: "success",
   model_uploaded: "info",
   model_imported: "info",
   import_completed: "info",
@@ -105,6 +106,8 @@ export default function LogsPage({ onUnauthorized }: Props) {
         return typeof d.name === "string" ? d.name : "";
       case "user_invited":
         return typeof d.email === "string" ? d.email : "";
+      case "authors_linked":
+        return t("adminSettings.logs.authorsLinked", { count: typeof d.linked === "number" ? d.linked : 0 });
       case "model_edited":
         return typeof d.field === "string" ? t("adminSettings.logs.editedField", { field: d.field }) : "";
       case "import_completed": {

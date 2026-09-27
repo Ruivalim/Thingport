@@ -1,5 +1,5 @@
 import { authHeaders } from "../utils/auth";
-import { apiBase, assertOk, readErrorMessage } from "./client";
+import { apiBase, assertOk, readErrorMessage, UnauthorizedError } from "./client";
 
 export type AdminUser = {
   id: string;
@@ -16,6 +16,7 @@ export type LogAction =
   | "user_logged_in"
   | "user_logged_out"
   | "user_invited"
+  | "authors_linked"
   | "model_uploaded"
   | "model_imported"
   | "import_completed"
@@ -43,6 +44,24 @@ export type StorageUsage = {
   model_count: number;
 };
 
+/** Why part of a "Link missing authors" run was skipped. */
+export type AuthorLookupProblem = "thingiverse_no_token" | "thingiverse_token_rejected" | "makerworld_captcha" | "makerworld_login_rejected";
+
+export type AuthorLinkingRun = {
+  running: boolean;
+  startedAt: string;
+  finishedAt: string | null;
+  toLookUp: number;
+  lookedUp: number;
+  linked: number;
+  notFound: number;
+  problems: AuthorLookupProblem[];
+};
+
+/** `linkable`: models linkable by name right away; `lookup`: models whose author would be looked
+ *  up on their site. */
+export type AuthorLinkingStatus = { linkable: number; lookup: number; run: AuthorLinkingRun | null };
+
 export const adminApi = {
   getStorageUsage: async (): Promise<StorageUsage> => {
     const res = await fetch(`${apiBase()}/admin/storage`, { headers: authHeaders() });
@@ -64,6 +83,21 @@ export const adminApi = {
   listUsers: async (): Promise<AdminUser[]> => {
     const res = await fetch(`${apiBase()}/admin/users`, { headers: authHeaders() });
     assertOk(res, "Failed to load users");
+    return res.json();
+  },
+
+  /** Administration > Triggers > "Link missing authors" (see backend authorLinkingService.ts). */
+  getAuthorLinking: async (): Promise<AuthorLinkingStatus> => {
+    const res = await fetch(`${apiBase()}/admin/triggers/link-authors`, { headers: authHeaders() });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to check for unlinked authors"));
+    return res.json();
+  },
+
+  startAuthorLinking: async (): Promise<{ run: AuthorLinkingRun }> => {
+    const res = await fetch(`${apiBase()}/admin/triggers/link-authors`, { method: "POST", headers: authHeaders() });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to start linking authors"));
     return res.json();
   },
 

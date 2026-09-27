@@ -360,7 +360,22 @@
         "confirmWarning": "Tai negrįžtamai ištrins visus {{count}} modelį(-ius), priklausantį(-čius) {{email}}, įskaitant jų failus. Šio veiksmo anuliuoti negalima.",
         "confirmInstructions": "Norėdami patvirtinti, įveskite {{email}}.",
         "confirmButton": "Ištrinti visus modelius",
-        "deleting": "Trinama…"
+        "deleting": "Trinama…",
+        "linkAuthorsTitle": "Susieti trūkstamus autorius",
+        "linkAuthorsDesc": "Kai kurie importuoti modeliai rodo autorių tik vardu, be profilio, avataro ar nuorodos, nes importuojant nepavyko gauti autoriaus duomenų. Šis veiksmas kiekvieną jų susieja su autoriumi: su jau Thingport esančiu tos pačios svetainės autoriumi lygiai tokiu pačiu vardu, o jei tokio nėra – surandant autorių svetainėje, iš kurios modelis importuotas. Gaunami tik duomenys, failai niekada nesisiunčiami. Veiksmas taikomas visam egzemplioriui, visų naudotojų modeliams, ir vyksta fone – MakerWorld užklausos išdėstomos laike, kad nebūtų iškviesta CAPTCHA, todėl gali užtrukti kelias minutes.",
+        "linkAuthorsButton": "Susieti trūkstamus autorius",
+        "linkAuthorsFailed": "Nepavyko susieti autorių.",
+        "linkAuthorsLinkable": "Iš karto galima susieti modelių: {{count}}.",
+        "linkAuthorsLookup": "Modelių, kurių autorių reikia surasti: {{count}}.",
+        "linkAuthorsProgress": "Ieškoma autorių: {{done}} iš {{total}} – kol kas susieta modelių: {{linked}}.",
+        "linkAuthorsDone": "Su autoriumi susieta modelių: {{linked}}.",
+        "linkAuthorsNotFound": "Nepavyko rasti autoriaus kūrėjams: {{count}} – modelis galėjo būti pašalintas iš svetainės arba svetainė nepasiekiama.",
+        "linkAuthorsProblems": {
+          "thingiverse_no_token": "Thingiverse modeliai praleisti: pridėkite Thingiverse prieigos raktą skiltyje Administravimas > Nustatymai.",
+          "thingiverse_token_rejected": "Thingiverse modeliai praleisti: Thingiverse atmetė prieigos raktą, nurodytą skiltyje Administravimas > Nustatymai.",
+          "makerworld_captcha": "MakerWorld modeliai praleisti: MakerWorld paprašė CAPTCHA ir maždaug 2 valandoms blokuoja tolesnes užklausas. Bandykite vėliau.",
+          "makerworld_login_rejected": "MakerWorld modeliai praleisti: MakerWorld atmetė išsaugotą MakerWorld prisijungimą. Atnaujinkite jį skiltyje Nustatymai > Importavimas."
+        }
       },
       "thingiverse": {
         "heading": "Thingiverse prieigos raktas",
@@ -513,8 +528,10 @@
           "collection_edited": "Kolekcija redaguota",
           "collection_deleted": "Kolekcija ištrinta",
           "collection_item_added": "Pridėta į kolekciją",
-          "collection_item_removed": "Pašalinta iš kolekcijos"
-        }
+          "collection_item_removed": "Pašalinta iš kolekcijos",
+          "authors_linked": "Susieti trūkstami autoriai"
+        },
+        "authorsLinked": "Susieta modelių: {{count}}"
       },
       "rendering": {
         "heading": "Atvaizdavimas",

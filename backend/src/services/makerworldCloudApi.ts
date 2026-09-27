@@ -269,6 +269,28 @@ export async function completeMakerworldAuthor(
   };
 }
 
+/** Just a design's author, through api.bambulab.com (no Cloudflare there) -- for linking a model
+ * imported before its author could be saved (authorLinkingService.ts), without downloading
+ * anything. Null when the design can't be read; throws MakerworldCaptchaError /
+ * MakerworldAuthError like resolveMakerworldViaCloudApi, so a caller can stop asking. */
+export async function fetchMakerworldDesignAuthor(
+  designId: string,
+  bearerToken: string,
+  paceMs?: number,
+): Promise<ImportedAuthorInfo | null> {
+  if (makerworldCaptchaCooloffActive()) throw new MakerworldCaptchaError();
+  await maybeSleep(paceMs);
+  const result = await fetchCloudJson(`${DESIGN_API_BASE}/design/${designId}`, bearerToken);
+  if (!result) return null;
+  if (isCaptchaChallenge(result.data)) {
+    noteCaptchaChallenge();
+    throw new MakerworldCaptchaError();
+  }
+  if (result.status === 401 || result.status === 403) throw new MakerworldAuthError();
+  if (result.status !== 200 || !isRecord(result.data)) return null;
+  return completeMakerworldAuthor(makerworldAuthorFromDesignCreator(result.data.designCreator), paceMs);
+}
+
 export type MakerworldGalleryImage = { url: string; filename: string };
 
 /** The model page's photo gallery -- design.designExtension.design_pictures -- distinct from

@@ -19,15 +19,16 @@ import DialogActions from "@mui/material/DialogActions";
 import TextField from "@mui/material/TextField";
 import { UnauthorizedError } from "../../api/client";
 import { adminApi, type AdminUser } from "../../api/admin";
+import LinkAuthorsSection from "./LinkAuthorsSection";
 
 type Props = {
   onUnauthorized?: () => void;
 };
 
-/** Admin-only "trigger" actions -- one-off, high-blast-radius operations run against another
- *  user's data. Today there's a single trigger (delete all of a user's models); this file
- *  intentionally stays a plain list of Paper sections rather than a generic "trigger registry"
- *  until there's a second one to justify the abstraction. */
+/** Admin-only "trigger" actions -- one-off operations run against other users' data or the whole
+ *  instance: linking imported models to their authors (shown only when some can be), and
+ *  deleting all of one user's models. A plain list of Paper sections rather than a generic
+ *  "trigger registry" -- two don't justify the abstraction. */
 export default function TriggersPage({ onUnauthorized }: Props) {
   const { t } = useTranslation(["app", "common"]);
   const [users, setUsers] = React.useState<AdminUser[]>([]);
@@ -91,6 +92,7 @@ export default function TriggersPage({ onUnauthorized }: Props) {
 
   return (
     <Stack spacing={3}>
+      <LinkAuthorsSection onUnauthorized={onUnauthorized} />
       <Paper variant="outlined" sx={{ p: 2.5 }}>
         <Stack spacing={2}>
           <Box>

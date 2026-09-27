@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { HttpError } from "../utils/fileUtils";
 import type { ImportedAuthorInfo } from "./importResolvers";
@@ -15,8 +16,9 @@ export function buildAuthorId(provider: string, externalId: string): string {
 export async function upsertAuthorFromImport(info: ImportedAuthorInfo | null): Promise<Author | null> {
   if (!info) return null;
   const id = buildAuthorId(info.provider, info.externalId);
+  let author: Author;
   try {
-    return await prisma.author.upsert({
+    author = await prisma.author.upsert({
       where: { id },
       create: {
         id,
@@ -46,6 +48,40 @@ export async function upsertAuthorFromImport(info: ImportedAuthorInfo | null): P
   } catch {
     return null;
   }
+  // Models imported before this author had a record -- see linkUnattributedPrints.
+  await linkUnattributedPrints(author.id).catch((err) => console.error("Couldn't link earlier imports to their author", err));
+  return author;
+}
+
+/** Models that only know their author by name, each paired with the one author record that
+ * name belongs to. A model gets a plain-text `creator` on every import, but a linked Author only
+ * when the import could build one -- and for a while MakerWorld imports couldn't (see
+ * makerworldCloudApi.ts's completeMakerworldAuthor). The match is by the author's name or
+ * handle, within the model's own provider, ignoring case and a leading "@"; a name two authors
+ * share matches nobody rather than being guessed. (A model whose author was reset has no creator
+ * left to match.) */
+export const LINKABLE_PRINTS = Prisma.sql`
+  SELECT p2.id AS print_id, min(a.id) AS author_id
+  FROM "Print" p2
+  JOIN "Author" a ON a.provider = p2."sourceProvider"
+    AND (
+      lower(ltrim(trim(a.name), '@')) = lower(ltrim(trim(p2.creator), '@'))
+      OR lower(ltrim(trim(a.handle), '@')) = lower(ltrim(trim(p2.creator), '@'))
+    )
+  WHERE p2."authorId" IS NULL AND p2.creator IS NOT NULL AND trim(p2.creator) <> ''
+  GROUP BY p2.id
+  HAVING count(*) = 1
+`;
+
+/** Links models to their author record (see LINKABLE_PRINTS) -- every such model across the
+ * instance, or with `authorId`, only those matching that author: run for each author an import
+ * saves, so earlier imports of theirs get linked right away. Returns how many it linked. */
+export async function linkUnattributedPrints(authorId: string | null = null): Promise<number> {
+  return prisma.$executeRaw`
+    UPDATE "Print" p SET "authorId" = m.author_id
+    FROM (${LINKABLE_PRINTS}) m
+    WHERE p.id = m.print_id AND (${authorId}::text IS NULL OR m.author_id = ${authorId}::text)
+  `;
 }
 
 /** Deletes an Author row once nothing references it any more. Author rows aren't user-scoped --
