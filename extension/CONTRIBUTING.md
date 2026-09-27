@@ -53,6 +53,8 @@ uses the light one.
 ### Before opening a pull request
 
 - `npm run verify` passes (typecheck, lint, all three builds).
+- The commit type says what the change means for users -- `feat:`, `fix:`, or `!` for breaking --
+  since it decides the next version (see [Versioning](#versioning-how-the-next-version-is-picked)).
 - The change works in Chrome **and** Firefox: load `dist/chrome` and `dist/firefox` and try it on
   the provider pages it touches. The background runs as a service worker in Chrome/Edge but as an
   event page in Firefox, so keep top-level background code free of anything only one supports.
@@ -76,6 +78,7 @@ uses the light one.
 | `npm run screenshots` | Regenerates the README screenshots (see below) |
 | `npm run store-assets` | Renders the store logo, promotional tiles and PNG screenshots (see below) |
 | `npm run verify` | Typecheck + lint + build |
+| `npm run release:dry-run` | Shows the next version semantic-release would release, and why (Node 22.14+) |
 
 The only difference between the browser builds is `manifest.json` (see `scripts/manifest.ts`):
 Chrome and Edge run the background as a service worker, Firefox as an event page
@@ -95,8 +98,9 @@ its root:
 | `thingport-grab-sources.zip` | AMO too -- it asks for the source whenever the submitted code comes out of a build step |
 
 The bundles aren't minified, so reviewers can read them as-is; the sources zip lets them rebuild
-them byte-for-byte with `npm ci && npm run build:firefox`. Bump `version` in `package.json` before
-submitting an update -- every store rejects a version it has already seen.
+them byte-for-byte with `npm ci && npm run build:firefox`. Upload the zips from a
+[versioned release](#releases-ci) (`thingport-grab-v*` on the releases page), never a hand-bumped
+build -- every store rejects a version it has already seen, and versions come from semantic-release.
 
 ### Store listings
 
@@ -162,40 +166,67 @@ pages are the live sites -- by default the first models linked from each site's 
 
 ## Releases (CI)
 
-`.github/workflows/extension-release.yml` runs on every push and pull request touching this folder:
-typecheck, lint, the Chrome/Edge build, and `web-ext lint` on the Firefox build. On a push to `main`
-it also signs the Firefox build through AMO's unlisted channel and publishes
-`thingport-grab-chrome.zip`, `thingport-grab-edge.zip` and `thingport-grab-firefox.xpi` to the
-`extension-latest` release (the in-app Download page links there for Chrome and Firefox), and
-publishes new versions to Edge Add-ons (see below).
+Two workflows, for two different jobs.
 
-AMO rejects re-uploading a version number it has already seen for this add-on ID (even on the
-unlisted channel), so CI signs a copy of the built manifest with the run number appended to the
-version (e.g. `1.1.0.456`) rather than requiring a version bump on every commit.
+**Every merge -- `.github/workflows/extension-release.yml`.** Runs on every push and pull request
+touching this folder: typecheck, lint, the Chrome/Edge build, and `web-ext lint` on the Firefox
+build. On a push to `main` it also signs the Firefox build through AMO's unlisted channel and
+publishes `thingport-grab-chrome.zip`, `thingport-grab-edge.zip` and `thingport-grab-firefox.xpi`
+to the `extension-latest` release (the in-app Download page links there for Chrome and Firefox).
+It never changes the version: AMO rejects a version number it has already signed, so CI signs a
+copy of the built manifest with the run number appended (e.g. `1.1.2.456`).
 
-To produce a signed Firefox build by hand, you need a Mozilla Add-on Developer account's API
-credentials (see below), and `version` in `package.json` bumped past the last signed one:
+**Versioned releases -- `.github/workflows/extension-store-release.yml`.** Every **Friday at 13:00
+Polish time**, or whenever you start it (**Actions > Extension store release > Run workflow**, or
+`gh workflow run extension-store-release.yml`), it releases whatever changed in the extension since
+the last release, with [semantic-release](https://semantic-release.gitbook.io/) (see below): bumps
+the version, writes `CHANGELOG.md`, commits both to `main`, tags it, creates a GitHub release with
+the store zips, and publishes to Edge Add-ons. If nothing releasable changed, the run just ends.
+
+### Versioning: how the next version is picked
+
+Nobody edits `version` in `package.json` by hand -- semantic-release derives it from the
+[Conventional Commit](https://www.conventionalcommits.org/) messages since the last release tag
+(`thingport-grab-v<version>`). Only commits that changed files under `extension/` count
+(`semantic-release-monorepo`, configured in `.releaserc.json`), so backend, frontend and web
+commits never move the extension's version. Of those:
+
+| Commit | Release |
+| --- | --- |
+| `feat: ...` | minor -- 1.2.0 → 1.3.0 |
+| `fix: ...`, `perf: ...` | patch -- 1.2.0 → 1.2.1 |
+| `feat!: ...`, or a `BREAKING CHANGE:` footer | major -- 1.2.0 → 2.0.0 |
+| `docs:`, `refactor:`, `chore:`, `ci:`, `test:`, `style:`, `build:` | none on its own |
+
+The highest one wins, so a week of three fixes and one feature is one minor release. Two things
+follow from this:
+
+- **Pick the type for extension users, not for the code.** A "refactor" that changes what users
+  see or fixes something for them is a `fix:` or `feat:` -- otherwise it's never released.
+- **Mark breaking changes**, e.g. when the extension starts needing a newer Thingport server:
+  `feat!: require Thingport 2.x for ...`. Without the `!` (or footer) it's only a minor bump.
+
+The commit messages also become the changelog and the GitHub release notes, so write them for a
+reader.
+
+To see what the next release would be, without releasing anything (needs Node 22.14+):
 
 ```bash
-npm run build:firefox
-npx web-ext sign --source-dir dist/firefox --channel unlisted \
-  --api-key "$AMO_JWT_ISSUER" --api-secret "$AMO_JWT_SECRET"
+npm run release:dry-run
 ```
 
 ### Publishing to Edge automatically
 
-The workflow's `publish-edge` job publishes each new version to Microsoft Edge Add-ons by itself,
+The store release's `publish-edge` job publishes each new version to Microsoft Edge Add-ons,
 through the [Edge Add-ons Update API](https://learn.microsoft.com/microsoft-edge/extensions/update/api/using-addons-api)
-(`scripts/publish-edge.ts`): it uploads the exact `thingport-grab-edge.zip` the build produced,
+(`scripts/publish-edge.ts`): it uploads the exact `thingport-grab-edge.zip` the release built,
 waits for Microsoft to process it, and submits it for certification. Microsoft's review then takes
 anywhere from hours to a few days before the update reaches users.
 
-It runs on every push to `main`, but only publishes a version once: each published version gets
-an `extension-edge-v<version>` tag, and a version that already has one is skipped. So **releasing
-to Edge means bumping `version` in `package.json`** -- Edge rejects a version it already has
-anyway. If a run fails (most often because the previous version is still in certification, which
-Edge doesn't allow two of), no tag is created, and the next push or a manual re-run of the
-workflow tries again.
+It's a job of its own so it can be retried on its own. Edge takes one submission at a time: if the
+previous version is still in certification, the job fails with `InProgressSubmission` -- once
+Microsoft has finished, open the failed run and use **Re-run failed jobs**. (The release itself,
+tag and changelog included, is already done at that point and isn't repeated.)
 
 To test the script against Edge by hand, with the credentials below in your environment:
 
@@ -203,6 +234,17 @@ To test the script against Edge by hand, with the credentials below in your envi
 npm run zip:edge
 EDGE_PRODUCT_ID=... EDGE_CLIENT_ID=... EDGE_API_KEY=... \
   npx tsx scripts/publish-edge.ts dist/zips/thingport-grab-edge.zip
+```
+
+### Signing a Firefox build by hand
+
+You need a Mozilla Add-on Developer account's API credentials (see below), and a version in the
+built manifest that AMO hasn't signed before:
+
+```bash
+npm run build:firefox
+npx web-ext sign --source-dir dist/firefox --channel unlisted \
+  --api-key "$AMO_JWT_ISSUER" --api-secret "$AMO_JWT_SECRET"
 ```
 
 ### One-time setup: Edge publishing credentials

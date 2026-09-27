@@ -1,0 +1,42 @@
+{
+  "extends": "semantic-release-monorepo",
+  "branches": [
+    "main"
+  ],
+  "repositoryUrl": "https://github.com/TautvydasDerzinskas/Thingport.git",
+  "plugins": [
+    "@semantic-release/commit-analyzer",
+    "@semantic-release/release-notes-generator",
+    [
+      "@semantic-release/changelog",
+      {
+        "changelogFile": "CHANGELOG.md",
+        "changelogTitle": "# Thingport Grab changelog"
+      }
+    ],
+    [
+      "@semantic-release/npm",
+      {
+        "npmPublish": false
+      }
+    ],
+    [
+      "@semantic-release/exec",
+      {
+        "prepareCmd": "npm run zip",
+        "publishCmd": "mkdir -p dist && cat > dist/release-notes.md <<'SEMANTIC_RELEASE_NOTES'\n${nextRelease.notes}\nSEMANTIC_RELEASE_NOTES\nif [ -n \"$GITHUB_OUTPUT\" ]; then echo \"version=${nextRelease.version}\" >> \"$GITHUB_OUTPUT\"; echo \"tag=${nextRelease.gitTag}\" >> \"$GITHUB_OUTPUT\"; fi"
+      }
+    ],
+    [
+      "@semantic-release/git",
+      {
+        "assets": [
+          "package.json",
+          "package-lock.json",
+          "CHANGELOG.md"
+        ],
+        "message": "chore(extension): release ${nextRelease.version}\n\n${nextRelease.notes}"
+      }
+    ]
+  ]
+}

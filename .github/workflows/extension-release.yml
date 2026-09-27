@@ -1,6 +1,9 @@
 name: Extension release
 
 # Only runs when extension/ (the Thingport Grab browser extension) or this workflow changes.
+# Builds on every merge: checks, the extension-latest release's zips and the self-signed Firefox
+# .xpi. Versioned releases and publishing to the stores are extension-store-release.yml (weekly,
+# or on demand).
 # Unlike bridge-release.yml, this does NOT mark its release "latest" -- GitHub's "latest release"
 # is one repo-wide slot, and Bridge's workflow already claims it (make_latest: true) for its own
 # releases. Publishing here to a second, independently-tagged "latest" would clobber whichever one
@@ -111,71 +114,6 @@ jobs:
           name: thingport-grab-firefox
           path: extension/dist/signed/thingport-grab-firefox.xpi
           if-no-files-found: error
-
-  # Publishes to Microsoft Edge Add-ons (https://microsoftedge.microsoft.com/addons/detail/kahfidpmojfocohinlmglnfoaimocbol)
-  # once per version: Edge rejects a version it already has, and package.json's version is only
-  # bumped for real releases, not on every commit. Each version published here gets a
-  # `extension-edge-v<version>` tag, which is what "already published" is checked against -- so
-  # bumping the version in extension/package.json and merging to main is the whole release step.
-  # A failed run (e.g. the previous version still in certification) leaves no tag, so the next
-  # push or a manual re-run tries again. Skips itself until the credentials are set up (see
-  # extension/CONTRIBUTING.md, "Publishing to Edge automatically").
-  publish-edge:
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
-    needs: [build-chrome]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write # pushes the extension-edge-v<version> tag
-    defaults:
-      run:
-        working-directory: extension
-    env:
-      EDGE_PRODUCT_ID: ${{ vars.EDGE_PRODUCT_ID }}
-      EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
-      EDGE_API_KEY: ${{ secrets.EDGE_API_KEY }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Check whether this version still needs publishing
-        id: check
-        run: |
-          version=$(jq -r .version package.json)
-          tag="extension-edge-v$version"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          if [ -z "$EDGE_PRODUCT_ID" ] || [ -z "$EDGE_CLIENT_ID" ] || [ -z "$EDGE_API_KEY" ]; then
-            echo "::notice::Edge publishing isn't set up (EDGE_PRODUCT_ID variable, EDGE_CLIENT_ID and EDGE_API_KEY secrets) -- skipping."
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-          elif git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null; then
-            echo "Version $version is already on Edge Add-ons ($tag exists) -- nothing to publish."
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "Version $version isn't on Edge Add-ons yet -- publishing."
-            echo "publish=true" >> "$GITHUB_OUTPUT"
-          fi
-      - uses: actions/setup-node@v4
-        if: steps.check.outputs.publish == 'true'
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: extension/package-lock.json
-      - if: steps.check.outputs.publish == 'true'
-        run: npm ci
-      # The exact zip build-chrome built and attached to the release, not a rebuild.
-      - uses: actions/download-artifact@v4
-        if: steps.check.outputs.publish == 'true'
-        with:
-          name: thingport-grab-edge
-          path: extension/dist/zips
-      - name: Upload and submit for certification
-        if: steps.check.outputs.publish == 'true'
-        run: |
-          npx tsx scripts/publish-edge.ts dist/zips/thingport-grab-edge.zip --notes \
-            "Automated update to version ${{ steps.check.outputs.version }} (commit ${{ github.sha }}). Testing instructions are unchanged from the previous submission; documentation: https://tautvydasderzinskas.github.io/Thingport/docs/grab/"
-      - name: Tag the published version
-        if: steps.check.outputs.publish == 'true'
-        run: |
-          git tag "${{ steps.check.outputs.tag }}"
-          git push origin "${{ steps.check.outputs.tag }}"
 
   release:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'

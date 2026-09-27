@@ -17,7 +17,7 @@ export type ExtensionDownload =
 /** Browsers installed from a downloaded file -- the ones the install-steps dialog covers. */
 export type ExtensionFileBrowser = Extract<ExtensionDownload, { kind: "file" }>["browser"];
 
-// Published there by the release workflow's publish-edge job. The Edge zip is still attached to
+// Published there by .github/workflows/extension-store-release.yml (weekly, or on demand). The Edge zip is still attached to
 // every release, but only the docs mention it now (extension/README.md) -- the store version is
 // the one to recommend, since it updates itself.
 export const EDGE_ADDONS_URL = "https://microsoftedge.microsoft.com/addons/detail/kahfidpmojfocohinlmglnfoaimocbol";

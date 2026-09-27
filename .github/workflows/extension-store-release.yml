@@ -1,0 +1,125 @@
+name: Extension store release
+
+# Versioned releases of Thingport Grab (extension/), with semantic-release. Runs every Friday at
+# 13:00 Polish time -- releasing whatever extension changes landed that week -- or whenever it's
+# started by hand (Actions > Extension store release > Run workflow, or
+# `gh workflow run extension-store-release.yml`).
+#
+# semantic-release (extension/.releaserc.json) looks only at commits that changed files under
+# extension/ since the last thingport-grab-v* tag, and picks the version from their Conventional
+# Commit types: feat -> minor, fix/perf -> patch, "!" or BREAKING CHANGE -> major; docs, refactor,
+# chore, ci etc. don't release. With nothing releasable, the run just ends. With a release, it
+# bumps extension/package.json, writes extension/CHANGELOG.md, commits both to main, tags
+# thingport-grab-v<version>, creates a GitHub release with the store zips, and publishes to
+# Microsoft Edge Add-ons.
+#
+# The per-merge builds (the extension-latest release, the signed Firefox .xpi) are separate: see
+# extension-release.yml.
+on:
+  workflow_dispatch: {}
+  schedule:
+    # GitHub cron is UTC-only, and 13:00 in Poland is 11:00 UTC in summer (CEST) but 12:00 UTC in
+    # winter (CET) -- so it fires at both, and the "Friday 13:00 in Warsaw?" step lets only the
+    # matching one through.
+    - cron: "0 11 * * 5"
+    - cron: "0 12 * * 5"
+
+concurrency:
+  group: extension-store-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # the release commit, the tag and the GitHub release
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      tag: ${{ steps.release.outputs.tag }}
+    defaults:
+      run:
+        working-directory: extension
+    steps:
+      - name: Friday 13:00 in Warsaw?
+        id: gate
+        if: github.event_name == 'schedule'
+        run: |
+          offset=$(TZ=Europe/Warsaw date +%z)
+          case "${{ github.event.schedule }}|$offset" in
+            "0 11 * * 5|+0200" | "0 12 * * 5|+0100") echo "run=true" >> "$GITHUB_OUTPUT" ;;
+            *)
+              echo "This trigger isn't 13:00 in Warsaw (UTC offset $offset) -- the other one is. Skipping."
+              echo "run=false" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.run != 'false'
+        with:
+          fetch-depth: 0 # semantic-release needs the full history and tags
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.run != 'false'
+        with:
+          node-version: 22 # semantic-release 25 needs Node 22.14+
+          cache: npm
+          cache-dependency-path: extension/package-lock.json
+      - if: steps.gate.outputs.run != 'false'
+        run: npm ci
+      - name: semantic-release
+        id: release
+        if: steps.gate.outputs.run != 'false'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+        run: npx semantic-release
+      # Not semantic-release's own GitHub plugin: it marks every release as the repo's "latest",
+      # and that slot belongs to Bridge (its download links use /releases/latest/).
+      - name: GitHub release
+        if: steps.release.outputs.version != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.release.outputs.tag }}" dist/zips/*.zip \
+            --title "Thingport Grab ${{ steps.release.outputs.version }}" \
+            --notes-file dist/release-notes.md \
+            --latest=false
+      - uses: actions/upload-artifact@v4
+        if: steps.release.outputs.version != ''
+        with:
+          name: thingport-grab-store-zips
+          path: extension/dist/zips/*.zip
+          if-no-files-found: error
+
+  # Its own job so it can be retried on its own (Re-run failed jobs): Edge takes one submission at
+  # a time, so if the previous version is still in certification this fails with
+  # InProgressSubmission -- re-run it once Microsoft has finished. Credentials: see
+  # extension/CONTRIBUTING.md, "One-time setup: Edge publishing credentials".
+  publish-edge:
+    needs: release
+    if: needs.release.outputs.version != ''
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: extension
+    env:
+      EDGE_PRODUCT_ID: ${{ vars.EDGE_PRODUCT_ID }}
+      EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
+      EDGE_API_KEY: ${{ secrets.EDGE_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: extension/package-lock.json
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: thingport-grab-store-zips
+          path: extension/dist/zips
+      - name: Upload and submit for certification
+        run: |
+          npx tsx scripts/publish-edge.ts dist/zips/thingport-grab-edge.zip --notes \
+            "Automated update to version ${{ needs.release.outputs.version }}. Changes: https://github.com/TautvydasDerzinskas/Thingport/releases/tag/${{ needs.release.outputs.tag }} -- testing instructions are unchanged from the previous submission; documentation: https://tautvydasderzinskas.github.io/Thingport/docs/grab/"

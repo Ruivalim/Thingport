@@ -24,6 +24,9 @@ Getting the project running locally is covered in [docs/DEVELOPMENT.md](docs/DEV
    feat: show model usage in memory size
    ```
 
+   For the browser extension the type also decides its next version (`feat:` minor, `fix:` patch,
+   `!` major) -- see [extension/CONTRIBUTING.md](extension/CONTRIBUTING.md#versioning-how-the-next-version-is-picked).
+
 4. **Push** to your fork and open a pull request against `main`.
 
 A husky pre-commit hook runs oxlint over whichever project you touched. If it blocks your commit,
