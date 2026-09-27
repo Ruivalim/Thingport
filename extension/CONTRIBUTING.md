@@ -103,7 +103,8 @@ submitting an update -- every store rejects a version it has already seen.
 None of these IDs are secret. The ones a workflow needs are also repo **variables** (Settings >
 Secrets and variables > Actions > Variables), so they don't have to be hard-coded in a workflow.
 
-**Microsoft Edge Add-ons** (submitted; the listing URL works once certification passes):
+**Microsoft Edge Add-ons** (live; new versions are published by CI, see
+[Publishing to Edge automatically](#publishing-to-edge-automatically)):
 
 | | Value |
 | --- | --- |
@@ -112,15 +113,21 @@ Secrets and variables > Actions > Variables), so they don't have to be hard-code
 | Product ID | `8c5f106c-5a45-438f-8e0b-2d0c0584d253` -- repo variable `EDGE_PRODUCT_ID`, used by the publish API |
 | Store ID | `0RDCKH3TMN7G` |
 
+**Chrome Web Store** (submitted; the listing URL works once review passes):
+
+| | Value |
+| --- | --- |
+| Listing | https://chromewebstore.google.com/detail/nmblahmglpbplmfcggghdgohohlaeiee |
+| Extension ID | `nmblahmglpbplmfcggghdgohohlaeiee` -- repo variable `CHROME_EXTENSION_ID` |
+
+Publishing to Chrome from CI (not set up yet) needs a Google Cloud OAuth client for the
+[Chrome Web Store API](https://developer.chrome.com/docs/webstore/using-api), as repo secrets:
+`CHROME_CLIENT_ID`, `CHROME_CLIENT_SECRET` and `CHROME_REFRESH_TOKEN`.
+
 Edge also issued a public key for the listing. Don't add it to the manifest (`key`) of the store
 builds -- the stores set that themselves. It's only useful for giving an unpacked development build
 the same extension ID as the store version.
 
-Publishing to Edge from CI (not set up yet) additionally needs the Partner Center **Publish API**
-credentials, as repo **secrets**: `EDGE_CLIENT_ID` and `EDGE_API_KEY`. The upload itself is a
-`POST` of `dist/zips/thingport-grab-edge.zip` to the
-[Edge Add-ons API](https://learn.microsoft.com/microsoft-edge/extensions/publish/api/using-addons-api)
-for `EDGE_PRODUCT_ID`, followed by a publish request.
 
 ### Store listing images
 
@@ -130,6 +137,7 @@ templates in `store-assets/` (styled like the website's social card):
 | File | Size | Use |
 | --- | --- | --- |
 | `logo.png` | 300x300 | Store logo |
+| `store-icon.png` | 128x128 | Chrome Web Store icon -- transparent, 96x96 artwork with 16px padding |
 | `tile-small.png` | 440x280 | Small promotional tile |
 | `tile-large.png` | 1400x560 | Large promotional tile -- the extension's real panel (its compiled stylesheet) on a placeholder page |
 | `screenshots/*.png` | 1280x800 | The README's page screenshots as PNG, which is all the stores accept |
@@ -158,7 +166,8 @@ pages are the live sites -- by default the first models linked from each site's 
 typecheck, lint, the Chrome/Edge build, and `web-ext lint` on the Firefox build. On a push to `main`
 it also signs the Firefox build through AMO's unlisted channel and publishes
 `thingport-grab-chrome.zip`, `thingport-grab-edge.zip` and `thingport-grab-firefox.xpi` to the
-`extension-latest` release (the in-app Download page links there).
+`extension-latest` release (the in-app Download page links there for Chrome and Firefox), and
+publishes new versions to Edge Add-ons (see below).
 
 AMO rejects re-uploading a version number it has already seen for this add-on ID (even on the
 unlisted channel), so CI signs a copy of the built manifest with the run number appended to the
@@ -172,6 +181,53 @@ npm run build:firefox
 npx web-ext sign --source-dir dist/firefox --channel unlisted \
   --api-key "$AMO_JWT_ISSUER" --api-secret "$AMO_JWT_SECRET"
 ```
+
+### Publishing to Edge automatically
+
+The workflow's `publish-edge` job publishes each new version to Microsoft Edge Add-ons by itself,
+through the [Edge Add-ons Update API](https://learn.microsoft.com/microsoft-edge/extensions/update/api/using-addons-api)
+(`scripts/publish-edge.ts`): it uploads the exact `thingport-grab-edge.zip` the build produced,
+waits for Microsoft to process it, and submits it for certification. Microsoft's review then takes
+anywhere from hours to a few days before the update reaches users.
+
+It runs on every push to `main`, but only publishes a version once: each published version gets
+an `extension-edge-v<version>` tag, and a version that already has one is skipped. So **releasing
+to Edge means bumping `version` in `package.json`** -- Edge rejects a version it already has
+anyway. If a run fails (most often because the previous version is still in certification, which
+Edge doesn't allow two of), no tag is created, and the next push or a manual re-run of the
+workflow tries again.
+
+To test the script against Edge by hand, with the credentials below in your environment:
+
+```bash
+npm run zip:edge
+EDGE_PRODUCT_ID=... EDGE_CLIENT_ID=... EDGE_API_KEY=... \
+  npx tsx scripts/publish-edge.ts dist/zips/thingport-grab-edge.zip
+```
+
+### One-time setup: Edge publishing credentials
+
+The job skips itself (with a notice in the run) until these exist:
+
+1. Sign in to [Partner Center](https://partner.microsoft.com/dashboard/microsoftedge/overview) with
+   the account that owns the listing.
+2. Under **Microsoft Edge**, open **Publish API**. If it offers to **enable the new experience**,
+   click **Enable** -- the workflow uses the API-key version (v1.1).
+3. Click **Create API credentials** (it can take a minute). The page then shows a **Client ID** and
+   an **API key**, with the key's expiry date. Copy the key now; it isn't shown again.
+4. Add them as repo secrets -- **Settings > Secrets and variables > Actions > Secrets**, or from
+   this repo's folder:
+
+   ```bash
+   gh secret set EDGE_CLIENT_ID   # paste the Client ID when prompted
+   gh secret set EDGE_API_KEY     # paste the API key when prompted
+   ```
+
+5. `EDGE_PRODUCT_ID` is already a repo **variable** (see [Store listings](#store-listings)).
+
+**API keys expire.** Partner Center shows each key's expiry date; before then, create a new key on
+the same page and replace `EDGE_API_KEY` (the Client ID stays the same). An expired key makes the
+job fail with HTTP 401 and a message saying so.
 
 ### One-time setup: AMO signing credentials
 

@@ -467,6 +467,9 @@
         "heading": "Thingport Grab",
         "intro": "Naršyklės plėtinys, importuojantis MakerWorld, Thingiverse ir Printables modelius tiesiai iš jų puslapių.",
         "name": "Thingport Grab",
+        "store": {
+          "edge": "Gauti iš Edge Add-ons"
+        },
         "modal": {
           "chrome": {
             "heading": "Įdiegti Thingport Grab",
@@ -475,14 +478,6 @@
             "step3": "Įjunkite Developer mode (viršuje dešinėje).",
             "step4": "Spustelėkite „Load unpacked“ ir pasirinkite išarchyvuotą aplanką.",
             "step5": "Spustelėkite naują Thingport piktogramą įrankių juostoje ir įveskite savo aplinkos URL bei prisijungimo duomenis."
-          },
-          "edge": {
-            "heading": "Įdiegti Thingport Grab",
-            "step1": "Išarchyvuokite atsisiųstą failą kur nors nuolatinėje vietoje -- Edge įkelia plėtinį iš šio aplanko kaskart paleidus naršyklę.",
-            "step2": "Naujame skirtuke atidarykite edge://extensions.",
-            "step3": "Įjunkite Developer mode (kairėje šoninėje juostoje).",
-            "step4": "Spustelėkite „Load unpacked“ ir pasirinkite išarchyvuotą aplanką.",
-            "step5": "Spustelėkite naują Thingport piktogramą įrankių juostoje (ji gali būti po dėlionės formos Extensions mygtuku) ir įveskite savo aplinkos URL bei prisijungimo duomenis."
           },
           "firefox": {
             "heading": "Įdiegti Thingport Grab",

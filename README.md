@@ -82,7 +82,7 @@ Instead of having your collection scattered across different websites and your f
 Thingport ships two small companion tools, each downloadable from the in-app Download page or GitHub Releases:
 
 - **[Thingport Bridge](bridge/README.md)** — a lightweight desktop helper that makes "Open in {Slicer}" work for slicers (Bambu Studio, PrusaSlicer, Cura) whose own URL-protocol handlers won't accept a link from a self-hosted domain.
-- **[Thingport Grab](extension/README.md)** — a browser extension for Chrome, Edge and Firefox that imports MakerWorld, Thingiverse, and Printables models straight from their own pages, without leaving the site (see the screenshots above).
+- **[Thingport Grab](extension/README.md)** — a browser extension for Chrome, Edge and Firefox that imports MakerWorld, Thingiverse, and Printables models straight from their own pages, without leaving the site (see the screenshots above). Get it for Edge from [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/kahfidpmojfocohinlmglnfoaimocbol).
 
 ## Provider Setup
 

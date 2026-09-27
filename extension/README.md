@@ -6,6 +6,10 @@ Visiting a model, collection, or Thingiverse Likes page shows a floating Thingpo
 opens a small panel to pick what to import (and, for a single model, an optional destination
 collection), then imports it the same way Thingport's own "+ Add > Import" does.
 
+**Get it for Edge from [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/kahfidpmojfocohinlmglnfoaimocbol).**
+Chrome and Firefox builds are on the [releases page](#install) until their store listings are
+live.
+
 It talks directly to your Thingport instance's API from the extension's background script -- no
 separate server, no data sent anywhere else. See the [privacy policy](PRIVACY.md) for exactly what
 it stores and sends.
@@ -35,23 +39,39 @@ it stores and sends.
   </tr>
 </table>
 
-## Install (no extension store listing)
+## Install
 
-This isn't published to any browser's extension store yet, so it installs the same way the
-[Thingport releases](https://github.com/TautvydasDerzinskas/Thingport/releases) page's other
-downloads do.
+### Microsoft Edge
 
-### Chrome / Edge / other Chromium browsers
+Install **[Thingport Grab from Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/kahfidpmojfocohinlmglnfoaimocbol)**
+-- click **Get**, then click the new Thingport icon in your toolbar (it may be under the
+puzzle-piece Extensions button) and enter your instance's URL and your Thingport login. Edge keeps
+it up to date from then on.
 
-As a developer-mode "unpacked" extension:
+<details>
+<summary>Alternative: install the Edge build by hand</summary>
 
-1. Download `thingport-grab-chrome.zip` (Edge: `thingport-grab-edge.zip`) from the in-app Download
-   page (or the
+Only needed if you can't use the store, e.g. to try a build before it's been published there:
+
+1. Download `thingport-grab-edge.zip` from the
+   [`extension-latest` release](https://github.com/TautvydasDerzinskas/Thingport/releases/tag/extension-latest)
+   and unzip it somewhere permanent (Edge loads the extension from that folder every time it
+   starts, so don't delete it).
+2. Open `edge://extensions` and turn on **Developer mode** (in the left sidebar).
+3. Click **Load unpacked** and select the unzipped folder.
+
+A hand-installed copy doesn't update itself -- repeat these steps for a newer version.
+</details>
+
+### Chrome / other Chromium browsers
+
+As a developer-mode "unpacked" extension, until the Chrome Web Store listing is live:
+
+1. Download `thingport-grab-chrome.zip` from the in-app Download page (or the
    [`extension-latest` release](https://github.com/TautvydasDerzinskas/Thingport/releases/tag/extension-latest))
    and unzip it somewhere permanent (don't delete the folder afterwards -- the browser loads the
    extension from it every time it starts).
-2. Open `chrome://extensions` (Edge: `edge://extensions`), turn on **Developer mode** (top right in
-   Chrome, in the left sidebar in Edge).
+2. Open `chrome://extensions` and turn on **Developer mode** (top right).
 3. Click **Load unpacked** and select the unzipped folder.
 4. Click the new Thingport icon in your toolbar, enter your instance's URL and your Thingport
    login, and save.
@@ -70,9 +90,9 @@ development guide):
 3. Click the new Thingport icon in your toolbar, enter your instance's URL and your Thingport
    login, and save.
 
-It's signed for **self-distribution** (the "unlisted" channel), not listed on
-addons.mozilla.org -- signing is still required for Firefox to allow the install at all, and it's
-what lets Firefox treat later versions as updates to the same install instead of a fresh add-on.
+It's signed for **self-distribution** (the "unlisted" channel) -- signing is still required for
+Firefox to allow the install at all, and it's what lets Firefox treat later versions as updates to
+the same install instead of a fresh add-on. A listing on addons.mozilla.org is in review.
 
 ## Setup
 

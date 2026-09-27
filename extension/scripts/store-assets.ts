@@ -3,6 +3,7 @@
 //   npm run store-assets
 //
 //   logo.png        300x300    store logo (Edge Add-ons "Extension logo")
+//   store-icon.png  128x128    Chrome Web Store icon (transparent, 96px artwork + 16px padding)
 //   tile-small.png  440x280    small promotional tile
 //   tile-large.png  1400x560   large promotional tile (the extension's real panel on a placeholder page)
 //   screenshots/*.png 1280x800 the README's page screenshots (docs/screenshots/*.jpg) as PNG, at the
@@ -32,6 +33,7 @@ const CONTENT_CSS =
 
 const ASSETS = [
   { template: "logo.html", out: "logo.png", width: 300, height: 300 },
+  { template: "store-icon.html", out: "store-icon.png", width: 128, height: 128, transparent: true },
   { template: "tile-small.html", out: "tile-small.png", width: 440, height: 280 },
   { template: "tile-large.html", out: "tile-large.png", width: 1400, height: 560 },
 ];
@@ -45,7 +47,7 @@ try {
     await page.goto(pathToFileURL(path.join(TEMPLATES, asset.template)).href, { waitUntil: "load" });
     await page.addStyleTag({ content: CONTENT_CSS });
     await page.evaluate(() => document.fonts.ready);
-    await page.screenshot({ path: path.join(OUT_DIR, asset.out) });
+    await page.screenshot({ path: path.join(OUT_DIR, asset.out), omitBackground: "transparent" in asset });
     await page.close();
     console.log(`docs/store/${asset.out}  ${asset.width}x${asset.height}`);
   }

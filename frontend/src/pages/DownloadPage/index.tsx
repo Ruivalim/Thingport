@@ -11,13 +11,19 @@ import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import DownloadIcon from "@mui/icons-material/Download";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import LaptopWindowsIcon from "@mui/icons-material/LaptopWindows";
 import AppleIcon from "@mui/icons-material/Apple";
 import TerminalIcon from "@mui/icons-material/Terminal";
 import CableIcon from "@mui/icons-material/Cable";
 import { usePageHeader } from "../../components/Layout/PageHeaderContext";
 import { BRIDGE_DOWNLOADS, bridgeDownloadUrl, type BridgeDownload } from "../../constants/bridge";
-import { EXTENSION_DOWNLOADS, extensionDownloadUrl, type ExtensionDownload } from "../../constants/extension";
+import {
+  EXTENSION_DOWNLOADS,
+  extensionDownloadUrl,
+  type ExtensionDownload,
+  type ExtensionFileBrowser,
+} from "../../constants/extension";
 import extensionIcon from "../../assets/logos/thingport-icon-color.svg";
 // Official browser logos (github.com/alrra/browser-logos), shown only to mark which browser each
 // extension download is for.
@@ -87,22 +93,15 @@ export default function DownloadPage() {
   usePageHeader({ title: t("sidebar.downloads") });
 
   const [installOs, setInstallOs] = useState<BridgeDownload["os"] | null>(null);
-  const [extensionInstallBrowser, setExtensionInstallBrowser] = useState<ExtensionDownload["browser"] | null>(null);
+  const [extensionInstallBrowser, setExtensionInstallBrowser] = useState<ExtensionFileBrowser | null>(null);
 
-  const extensionInstallSteps: Record<ExtensionDownload["browser"], InstallStep[]> = {
+  const extensionInstallSteps: Record<ExtensionFileBrowser, InstallStep[]> = {
     chrome: [
       { text: t("download.extension.modal.chrome.step1") },
       { text: t("download.extension.modal.chrome.step2") },
       { text: t("download.extension.modal.chrome.step3") },
       { text: t("download.extension.modal.chrome.step4") },
       { text: t("download.extension.modal.chrome.step5") },
-    ],
-    edge: [
-      { text: t("download.extension.modal.edge.step1") },
-      { text: t("download.extension.modal.edge.step2") },
-      { text: t("download.extension.modal.edge.step3") },
-      { text: t("download.extension.modal.edge.step4") },
-      { text: t("download.extension.modal.edge.step5") },
     ],
     firefox: [
       { text: t("download.extension.modal.firefox.step1") },
@@ -145,26 +144,40 @@ export default function DownloadPage() {
           </Box>
         </Stack>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-          {EXTENSION_DOWNLOADS.map(({ browser, label, asset }) => (
-            <Paper key={browser} variant="outlined" sx={{ p: 2.5, flex: 1, maxWidth: 340 }}>
+          {EXTENSION_DOWNLOADS.map((item) => (
+            <Paper key={item.browser} variant="outlined" sx={{ p: 2.5, flex: 1, maxWidth: 340 }}>
               <Stack spacing={1.5} alignItems="flex-start">
                 <Stack direction="row" spacing={1} alignItems="center">
                   <Box component="img" src={extensionIcon} alt="" sx={{ width: 40, height: 40 }} />
-                  <Box component="img" src={BROWSER_LOGO[browser]} alt={label} sx={{ width: 32, height: 32 }} />
+                  <Box component="img" src={BROWSER_LOGO[item.browser]} alt={item.label} sx={{ width: 32, height: 32 }} />
                 </Stack>
                 <Typography variant="subtitle2" fontWeight={600}>
-                  {t("download.extension.name")} ({label})
+                  {t("download.extension.name")} ({item.label})
                 </Typography>
-                <Button
-                  component="a"
-                  href={extensionDownloadUrl(asset)}
-                  variant="outlined"
-                  size="small"
-                  startIcon={<DownloadIcon fontSize="small" />}
-                  onClick={() => setExtensionInstallBrowser(browser)}
-                >
-                  {t("common:download")}
-                </Button>
+                {item.kind === "store" ? (
+                  <Button
+                    component="a"
+                    href={item.storeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="outlined"
+                    size="small"
+                    startIcon={<OpenInNewIcon fontSize="small" />}
+                  >
+                    {t(`download.extension.store.${item.browser}`)}
+                  </Button>
+                ) : (
+                  <Button
+                    component="a"
+                    href={extensionDownloadUrl(item.asset)}
+                    variant="outlined"
+                    size="small"
+                    startIcon={<DownloadIcon fontSize="small" />}
+                    onClick={() => setExtensionInstallBrowser(item.browser)}
+                  >
+                    {t("common:download")}
+                  </Button>
+                )}
               </Stack>
             </Paper>
           ))}
