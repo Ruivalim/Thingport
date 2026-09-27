@@ -1,6 +1,7 @@
 import { prisma } from "../db";
 import { HttpError } from "../utils/fileUtils";
 import { printOutsByIds } from "./printLoader";
+import { relocatePrintsForToken } from "./printService";
 import { toSystemCollectionOut, type CollectionOut, type SystemCollectionKey } from "../dto";
 import type { Collection, Prisma } from "@prisma/client";
 
@@ -49,7 +50,8 @@ export async function findOrCreateCollectionByName(userId: string, name: string)
 }
 
 /** Adds `printIds` to a collection, skipping any already present, continuing the display
- * position from wherever the collection's items currently leave off. */
+ * position from wherever the collection's items currently leave off -- then moves their files if
+ * the storage template has a {collection} folder. */
 export async function addPrintsToCollection(collectionId: string, printIds: string[]): Promise<void> {
   if (!printIds.length) return;
   const last = await prisma.collectionItem.findFirst({
@@ -61,6 +63,7 @@ export async function addPrintsToCollection(collectionId: string, printIds: stri
     data: printIds.map((printId) => ({ collectionId, printId, position: nextPosition++ })),
     skipDuplicates: true,
   });
+  await relocatePrintsForToken("collection", printIds);
 }
 
 // ---- Built-in "Favourites" / "Browsing History" pseudo-collections ----------------------------

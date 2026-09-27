@@ -14,11 +14,21 @@ export const STORAGE_TEMPLATE_TOKENS = [
   "tags",
   "creator",
   "model",
-  "name",
   "filename",
   "id",
   "plate",
 ] as const;
+
+// Older names still accepted in a saved template, and rewritten to the current one whenever the
+// template is validated -- so the admin page shows (and the next save stores) the new name.
+// {name} was always the same value as {model}.
+const LEGACY_TOKEN_ALIASES: Record<string, (typeof STORAGE_TEMPLATE_TOKENS)[number]> = {
+  name: "model",
+};
+
+/** The {collection} folder for a model in no collection, and for one in more than one. */
+export const NO_COLLECTION_FOLDER = "Uncollected";
+export const MULTIPLE_COLLECTIONS_FOLDER = "Multiple collections";
 
 export const DEFAULT_STORAGE_TEMPLATE = "{category}/{model}/{filename}";
 
@@ -34,7 +44,11 @@ export function sanitizePathSegment(value: string | null | undefined, fallback: 
 }
 
 export function validateStorageTemplate(template: string | null | undefined): string {
-  const normalized = (template || "").trim().replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
+  const normalized = (template || "")
+    .trim()
+    .replace(/\\/g, "/")
+    .replace(/^\/+|\/+$/g, "")
+    .replace(TOKEN_RE, (match, token: string) => (token in LEGACY_TOKEN_ALIASES ? `{${LEGACY_TOKEN_ALIASES[token]}}` : match));
   if (!normalized) throw new HttpError(400, "Storage template cannot be empty");
   const tokens = [...normalized.matchAll(TOKEN_RE)].map((m) => m[1]);
   const unknown = tokens.filter((t) => !(STORAGE_TEMPLATE_TOKENS as readonly string[]).includes(t));
@@ -84,7 +98,75 @@ function assertWithinStorage(relative: string): string {
   return relative;
 }
 
-type PrintLike = Pick<Print, "id" | "name" | "creator" | "collection" | "tags" | "categoryId" | "userId">;
+type PrintLike = Pick<
+  Print,
+  "id" | "name" | "creator" | "tags" | "categoryId" | "userId" | "authorId" | "sourceProvider"
+>;
+
+function templateUses(template: string, token: (typeof STORAGE_TEMPLATE_TOKENS)[number]): boolean {
+  return template.includes(`{${token}}`);
+}
+
+/** {creator}: the author the model page shows (ModelSidePanel): the imported Author's name or handle, else
+ *  the plain-text creator an import stored, else -- for the owner's own upload, which has no
+ *  source -- the owner. */
+async function creatorLabel(print: PrintLike): Promise<string | null> {
+  if (print.authorId) {
+    const author = await prisma.author.findUnique({ where: { id: print.authorId }, select: { name: true, handle: true } });
+    if (author?.name || author?.handle) return author.name || author.handle;
+  }
+  if (print.creator) return print.creator;
+  if (print.sourceProvider) return null;
+  const owner = await prisma.user.findUnique({ where: { id: print.userId }, select: { displayName: true } });
+  return owner?.displayName ?? null;
+}
+
+/** A model can be in any number of collections; a folder can only hold it once. */
+async function collectionLabel(printId: string): Promise<string> {
+  const items = await prisma.collectionItem.findMany({
+    where: { printId },
+    select: { collection: { select: { name: true } } },
+    take: 2,
+  });
+  if (items.length === 0) return NO_COLLECTION_FOLDER;
+  if (items.length > 1) return MULTIPLE_COLLECTIONS_FOLDER;
+  return items[0].collection.name;
+}
+
+type PrintTemplateValues = Record<string, string>;
+
+/** Every token's value for one print, other than the per-plate {filename}/{plate}. Tokens that
+ *  need their own query are only looked up when the template uses them. */
+async function printTemplateValues(print: PrintLike, template: string): Promise<PrintTemplateValues> {
+  const tagLabel = (print.tags || []).map((t) => t.trim()).filter(Boolean).join(" + ") || "Untagged";
+  return {
+    category: templateUses(template, "category") ? (await categorySegments(print.userId, print.categoryId)).join("/") : "",
+    collection: templateUses(template, "collection") ? sanitizePathSegment(await collectionLabel(print.id), NO_COLLECTION_FOLDER) : "",
+    tags: sanitizePathSegment(tagLabel, "Untagged"),
+    creator: templateUses(template, "creator") ? sanitizePathSegment(await creatorLabel(print), "Unknown creator") : "",
+    model: sanitizePathSegment(print.name, "Model"),
+    id: print.id,
+  };
+}
+
+function renderPlatePath(
+  print: PrintLike,
+  template: string,
+  printValues: PrintTemplateValues,
+  plateFilename: string,
+  platePosition: number,
+): string {
+  const values = {
+    ...printValues,
+    filename: sanitizePathSegment(plateFilename, "file"),
+    plate: String(platePosition + 1),
+  };
+  const rendered = renderTemplate(template, values).replace(/\\/g, "/");
+  const parts = rendered.split("/").filter(Boolean).map((part) => sanitizePathSegment(part, "item"));
+  if (!parts.length) throw new HttpError(400, "Storage template produced an empty path");
+  const userSegment = sanitizePathSegment(`u-${print.userId}`, "user");
+  return assertWithinStorage(path.join(userSegment, ...parts));
+}
 
 /** Renders the on-disk relative path for one plate of a print using the storage template.
  * Every user's files live under their own u-<userId> segment beneath the (instance-wide)
@@ -96,24 +178,8 @@ export async function renderPlateStoragePath(
   template?: string | null,
 ): Promise<string> {
   const safeTemplate = validateStorageTemplate(template ?? (await getStorageTemplate()));
-  const tagLabel = (print.tags || []).map((t) => t.trim()).filter(Boolean).join(" + ") || "Untagged";
-  const modelLabel = sanitizePathSegment(print.name, "Model");
-  const values: Record<string, string> = {
-    category: (await categorySegments(print.userId, print.categoryId)).join("/"),
-    collection: sanitizePathSegment(print.collection || "Uncollected", "Uncollected"),
-    tags: sanitizePathSegment(tagLabel, "Untagged"),
-    creator: sanitizePathSegment(print.creator || "Unknown creator", "Unknown creator"),
-    model: modelLabel,
-    name: modelLabel,
-    filename: sanitizePathSegment(plateFilename, "file"),
-    id: print.id,
-    plate: String(platePosition + 1),
-  };
-  const rendered = renderTemplate(safeTemplate, values).replace(/\\/g, "/");
-  const parts = rendered.split("/").filter(Boolean).map((part) => sanitizePathSegment(part, "item"));
-  if (!parts.length) throw new HttpError(400, "Storage template produced an empty path");
-  const userSegment = sanitizePathSegment(`u-${print.userId}`, "user");
-  return assertWithinStorage(path.join(userSegment, ...parts));
+  const printValues = await printTemplateValues(print, safeTemplate);
+  return renderPlatePath(print, safeTemplate, printValues, plateFilename, platePosition);
 }
 
 export function samplePlateStoragePaths(template: string): [string, string] {
@@ -124,7 +190,6 @@ export function samplePlateStoragePaths(template: string): [string, string] {
     tags: "Print in place + Useful",
     creator: "Example creator",
     model: "Multi-part gadget",
-    name: "Multi-part gadget",
     id: "a1b2c3d4",
   };
   const first = renderTemplate(safeTemplate, { ...base, filename: "Base.3mf", plate: "1" });
@@ -224,14 +289,17 @@ export async function pruneEmptyStorageDirs(start: string): Promise<void> {
 }
 
 /**
- * Re-renders and (if needed) moves every plate of a print after a name/category/tag/creator/
- * collection change. Mirrors MakersVault's relocate_asset, generalized to N plates. Supporting
- * and prepared PrintFiles are never touched here — they live at a fixed bundles/ path.
+ * Re-renders and (if needed) moves every plate of a print after a change to anything its path
+ * is built from: name, category, tags, creator, collections. Mirrors MakersVault's relocate_asset,
+ * generalized to N plates. Supporting and prepared PrintFiles are never touched here — they live
+ * at a fixed bundles/ path.
  */
 export async function relocatePrint(print: PrintLike, plates: Plate[], template?: string | null): Promise<void> {
+  const safeTemplate = validateStorageTemplate(template ?? (await getStorageTemplate()));
+  const printValues = await printTemplateValues(print, safeTemplate);
   for (const plate of plates) {
     const oldPath = managedPlatePath(plate);
-    const newRelative = await renderPlateStoragePath(print, plate.filename, plate.position, template);
+    const newRelative = renderPlatePath(print, safeTemplate, printValues, plate.filename, plate.position);
     const newPath = path.join(STORAGE, newRelative);
     if (path.resolve(oldPath) === path.resolve(newPath)) {
       if (plate.storagePath !== newRelative) {
@@ -248,6 +316,28 @@ export async function relocatePrint(print: PrintLike, plates: Plate[], template?
       await pruneEmptyStorageDirs(path.dirname(oldPath));
     }
     await prisma.plate.update({ where: { id: plate.id }, data: { storagePath: newRelative } });
+  }
+}
+
+/** Moves the given prints' files after a change that only matters when the storage template
+ * uses `token` -- a collection membership change, say, moves nothing under the default
+ * {category}/{model}/{filename}. Best-effort per print, like reorganizeManagedPrints: the change
+ * itself has already been saved, and one print's file collision shouldn't undo it or block the
+ * others. */
+export async function relocatePrintsForToken(
+  token: (typeof STORAGE_TEMPLATE_TOKENS)[number],
+  printIds: string[],
+): Promise<void> {
+  if (!printIds.length) return;
+  const template = validateStorageTemplate(await getStorageTemplate());
+  if (!templateUses(template, token)) return;
+  const prints = await prisma.print.findMany({ where: { id: { in: printIds } }, include: { plates: true } });
+  for (const print of prints) {
+    try {
+      await relocatePrint(print, print.plates, template);
+    } catch (err) {
+      console.error(`Couldn't move the files of print ${print.id} after a {${token}} change`, err);
+    }
   }
 }
 

@@ -41,7 +41,6 @@ export type PrintMetaInput = {
   tags?: string[];
   categoryId?: string | null;
   creator?: string | null;
-  collection?: string | null;
   /** Id of an already-upserted Author row (see authorService.ts), e.g. "makerworld:12345". */
   authorId?: string | null;
   /** Set when this print was resolved from a known provider's model URL (see
@@ -128,7 +127,7 @@ export async function refreshAutoPreparedMetadata(printId: string): Promise<void
 type CreatedPlate = { record: Plate; effectivePath: string | null };
 
 async function createPlateAtPosition(
-  print: Pick<Print, "id" | "name" | "creator" | "collection" | "tags" | "categoryId" | "userId">,
+  print: Pick<Print, "id" | "name" | "creator" | "tags" | "categoryId" | "userId" | "authorId" | "sourceProvider">,
   input: NewPlateInput,
   position: number,
 ): Promise<CreatedPlate> {
@@ -191,7 +190,6 @@ export async function createPrint(
       title: meta.title ?? null,
       notes: meta.notes ?? null,
       creator: meta.creator?.trim() || null,
-      collection: meta.collection?.trim() || null,
       tags: normalizeTags(meta.tags || []),
       categoryId: meta.categoryId ?? null,
       authorId: meta.authorId ?? null,

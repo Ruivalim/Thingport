@@ -126,7 +126,6 @@ model Print {
   title            String?
   notes            String?
   creator          String?
-  collection       String?
   tags             String[]                 @default([])
   viewCount        Int                      @default(0)
   printCount       Int                      @default(0)

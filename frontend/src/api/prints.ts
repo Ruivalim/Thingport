@@ -61,7 +61,6 @@ export type Print = {
   notes?: string | null;
   creator?: string | null;
   author?: Author | null;
-  collection?: string | null;
   tags: string[];
   category_id?: string | null;
   // Only populated by GET /print/:id (the detail page) -- list endpoints don't join it.
@@ -346,7 +345,6 @@ export const printsApi = {
     title?: string | null;
     notes?: string | null;
     creator?: string | null;
-    collection?: string | null;
   }) => {
     const res = await fetch(`${apiBase()}/print/${id}/meta`, {
       method: "POST",

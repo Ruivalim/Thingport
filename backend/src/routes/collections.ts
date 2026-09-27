@@ -17,6 +17,7 @@ import {
 } from "../services/collectionService";
 import { addCollectionBookmark, listBookmarkedCollectionIdSet, removeCollectionBookmark } from "../services/bookmarkService";
 import { printOutsByIds } from "../services/printLoader";
+import { relocatePrintsForToken } from "../services/printService";
 import { createLog } from "../services/auditLog";
 import { toCollectionOut, type PrintOut } from "../dto";
 
@@ -30,6 +31,13 @@ const collectionSchema = z.object({
 });
 
 const COVER_ITEM_LIMIT = 4;
+
+/** The collection's models, for moving their files once its name or its existence stops being
+ *  what their {collection} folder was built from. */
+async function collectionPrintIds(collectionId: string): Promise<string[]> {
+  const items = await prisma.collectionItem.findMany({ where: { collectionId }, select: { printId: true } });
+  return items.map((item) => item.printId);
+}
 
 router.get(
   "/collections",
@@ -116,6 +124,7 @@ router.patch(
     const collection = await prisma.collection.findFirst({ where: { id: req.params.id, userId: req.userId } });
     if (!collection) throw new HttpError(404, "Collection not found");
     await assertCollectionNameAvailable(req.userId!, body.name, collection.id);
+    const renamed = body.name !== collection.name;
     const updated = await prisma.collection.update({
       where: { id: collection.id },
       data: {
@@ -125,6 +134,7 @@ router.patch(
         tags: normalizeTags(body.tags),
       },
     });
+    if (renamed) await relocatePrintsForToken("collection", await collectionPrintIds(updated.id));
     const [itemCount, bookmarked] = await Promise.all([
       prisma.collectionItem.count({ where: { collectionId: updated.id } }),
       prisma.bookmark.findFirst({ where: { userId: req.userId, type: "COLLECTION", collectionId: updated.id } }),
@@ -147,7 +157,9 @@ router.delete(
     }
     const collection = await prisma.collection.findFirst({ where: { id: req.params.id, userId: req.userId } });
     if (!collection) throw new HttpError(404, "Collection not found");
+    const printIds = await collectionPrintIds(collection.id);
     await prisma.collection.delete({ where: { id: collection.id } });
+    await relocatePrintsForToken("collection", printIds);
     res.json({ ok: true });
     void createLog({
       userId: req.userId!,
@@ -173,6 +185,7 @@ router.delete(
     const print = await prisma.print.findFirst({ where: { id: req.params.printId, userId: req.userId } });
     if (!print) throw new HttpError(404, "Print not found");
     await prisma.collectionItem.deleteMany({ where: { collectionId: collection.id, printId: print.id } });
+    await relocatePrintsForToken("collection", [print.id]);
     res.json({ ok: true });
     void createLog({
       userId: req.userId!,

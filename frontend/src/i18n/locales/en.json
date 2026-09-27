@@ -297,7 +297,17 @@
         "savedApplied": "Saved. Moved {{moved}} file(s){{skippedSuffix}}.",
         "skippedSuffix": "; skipped {{skipped}}",
         "savedNoApply": "Storage structure saved for new and updated models.",
-        "failed": "Failed to save storage settings."
+        "failed": "Failed to save storage settings.",
+        "tokens": {
+          "category": "The model's category, with parent categories as parent folders",
+          "collection": "The collection the model is in. Models in no collection go to \"Uncollected\", models in several go to \"Multiple collections\"",
+          "tags": "The model's tags, joined with \" + \"",
+          "creator": "The author shown on the model page; a user's own uploads use their display name",
+          "model": "The model's name",
+          "filename": "The file's name (required, in the last folder)",
+          "id": "The model's permanent ID",
+          "plate": "The file's position in the model, starting at 1"
+        }
       },
       "registrations": {
         "allowLabel": "Allow new registrations",

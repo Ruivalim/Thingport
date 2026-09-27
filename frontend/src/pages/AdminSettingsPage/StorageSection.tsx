@@ -8,6 +8,7 @@ import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
 import Checkbox from "@mui/material/Checkbox";
 import FormControlLabel from "@mui/material/FormControlLabel";
+import Tooltip from "@mui/material/Tooltip";
 import { UnauthorizedError } from "../../api/client";
 import { settingsApi } from "../../api/settings";
 import SectionHeader from "../../components/SectionHeader";
@@ -25,7 +26,6 @@ const PLATE_PREVIEW_VALUES: Record<string, string>[] = [
     tags: "Print in place + Useful",
     creator: "Example creator",
     model: "Cable clip",
-    name: "Cable clip",
     filename: "Cable clip.3mf",
     id: "a1b2c3d4",
     plate: "1",
@@ -36,7 +36,6 @@ const PLATE_PREVIEW_VALUES: Record<string, string>[] = [
     tags: "Print in place + Useful",
     creator: "Example creator",
     model: "Cable clip",
-    name: "Cable clip",
     filename: "Cable clip-2.3mf",
     id: "a1b2c3d4",
     plate: "2",
@@ -148,8 +147,8 @@ export default function StorageSection({ onUnauthorized }: Props) {
           />
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             {storageTokens.map(token => (
+              <Tooltip key={token} title={t(`adminSettings.storage.tokens.${token}`, { defaultValue: "" })}>
               <Button
-                key={token}
                 size="small"
                 variant="outlined"
                 sx={{ fontFamily: "monospace", textTransform: "none" }}
@@ -165,6 +164,7 @@ export default function StorageSection({ onUnauthorized }: Props) {
               >
                 {`{${token}}`}
               </Button>
+              </Tooltip>
             ))}
           </Stack>
           <Paper variant="outlined" sx={{ p: 1.5, borderStyle: "dashed" }}>

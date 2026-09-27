@@ -298,7 +298,17 @@
         "savedApplied": "Išsaugota. Perkelta {{moved}} failų{{skippedSuffix}}.",
         "skippedSuffix": "; praleista {{skipped}}",
         "savedNoApply": "Saugojimo struktūra išsaugota naujiems ir atnaujintiems modeliams.",
-        "failed": "Nepavyko išsaugoti saugojimo nustatymų."
+        "failed": "Nepavyko išsaugoti saugojimo nustatymų.",
+        "tokens": {
+          "category": "Modelio kategorija; tėvinės kategorijos tampa tėviniais aplankais",
+          "collection": "Kolekcija, kuriai priklauso modelis. Modeliai be kolekcijos patenka į „Uncollected“, o esantys keliose – į „Multiple collections“",
+          "tags": "Modelio žymos, sujungtos „ + “",
+          "creator": "Modelio puslapyje rodomas autorius; naudotojo įkeltiems modeliams naudojamas jo rodomas vardas",
+          "model": "Modelio pavadinimas",
+          "filename": "Failo pavadinimas (privalomas, paskutiniame aplanke)",
+          "id": "Nekintantis modelio ID",
+          "plate": "Failo eilės numeris modelyje, pradedant nuo 1"
+        }
       },
       "registrations": {
         "allowLabel": "Leisti naujas registracijas",

@@ -10,7 +10,7 @@ import { parseBody } from "../utils/validate";
 import { asyncHandler } from "../utils/asyncHandler";
 import { modelUpload } from "../uploadMiddleware";
 import { createPrint, deletePlateFiles, resolvePlateFilePath, type NewPlateInput } from "../services/printCreation";
-import { plateThumbPath, relocatePrint, uniqueModelName } from "../services/printService";
+import { plateThumbPath, relocatePrint, relocatePrintsForToken, uniqueModelName } from "../services/printService";
 import { previewImagePath, deleteAllPreviewImages } from "../services/previewImageService";
 import { deleteAuthorIfOrphaned, getLinkedAuthorIds } from "../services/authorService";
 import { toPrintOut } from "../dto";
@@ -98,7 +98,6 @@ async function buildPrintWhere(req: Request): Promise<Prisma.PrintWhereInput> {
         { title: { contains: q, mode: "insensitive" } },
         { notes: { contains: q, mode: "insensitive" } },
         { creator: { contains: q, mode: "insensitive" } },
-        { collection: { contains: q, mode: "insensitive" } },
       ],
     });
   }
@@ -482,7 +481,6 @@ const metaSchema = z.object({
   title: z.string().optional(),
   notes: z.string().optional(),
   creator: z.string().optional(),
-  collection: z.string().optional(),
 });
 router.post(
   "/print/:id/meta",
@@ -503,7 +501,6 @@ router.post(
     }
     if (body.notes !== undefined) data.notes = body.notes;
     if (body.creator !== undefined) data.creator = body.creator.trim() || null;
-    if (body.collection !== undefined) data.collection = body.collection.trim() || null;
 
     const updated = await prisma.print.update({ where: { id: print.id }, data });
     const plates = await prisma.plate.findMany({ where: { printId: print.id }, orderBy: { position: "asc" } });
@@ -554,6 +551,7 @@ router.post(
       data: { authorId: null, creator: null, sourceProvider: null, sourceExternalId: null },
     });
     if (print.authorId) await deleteAuthorIfOrphaned(print.authorId);
+    await relocatePrintsForToken("creator", [print.id]);
     res.json({ print: await printOutById(req.userId!, print.id) });
     void createLog({ userId: req.userId!, action: "model_edited", targetId: print.id, details: { field: "author_reset", name: print.name } });
   }),

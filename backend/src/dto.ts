@@ -111,7 +111,6 @@ export type PrintOut = {
   notes: string | null;
   creator: string | null;
   author: AuthorOut | null;
-  collection: string | null;
   tags: string[];
   category_id: string | null;
   // Only populated by the single-print detail fetch (printOutById) -- see toPrintOut's `category`
@@ -285,7 +284,6 @@ export function toPrintOut(
     notes: print.notes,
     creator: print.creator,
     author: author ? toAuthorOut(author) : null,
-    collection: print.collection,
     tags: print.tags,
     category_id: print.categoryId,
     category_name: category?.name ?? null,
