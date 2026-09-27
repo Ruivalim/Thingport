@@ -3,7 +3,7 @@ import React, { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { UnauthorizedError } from "../../api/client";
-import { importsApi, type ImportOutcome } from "../../api/imports";
+import { importsApi, type ImportOutcome, type MakerworldProfileScope } from "../../api/imports";
 import { printsApi, type Print } from "../../api/prints";
 import { entriesFromFileList, uploadEntriesToCategory } from "../../utils/uploadTree";
 import { buildUploadEntriesFromZip, isZipFile, readZipEntries } from "../../utils/zipUtils";
@@ -13,6 +13,7 @@ import { useImportModePrompt, type ImportMode } from "./ImportModeModal";
 import { useImportJob } from "../Layout/ImportJobContext";
 import { useToast } from "../ToastProvider";
 import {
+  isMakerworldModelUrl,
   isMakerworldCollectionUrl,
   isPrintablesCollectionUrl,
   isPrintablesModelUrl,
@@ -54,6 +55,7 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
     startThingiverseLikesImport,
     startThingiverseCollectionImport,
     startPrintablesCollectionImport,
+    startMakerworldProfilesImport,
   } = useImportJob();
   const isBusy = uploading || importing || zipPrompt.isOpen || collectionPrompt.isOpen || importModePrompt.isOpen;
 
@@ -195,7 +197,10 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
     showToast({ message: t(key, { name }) });
   };
 
-  const submitImport = async (rawUrl: string, captcha?: CaptchaAnswer | null) => {
+  /** `profileScope`: for a MakerWorld model link, which of its print profiles to import (the
+   *  import dialog's "Print profiles" choice) -- anything beyond the link's own runs as a
+   *  background job. */
+  const submitImport = async (rawUrl: string, captcha?: CaptchaAnswer | null, profileScope: MakerworldProfileScope = "url") => {
     const url = rawUrl.trim();
     if (!url) return;
     setImporting(true);
@@ -215,6 +220,11 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
         // via the dialog's Import button; this is the same guard for any other caller of
         // submitImport.
         alert(t("addMenu.makerworldCollectionBlocked"));
+        return;
+      }
+
+      if (profileScope !== "url" && isMakerworldModelUrl(url)) {
+        await startMakerworldProfilesImport({ ...payload, scope: profileScope });
         return;
       }
 

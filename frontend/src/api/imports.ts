@@ -27,7 +27,11 @@ export type ImportCollectionEntriesResult = {
   entries: ImportCollectionEntry[];
 };
 
-export type ImportJobType = "COLLECTION" | "ZIP";
+export type ImportJobType = "COLLECTION" | "ZIP" | "PROFILES";
+
+/** Which of a MakerWorld model's print profiles an import takes -- see the import dialog's "Print
+ *  profiles" choice and the backend's selectMakerworldProfiles. */
+export type MakerworldProfileScope = "url" | "designer" | "all";
 export type ImportJobStatus = "RUNNING" | "DONE" | "ERROR";
 
 /** A batch import (MakerWorld collection, or a remote zip's selected entries) running in the
@@ -158,6 +162,21 @@ export const importsApi = {
       const message = await readErrorMessage(res, "Could not load collection");
       throw new Error(message);
     }
+    return res.json();
+  },
+
+  /** Several print profiles of one MakerWorld model, as a background job -- see
+   *  ImportJobContext.startMakerworldProfilesImport. ("url" is a plain fromLink import.) */
+  fromMakerworldProfiles: async (
+    payload: ImportLinkPayload & { scope: Exclude<MakerworldProfileScope, "url"> },
+  ): Promise<{ job_id: string }> => {
+    const res = await fetch(`${apiBase()}/import/makerworld-profiles`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Import failed"));
     return res.json();
   },
 

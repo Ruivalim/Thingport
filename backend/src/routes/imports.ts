@@ -10,7 +10,12 @@ import { asyncHandler } from "../utils/asyncHandler";
 import { requireCaptcha } from "../services/captchaService";
 import { checkImportStatus, downloadImportToTemp, findImportedExternalIds, importPrintFromUrl, inspectImportLink } from "../services/importService";
 import { resolveMakerworldCookie } from "../services/importResolvers";
-import { extractMakerworldBearerToken, MakerworldAuthError, MakerworldCaptchaError } from "../services/makerworldCloudApi";
+import {
+  extractMakerworldBearerToken,
+  MakerworldAuthError,
+  MakerworldCaptchaError,
+  parseMakerworldModelUrl,
+} from "../services/makerworldCloudApi";
 import { fetchMakerworldCollectionEntries, fetchMakerworldCollectionTitle, parseMakerworldCollectionUrl } from "../services/makerworldCollections";
 import { IMPORT_MAKERWORLD_CALL_DELAY_MS } from "../config";
 import {
@@ -27,6 +32,7 @@ import { listZipEntries } from "../services/zipService";
 import { createJob, getActiveJob, getJob } from "../services/importJobService";
 import {
   runCollectionImportJob,
+  runMakerworldProfilesImportJob,
   runPrintablesCollectionImportJob,
   runThingiverseCollectionImportJob,
   runThingiverseLikesImportJob,
@@ -293,6 +299,25 @@ async function assertNoActiveJob(userId: string): Promise<void> {
   const active = await getActiveJob(userId);
   if (active) throw new HttpError(409, "An import is already in progress");
 }
+
+// Several print profiles of one MakerWorld model -- all its designer's, or all of them (see
+// importJobRunner.ts's runMakerworldProfilesImportJob). The import dialog's "Print profiles"
+// choice; "just the link's profile" is a plain POST /import.
+const makerworldProfilesImportRequestSchema = importRequestSchema.extend({ scope: z.enum(["designer", "all"]) });
+
+router.post(
+  "/import/makerworld-profiles",
+  requireCaptcha("import"),
+  asyncHandler(async (req, res) => {
+    const body = await withStoredMakerworldCookie(req.userId!, parseBody(makerworldProfilesImportRequestSchema, req.body));
+    await assertNoActiveJob(req.userId!);
+    const url = await normalizeImportUrl(body.url);
+    if (!parseMakerworldModelUrl(url)) throw new HttpError(400, "Not a MakerWorld model link");
+    const job = await createJob(req.userId!, "PROFILES", { sourceUrl: url, provider: "makerworld" });
+    void runMakerworldProfilesImportJob(job.id, req.userId!, { ...body, url });
+    res.status(202).json({ job_id: job.id });
+  }),
+);
 
 const collectionImportRequestSchema = importRequestSchema.extend({ design_ids: z.array(z.string()).min(1) });
 

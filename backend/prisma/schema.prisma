@@ -251,6 +251,7 @@ model CollectionItem {
 enum ImportJobType {
   COLLECTION
   ZIP
+  PROFILES
 }
 
 enum ImportJobStatus {

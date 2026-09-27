@@ -278,6 +278,59 @@ export async function fetchMakerworldDesignAuthor(
   bearerToken: string,
   paceMs?: number,
 ): Promise<ImportedAuthorInfo | null> {
+  const design = await fetchMakerworldDesign(designId, bearerToken, paceMs);
+  return design ? completeMakerworldAuthor(makerworldAuthorFromDesignCreator(design.designCreator), paceMs) : null;
+}
+
+/** Which of a MakerWorld design's print profiles ("instances") an import takes: the one the link
+ * names (else the design's default) -- what a single import always did -- every profile the
+ * designer uploaded, or every profile including community-uploaded ones. */
+export type MakerworldProfileScope = "url" | "designer" | "all";
+
+function instanceIdOf(inst: Record<string, unknown>): string {
+  return String(inst.id);
+}
+
+/** Instance ids to import for `scope`, from a design's own data (the api.bambulab.com design, or
+ * the model page's __NEXT_DATA__ -- the same shape). A profile is the designer's when its
+ * `instanceCreator` is the design's `designCreator` (confirmed live: `isOfficial` and `isDefault`
+ * say nothing about who uploaded it). The link's profile, else the default, comes first, so it's
+ * what creates the model -- later ones are added to it as further files. */
+export function selectMakerworldProfiles(
+  design: Record<string, unknown>,
+  scope: MakerworldProfileScope,
+  requestedInstanceId: string | null,
+): string[] {
+  const instances = Array.isArray(design.instances) ? design.instances.filter(isRecord).filter((inst) => inst.id != null) : [];
+  const ids = instances.map(instanceIdOf);
+  const defaultId = design.defaultInstanceId != null ? String(design.defaultInstanceId) : null;
+  const primary =
+    (requestedInstanceId && ids.includes(requestedInstanceId) ? requestedInstanceId : null) ??
+    (defaultId && ids.includes(defaultId) ? defaultId : null) ??
+    ids[0] ??
+    null;
+  if (!primary) return [];
+  if (scope === "url") return [primary];
+
+  const designerUid = isRecord(design.designCreator) && design.designCreator.uid != null ? String(design.designCreator.uid) : null;
+  const wanted = instances
+    .filter((inst) => {
+      if (scope === "all") return true;
+      const creator = isRecord(inst.instanceCreator) ? inst.instanceCreator : null;
+      return designerUid !== null && creator?.uid != null && String(creator.uid) === designerUid;
+    })
+    .map(instanceIdOf);
+  return [primary, ...wanted.filter((id) => id !== primary)];
+}
+
+/** A design's own data (title, creator, print profiles) through api.bambulab.com, without
+ * resolving any download. Null when it can't be read; throws MakerworldCaptchaError /
+ * MakerworldAuthError like resolveMakerworldViaCloudApi. */
+export async function fetchMakerworldDesign(
+  designId: string,
+  bearerToken: string,
+  paceMs?: number,
+): Promise<Record<string, unknown> | null> {
   if (makerworldCaptchaCooloffActive()) throw new MakerworldCaptchaError();
   await maybeSleep(paceMs);
   const result = await fetchCloudJson(`${DESIGN_API_BASE}/design/${designId}`, bearerToken);
@@ -287,8 +340,7 @@ export async function fetchMakerworldDesignAuthor(
     throw new MakerworldCaptchaError();
   }
   if (result.status === 401 || result.status === 403) throw new MakerworldAuthError();
-  if (result.status !== 200 || !isRecord(result.data)) return null;
-  return completeMakerworldAuthor(makerworldAuthorFromDesignCreator(result.data.designCreator), paceMs);
+  return result.status === 200 && isRecord(result.data) ? result.data : null;
 }
 
 export type MakerworldGalleryImage = { url: string; filename: string };

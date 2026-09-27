@@ -392,7 +392,7 @@ export function toCategoryOut(category: Category): CategoryOut {
 
 export type ImportJobOut = {
   id: string;
-  type: "COLLECTION" | "ZIP";
+  type: "COLLECTION" | "ZIP" | "PROFILES";
   status: "RUNNING" | "DONE" | "ERROR";
   source_url: string;
   source_label: string | null;

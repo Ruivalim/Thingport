@@ -30,8 +30,10 @@ import {
   detectImportProvider,
   IMPORT_LINK_EXAMPLES,
   isMakerworldCollectionUrl,
+  isMakerworldModelUrl,
   type ImportProviderKey,
 } from "../../utils/importLinkDetection";
+import type { MakerworldProfileScope } from "../../api/imports";
 
 const IMPORT_PROVIDERS: ImportProviderKey[] = ["makerworld", "thingiverse", "printables"];
 
@@ -57,6 +59,8 @@ export default function AddMenu({ categoryId, makerworldCookie, onUploaded, onUn
   const [importOpen, setImportOpen] = React.useState(false);
   const [linkValue, setLinkValue] = React.useState("");
   const [exampleProvider, setExampleProvider] = React.useState<ImportProviderKey | null>(null);
+  // Only offered for a MakerWorld model link; everything else imports its one thing.
+  const [profileScope, setProfileScope] = React.useState<MakerworldProfileScope>("url");
   const { isImporting } = useImportJob();
   const upload = useUploadImport({ categoryId, makerworldCookie, onUploaded, onUnauthorized });
   const captchaSettings = useCaptchaSettings();
@@ -65,6 +69,7 @@ export default function AddMenu({ categoryId, makerworldCookie, onUploaded, onUn
 
   const detectedProvider = detectImportProvider(linkValue);
   const isBlockedCollection = isMakerworldCollectionUrl(linkValue);
+  const isMakerworldModel = isMakerworldModelUrl(linkValue);
 
   const closeMenu = () => setAnchorEl(null);
 
@@ -77,6 +82,7 @@ export default function AddMenu({ categoryId, makerworldCookie, onUploaded, onUn
     closeMenu();
     setLinkValue("");
     setExampleProvider(null);
+    setProfileScope("url");
     setImportOpen(true);
   };
 
@@ -89,7 +95,7 @@ export default function AddMenu({ categoryId, makerworldCookie, onUploaded, onUn
     if (!linkValue.trim() || isBlockedCollection) return;
     if (needsCaptcha && !captcha?.captcha_answer.trim()) return;
     // The dialog closes either way; reopening it shows a fresh captcha (each one works once).
-    await upload.submitImport(linkValue, needsCaptcha ? captcha : null);
+    await upload.submitImport(linkValue, needsCaptcha ? captcha : null, isMakerworldModel ? profileScope : "url");
     setImportOpen(false);
   };
 
@@ -179,6 +185,24 @@ export default function AddMenu({ categoryId, makerworldCookie, onUploaded, onUn
             placeholder={t("uploadBar.linkPlaceholder") ?? undefined}
             disabled={upload.importing}
           />
+          {isMakerworldModel && (
+            <TextField
+              select
+              fullWidth
+              size="small"
+              margin="dense"
+              label={t("addMenu.profilesLabel")}
+              value={profileScope}
+              onChange={e => setProfileScope(e.target.value as MakerworldProfileScope)}
+              disabled={upload.importing}
+              helperText={profileScope === "url" ? t("addMenu.profilesHelpUrl") : t("addMenu.profilesHelpMany")}
+              sx={{ mt: 1.5 }}
+            >
+              <MenuItem value="url">{t("addMenu.profilesUrl")}</MenuItem>
+              <MenuItem value="designer">{t("addMenu.profilesDesigner")}</MenuItem>
+              <MenuItem value="all">{t("addMenu.profilesAll")}</MenuItem>
+            </TextField>
+          )}
           {needsCaptcha && (
             <Box sx={{ mt: 2 }}>
               <CaptchaField onChange={setCaptcha} disabled={upload.importing} />

@@ -177,7 +177,13 @@
       "exampleModel": "Modelis",
       "exampleCollection": "Kolekcija",
       "makerworldCollectionExtensionOnly": "reikalingas Thingport Grab",
-      "makerworldCollectionBlocked": "MakerWorld kolekcijas galima importuoti tik naudojant Thingport Grab naršyklės plėtinį, ne šį langą. Įklijuokite vieno modelio nuorodą arba naudokite Thingport Grab visai kolekcijai importuoti."
+      "makerworldCollectionBlocked": "MakerWorld kolekcijas galima importuoti tik naudojant Thingport Grab naršyklės plėtinį, ne šį langą. Įklijuokite vieno modelio nuorodą arba naudokite Thingport Grab visai kolekcijai importuoti.",
+      "profilesLabel": "Spausdinimo profiliai",
+      "profilesUrl": "Spausdinimo profilis iš nuorodos",
+      "profilesDesigner": "Visi dizainerio spausdinimo profiliai",
+      "profilesAll": "Dizainerio ir bendruomenės spausdinimo profiliai",
+      "profilesHelpUrl": "Profilis, į kurį rodo nuoroda, arba numatytasis modelio profilis. Kitus profilius galima pridėti vėliau.",
+      "profilesHelpMany": "Kiekvienas profilis tampa atskiru modelio failu. Jie importuojami po vieną fone, todėl tai gali užtrukti kelias minutes."
     },
     "userMenu": {
       "theme": "Tema",

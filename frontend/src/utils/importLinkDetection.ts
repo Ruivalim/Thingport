@@ -34,6 +34,13 @@ export function isMakerworldCollectionUrl(url: string): boolean {
   return Boolean(parsed && parsed.hostname.toLowerCase().endsWith("makerworld.com") && /\/collections\/\d+/i.test(parsed.pathname));
 }
 
+/** A single MakerWorld model page (`/en/models/{id}-{slug}`, optionally `#profileId-…`) -- the
+ * kind of link whose print profiles the import dialog lets you choose between. */
+export function isMakerworldModelUrl(url: string): boolean {
+  const parsed = parseUrl(url);
+  return Boolean(parsed && parsed.hostname.toLowerCase().endsWith("makerworld.com") && /\/models?\/\d+/i.test(parsed.pathname));
+}
+
 /** A Thingiverse Thing import goes through its own backend path entirely (see
  * importService.ts's importThingiverseThing) rather than the generic inspect/zip-picker flow --
  * skip straight to a plain import call so the zip-entry picker (meant for arbitrary remote

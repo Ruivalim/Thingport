@@ -9,6 +9,7 @@ type StartZipImportPayload = Parameters<typeof importsApi.zipFromLink>[0];
 type StartThingiverseLikesImportPayload = Parameters<typeof importsApi.fromThingiverseLikes>[0];
 type StartThingiverseCollectionImportPayload = Parameters<typeof importsApi.fromThingiverseCollection>[0];
 type StartPrintablesCollectionImportPayload = Parameters<typeof importsApi.fromPrintablesCollection>[0];
+type StartMakerworldProfilesImportPayload = Parameters<typeof importsApi.fromMakerworldProfiles>[0];
 
 type ImportJobContextValue = {
   /** Non-null exactly while a batch import (MakerWorld collection, a Thingiverse Collection or
@@ -21,6 +22,7 @@ type ImportJobContextValue = {
   startThingiverseLikesImport: (payload: StartThingiverseLikesImportPayload) => Promise<void>;
   startThingiverseCollectionImport: (payload: StartThingiverseCollectionImportPayload) => Promise<void>;
   startPrintablesCollectionImport: (payload: StartPrintablesCollectionImportPayload) => Promise<void>;
+  startMakerworldProfilesImport: (payload: StartMakerworldProfilesImportPayload) => Promise<void>;
 };
 
 const ImportJobContext = createContext<ImportJobContextValue | null>(null);
@@ -142,6 +144,13 @@ export function ImportJobProvider({
     startPolling(job_id);
   }, [startPolling]);
 
+  const startMakerworldProfilesImport = useCallback(async (payload: StartMakerworldProfilesImportPayload) => {
+    const { job_id } = await importsApi.fromMakerworldProfiles(payload);
+    const job = await importsApi.getImportJob(job_id);
+    setActiveJob(job);
+    startPolling(job_id);
+  }, [startPolling]);
+
   const value = useMemo(
     () => ({
       activeJob,
@@ -151,6 +160,7 @@ export function ImportJobProvider({
       startThingiverseLikesImport,
       startThingiverseCollectionImport,
       startPrintablesCollectionImport,
+      startMakerworldProfilesImport,
     }),
     [
       activeJob,
@@ -159,6 +169,7 @@ export function ImportJobProvider({
       startThingiverseLikesImport,
       startThingiverseCollectionImport,
       startPrintablesCollectionImport,
+      startMakerworldProfilesImport,
     ],
   );
 

@@ -6,9 +6,15 @@ import { updateJob } from "./importJobService";
 import { createNotification } from "./notificationService";
 import { addPrintsToCollection, findOrCreateCollectionByName } from "./collectionService";
 import { resolveMakerworldCookie } from "./importResolvers";
-import { extractMakerworldBearerToken } from "./makerworldCloudApi";
+import { decodeHtmlEntities } from "./importResolvers";
+import {
+  extractMakerworldBearerToken,
+  parseMakerworldModelUrl,
+  selectMakerworldProfiles,
+  type MakerworldProfileScope,
+} from "./makerworldCloudApi";
 import { fetchMakerworldCollectionTitle, parseMakerworldCollectionUrl } from "./makerworldCollections";
-import { downloadImportToTemp, importPrintFromUrl, type ImportRequestBody } from "./importService";
+import { downloadImportToTemp, fetchMakerworldDesignForImport, importPrintFromUrl, type ImportRequestBody } from "./importService";
 import { upsertAuthorFromImport } from "./authorService";
 import { extractZipEntriesToPrints } from "./zipService";
 import { fetchThingiverseCollectionTitle } from "./thingiverseApi";
@@ -33,6 +39,7 @@ type ZipImportJobBody = ImportRequestBody & { entries: string[] };
 type ThingiverseLikesImportJobBody = ImportRequestBody & { thing_ids: string[]; username: string };
 type ThingiverseCollectionImportJobBody = ImportRequestBody & { thing_ids: string[]; collectionId: string };
 type PrintablesCollectionImportJobBody = ImportRequestBody & { model_ids: string[]; collectionId: string };
+type MakerworldProfilesImportJobBody = ImportRequestBody & { scope: Exclude<MakerworldProfileScope, "url"> };
 
 // Distinguishes *why* a single design failed, so a batch of many failures reads as one clear
 // cause instead of an opaque "N failed":
@@ -62,6 +69,83 @@ async function markJobFailed(jobId: string, err: unknown): Promise<void> {
   const message = err instanceof Error ? err.message : "Import failed";
   console.error(`Import job ${jobId} failed:`, err);
   await updateJob(jobId, { status: "ERROR", errorMessage: message }).catch(() => undefined);
+}
+
+/** Imports several print profiles of one MakerWorld model in the background -- every profile its
+ * designer uploaded, or every profile (see makerworldCloudApi.ts's selectMakerworldProfiles) --
+ * as one model with a file per profile: the first creates it, each later one is added to it
+ * (importService.ts's addMakerworldProfileToPrint, which skips profiles it already has). Paced
+ * like a collection import, one profile at a time; see routes/imports.ts's
+ * POST /import/makerworld-profiles. */
+export async function runMakerworldProfilesImportJob(jobId: string, userId: string, body: MakerworldProfilesImportJobBody): Promise<void> {
+  try {
+    const parsed = parseMakerworldModelUrl(body.url);
+    if (!parsed) throw new HttpError(400, "Not a MakerWorld model link");
+    const design = await fetchMakerworldDesignForImport(parsed.designId, resolveMakerworldCookie(body), IMPORT_MAKERWORLD_CALL_DELAY_MS);
+    if (!design) throw new HttpError(400, "Couldn't read this model's print profiles from MakerWorld");
+    const profileIds = selectMakerworldProfiles(design, body.scope, parsed.requestedInstanceId);
+    if (!profileIds.length) throw new HttpError(400, "This model has no print profiles to import");
+    const title = typeof design.title === "string" && design.title.trim() ? decodeHtmlEntities(design.title.trim()) : null;
+    await updateJob(jobId, { total: profileIds.length, sourceLabel: title });
+
+    let processed = 0;
+    let imported = 0;
+    let alreadyInLibrary = 0;
+    let failed = 0;
+    let stopReason: "rateLimited" | "auth" | null = null;
+    let printId: string | null = null;
+    for (const profileId of profileIds) {
+      const profileUrl = `https://makerworld.com/en/models/${parsed.designId}#profileId-${profileId}`;
+      if (stopReason) {
+        failed++;
+      } else {
+        try {
+          const result = await importPrintFromUrl(userId, profileUrl, {
+            ...body,
+            url: profileUrl,
+            makerworldPaceMs: IMPORT_MAKERWORLD_CALL_DELAY_MS,
+          });
+          printId = result.print.id;
+          if (result.alreadyImported) alreadyInLibrary++;
+          else imported++;
+        } catch (err) {
+          failed++;
+          // Every later profile would fail the same way -- stop asking MakerWorld.
+          const reason = classifyImportFailure(err);
+          if (reason === "rateLimited" || reason === "auth") stopReason = reason;
+        }
+      }
+      processed++;
+      await updateJob(jobId, { processed, imported, alreadyInLibrary, failedCount: failed }).catch(() => undefined);
+    }
+
+    await updateJob(jobId, { status: "DONE", resultPrintId: printId, processed, imported, alreadyInLibrary, failedCount: failed });
+    void createLog({
+      userId,
+      action: "import_completed",
+      targetId: printId,
+      details: { provider: "makerworld", sourceLabel: title, imported, alreadyInLibrary, failed },
+    });
+
+    const bodyParts: string[] = [];
+    if (alreadyInLibrary) bodyParts.push(`${alreadyInLibrary} already on the model`);
+    if (stopReason === "rateLimited") {
+      bodyParts.push(`the rest blocked by a MakerWorld CAPTCHA challenge — this usually clears in 1-4 hours, then import the model again to add the missing profiles`);
+    } else if (stopReason === "auth") {
+      bodyParts.push(`the rest failed because your MakerWorld session expired — update the cookie in Settings and import again`);
+    } else if (failed) {
+      bodyParts.push(`${failed} failed`);
+    }
+    const label = title ? `"${title}"` : "a MakerWorld model";
+    await createNotification(userId, {
+      title: `Imported ${imported} of ${profileIds.length} print profiles from MakerWorld`,
+      body: bodyParts.length ? `Of ${label} — ${bodyParts.join(", ")}.` : `Of ${label}.`,
+      externalUrl: body.url,
+      internalPath: printId ? `/models/${printId}` : null,
+    });
+  } catch (err) {
+    await markJobFailed(jobId, err);
+  }
 }
 
 /** Runs a MakerWorld collection's batch import in the background -- see routes/imports.ts's

@@ -17,6 +17,7 @@ import { maybeSleep, sleep } from "../utils/concurrency";
 import { fetchViaFlaresolverr, isFlaresolverrEnabled, looksLikeCloudflareBlock, shouldProxyHost } from "./flaresolverr";
 import {
   emptyImportedPageMetadata,
+  extractNextDataJson,
   extractPageMetadata,
   findDownloadUrl,
   makerworldHtmlHeaders,
@@ -34,6 +35,7 @@ import {
   parseMakerworldModelUrl,
   resolveMakerworldViaCloudApi,
   completeMakerworldAuthor,
+  fetchMakerworldDesign,
 } from "./makerworldCloudApi";
 import {
   parseThingiverseThingUrl,
@@ -167,6 +169,42 @@ async function fetchWithGuard(url: string, headers: Record<string, string>): Pro
 }
 
 export type OpenImportResult = { response: Response; finalUrl: string; meta: ImportedPageMetadata };
+
+/** A MakerWorld design's own data (title, creator, print profiles), as its model page embeds it in
+ * __NEXT_DATA__ -- the fallback to makerworldCloudApi.ts's fetchMakerworldDesign when there's no
+ * MakerWorld login to use its API. The page is often behind Cloudflare's challenge for a server
+ * (FlareSolverr gets through); null when it can't be read. */
+async function fetchMakerworldPageDesign(
+  designId: string,
+  cookie: string | null,
+  paceMs?: number,
+): Promise<Record<string, unknown> | null> {
+  if (makerworldCaptchaCooloffActive()) throw new MakerworldCaptchaError();
+  const url = `https://makerworld.com/en/models/${designId}`;
+  await maybeSleep(paceMs);
+  let res: Response;
+  try {
+    res = await fetchWithGuard(url, { "User-Agent": IMPORT_USER_AGENT, Accept: "*/*", ...makerworldHtmlHeaders(url, cookie) });
+  } catch {
+    return null;
+  }
+  if (!isHtmlContentType(res.headers.get("content-type") || "")) return null;
+  const { buffer } = await readCapped(res, IMPORT_HTML_MAX_BYTES);
+  const nextData = extractNextDataJson(buffer.toString("utf-8"));
+  const design = (nextData as { props?: { pageProps?: { design?: unknown } } } | null)?.props?.pageProps?.design;
+  return design && typeof design === "object" && !Array.isArray(design) ? (design as Record<string, unknown>) : null;
+}
+
+/** A MakerWorld design's data for choosing which print profiles to import -- through MakerWorld's
+ * API with the user's MakerWorld login, else from the model page. */
+export async function fetchMakerworldDesignForImport(
+  designId: string,
+  cookie: string | null,
+  paceMs?: number,
+): Promise<Record<string, unknown> | null> {
+  const bearer = extractMakerworldBearerToken(cookie);
+  return bearer ? fetchMakerworldDesign(designId, bearer, paceMs) : fetchMakerworldPageDesign(designId, cookie, paceMs);
+}
 
 /** A MakerWorld design's author from its model page -- the fallback to
  * makerworldCloudApi.ts's fetchMakerworldDesignAuthor when there's no MakerWorld login to use its
@@ -626,8 +664,14 @@ async function addMakerworldProfileToPrint(
   const wanted = body.resolved_instance_id ?? parseMakerworldModelUrl(url)?.requestedInstanceId ?? null;
   if (!wanted || hasProfile(wanted)) return alreadyImported;
 
-  const opened = await openImportResponse(url, body);
-  const instanceId = opened.meta.makerworldProfile?.instanceId ?? null;
+  // A download the extension already resolved in the page is fetched as it is: the model page
+  // the full import path would fetch first only carries metadata the model already has, and one
+  // extra MakerWorld page request per profile is the kind of burst that trips its CAPTCHA.
+  const presolved = Boolean(body.resolved_download_url && body.resolved_instance_id);
+  const opened = presolved
+    ? await openImportResponse(body.resolved_download_url!, { ...body, resolved_download_url: null }, url)
+    : await openImportResponse(url, body);
+  const instanceId = presolved ? body.resolved_instance_id! : (opened.meta.makerworldProfile?.instanceId ?? null);
   // Unknown profile (can't dedupe it), or the resolver fell back to one already on the print
   // (e.g. the hash named a profile this design doesn't have, so it resolved the default).
   if (!instanceId || hasProfile(instanceId)) {

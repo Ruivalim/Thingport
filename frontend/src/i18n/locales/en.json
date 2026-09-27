@@ -177,7 +177,13 @@
       "exampleModel": "Model",
       "exampleCollection": "Collection",
       "makerworldCollectionExtensionOnly": "requires Thingport Grab",
-      "makerworldCollectionBlocked": "MakerWorld collections can only be imported using the Thingport Grab browser extension, not this dialog. Paste a single model link instead, or use Thingport Grab to bulk-import a whole collection."
+      "makerworldCollectionBlocked": "MakerWorld collections can only be imported using the Thingport Grab browser extension, not this dialog. Paste a single model link instead, or use Thingport Grab to bulk-import a whole collection.",
+      "profilesLabel": "Print profiles",
+      "profilesUrl": "Print profile from the link",
+      "profilesDesigner": "All designer print profiles",
+      "profilesAll": "Designer and community print profiles",
+      "profilesHelpUrl": "The profile the link points to, or the model's default one. Other profiles can be added later.",
+      "profilesHelpMany": "Each profile becomes its own file on the model. They're imported one at a time in the background, which can take a few minutes."
     },
     "userMenu": {
       "theme": "Theme",
