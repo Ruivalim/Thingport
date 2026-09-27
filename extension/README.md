@@ -117,6 +117,12 @@ how the web app's own batch imports already work.
 A batch import keeps running on the server even if you close the panel or the tab -- closing it
 just stops showing progress, it doesn't cancel anything.
 
+## Privacy
+
+Thingport Grab has no servers of its own and sends nothing to its developer or any third party --
+only to your own Thingport instance and the provider site you're on. The
+**[privacy policy](PRIVACY.md)** lists exactly what it stores, what it sends and where.
+
 ## Contributing
 
 The extension is TypeScript and SCSS, built per browser with esbuild. See

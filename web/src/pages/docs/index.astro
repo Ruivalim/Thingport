@@ -1,12 +1,12 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import Icon from "../../components/Icon.astro";
-import { DOCS } from "../../lib/site.mjs";
+import { NAV_DOCS } from "../../lib/site.mjs";
 import { url } from "../../lib/url";
 
-const groups = [...new Set(DOCS.map((d) => d.group))].map((group) => ({
+const groups = [...new Set(NAV_DOCS.map((d) => d.group))].map((group) => ({
   group,
-  docs: DOCS.filter((d) => d.group === group),
+  docs: NAV_DOCS.filter((d) => d.group === group),
 }));
 ---
 

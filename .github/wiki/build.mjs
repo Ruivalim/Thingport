@@ -43,7 +43,8 @@ const pages = [
   ...DOCS.filter((d) => d.source).map((d) => ({
     name: pageName(d.title),
     nav: d.nav,
-    group: d.group,
+    // Unlisted docs still get a page (links to them keep working), just no sidebar entry.
+    group: d.unlisted ? undefined : d.group,
     source: d.source,
     body: read(d.source),
   })),

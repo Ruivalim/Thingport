@@ -1,22 +1,23 @@
 ---
 import type { MarkdownHeading } from "astro";
 import BaseLayout from "./BaseLayout.astro";
-import { DOCS, LINKS, BRANCH } from "../lib/site.mjs";
+import { DOCS, LINKS, BRANCH, NAV_DOCS } from "../lib/site.mjs";
 import { url } from "../lib/url";
 
 type Props = { slug: string; headings?: MarkdownHeading[] };
 const { slug, headings = [] } = Astro.props;
 const doc = DOCS.find((d) => d.slug === slug)!;
-const groups = [...new Set(DOCS.map((d) => d.group))].map((group) => ({
+const groups = [...new Set(NAV_DOCS.map((d) => d.group))].map((group) => ({
   group,
-  docs: DOCS.filter((d) => d.group === group),
+  docs: NAV_DOCS.filter((d) => d.group === group),
 }));
 const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 const editUrl = doc.source ? `${LINKS.github}/edit/${BRANCH}/${doc.source}` : `${LINKS.github}/tree/${BRANCH}/web`;
 
-const index = DOCS.indexOf(doc);
-const prev = DOCS[index - 1];
-const next = DOCS[index + 1];
+// An unlisted page isn't part of the reading order, so it gets no previous/next links.
+const index = NAV_DOCS.indexOf(doc);
+const prev = index >= 0 ? NAV_DOCS[index - 1] : undefined;
+const next = index >= 0 ? NAV_DOCS[index + 1] : undefined;
 
 const jsonLd = [
   {
@@ -66,10 +67,14 @@ const jsonLd = [
       <slot />
       <footer class="doc-footer">
         <a href={editUrl}>Edit this page on GitHub</a>
-        <nav class="pager" aria-label="Previous and next page">
-          {prev && <a class="card" href={url(`docs/${prev.slug}/`)}><span class="muted">Previous</span>{prev.nav}</a>}
-          {next && <a class="card next" href={url(`docs/${next.slug}/`)}><span class="muted">Next</span>{next.nav}</a>}
-        </nav>
+        {
+          (prev || next) && (
+            <nav class="pager" aria-label="Previous and next page">
+              {prev && <a class="card" href={url(`docs/${prev.slug}/`)}><span class="muted">Previous</span>{prev.nav}</a>}
+              {next && <a class="card next" href={url(`docs/${next.slug}/`)}><span class="muted">Next</span>{next.nav}</a>}
+            </nav>
+          )
+        }
       </footer>
     </article>
 
