@@ -74,6 +74,7 @@ uses the light one.
 | `npm run lint` | oxlint (also run on commit by the repo's pre-commit hook) |
 | `npm run lint:firefox` | Builds for Firefox and runs `web-ext lint` on the result |
 | `npm run screenshots` | Regenerates the README screenshots (see below) |
+| `npm run store-assets` | Renders the store logo, promotional tiles and PNG screenshots (see below) |
 | `npm run verify` | Typecheck + lint + build |
 
 The only difference between the browser builds is `manifest.json` (see `scripts/manifest.ts`):
@@ -97,7 +98,46 @@ The bundles aren't minified, so reviewers can read them as-is; the sources zip l
 them byte-for-byte with `npm ci && npm run build:firefox`. Bump `version` in `package.json` before
 submitting an update -- every store rejects a version it has already seen.
 
-The screenshots in `docs/screenshots/` double as store listing images.
+### Store listings
+
+None of these IDs are secret. The ones a workflow needs are also repo **variables** (Settings >
+Secrets and variables > Actions > Variables), so they don't have to be hard-coded in a workflow.
+
+**Microsoft Edge Add-ons** (submitted; the listing URL works once certification passes):
+
+| | Value |
+| --- | --- |
+| Listing | https://microsoftedge.microsoft.com/addons/detail/kahfidpmojfocohinlmglnfoaimocbol |
+| Extension (CRX) ID | `kahfidpmojfocohinlmglnfoaimocbol` -- repo variable `EDGE_EXTENSION_ID` |
+| Product ID | `8c5f106c-5a45-438f-8e0b-2d0c0584d253` -- repo variable `EDGE_PRODUCT_ID`, used by the publish API |
+| Store ID | `0RDCKH3TMN7G` |
+
+Edge also issued a public key for the listing. Don't add it to the manifest (`key`) of the store
+builds -- the stores set that themselves. It's only useful for giving an unpacked development build
+the same extension ID as the store version.
+
+Publishing to Edge from CI (not set up yet) additionally needs the Partner Center **Publish API**
+credentials, as repo **secrets**: `EDGE_CLIENT_ID` and `EDGE_API_KEY`. The upload itself is a
+`POST` of `dist/zips/thingport-grab-edge.zip` to the
+[Edge Add-ons API](https://learn.microsoft.com/microsoft-edge/extensions/publish/api/using-addons-api)
+for `EDGE_PRODUCT_ID`, followed by a publish request.
+
+### Store listing images
+
+`npm run store-assets` renders everything a listing asks for into `docs/store/`, from the HTML
+templates in `store-assets/` (styled like the website's social card):
+
+| File | Size | Use |
+| --- | --- | --- |
+| `logo.png` | 300x300 | Store logo |
+| `tile-small.png` | 440x280 | Small promotional tile |
+| `tile-large.png` | 1400x560 | Large promotional tile -- the extension's real panel (its compiled stylesheet) on a placeholder page |
+| `screenshots/*.png` | 1280x800 | The README's page screenshots as PNG, which is all the stores accept |
+
+Run `npm run screenshots` first when the screenshots need refreshing. They show live provider
+pages, so check them before uploading: a front-page model can be someone else's trademarked
+character, and Printables pages carry its own ads. Pick neutral models with
+`npm run screenshots -- --makerworld=<url> --printables=<url> --thingiverse=<url>`.
 
 ### Regenerating the screenshots
 
