@@ -1,0 +1,44 @@
+@use "../../styles/tokens" as t;
+
+.recent-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+.recent-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1px solid t.c("border");
+  border-radius: t.$radius-sm;
+  background: t.c("surface-sunken");
+  font-size: 16px;
+  font-weight: 700;
+  text-decoration: none;
+  color: t.c("text-muted");
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease;
+
+  &:hover,
+  &:focus-visible {
+    border-color: t.c("accent");
+    transform: translateY(-1px);
+  }
+
+  &:focus-visible {
+    outline: 2px solid t.c("accent");
+    outline-offset: 1px;
+  }
+
+  img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}

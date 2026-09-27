@@ -1,0 +1,15 @@
+// Toolbar popup. Follows the browser/OS color scheme.
+@use "../../styles/tokens" as t;
+@use "layout";
+@use "form";
+@use "switch";
+@use "recent";
+
+:root {
+  color-scheme: light dark;
+  @include t.theme-vars(t.$palette-light);
+
+  @media (prefers-color-scheme: dark) {
+    @include t.theme-vars(t.$palette-dark);
+  }
+}

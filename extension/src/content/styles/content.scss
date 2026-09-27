@@ -1,0 +1,14 @@
+// Everything the content script draws, compiled into one string and injected into its shadow root
+// (see shell.ts) -- it never touches, and isn't touched by, the provider page's own styles. Always
+// the light palette: it floats over provider pages of either scheme, and matches their own panels.
+@use "../../styles/tokens" as t;
+@use "fab";
+@use "panel";
+@use "controls";
+@use "entries";
+@use "overlay";
+@use "modal";
+
+:host {
+  @include t.theme-vars(t.$palette-light);
+}

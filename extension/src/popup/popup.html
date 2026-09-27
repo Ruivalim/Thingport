@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Thingport Grab</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="header">
+      <span class="header__icon" data-icon></span>
+      <div class="header__text">
+        <h1 class="header__title">Thingport Grab</h1>
+        <div class="instance" id="instance-row" hidden>
+          <span class="instance__url" id="instance-url-text"></span>
+          <button type="button" class="icon-btn" id="edit-instance-btn" aria-label="Edit instance" title="Edit instance">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 20h9" />
+              <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section id="configured-view" hidden>
+        <div class="toggle-row">
+          <label for="enabled-switch">Extension enabled</label>
+          <input type="checkbox" role="switch" class="switch" id="enabled-switch" />
+        </div>
+        <div class="section" id="recent-section" hidden>
+          <h2 class="section__title">Recent imports</h2>
+          <div class="recent-grid" id="recent-grid"></div>
+        </div>
+        <div class="error" id="configured-error" role="alert"></div>
+      </section>
+
+      <form id="setup-form" class="form" hidden>
+        <p class="form__intro">Connect to your Thingport instance to import models with one click.</p>
+        <label class="form__label" for="instance-url">Thingport instance URL</label>
+        <input class="form__input" type="url" id="instance-url" placeholder="https://thingport.example.com" required />
+        <label class="form__label" for="email">Email</label>
+        <input class="form__input" type="email" id="email" autocomplete="username" required />
+        <label class="form__label" for="password">Password</label>
+        <input class="form__input" type="password" id="password" autocomplete="current-password" required />
+        <p class="note">
+          If you're logged into MakerWorld in this browser, Thingport Grab reads your MakerWorld
+          session cookie locally to import from it -- it's sent only to the instance URL above,
+          never anywhere else.
+        </p>
+        <button type="submit" class="btn" id="save-btn">Save</button>
+        <button type="button" class="btn btn--secondary" id="cancel-btn" hidden>Cancel</button>
+        <div class="error" id="error" role="alert"></div>
+      </form>
+    </main>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

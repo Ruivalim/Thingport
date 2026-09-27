@@ -71,9 +71,9 @@ Instead of having your collection scattered across different websites and your f
     <td width="33%"><a href="frontend/src/assets/screenshots/09_dark_theme.png" target="_blank"><img src="frontend/src/assets/screenshots/09_dark_theme.png" width="100%" alt="Dark theme"></a><br><sub><b>Dark Theme</b></sub></td>
   </tr>
   <tr>
-    <td width="33%"><a href="frontend/src/assets/screenshots/10_extension_printables.png" target="_blank"><img src="frontend/src/assets/screenshots/10_extension_printables.png" width="100%" alt="Thingport Grab on Printables"></a><br><sub><b>Thingport Grab — Printables</b></sub></td>
-    <td width="33%"><a href="frontend/src/assets/screenshots/11_extension_thingyverse.png" target="_blank"><img src="frontend/src/assets/screenshots/11_extension_thingyverse.png" width="100%" alt="Thingport Grab on Thingiverse"></a><br><sub><b>Thingport Grab — Thingiverse</b></sub></td>
-    <td width="33%"><a href="frontend/src/assets/screenshots/12_extension_makerworld.png" target="_blank"><img src="frontend/src/assets/screenshots/12_extension_makerworld.png" width="100%" alt="Thingport Grab on MakerWorld"></a><br><sub><b>Thingport Grab — MakerWorld</b></sub></td>
+    <td width="33%"><a href="extension/docs/screenshots/panel-printables.jpg" target="_blank"><img src="extension/docs/screenshots/panel-printables.jpg" width="100%" alt="Thingport Grab on Printables"></a><br><sub><b>Thingport Grab — Printables</b></sub></td>
+    <td width="33%"><a href="extension/docs/screenshots/panel-thingiverse.jpg" target="_blank"><img src="extension/docs/screenshots/panel-thingiverse.jpg" width="100%" alt="Thingport Grab on Thingiverse"></a><br><sub><b>Thingport Grab — Thingiverse</b></sub></td>
+    <td width="33%"><a href="extension/docs/screenshots/panel-makerworld.jpg" target="_blank"><img src="extension/docs/screenshots/panel-makerworld.jpg" width="100%" alt="Thingport Grab on MakerWorld"></a><br><sub><b>Thingport Grab — MakerWorld</b></sub></td>
   </tr>
 </table>
 
@@ -82,7 +82,7 @@ Instead of having your collection scattered across different websites and your f
 Thingport ships two small companion tools, each downloadable from the in-app Download page or GitHub Releases:
 
 - **[Thingport Bridge](bridge/README.md)** — a lightweight desktop helper that makes "Open in {Slicer}" work for slicers (Bambu Studio, PrusaSlicer, Cura) whose own URL-protocol handlers won't accept a link from a self-hosted domain.
-- **[Thingport Grab](extension/README.md)** — a Chrome extension that imports MakerWorld, Thingiverse, and Printables models straight from their own pages, without leaving the site (see the screenshots above).
+- **[Thingport Grab](extension/README.md)** — a browser extension for Chrome, Edge and Firefox that imports MakerWorld, Thingiverse, and Printables models straight from their own pages, without leaving the site (see the screenshots above).
 
 ## Provider Setup
 

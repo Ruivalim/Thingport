@@ -1,0 +1,27 @@
+@use "../../styles/tokens" as t;
+@use "../../styles/mixins" as m;
+
+.tg-btn {
+  @include m.button-base;
+  @include m.button-primary;
+  margin-top: 6px;
+
+  &--secondary {
+    @include m.button-secondary;
+  }
+
+  &--danger {
+    @include m.button-danger;
+  }
+}
+
+.tg-label {
+  display: block;
+  margin: 10px 0 t.$space-1;
+  font-weight: 600;
+}
+
+.tg-select {
+  @include m.text-input;
+  margin-bottom: 10px;
+}

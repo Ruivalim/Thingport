@@ -475,6 +475,14 @@
             "step4": "Click \"Load unpacked\" and select the unzipped folder.",
             "step5": "Click the new Thingport icon in your toolbar and enter your instance URL and login."
           },
+          "edge": {
+            "heading": "Install Thingport Grab",
+            "step1": "Unzip the downloaded file somewhere permanent -- Edge loads the extension from this folder every time it starts.",
+            "step2": "Open edge://extensions in a new tab.",
+            "step3": "Turn on Developer mode (in the left sidebar).",
+            "step4": "Click \"Load unpacked\" and select the unzipped folder.",
+            "step5": "Click the new Thingport icon in your toolbar (it may be under the puzzle-piece Extensions button) and enter your instance URL and login."
+          },
           "firefox": {
             "heading": "Install Thingport Grab",
             "step1": "Open the downloaded .xpi file directly, or drag it onto a Firefox window.",

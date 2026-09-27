@@ -95,6 +95,14 @@ export const DOCS = [
     nav: "Development",
     description: "Run Thingport locally with hot reload, and run the test suites.",
   },
+  {
+    slug: "grab/development",
+    source: "extension/CONTRIBUTING.md",
+    group: "Contributing",
+    title: "Developing Thingport Grab",
+    nav: "Thingport Grab development",
+    description: "Build, run and package the Thingport Grab browser extension for Chrome, Edge and Firefox.",
+  },
 ];
 
 /** Repo files that have a page on this site, so links between them stay on the site. */

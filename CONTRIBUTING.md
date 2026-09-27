@@ -50,7 +50,7 @@ Workflows are path-filtered, so only the parts you touched run:
 | --- | --- |
 | `backend/**` | oxlint, then a multi-arch Docker image build (which runs `tsc`) |
 | `frontend/**` | oxlint, `tsc --noEmit`, then a Docker image build |
-| `extension/**` | `web-ext lint` (validates `manifest.json` for both Chrome and Firefox) |
+| `extension/**` | oxlint, `tsc --noEmit`, the Chrome/Edge/Firefox builds, and `web-ext lint` on the Firefox build |
 | `bridge/**` | `go test ./...` and a build for Windows, Linux and macOS |
 
 Nothing is published from a pull request -- images are built to prove they build, but only pushes
@@ -72,10 +72,11 @@ If you couldn't verify something end to end, say so. That's useful information, 
 - **Match the surrounding code.** This codebase uses long explanatory comments that say *why*
   something is the way it is -- particularly where behaviour is non-obvious or a workaround exists.
   Follow that where it helps; don't narrate what the code already says.
-- oxlint is the linter for both TypeScript projects. There's no Prettier config -- match the
-  formatting of the file you're editing.
-- The extension is deliberately plain, unbundled JavaScript with no build step. Keep it that way,
-  and remember it has to run as a Chrome service worker *and* a Firefox background page.
+- oxlint is the linter for every TypeScript project (backend, frontend, extension). There's no
+  Prettier config -- match the formatting of the file you're editing.
+- The extension is TypeScript + SCSS built with esbuild, and its background has to run as a Chrome
+  service worker *and* a Firefox event page. See
+  [extension/CONTRIBUTING.md](extension/CONTRIBUTING.md) before changing it.
 - Frontend is TypeScript with `strict: true`. Don't reach for `any` to get past a type error.
 
 ## Don't commit

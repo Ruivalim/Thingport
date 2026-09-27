@@ -1,0 +1,60 @@
+// Full-page covers (see overlays.ts): the guided MakerWorld import's progress and the collection
+// scan.
+@use "../../styles/tokens" as t;
+@use "../../styles/mixins" as m;
+
+.tg-overlay {
+  @include m.isolated(flex);
+  position: fixed;
+  inset: 0;
+  z-index: t.$z-top;
+  align-items: center;
+  justify-content: center;
+  background: t.c("backdrop-strong");
+
+  &__card {
+    @include m.isolated(flex);
+    @include m.card(t.$radius-xl);
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 300px;
+    max-width: 90vw;
+    padding: 28px 24px;
+    text-align: center;
+
+    .tg-btn {
+      margin-top: t.$space-1;
+    }
+  }
+
+  &__icon svg {
+    display: block;
+    width: 40px;
+    height: 40px;
+  }
+
+  &__title {
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  &__count {
+    color: t.c("text-muted");
+  }
+}
+
+.tg-progress {
+  width: 100%;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: t.c("accent-soft");
+
+  &__bar {
+    height: 100%;
+    border-radius: inherit;
+    background: t.c("accent");
+    transition: width 0.3s ease;
+  }
+}

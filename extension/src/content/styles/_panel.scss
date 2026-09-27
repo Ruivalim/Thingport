@@ -1,0 +1,77 @@
+@use "../../styles/tokens" as t;
+@use "../../styles/mixins" as m;
+
+.tg-panel {
+  @include m.isolated;
+  @include m.card;
+  position: fixed;
+  right: 24px;
+  bottom: 90px;
+  z-index: t.$z-top;
+  width: 300px;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: t.$space-4;
+
+  // `all: initial` above is an author rule, which beats the UA stylesheet's
+  // `[hidden] { display: none }` -- this restores `hidden` actually hiding it.
+  &[hidden] {
+    display: none;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  &__content {
+    padding-right: t.$space-5;
+  }
+}
+
+.tg-close {
+  @include m.isolated(flex);
+  position: absolute;
+  top: t.$space-2;
+  right: t.$space-2;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 18px;
+  line-height: 1;
+  color: t.c("text-muted");
+  cursor: pointer;
+  @include m.focus-ring;
+
+  &:hover {
+    background: t.c("hover");
+    color: t.c("text");
+  }
+}
+
+.tg-title {
+  margin-bottom: t.$space-2;
+  font-size: 14px;
+  font-weight: 700;
+
+  &--error {
+    color: t.c("danger");
+  }
+}
+
+.tg-hint {
+  margin-bottom: 10px;
+  font-size: t.$font-size-sm;
+  line-height: 1.45;
+  color: t.c("text-muted");
+
+  &--spaced {
+    margin-top: t.$space-2;
+  }
+}
+
+.tg-status {
+  padding: t.$space-2 0;
+  color: t.c("text");
+}

@@ -9,7 +9,7 @@ instance, follow the Docker Compose instructions in the [README](../README.md) i
 | --- | --- |
 | `backend/` | Express + Prisma API (TypeScript). Serves everything under `/api/*`. |
 | `frontend/` | React + Vite single-page app. |
-| `extension/` | "Thingport Grab" browser extension -- plain unbundled JS, no build step. |
+| `extension/` | "Thingport Grab" browser extension -- TypeScript + SCSS, built with esbuild. |
 | `bridge/` | Slicer bridge helper app (Go). |
 | `docs/` | This documentation. |
 
@@ -151,14 +151,20 @@ frontend changes -- CI will.
 
 ## Extension
 
-`extension/` has no build step; the directory is loaded as-is.
+```bash
+cd extension
+npm install
+npm run dev            # watch build into dist/chrome (npm run dev:firefox for dist/firefox)
+```
 
-- **Chrome**: `chrome://extensions` -> enable **Developer mode** -> **Load unpacked** -> select `extension/`.
-- **Firefox**: `about:debugging#/runtime/this-firefox` -> **Load Temporary Add-on** -> select `extension/manifest.json`.
+- **Chrome / Edge**: `chrome://extensions` -> enable **Developer mode** -> **Load unpacked** -> select `extension/dist/chrome`.
+- **Firefox**: `about:debugging#/runtime/this-firefox` -> **Load Temporary Add-on** -> select `extension/dist/firefox/manifest.json`.
 
-Point it at `http://localhost:5173` in the popup. Note that Chrome runs `background.js` as a
-service worker while Firefox runs it as a background page -- if you add top-level code there, make
-sure it works in both. See `extension/README.md`.
+Reload the extension after each rebuild, and point it at `http://localhost:5173` in the popup.
+Chrome and Edge run the background bundle as a service worker while Firefox runs it as an event
+page -- if you add top-level code there, make sure it works in both. See
+[extension/CONTRIBUTING.md](../extension/CONTRIBUTING.md) for the code layout, the per-browser
+builds, the store zips and the screenshot generator.
 
 ## Bridge
 

@@ -1,0 +1,78 @@
+// Design tokens shared by the popup and the in-page UI. Colors are emitted as CSS custom
+// properties (see theme-vars) so one stylesheet can switch palettes; sizes/fonts are plain Sass
+// values since they never change at runtime.
+
+@use "sass:map";
+
+$font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+$font-size: 13px;
+$font-size-sm: 12px;
+$font-size-xs: 11px;
+
+$radius-sm: 6px;
+$radius-md: 8px;
+$radius-lg: 12px;
+$radius-xl: 16px;
+
+$space-1: 4px;
+$space-2: 8px;
+$space-3: 12px;
+$space-4: 16px;
+$space-5: 20px;
+
+$z-top: 2147483000;
+
+$brand: #00b800;
+$brand-hover: #00a300;
+
+$palette-light: (
+  "accent": $brand,
+  "accent-hover": $brand-hover,
+  "accent-soft": #e3f6e3,
+  "accent-disabled": #b9e6b9,
+  "on-accent": #ffffff,
+  "text": #1f1f1f,
+  "text-muted": #6b6b6b,
+  "border": #e2e2e2,
+  "border-soft": #f0f0f0,
+  "surface": #ffffff,
+  "surface-raised": #ffffff,
+  "surface-sunken": #f5f5f5,
+  "hover": rgba(0, 0, 0, 0.06),
+  "danger": #d32f2f,
+  "danger-soft": rgba(211, 47, 47, 0.08),
+  "switch-off": #c4c4c4,
+  "backdrop": rgba(0, 0, 0, 0.5),
+  "backdrop-strong": rgba(0, 0, 0, 0.75),
+  "shadow": rgba(0, 0, 0, 0.25),
+);
+
+$palette-dark: map.merge(
+  $palette-light,
+  (
+    "accent-soft": rgba(0, 184, 0, 0.16),
+    "accent-disabled": #2f5f2f,
+    "text": #ececec,
+    "text-muted": #a0a0a0,
+    "border": #3a3a3a,
+    "border-soft": #2e2e2e,
+    "surface": #1e1e1e,
+    "surface-raised": #262626,
+    "surface-sunken": #2a2a2a,
+    "hover": rgba(255, 255, 255, 0.08),
+    "danger": #ef6b6b,
+    "danger-soft": rgba(239, 107, 107, 0.12),
+    "switch-off": #555555,
+    "shadow": rgba(0, 0, 0, 0.6),
+  )
+);
+
+@mixin theme-vars($palette) {
+  @each $name, $value in $palette {
+    --tg-#{$name}: #{$value};
+  }
+}
+
+@function c($name) {
+  @return var(--tg-#{$name});
+}

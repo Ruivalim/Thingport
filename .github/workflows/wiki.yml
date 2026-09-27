@@ -13,6 +13,7 @@ on:
       - "docs/**"
       - "bridge/README.md"
       - "extension/README.md"
+      - "extension/CONTRIBUTING.md"
       - "web/src/lib/site.mjs"
       - ".github/wiki/**"
       - ".github/workflows/wiki.yml"

@@ -1,0 +1,19 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "warn"
+  },
+  "rules": {
+    "no-await-in-loop": "off",
+    "unicorn/require-post-message-target-origin": "off"
+  },
+  "env": {
+    "builtin": true,
+    "browser": true,
+    "webextensions": true
+  },
+  "ignorePatterns": ["dist", "node_modules"]
+}

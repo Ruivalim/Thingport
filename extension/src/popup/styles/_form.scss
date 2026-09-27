@@ -1,0 +1,37 @@
+@use "../../styles/tokens" as t;
+@use "../../styles/mixins" as m;
+
+.form {
+  &__intro {
+    margin: 0 0 t.$space-3;
+    line-height: 1.4;
+    color: t.c("text-muted");
+  }
+
+  &__label {
+    display: block;
+    margin: 10px 0 t.$space-1;
+    font-weight: 600;
+
+    &:first-of-type {
+      margin-top: 0;
+    }
+  }
+
+  &__input {
+    @include m.text-input;
+  }
+}
+
+.btn {
+  @include m.button-base;
+  @include m.button-primary;
+  margin-top: 14px;
+  padding: t.$space-2 10px;
+  border-radius: t.$radius-sm;
+
+  &--secondary {
+    @include m.button-secondary;
+    margin-top: t.$space-2;
+  }
+}

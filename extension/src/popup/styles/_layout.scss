@@ -1,0 +1,126 @@
+@use "../../styles/tokens" as t;
+@use "../../styles/mixins" as m;
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+body {
+  width: 320px;
+  margin: 0;
+  padding: t.$space-4;
+  font-family: t.$font-stack;
+  font-size: t.$font-size;
+  color: t.c("text");
+  background: t.c("surface");
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+
+  &__icon svg {
+    display: block;
+    width: 32px;
+    height: 32px;
+
+    // The icon's hexagon outline is near-black in the source SVG -- follow the text color instead,
+    // so it doesn't vanish on the dark theme.
+    [stroke] {
+      stroke: t.c("text");
+    }
+  }
+
+  &__text {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+}
+
+.instance {
+  display: flex;
+  align-items: center;
+  gap: t.$space-1;
+  min-width: 0;
+
+  &__url {
+    min-width: 0;
+    overflow: hidden;
+    font-size: t.$font-size-sm;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: t.c("text-muted");
+  }
+}
+
+.icon-btn {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 3px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: t.c("text-muted");
+  cursor: pointer;
+  @include m.focus-ring;
+
+  &:hover {
+    background: t.c("hover");
+    color: t.c("text");
+  }
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+.section {
+  margin-top: t.$space-3;
+  padding-top: t.$space-3;
+  border-top: 1px solid t.c("border");
+
+  &__title {
+    margin: 0 0 t.$space-2;
+    font-size: t.$font-size-sm;
+    font-weight: 600;
+    color: t.c("text-muted");
+  }
+}
+
+.error {
+  display: none;
+  margin-top: t.$space-2;
+  font-size: t.$font-size-sm;
+  color: t.c("danger");
+
+  &--visible {
+    display: block;
+  }
+}
+
+.note {
+  margin: 10px 0 0;
+  font-size: t.$font-size-xs;
+  line-height: 1.4;
+  color: t.c("text-muted");
+}

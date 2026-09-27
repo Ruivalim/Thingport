@@ -8,7 +8,8 @@ import preview3d from "../../../frontend/src/assets/screenshots/04_model_details
 import tags from "../../../frontend/src/assets/screenshots/06_tags.png";
 import downloads from "../../../frontend/src/assets/screenshots/07_downloads.png";
 import myModels from "../../../frontend/src/assets/screenshots/08_my_models.png";
-import grabPrintables from "../../../frontend/src/assets/screenshots/10_extension_printables.png";
+import grabMakerworld from "../../../extension/docs/screenshots/panel-makerworld.jpg";
+import grabImported from "../../../extension/docs/screenshots/imported-printables.jpg";
 
 const SECTIONS = [
   {
@@ -25,8 +26,25 @@ const SECTIONS = [
       "Printables works with no setup. MakerWorld and Thingiverse need a credential from your own account (see provider setup).",
     ],
     link: { label: "Provider setup", href: url("docs/providers/") },
-    image: grabPrintables,
-    alt: "Thingport Grab importing a model from Printables",
+    image: grabMakerworld,
+    alt: "Thingport Grab's import panel on a MakerWorld model page",
+  },
+  {
+    id: "grab",
+    short: "Grab",
+    icon: "puzzle",
+    title: "Import in one click with Thingport Grab",
+    intro: "A browser extension for Chrome, Edge and Firefox that adds a Thingport button to the model pages you're already on.",
+    points: [
+      "Works on MakerWorld, Printables and Thingiverse model pages, plus collections and your Thingiverse likes.",
+      "Pick a Thingport collection to file the model into, then jump straight to it with Open in Thingport.",
+      "Uses your MakerWorld login from the browser, so there's no session cookie to paste.",
+      "Hides itself on models you already have, and keeps your last few imports one click away in its toolbar popup.",
+      "Talks only to your own Thingport instance. Nothing goes anywhere else.",
+    ],
+    link: { label: "Thingport Grab", href: url("docs/grab/") },
+    image: grabImported,
+    alt: "Thingport Grab after importing a Printables model, with an Open in Thingport button",
   },
   {
     id: "preview",

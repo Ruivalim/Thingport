@@ -8,12 +8,15 @@
 // build on every release rather than ever making a new one.
 const EXTENSION_RELEASE_BASE = "https://github.com/TautvydasDerzinskas/Thingport/releases/download/extension-latest";
 
-export type ExtensionDownload = { browser: "chrome" | "firefox"; label: string; asset: string };
+export type ExtensionDownload = { browser: "chrome" | "edge" | "firefox"; label: string; asset: string };
 
 // Firefox's asset is a Mozilla-signed .xpi rather than a zip -- see extension/README.md's
-// "Firefox" install section for why an unpacked zip won't do there.
+// "Firefox" install section for why an unpacked zip won't do there. Edge gets its own zip (built
+// alongside Chrome's, see extension/scripts/manifest.ts) and its own install steps, since
+// edge://extensions is laid out differently from chrome://extensions.
 export const EXTENSION_DOWNLOADS: ExtensionDownload[] = [
   { browser: "chrome", label: "Chrome", asset: "thingport-grab-chrome.zip" },
+  { browser: "edge", label: "Edge", asset: "thingport-grab-edge.zip" },
   { browser: "firefox", label: "Firefox", asset: "thingport-grab-firefox.xpi" },
 ];
 

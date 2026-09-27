@@ -1,0 +1,50 @@
+@use "../../styles/tokens" as t;
+
+.tg-entries {
+  max-height: 220px;
+  overflow-y: auto;
+  margin-bottom: 10px;
+  padding: t.$space-1 t.$space-2;
+  border: 1px solid t.c("border");
+  border-radius: t.$radius-md;
+}
+
+.tg-entry {
+  display: flex;
+  align-items: center;
+  gap: t.$space-2;
+  padding: 6px 0;
+  border-bottom: 1px solid t.c("border-soft");
+  font-size: t.$font-size-sm;
+  cursor: pointer;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &__checkbox {
+    accent-color: t.c("accent");
+  }
+
+  &__name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &--imported {
+    opacity: 0.6;
+  }
+}
+
+.tg-badge {
+  flex: none;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: t.c("border-soft");
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: t.c("text-muted");
+}

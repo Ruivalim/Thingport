@@ -22,10 +22,11 @@ import extensionIcon from "../../assets/logos/thingport-icon-color.svg";
 // Official browser logos (github.com/alrra/browser-logos), shown only to mark which browser each
 // extension download is for.
 import chromeLogo from "../../assets/logos/browsers/chrome.svg";
+import edgeLogo from "../../assets/logos/browsers/edge.svg";
 import firefoxLogo from "../../assets/logos/browsers/firefox.svg";
 
 const OS_ICON = { windows: LaptopWindowsIcon, macos: AppleIcon, linux: TerminalIcon };
-const BROWSER_LOGO: Record<ExtensionDownload["browser"], string> = { chrome: chromeLogo, firefox: firefoxLogo };
+const BROWSER_LOGO: Record<ExtensionDownload["browser"], string> = { chrome: chromeLogo, edge: edgeLogo, firefox: firefoxLogo };
 
 type InstallStep = { text: string; code?: string };
 
@@ -95,6 +96,13 @@ export default function DownloadPage() {
       { text: t("download.extension.modal.chrome.step3") },
       { text: t("download.extension.modal.chrome.step4") },
       { text: t("download.extension.modal.chrome.step5") },
+    ],
+    edge: [
+      { text: t("download.extension.modal.edge.step1") },
+      { text: t("download.extension.modal.edge.step2") },
+      { text: t("download.extension.modal.edge.step3") },
+      { text: t("download.extension.modal.edge.step4") },
+      { text: t("download.extension.modal.edge.step5") },
     ],
     firefox: [
       { text: t("download.extension.modal.firefox.step1") },
