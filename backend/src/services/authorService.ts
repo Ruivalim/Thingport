@@ -8,8 +8,8 @@ export function buildAuthorId(provider: string, externalId: string): string {
 }
 
 /** Upserts an Author row from resolved import metadata and returns the full record (not just
- * its id) so callers can build an immediate API response without a second fetch. Always
- * refreshes the stored fields (bio/avatar/etc. can change between imports), so re-importing a
+ * its id) so callers can build an immediate API response without a second fetch. Refreshes
+ * every field the import did get (bio/avatar/etc. can change between imports), so re-importing a
  * model from an already-known author keeps that author's record current rather than stale from
  * first import. Never throws -- a broken author fetch shouldn't fail the print import itself. */
 export async function upsertAuthorFromImport(info: ImportedAuthorInfo | null): Promise<Author | null> {
@@ -30,14 +30,17 @@ export async function upsertAuthorFromImport(info: ImportedAuthorInfo | null): P
         avatarUrl: info.avatarUrl,
         backgroundUrl: info.backgroundUrl,
       },
+      // A field the new import didn't get is left as it was rather than erased: a MakerWorld
+      // import often only has the design's short creator summary (the fuller profile endpoint
+      // being behind Cloudflare), and shouldn't wipe a bio/links/cover an earlier import fetched.
       update: {
-        name: info.name,
-        handle: info.handle,
-        bio: info.bio,
-        bioTranslated: info.bioTranslated,
-        links: info.links,
-        avatarUrl: info.avatarUrl,
-        backgroundUrl: info.backgroundUrl,
+        name: info.name ?? undefined,
+        handle: info.handle ?? undefined,
+        bio: info.bio ?? undefined,
+        bioTranslated: info.bioTranslated ?? undefined,
+        links: info.links.length ? info.links : undefined,
+        avatarUrl: info.avatarUrl ?? undefined,
+        backgroundUrl: info.backgroundUrl ?? undefined,
       },
     });
   } catch {

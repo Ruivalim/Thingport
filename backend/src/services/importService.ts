@@ -31,6 +31,7 @@ import {
   MakerworldCaptchaError,
   parseMakerworldModelUrl,
   resolveMakerworldViaCloudApi,
+  completeMakerworldAuthor,
 } from "./makerworldCloudApi";
 import {
   parseThingiverseThingUrl,
@@ -273,6 +274,9 @@ export async function openImportResponse(
       categorySite: extracted.categorySite ?? inheritedMeta.categorySite,
       makerworldProfile: inheritedMeta.makerworldProfile,
     };
+    if (pageHost.endsWith("makerworld.com") && extracted.author) {
+      resolvedMeta.author = await completeMakerworldAuthor(extracted.author, body.makerworldPaceMs);
+    }
     if (pageHost.endsWith("makerworld.com")) {
       // Same short-circuit as the cloud API above -- resolveMakerworldDownloadUrl's own
       // api/v1/design-service and api/v1/models calls are the other place that can trip the

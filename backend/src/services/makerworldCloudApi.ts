@@ -1,6 +1,12 @@
 import { IMPORT_BROWSER_USER_AGENT, IMPORT_TIMEOUT_SECONDS } from "../config";
 import { extractJsonFromBrowserBody, fetchViaFlaresolverr, isFlaresolverrEnabled, looksLikeCloudflareBlock } from "./flaresolverr";
-import { decodeHtmlEntities, htmlToPlainText, type ImportedAuthorInfo, type ImportedPageMetadata } from "./importResolvers";
+import {
+  decodeHtmlEntities,
+  htmlToPlainText,
+  makerworldAuthorFromDesignCreator,
+  type ImportedAuthorInfo,
+  type ImportedPageMetadata,
+} from "./importResolvers";
 import { maybeSleep, sleep } from "../utils/concurrency";
 import {
   isCaptchaChallenge,
@@ -240,6 +246,29 @@ async function fetchMakerworldAuthorInfo(uid: string, paceMs?: number): Promise<
   };
 }
 
+/** `basic` (from the design's own creator summary -- see makerworldAuthorFromDesignCreator) with
+ * whatever the fuller author profile adds on top, when that can be fetched. Best-effort: the
+ * profile endpoint is behind Cloudflare's challenge, so without FlareSolverr this is usually just
+ * `basic` -- which still gives a linked author with an avatar. */
+export async function completeMakerworldAuthor(
+  basic: ImportedAuthorInfo | null,
+  paceMs?: number,
+): Promise<ImportedAuthorInfo | null> {
+  if (!basic || basic.provider !== MAKERWORLD_PROVIDER) return basic;
+  const profile = await fetchMakerworldAuthorInfo(basic.externalId, paceMs);
+  if (!profile) return basic;
+  return {
+    ...basic,
+    name: profile.name ?? basic.name,
+    handle: profile.handle ?? basic.handle,
+    bio: profile.bio ?? basic.bio,
+    bioTranslated: profile.bioTranslated ?? basic.bioTranslated,
+    links: profile.links.length ? profile.links : basic.links,
+    avatarUrl: profile.avatarUrl ?? basic.avatarUrl,
+    backgroundUrl: profile.backgroundUrl ?? basic.backgroundUrl,
+  };
+}
+
 export type MakerworldGalleryImage = { url: string; filename: string };
 
 /** The model page's photo gallery -- design.designExtension.design_pictures -- distinct from
@@ -354,11 +383,10 @@ export async function resolveMakerworldViaCloudApi(
   const summary = typeof design.summary === "string" ? design.summary : null;
   const designCreator = isRecord(design.designCreator) ? design.designCreator : null;
   const creator = designCreator ? pickString(designCreator, ["nickName", "name", "handle"]) : null;
-  const creatorUid = designCreator?.uid != null ? String(designCreator.uid) : null;
   const previewImageUrl = pickString(design, ["coverUrl", "coverPortrait", "coverLandscape"]);
   const title = pickString(design, ["title"]);
   const galleryImages = extractGalleryImages(design);
-  const author = creatorUid ? await fetchMakerworldAuthorInfo(creatorUid, paceMs) : null;
+  const author = await completeMakerworldAuthor(makerworldAuthorFromDesignCreator(designCreator), paceMs);
   const siteCategoryIds = extractCategoryIds(design);
 
   return {

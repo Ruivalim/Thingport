@@ -396,6 +396,37 @@ function makerworldCreatorFromNextData(data: unknown): string | null {
   return null;
 }
 
+/** An author record from MakerWorld's own summary of a design's creator (design.designCreator --
+ * the same shape in the model page's __NEXT_DATA__ and in the api.bambulab.com design API). It
+ * has what an author needs to show up linked, with an avatar -- id, name, handle, avatar -- so an
+ * import no longer depends on MakerWorld's separate author-profile endpoint, which now sits
+ * behind Cloudflare's challenge and fails for a plain server request. That fuller profile (bio,
+ * links, cover image) is still merged in when it can be fetched (see makerworldCloudApi.ts's
+ * completeMakerworldAuthor). */
+export function makerworldAuthorFromDesignCreator(creator: unknown): ImportedAuthorInfo | null {
+  if (!creator || typeof creator !== "object") return null;
+  const record = creator as Record<string, unknown>;
+  if (record.uid == null || String(record.uid).trim() === "") return null;
+  const pick = (keys: string[]): string | null => {
+    for (const key of keys) {
+      const value = record[key];
+      if (typeof value === "string" && value.trim()) return value.trim();
+    }
+    return null;
+  };
+  return {
+    provider: "makerworld",
+    externalId: String(record.uid).trim(),
+    name: pick(["name", "nickName"]),
+    handle: pick(["handle"]),
+    bio: null,
+    bioTranslated: null,
+    links: [],
+    avatarUrl: pick(["avatar", "avatarUrl", "headIcon"]),
+    backgroundUrl: null,
+  };
+}
+
 function makerworldCoverUrlFromNextData(data: unknown): string | null {
   for (const key of ["coverUrl", "coverPortrait", "coverLandscape"]) {
     const value = getPath(data, "props", "pageProps", "design", key);
@@ -522,6 +553,7 @@ export function extractPageMetadata(html: string, pageHost: string): ImportedPag
       meta.tags = makerworldTagsFromNextData(nextData);
       meta.description = makerworldDescriptionFromNextData(nextData);
       meta.creator = makerworldCreatorFromNextData(nextData);
+      meta.author = makerworldAuthorFromDesignCreator(getPath(nextData, "props", "pageProps", "design", "designCreator"));
       meta.previewImageUrl = makerworldCoverUrlFromNextData(nextData);
     }
   }
