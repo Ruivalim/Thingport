@@ -25,18 +25,22 @@ function compileScss(file: string): { css: string; watchFiles: string[] } {
 const scssPlugin: esbuild.Plugin = {
   name: "scss",
   setup(build) {
+    // Paths are kept relative to the extension folder: esbuild writes them into the bundles as
+    // `// scss:<path>` comments, and an absolute path would leak the build machine's folder layout
+    // into the shipped code -- and stop a store reviewer's rebuild matching the upload byte for byte.
     build.onResolve({ filter: /\.scss(\?inline)?$/ }, (args) => {
       const inline = args.path.endsWith("?inline");
       const file = path.resolve(args.resolveDir, args.path.replace(/\?inline$/, ""));
-      return { path: file, namespace: inline ? "scss-inline" : "scss" };
+      return { path: path.relative(ROOT, file).split(path.sep).join("/"), namespace: inline ? "scss-inline" : "scss" };
     });
     build.onLoad({ filter: /.*/, namespace: "scss-inline" }, (args) => {
-      const { css, watchFiles } = compileScss(args.path);
+      const { css, watchFiles } = compileScss(path.join(ROOT, args.path));
       return { contents: css, loader: "text", watchFiles };
     });
     build.onLoad({ filter: /.*/, namespace: "scss" }, (args) => {
-      const { css, watchFiles } = compileScss(args.path);
-      return { contents: css, loader: "css", resolveDir: path.dirname(args.path), watchFiles };
+      const file = path.join(ROOT, args.path);
+      const { css, watchFiles } = compileScss(file);
+      return { contents: css, loader: "css", resolveDir: path.dirname(file), watchFiles };
     });
   },
 };
