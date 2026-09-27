@@ -18,7 +18,7 @@ import {
 import { availablePlateFilename, plateThumbPath, relocatePrint, saveThumbFromBytes } from "../services/printService";
 import { addGeneratedPreviewImageIfNone } from "../services/previewImageService";
 import { printOutById } from "../services/printLoader";
-import { generateModelPreviewGlb, modelPreviewGlbPath } from "../services/modelPreviewCache";
+import { generateModelPreviewGlb, modelPreviewGlbPath, modelPreviewState } from "../services/modelPreviewCache";
 import { getPreviewMode } from "../services/settingsService";
 
 const router = Router();
@@ -169,15 +169,27 @@ router.get(
     if (!plate) throw new HttpError(404, "Not found");
     const glbPath = modelPreviewGlbPath(plate.id);
     if (!fs.existsSync(glbPath)) {
-      // Self-heal for a plate that predates this cache (or whose background generation hasn't
-      // finished/started yet): kick it off and let the client fall back to the live parser for
-      // this one request -- generateModelPreviewGlb no-ops if it's already running or exists.
-      // "disabled" never generates server-side; the viewer just uses the live parser.
-      const srcPath = plate.filename.toLowerCase().endsWith(".3mf") && (await getPreviewMode()) !== "disabled"
-        ? resolvePlateFilePath(plate)
-        : null;
-      if (srcPath) void generateModelPreviewGlb(plate.id, srcPath);
-      throw new HttpError(404, "Not found");
+      // The 404's code tells the viewer what to do instead. PREVIEW_DISABLED: parse the file in
+      // the browser, the admin's choice. Otherwise generation is kicked off here if it hasn't been
+      // (self-heal for a plate that predates the cache; generateModelPreviewGlb no-ops if it's
+      // already running or exists), and the viewer waits (PREVIEW_GENERATING) or gives up
+      // (PREVIEW_FAILED) -- never parsing in the browser a file the server is still working on or
+      // found too heavy, which is what used to exhaust the browser's memory on big models.
+      if (!plate.filename.toLowerCase().endsWith(".3mf")) throw new HttpError(404, "Not found");
+      if ((await getPreviewMode()) === "disabled") {
+        throw new HttpError(404, "Preview generation is disabled", "PREVIEW_DISABLED");
+      }
+      const srcPath = resolvePlateFilePath(plate);
+      if (!srcPath) throw new HttpError(404, "Model file is missing", "PREVIEW_FAILED");
+      void generateModelPreviewGlb(plate.id, srcPath);
+      const state = modelPreviewState(plate.id);
+      if (state === "unsupported") {
+        throw new HttpError(404, "This 3MF's layout isn't supported by the server preview", "PREVIEW_UNSUPPORTED");
+      }
+      if (state === "failed") {
+        throw new HttpError(404, "No preview could be generated for this model", "PREVIEW_FAILED");
+      }
+      throw new HttpError(404, "Preview is being generated", "PREVIEW_GENERATING");
     }
     res.setHeader("Content-Type", "model/gltf-binary");
     res.setHeader("Cache-Control", "private, max-age=31536000, immutable");

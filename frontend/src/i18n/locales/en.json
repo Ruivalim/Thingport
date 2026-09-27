@@ -729,6 +729,8 @@
       "previewAlt": "Preview",
       "previewUnsupported": "Preview unsupported for this file type.",
       "previewFailed": "Preview failed to load.",
+      "previewTooComplex": "This model is too complex for a 3D preview.",
+      "previewPreparing": "Preparing the 3D preview… Large models can take a minute.",
       "generatingPreview": "Generating preview...",
       "waitingToGenerate": "Waiting to generate preview...",
       "generatePreview": "Generate preview",

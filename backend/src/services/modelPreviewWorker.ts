@@ -8,6 +8,7 @@ export type ModelPreviewWorkerInput = { srcPath: string; destPath: string };
 export type ModelPreviewWorkerResult =
   | { status: "ok" }
   | { status: "too-complex" }
+  | { status: "unsupported" }
   | { status: "error"; error: string };
 
 async function run(): Promise<void> {

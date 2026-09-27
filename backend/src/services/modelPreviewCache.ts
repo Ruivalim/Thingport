@@ -13,10 +13,12 @@ import type { ModelPreviewWorkerInput, ModelPreviewWorkerResult } from "./modelP
 
 // ---- Cache path helpers (same shape as printService.ts's plateThumbPath/plateThumbExists) -----
 
-// Part of the cache filename, so a change to what buildGlbGroup produces (v2: the Z-up -> Y-up
-// conversion became a rotation instead of a mirroring swap) makes every older GLB a cache miss
-// and gets it regenerated on next view, rather than serving stale geometry forever.
-const PREVIEW_FORMAT_VERSION = 2;
+// Part of the cache filename, so a change to what buildGlbGroup produces makes every older GLB a
+// cache miss and gets it regenerated on next view, rather than serving stale geometry forever.
+// v2: the Z-up -> Y-up conversion became a rotation instead of a mirroring swap. v3: a component
+// takes only its own object from a shared part file (multi-part models were built k times over).
+// Failure markers carry it too, so a file an older renderer refused gets another attempt.
+const PREVIEW_FORMAT_VERSION = 3;
 
 export function modelPreviewGlbPath(plateId: string): string {
   return path.join(MODEL_PREVIEWS, `${plateId}.v${PREVIEW_FORMAT_VERSION}.glb`);
@@ -28,6 +30,11 @@ function legacyModelPreviewGlbPath(plateId: string): string {
 }
 
 function modelPreviewErrorPath(plateId: string): string {
+  return path.join(MODEL_PREVIEWS, `${plateId}.v${PREVIEW_FORMAT_VERSION}.error`);
+}
+
+/** Pre-versioning failure marker -- ignored, and removed alongside a successful render. */
+function legacyModelPreviewErrorPath(plateId: string): string {
   return path.join(MODEL_PREVIEWS, `${plateId}.error`);
 }
 
@@ -50,6 +57,7 @@ const ERROR_RETRY_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
 // gets another go after the cooldown. Delete the .error file to force a retry, e.g. after raising
 // MODEL_PREVIEW_MAX_MEMORY_MB.
 const PERMANENT_FAILURE_PREFIX = "permanent: ";
+const UNSUPPORTED_MARKER = `${PERMANENT_FAILURE_PREFIX}unsupported`;
 
 function recentlyFailed(plateId: string): boolean {
   const errorPath = modelPreviewErrorPath(plateId);
@@ -78,6 +86,7 @@ const MEMORY_POLL_MS = 250;
 type RenderOutcome =
   | { status: "ok" }
   | { status: "too-complex" }
+  | { status: "unsupported" }
   | { status: "limit"; reason: string }
   | { status: "error"; error: string };
 
@@ -167,6 +176,27 @@ export async function generateModelPreviewGlb(plateId: string, srcPath: string):
   await run;
 }
 
+/** Where a plate's preview stands, for the viewer to decide between waiting, giving up, and
+ *  loading it: "generating" covers queued too; "failed" covers a file too heavy to preview, a
+ *  render that hit its limits, and one interrupted by a crash -- none of which will retry on
+ *  their own soon; "unsupported" is a 3MF layout the server's parser doesn't handle, left to the
+ *  browser's more general loaders. */
+export type ModelPreviewState = "ready" | "generating" | "failed" | "unsupported";
+
+export function modelPreviewState(plateId: string): ModelPreviewState {
+  if (modelPreviewGlbExists(plateId)) return "ready";
+  if (inFlight.has(plateId)) return "generating";
+  if (recentlyFailed(plateId)) {
+    try {
+      return fsSync.readFileSync(modelPreviewErrorPath(plateId), "utf-8") === UNSUPPORTED_MARKER ? "unsupported" : "failed";
+    } catch {
+      return "failed";
+    }
+  }
+  if (fsSync.existsSync(modelPreviewPendingPath(plateId))) return "failed";
+  return "generating";
+}
+
 async function runGeneration(plateId: string, srcPath: string): Promise<void> {
   const pendingPath = modelPreviewPendingPath(plateId);
   const errorPath = modelPreviewErrorPath(plateId);
@@ -180,9 +210,13 @@ async function runGeneration(plateId: string, srcPath: string): Promise<void> {
         await fs.rename(tmp, dest);
         await fs.rm(errorPath, { force: true });
         await fs.rm(legacyModelPreviewGlbPath(plateId), { force: true });
+        await fs.rm(legacyModelPreviewErrorPath(plateId), { force: true });
         break;
       case "too-complex":
-        await fs.writeFile(errorPath, `${PERMANENT_FAILURE_PREFIX}unparseable-or-too-complex`);
+        await fs.writeFile(errorPath, `${PERMANENT_FAILURE_PREFIX}too-complex`);
+        break;
+      case "unsupported":
+        await fs.writeFile(errorPath, UNSUPPORTED_MARKER);
         break;
       case "limit":
         console.warn(`Model preview for plate ${plateId} stopped: ${outcome.reason}`);

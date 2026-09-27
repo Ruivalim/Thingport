@@ -731,6 +731,8 @@
       "previewAlt": "Peržiūra",
       "previewUnsupported": "Šio failo tipo peržiūra nepalaikoma.",
       "previewFailed": "Nepavyko įkelti peržiūros.",
+      "previewTooComplex": "Šis modelis per sudėtingas 3D peržiūrai.",
+      "previewPreparing": "Ruošiama 3D peržiūra… Dideliems modeliams tai gali užtrukti minutę.",
       "generatingPreview": "Generuojama peržiūra...",
       "waitingToGenerate": "Laukiama peržiūros generavimo...",
       "generatePreview": "Generuoti peržiūrą",

@@ -277,18 +277,118 @@ function countTriangleTags(xml: string): number {
   return count;
 }
 
+// ---- Part files (3D/Objects/*.model) ----------------------------------------------------------
+
+/** The part-file objects a component takes: the one its objectid names, or every object in the
+ *  file when it names none (or one the file doesn't have). */
+function partFileTargetIds(objects: Map<string, string>, objectId: string | null): string[] {
+  return objectId && objects.has(objectId) ? [objectId] : [...objects.keys()];
+}
+
+/** Loads a component's geometry out of a part file. A part file can hold several <object>s:
+ * Bambu Studio keeps every part of a multi-part object in one file and references each part
+ * separately (same p:path, a different objectid). So a component takes only the object its
+ * objectid names -- taking the whole file for each reference built every part once per sibling
+ * (k parts -> k times the geometry, each part also drawn in its siblings' colours). A component
+ * with no objectid, or one naming an object the file doesn't have, still takes the whole file.
+ *
+ * Its own regex instances throughout: callers are mid-way through a global OBJECT_RE/COMPONENT_RE
+ * scan of the main model when they call in here. */
+function createPartFileResolver(loadExternalModel: (path: string) => Promise<string | null>) {
+  const objectsByPath = new Map<string, Map<string, string> | null>();
+  const meshCache = new Map<string, FastMesh[]>();
+  const countCache = new Map<string, number>();
+
+  const objectsIn = async (path: string): Promise<Map<string, string> | null> => {
+    if (objectsByPath.has(path)) return objectsByPath.get(path)!;
+    const xml = await loadExternalModel(path);
+    let objects: Map<string, string> | null = null;
+    if (xml) {
+      objects = new Map();
+      const objectRe = new RegExp(OBJECT_RE.source, "g");
+      let om: RegExpExecArray | null;
+      while ((om = objectRe.exec(xml))) {
+        const id = getAttr(om[1], "id");
+        if (id) objects.set(id, om[2]);
+      }
+    }
+    objectsByPath.set(path, objects);
+    return objects;
+  };
+
+  /** Same-file component references inside a part-file object ({ refId, transform }). */
+  const innerRefs = (inner: string, objects: Map<string, string>) => {
+    const refs: { refId: string; transform: number[] | null }[] = [];
+    const componentRe = new RegExp(COMPONENT_RE.source, "g");
+    let cm: RegExpExecArray | null;
+    while ((cm = componentRe.exec(inner))) {
+      const refId = getAttr(cm[1], "objectid");
+      const hasPath = (getAttr(cm[1], "p:path") ?? getAttr(cm[1], "path")) !== null;
+      if (refId && !hasPath && objects.has(refId)) refs.push({ refId, transform: parseTransform3MF(getAttr(cm[1], "transform")) });
+    }
+    return refs;
+  };
+
+  /** Geometry of one object in a part file (untransformed, extruder unset), parsed once however
+   *  many times it's placed. */
+  const objectMeshes = async (path: string, objects: Map<string, string>, id: string, depth: number): Promise<FastMesh[]> => {
+    const key = `${path}#${id}`;
+    const cached = meshCache.get(key);
+    if (cached) return cached;
+    const inner = objects.get(id) ?? "";
+    const meshes = extractMeshesFast(inner, 0);
+    if (depth < MAX_COMPONENT_DEPTH) {
+      for (const ref of innerRefs(inner, objects)) {
+        for (const mesh of await objectMeshes(path, objects, ref.refId, depth + 1)) {
+          meshes.push(ref.transform ? { ...mesh, vertices: applyAffineToVertices(mesh.vertices, ref.transform) } : mesh);
+        }
+      }
+    }
+    meshCache.set(key, meshes);
+    return meshes;
+  };
+
+  const objectTriangles = (path: string, objects: Map<string, string>, id: string, depth: number): number => {
+    const key = `${path}#${id}`;
+    const cached = countCache.get(key);
+    if (cached !== undefined) return cached;
+    const inner = objects.get(id) ?? "";
+    let count = countTriangleTags(inner);
+    if (depth < MAX_COMPONENT_DEPTH) {
+      for (const ref of innerRefs(inner, objects)) count += objectTriangles(path, objects, ref.refId, depth + 1);
+    }
+    countCache.set(key, count);
+    return count;
+  };
+
+  return {
+    /** The component's meshes, in its part file's own coordinates. */
+    async meshes(path: string, objectId: string | null): Promise<FastMesh[]> {
+      const objects = await objectsIn(path);
+      if (!objects) return [];
+      const out: FastMesh[] = [];
+      for (const id of partFileTargetIds(objects, objectId)) out.push(...(await objectMeshes(path, objects, id, 0)));
+      return out;
+    },
+    /** How many triangles the component brings in, without parsing any geometry. */
+    async triangles(path: string, objectId: string | null): Promise<number> {
+      const objects = await objectsIn(path);
+      if (!objects) return 0;
+      return partFileTargetIds(objects, objectId).reduce((sum, id) => sum + objectTriangles(path, objects, id, 0), 0);
+    },
+  };
+}
+
+type PartFileResolver = ReturnType<typeof createPartFileResolver>;
+
 /** Triangles the preview would actually materialize: every build item's object, including
  * geometry pulled in through p:path components (where Bambu files keep all their meshes) and
  * same-document component references, counted once per placement -- the same expansion
  * parseMainModel + buildGlbGroup perform, but on tag counts instead of real arrays. Checked
  * before any mesh is parsed so an over-budget file never allocates its geometry. */
-async function countRenderedTriangles(
-  xml: string,
-  loadExternalModel: (path: string) => Promise<string | null>,
-): Promise<number> {
+async function countRenderedTriangles(xml: string, partFiles: PartFileResolver): Promise<number> {
   const ownCount = new Map<string, number>();
   const internalRefs = new Map<string, string[]>();
-  const externalCount = new Map<string, number>();
 
   OBJECT_RE.lastIndex = 0;
   let om: RegExpExecArray | null;
@@ -305,11 +405,7 @@ async function countRenderedTriangles(
       const extPath = getAttr(cAttrs, "p:path") ?? getAttr(cAttrs, "path");
       const compObjectId = getAttr(cAttrs, "objectid");
       if (extPath) {
-        if (!externalCount.has(extPath)) {
-          const extXml = await loadExternalModel(extPath);
-          externalCount.set(extPath, extXml ? countTriangleTags(extXml) : 0);
-        }
-        count += externalCount.get(extPath)!;
+        count += await partFiles.triangles(extPath, compObjectId);
       } else if (compObjectId) {
         refs.push(compObjectId);
       }
@@ -349,7 +445,7 @@ async function parseMainModel(
   xml: string,
   structural: StructuralData,
   plateAssignmentsByName: Map<string, number>,
-  loadExternalModel: (path: string) => Promise<string | null>,
+  partFiles: PartFileResolver,
 ): Promise<{ objects: Map<string, ObjectData>; buildItems: BuildItem[] }> {
   const objects = new Map<string, ObjectData>();
   // <component objectid="X" .../> with no p:path references another <object> in this SAME
@@ -387,10 +483,7 @@ async function parseMainModel(
       const compExtruder = partKey ? structural.partExtruderMap.get(partKey) ?? defaultExtruder : defaultExtruder;
 
       if (extPath) {
-        const extXml = await loadExternalModel(extPath);
-        if (!extXml) continue;
-        const extMeshes = extractMeshesFast(extXml, compExtruder);
-        for (const mesh of extMeshes) {
+        for (const mesh of await partFiles.meshes(extPath, compObjectId)) {
           meshes.push({
             vertices: transform ? applyAffineToVertices(mesh.vertices, transform) : mesh.vertices,
             triangles: mesh.triangles,
@@ -489,16 +582,19 @@ const MAX_TRIANGLES = 8_000_000;
 const MAX_MODEL_ENTRY_BYTES = 500 * 1024 * 1024;
 const MAX_MODEL_TOTAL_BYTES = 1024 * 1024 * 1024;
 
-/** Reads and fast-parses a Bambu Studio project .3mf. Returns null for anything not worth
- * caching (no main model, no objects, or over the complexity cap) -- callers fall back to the
- * existing live client-side parser exactly as they do today. */
-async function parseThreeMfFast(srcPath: string): Promise<ParsedModel | null> {
+/** Why a file gets no server preview: "too-complex" is over a size budget (the browser mustn't
+ * try it either), "unsupported" is a layout this parser doesn't handle (no main model at the
+ * usual path, no objects) -- the browser's own, more general 3MF loaders may still manage. */
+export type PreviewRefusal = "too-complex" | "unsupported";
+
+/** Reads and fast-parses a Bambu Studio project .3mf. */
+async function parseThreeMfFast(srcPath: string): Promise<ParsedModel | PreviewRefusal> {
   const modelEntries = (await listZipEntries(srcPath)).filter(
     (entry) => !entry.isDirectory && entry.name.toLowerCase().endsWith(".model"),
   );
-  if (!modelEntries.some((entry) => entry.name === MAIN_MODEL_PATH)) return null;
-  if (modelEntries.some((entry) => entry.size > MAX_MODEL_ENTRY_BYTES)) return null;
-  if (modelEntries.reduce((sum, entry) => sum + entry.size, 0) > MAX_MODEL_TOTAL_BYTES) return null;
+  if (!modelEntries.some((entry) => entry.name === MAIN_MODEL_PATH)) return "unsupported";
+  if (modelEntries.some((entry) => entry.size > MAX_MODEL_ENTRY_BYTES)) return "too-complex";
+  if (modelEntries.reduce((sum, entry) => sum + entry.size, 0) > MAX_MODEL_TOTAL_BYTES) return "too-complex";
 
   let modelSettingsText: string | null = null;
   let projectSettingsText: string | null = null;
@@ -538,7 +634,7 @@ async function parseThreeMfFast(srcPath: string): Promise<ParsedModel | null> {
     },
   );
 
-  if (!mainModelText) return null;
+  if (!mainModelText) return "unsupported";
   const mainModelXml: string = mainModelText;
 
   const structural = modelSettingsText ? parseModelSettingsConfig(modelSettingsText) : parseModelSettingsConfig("");
@@ -572,10 +668,11 @@ async function parseThreeMfFast(srcPath: string): Promise<ParsedModel | null> {
 
   // Complexity check before any geometry is allocated, so an over-budget file fails after a few
   // string scans instead of after exhausting the host's memory.
-  if ((await countRenderedTriangles(mainModelXml, loadExternalModel)) > MAX_TRIANGLES) return null;
+  const partFiles = createPartFileResolver(loadExternalModel);
+  if ((await countRenderedTriangles(mainModelXml, partFiles)) > MAX_TRIANGLES) return "too-complex";
 
-  const { objects, buildItems } = await parseMainModel(mainModelXml, structural, plateAssignmentsByName, loadExternalModel);
-  if (objects.size === 0) return null;
+  const { objects, buildItems } = await parseMainModel(mainModelXml, structural, plateAssignmentsByName, partFiles);
+  if (objects.size === 0) return "unsupported";
 
   const plateThumbnails = new Map<number, string>();
   for (const [idx, bytes] of plateThumbBytes) {
@@ -693,11 +790,11 @@ async function buildGlbGroup(parsed: ParsedModel): Promise<import("three").Group
 
 // ---- Entry point (called from the worker) ----------------------------------------------------
 
-/** Parses `srcPath` and writes the preview GLB to `destPath`. "too-complex" means the file was
- * refused before any geometry was built (no main model, no objects, or over a size budget). */
-export async function renderModelPreviewGlb(srcPath: string, destPath: string): Promise<"ok" | "too-complex"> {
+/** Parses `srcPath` and writes the preview GLB to `destPath`, or says why it didn't (see
+ * PreviewRefusal) -- decided before any geometry is built. */
+export async function renderModelPreviewGlb(srcPath: string, destPath: string): Promise<"ok" | PreviewRefusal> {
   const parsed = await parseThreeMfFast(srcPath);
-  if (!parsed) return "too-complex";
+  if (typeof parsed === "string") return parsed;
   const group = await buildGlbGroup(parsed);
   const { GLTFExporter } = await import("three/examples/jsm/exporters/GLTFExporter.js");
   const result = await new GLTFExporter().parseAsync(group, { binary: true });

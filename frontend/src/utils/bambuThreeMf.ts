@@ -188,10 +188,14 @@ async function parse3MF(zipEntries: Record<string, Uint8Array>): Promise<ParsedB
     const normalized = path.startsWith("/") ? path.slice(1) : path;
     return zipEntries[normalized];
   };
+  // Parsed once per part file: a multi-part object references the same file once per part.
+  const modelFileCache = new Map<string, Document | null>();
   const loadModelFile = (path: string): Document | null => {
+    if (modelFileCache.has(path)) return modelFileCache.get(path) ?? null;
     const bytes = findEntry(path);
-    if (!bytes) return null;
-    return parser.parseFromString(decoder.decode(bytes), "application/xml");
+    const doc = bytes ? parser.parseFromString(decoder.decode(bytes), "application/xml") : null;
+    modelFileCache.set(path, doc);
+    return doc;
   };
 
   const extruderMapById = new Map<string, number>();
@@ -381,7 +385,16 @@ async function parse3MF(zipEntries: Record<string, Uint8Array>): Promise<ParsedB
 
       const partKey = compObjectId ? `${objectId}:${compObjectId}` : null;
       const compExtruder = partKey ? partExtruderMap.get(partKey) ?? defaultExtruder : defaultExtruder;
-      const extMeshes = await parseMeshFromDoc(extDoc, compExtruder);
+      // Only the object this component names: a part file can hold every part of a multi-part
+      // object, each referenced by its own component (same p:path, different objectid) -- taking
+      // the whole file per reference built each part once per sibling, in the siblings' colours.
+      // Mirrors backend/src/services/modelPreviewRender.ts's createPartFileResolver.
+      const targetEl = compObjectId
+        ? Array.from(extDoc.getElementsByTagName("object")).find((el) => el.getAttribute("id") === compObjectId)
+        : undefined;
+      const targetMeshes = targetEl ? await parseMeshFromDoc(targetEl, compExtruder) : [];
+      // No objectid, one the file doesn't have, or an object that only wraps others: the whole file.
+      const extMeshes = targetMeshes.length > 0 ? targetMeshes : await parseMeshFromDoc(extDoc, compExtruder);
       const compTransformStr = compEl.getAttribute("transform");
       const compTransform = parseTransform3MF(compTransformStr);
 
@@ -457,14 +470,38 @@ export type CachedBambuGlb = {
   getPlateThumbnail: (plateIndex: number) => Promise<string | null>;
 };
 
-/** Loads the server pre-rendered GLB for a plate (see backend/src/services/modelPreviewCache.ts)
- *  instead of parsing the raw .3mf -- the fast path. Returns null for anything that doesn't look
- *  like a cache this app produced (wrong shape, fetch failure, load failure); callers fall back
- *  to parseBambuThreeMF/loadBambuThreeMFForViewer exactly as if no cache existed yet. */
-export async function loadCachedBambuGlb(url: string): Promise<CachedBambuGlb | null> {
+/** What the server's preview endpoint said, besides a usable GLB. "generating": it's being made,
+ *  ask again shortly. "failed": the server couldn't make one (too heavy, hit its limits) -- the
+ *  browser mustn't try either, since parsing such a file here is what exhausts its memory.
+ *  "fallback": parse the raw file in the browser -- previews turned off by the admin, a 3MF
+ *  layout the server doesn't handle, an older backend without these codes, or a cache that
+ *  didn't load. */
+export type CachedGlbOutcome =
+  | { status: "ready"; glb: CachedBambuGlb }
+  | { status: "generating" }
+  | { status: "failed" }
+  | { status: "fallback" };
+
+async function previewErrorCode(res: Response): Promise<string | null> {
+  try {
+    const body = (await res.json()) as { code?: unknown };
+    return typeof body.code === "string" ? body.code : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Loads the server's pre-rendered GLB preview for a 3MF (see
+ *  backend/src/services/modelPreviewCache.ts) instead of parsing the raw .3mf -- the fast path. */
+export async function loadCachedBambuGlb(url: string): Promise<CachedGlbOutcome> {
   try {
     const res = await fetch(url);
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const code = res.status === 404 ? await previewErrorCode(res) : null;
+      if (code === "PREVIEW_GENERATING") return { status: "generating" };
+      if (code === "PREVIEW_FAILED") return { status: "failed" };
+      return { status: "fallback" };
+    }
     const arrayBuffer = await res.arrayBuffer();
 
     const { GLTFLoader } = await import("three/examples/jsm/loaders/GLTFLoader.js");
@@ -476,7 +513,7 @@ export async function loadCachedBambuGlb(url: string): Promise<CachedBambuGlb | 
     gltf.scene.traverse((obj) => {
       if (!root && typeof obj.userData?.thingportPreview === "string") root = obj;
     });
-    if (!root) return null;
+    if (!root) return { status: "fallback" };
 
     const meta = JSON.parse((root as THREE.Object3D).userData.thingportPreview) as {
       plates: PlateSummary[];
@@ -486,15 +523,18 @@ export async function loadCachedBambuGlb(url: string): Promise<CachedBambuGlb | 
     };
 
     return {
-      rootGroup: root as THREE.Group,
-      plates: meta.plates,
-      filamentColors: meta.filamentColors,
-      buildVolume: meta.buildVolume,
-      getPlateThumbnail: async (plateIndex: number) => meta.plateThumbnails[String(plateIndex)] ?? null,
+      status: "ready",
+      glb: {
+        rootGroup: root as THREE.Group,
+        plates: meta.plates,
+        filamentColors: meta.filamentColors,
+        buildVolume: meta.buildVolume,
+        getPlateThumbnail: async (plateIndex: number) => meta.plateThumbnails[String(plateIndex)] ?? null,
+      },
     };
   } catch (err) {
     console.warn("Cached GLB preview load failed, falling back to live 3MF parse", err);
-    return null;
+    return { status: "fallback" };
   }
 }
 

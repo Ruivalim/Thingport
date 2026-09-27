@@ -4,7 +4,12 @@ import fsSync from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { writeZip } from "../src/utils/zipWriter";
-import { generateModelPreviewGlb, modelPreviewGlbExists, modelPreviewGlbPath } from "../src/services/modelPreviewCache";
+import {
+  generateModelPreviewGlb,
+  modelPreviewGlbExists,
+  modelPreviewGlbPath,
+  modelPreviewState,
+} from "../src/services/modelPreviewCache";
 
 // A hand-built 2-object/2-extruder/2-plate Bambu-style .3mf, small enough to commit as test
 // data inline rather than shipping a binary fixture file. Exercises the same fast regex-based
@@ -320,7 +325,7 @@ describe("modelPreviewCache -- memory safety", () => {
 
   afterAll(async () => {
     for (const id of plateIds) {
-      for (const ext of [".v2.glb", ".error", ".pending"]) {
+      for (const ext of [".v3.glb", ".v3.error", ".pending"]) {
         await fs.rm(path.join(path.dirname(modelPreviewGlbPath("x")), `${id}${ext}`), { force: true });
       }
     }
@@ -337,8 +342,8 @@ describe("modelPreviewCache -- memory safety", () => {
     const plateId = newPlateId("fanout");
     await generateModelPreviewGlb(plateId, fixture);
     expect(modelPreviewGlbExists(plateId)).toBe(false);
-    const errorPath = path.join(path.dirname(modelPreviewGlbPath("x")), `${plateId}.error`);
-    expect(fsSync.readFileSync(errorPath, "utf-8")).toBe("permanent: unparseable-or-too-complex");
+    const errorPath = path.join(path.dirname(modelPreviewGlbPath("x")), `${plateId}.v3.error`);
+    expect(fsSync.readFileSync(errorPath, "utf-8")).toBe("permanent: too-complex");
   });
 
   it("resolves a two-level wrapper chain to exactly one copy of the geometry", async () => {
@@ -385,5 +390,142 @@ describe("modelPreviewCache -- memory safety", () => {
     await generateModelPreviewGlb(plateId, fixture);
     expect(modelPreviewGlbExists(plateId)).toBe(true);
     expect(fsSync.existsSync(path.join(path.dirname(modelPreviewGlbPath("x")), `${plateId}.pending`))).toBe(false);
+  });
+});
+
+function cacheDir(): string {
+  return path.dirname(modelPreviewGlbPath("x"));
+}
+
+/** A triangle at x offset `x`, so each part's geometry is recognizable in the output. */
+function triangleAt(x: number): string {
+  return `<mesh><vertices><vertex x="${x}" y="0" z="0" /><vertex x="${x + 10}" y="0" z="0" /><vertex x="${x}" y="10" z="0" /></vertices><triangles><triangle v1="0" v2="1" v3="2" /></triangles></mesh>`;
+}
+
+async function loadGlbMeshes(plateId: string): Promise<any[]> {
+  const { GLTFLoader } = await import("three/examples/jsm/loaders/GLTFLoader.js");
+  const buf = fsSync.readFileSync(modelPreviewGlbPath(plateId));
+  const arrayBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+  const gltf = await new Promise<any>((resolve, reject) => {
+    new GLTFLoader().parse(arrayBuffer, "", resolve, reject);
+  });
+  const meshes: any[] = [];
+  gltf.scene.traverse((obj: any) => {
+    if (obj.isMesh) meshes.push(obj);
+  });
+  return meshes;
+}
+
+describe("modelPreviewCache -- multi-part objects sharing one part file", () => {
+  const plateIds: string[] = [];
+
+  afterAll(async () => {
+    for (const id of plateIds) {
+      for (const ext of [".v3.glb", ".v3.error", ".pending"]) await fs.rm(path.join(cacheDir(), `${id}${ext}`), { force: true });
+    }
+  });
+
+  // How Bambu Studio stores a multi-part (often multi-colour) object: every part in one
+  // 3D/Objects file, each referenced by its own component with a different objectid.
+  it("takes only the referenced object from the file for each component, in its own colour", async () => {
+    await fs.mkdir(cacheDir(), { recursive: true });
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "thingport-3mf-parts-"));
+    const mainPath = path.join(dir, "3dmodel.model");
+    const partsPath = path.join(dir, "object_1.model");
+    const settingsPath = path.join(dir, "model_settings.config");
+    await fs.writeFile(
+      mainPath,
+      `<?xml version="1.0" encoding="UTF-8"?>
+<model xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02" xmlns:p="http://schemas.microsoft.com/3dmanufacturing/production/2015/06" unit="millimeter">
+ <resources><object id="9" type="model"><components>
+  <component p:path="/3D/Objects/object_1.model" objectid="1" />
+  <component p:path="/3D/Objects/object_1.model" objectid="2" />
+ </components></object></resources>
+ <build><item objectid="9" /></build>
+</model>`,
+    );
+    await fs.writeFile(
+      partsPath,
+      `<?xml version="1.0" encoding="UTF-8"?>
+<model xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02" unit="millimeter"><resources>
+ <object id="1" type="model">${triangleAt(0)}</object>
+ <object id="2" type="model">${triangleAt(100)}</object>
+</resources></model>`,
+    );
+    await fs.writeFile(
+      settingsPath,
+      `<?xml version="1.0" encoding="UTF-8"?>
+<config><object id="9"><metadata key="extruder" value="1"/>
+ <part id="1" subtype="normal_part"><metadata key="extruder" value="1"/></part>
+ <part id="2" subtype="normal_part"><metadata key="extruder" value="2"/></part>
+</object></config>`,
+    );
+    const fixture = path.join(dir, "parts.3mf");
+    await writeZip(fixture, [
+      { arcname: "3D/3dmodel.model", filePath: mainPath },
+      { arcname: "3D/Objects/object_1.model", filePath: partsPath },
+      { arcname: "Metadata/model_settings.config", filePath: settingsPath },
+    ]);
+
+    const plateId = `test-fixture-parts-${Date.now()}`;
+    plateIds.push(plateId);
+    await generateModelPreviewGlb(plateId, fixture);
+    expect(modelPreviewState(plateId)).toBe("ready");
+
+    const meshes = await loadGlbMeshes(plateId);
+    const byName = Object.fromEntries(meshes.map((m) => [m.name, positionsOf(m)]));
+    // One triangle per part -- not both parts under each extruder, as before.
+    expect(byName).toEqual({
+      "extruder-0": [0, 0, 0, 10, 0, 0, 0, 0, -10],
+      "extruder-1": [100, 0, 0, 110, 0, 0, 100, 0, -10],
+    });
+  });
+});
+
+describe("modelPreviewState", () => {
+  const plateIds: string[] = [];
+  const newPlateId = (label: string) => {
+    const id = `test-fixture-state-${label}-${Date.now()}`;
+    plateIds.push(id);
+    return id;
+  };
+
+  afterAll(async () => {
+    for (const id of plateIds) {
+      for (const ext of [".v3.glb", ".v3.error", ".pending"]) await fs.rm(path.join(cacheDir(), `${id}${ext}`), { force: true });
+    }
+  });
+
+  it("says a too-heavy file failed, so the viewer won't parse it in the browser", async () => {
+    let objects = `<object id="1" type="model">${ONE_TRIANGLE_MESH}</object>`;
+    for (let id = 2; id <= 7; id++) objects += `<object id="${id}" type="model">${fanOut(String(id - 1))}</object>`;
+    const fixture = path.join(await fs.mkdtemp(path.join(os.tmpdir(), "thingport-state-")), "heavy.3mf");
+    await buildModelOnly3mf(fixture, singleItemModelXml(objects, "7"));
+    const plateId = newPlateId("heavy");
+    await generateModelPreviewGlb(plateId, fixture);
+    expect(modelPreviewState(plateId)).toBe("failed");
+  });
+
+  it("says a layout it can't read is unsupported, leaving it to the browser's loaders", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "thingport-state-"));
+    const modelPath = path.join(dir, "model.model");
+    await fs.writeFile(modelPath, singleItemModelXml(`<object id="1" type="model">${ONE_TRIANGLE_MESH}</object>`, "1"));
+    const fixture = path.join(dir, "elsewhere.3mf");
+    // Valid per the 3MF spec (the real main-model path comes from _rels/.rels), but not where
+    // this parser looks.
+    await writeZip(fixture, [{ arcname: "3D/model.model", filePath: modelPath }]);
+    const plateId = newPlateId("unsupported");
+    await generateModelPreviewGlb(plateId, fixture);
+    expect(modelPreviewState(plateId)).toBe("unsupported");
+  });
+
+  it("says generating while a render is queued or running", async () => {
+    const fixture = path.join(await fs.mkdtemp(path.join(os.tmpdir(), "thingport-state-")), "ok.3mf");
+    await buildModelOnly3mf(fixture, singleItemModelXml(`<object id="1" type="model">${ONE_TRIANGLE_MESH}</object>`, "1"));
+    const plateId = newPlateId("running");
+    const run = generateModelPreviewGlb(plateId, fixture);
+    expect(modelPreviewState(plateId)).toBe("generating");
+    await run;
+    expect(modelPreviewState(plateId)).toBe("ready");
   });
 });

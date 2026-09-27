@@ -77,7 +77,14 @@ const XRAY_OPACITY = 0.3;
 // Bambu X1/P1/A1's 256x256mm bed -- the stand-in for formats with no bed size of their own.
 const DEFAULT_BED_SIZE = 256;
 
-type ViewErrorKey = "unsupported" | "failed";
+type ViewErrorKey = "unsupported" | "failed" | "tooComplex";
+
+// While the server is still generating a 3MF's preview, the viewer asks again this often, for at
+// most this long (a queued collection import can hold it back a while) -- instead of parsing the
+// raw file in the browser, which for the heavy models that take the server longest is exactly
+// what exhausts the browser's memory.
+const SERVER_PREVIEW_POLL_MS = 3000;
+const SERVER_PREVIEW_WAIT_MS = 10 * 60 * 1000;
 
 const BAMBU_PLATE_COLOR = 0x00ae42;
 
@@ -158,6 +165,7 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
   const rebuildBambuPlateRef = useRef<((plateId: number | null) => void) | null>(null);
   const [viewError, setViewError] = useState<ViewErrorKey | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [waitingForServer, setWaitingForServer] = useState(false);
 
   useEffect(() => {
     let disposed = false;
@@ -167,6 +175,7 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
     const palette = paletteForTheme(theme);
     setViewError(null);
     setIsLoading(true);
+    setWaitingForServer(false);
     const reportError = (key: ViewErrorKey) => {
       if (!disposed) {
         setViewError(key);
@@ -466,13 +475,33 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
 
         const e = (ext || "").toLowerCase();
 
-        // Tries the server pre-rendered GLB cache for a 3MF; returns true if it was used (scene
-        // already fully set up), false if there's no cache yet (or it failed to load) and the
-        // caller should fall back to the live parser exactly as if this function didn't exist.
+        // Tries the server's pre-rendered GLB for a 3MF, waiting while it's still being generated.
+        // Returns true when the server settled it -- the scene is set up, or an error is showing
+        // -- and false when the caller should parse the raw file in the browser instead (see
+        // CachedGlbOutcome's "fallback").
         const tryLoadCachedGlb = async (): Promise<boolean> => {
           if (!previewGlbUrl) return false;
-          const cached = await loadCachedBambuGlb(previewGlbUrl);
-          if (!cached || disposed) return false;
+          const deadline = Date.now() + SERVER_PREVIEW_WAIT_MS;
+          let outcome = await loadCachedBambuGlb(previewGlbUrl);
+          while (outcome.status === "generating") {
+            if (disposed) return true;
+            if (Date.now() > deadline) {
+              reportError("failed");
+              return true;
+            }
+            setWaitingForServer(true);
+            await new Promise((resolve) => setTimeout(resolve, SERVER_PREVIEW_POLL_MS));
+            if (disposed) return true;
+            outcome = await loadCachedBambuGlb(previewGlbUrl);
+          }
+          if (disposed) return true;
+          setWaitingForServer(false);
+          if (outcome.status === "failed") {
+            reportError("tooComplex");
+            return true;
+          }
+          if (outcome.status !== "ready") return false;
+          const cached = outcome.glb;
           cachedGlbRoot = cached.rootGroup;
           buildVolume = cached.buildVolume;
           layoutBuildPlate();
@@ -665,6 +694,11 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
           <Stack alignItems="center" spacing={1.5}>
             <BrandMark theme={theme} size="lg" />
             <CircularProgress size={22} />
+            {waitingForServer && (
+              <Typography variant="caption" color="text.secondary" sx={{ px: 2, textAlign: "center" }}>
+                {t("library:modelViewer.previewPreparing")}
+              </Typography>
+            )}
           </Stack>
         </Box>
       )}
@@ -684,7 +718,9 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
           <Typography variant="body2" fontWeight={600} color="error.light">
             {viewError === "unsupported"
               ? t("library:modelViewer.previewUnsupported")
-              : t("library:modelViewer.previewFailed")}
+              : viewError === "tooComplex"
+                ? t("library:modelViewer.previewTooComplex")
+                : t("library:modelViewer.previewFailed")}
           </Typography>
         </Box>
       )}
