@@ -1,6 +1,7 @@
 ---
 import { getImage } from "astro:assets";
 import "../styles/global.css";
+import CopyCode from "../components/CopyCode.astro";
 import Footer from "../components/Footer.astro";
 import Header from "../components/Header.astro";
 import { SITE_DESCRIPTION, SITE_NAME } from "../lib/site.mjs";
@@ -102,5 +103,6 @@ const graph = {
       <slot />
     </main>
     <Footer />
+    <CopyCode />
   </body>
 </html>

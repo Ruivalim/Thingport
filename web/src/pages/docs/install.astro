@@ -7,7 +7,6 @@ import compose from "../../../../docker-compose.deploy.yml?raw";
 import envExample from "../../../../.env.example?raw";
 
 const headings = [
-  { depth: 2, slug: "quick-install", text: "Quick install" },
   { depth: 2, slug: "requirements", text: "Requirements" },
   { depth: 2, slug: "1-create-the-files", text: "1. Create the files" },
   { depth: 2, slug: "2-start-thingport", text: "2. Start Thingport" },
@@ -31,30 +30,6 @@ const headings = [
     </p>
   </blockquote>
 
-  <h2 id="quick-install">Quick install</h2>
-  <p>
-    On a Linux or macOS machine with Docker, one command sets everything up in a new <code>thingport</code> folder. It
-    downloads the two files below, fills <code>.env</code> with a random <code>AUTH_SECRET</code> and database password,
-    and starts Thingport:
-  </p>
-  <Code
-    code="curl -fsSL https://thingport.net/install.sh | sh"
-    lang="bash"
-    themes={{ light: "github-light", dark: "github-dark" }}
-    defaultColor={false}
-  />
-  <p>
-    To choose the folder, or to use a port other than 80, pass them to the script. You can also
-    <a href={url("install.sh")}>read the script</a> before running it.
-  </p>
-  <Code
-    code={"curl -fsSL https://thingport.net/install.sh | WEB_PORT=8080 sh -s -- ~/thingport"}
-    lang="bash"
-    themes={{ light: "github-light", dark: "github-dark" }}
-    defaultColor={false}
-  />
-  <p>Then carry on from <a href="#3-sign-up">3. Sign up</a>. To set everything up by hand instead, follow the steps below.</p>
-
   <h2 id="requirements">Requirements</h2>
   <ul>
     <li>Docker with the Compose plugin (<code>docker compose version</code> should work).</li>
@@ -63,6 +38,30 @@ const headings = [
       size of your library.
     </li>
   </ul>
+
+  <blockquote id="one-command-install">
+    <p>
+      <strong>Just want to try it?</strong> On Linux or macOS, one command creates a <code>thingport</code> folder with
+      the same two files as step 1, generates the secrets in <code>.env</code> and starts Thingport:
+    </p>
+    <Code
+      code="curl -fsSL https://thingport.net/install.sh | sh"
+      lang="bash"
+      themes={{ light: "github-light", dark: "github-dark" }}
+      defaultColor={false}
+    />
+    <p>It uses port 80 and a <code>thingport</code> folder where you run it. To pick both yourself:</p>
+    <Code
+      code={"curl -fsSL https://thingport.net/install.sh | WEB_PORT=8080 sh -s -- ~/thingport"}
+      lang="bash"
+      themes={{ light: "github-light", dark: "github-dark" }}
+      defaultColor={false}
+    />
+    <p>
+      To change other settings later, edit <code>.env</code> in that folder (see step 1)
+      and run <code>docker compose up -d</code> there again. You can <a href={url("install.sh")}>read the script</a> before running it. Then continue at <a href="#3-sign-up">3. Sign up</a>.
+    </p>
+  </blockquote>
 
   <h2 id="1-create-the-files">1. Create the files</h2>
   <p>Create a folder for Thingport, for example <code>~/thingport</code>, and add these two files to it.</p>
@@ -83,8 +82,8 @@ const headings = [
 
   <h2 id="3-sign-up">3. Sign up</h2>
   <p>
-    Open Thingport in your browser and register. <strong>The first account you register becomes the admin.</strong> Then
-    <a href={url("docs/providers/")}>set up your providers</a> so you can import from MakerWorld and Thingiverse. Printables
+    Open Thingport in your browser
+    and register. <strong>The first account you register becomes the admin.</strong> Then <a href={url("docs/providers/")}>set up your providers</a> so you can import from MakerWorld and Thingiverse. Printables
     works right away.
   </p>
 
