@@ -26,9 +26,15 @@ export async function importSingle({ url, entries, collectionId, resolved, title
   // backend skip its own resolution, the only two places able to trip MakerWorld's CAPTCHA and its
   // 2-hour account-wide lockout. The profile id tells the backend which MakerWorld print profile
   // the file is, so importing another profile of a model already in the library adds it as a
-  // second file instead of being skipped as a duplicate. Omitted when nothing was resolved.
+  // second file instead of being skipped as a duplicate, and the page's design data spares the
+  // backend fetching the model page for its details (often Cloudflare-blocked for a server).
+  // Omitted when nothing was resolved.
   const extra = resolved?.downloadUrl
-    ? { resolved_download_url: resolved.downloadUrl, resolved_instance_id: resolved.instanceId || null }
+    ? {
+        resolved_download_url: resolved.downloadUrl,
+        resolved_instance_id: resolved.instanceId || null,
+        makerworld_design: resolved.design ?? null,
+      }
     : null;
 
   let print: Print | null;

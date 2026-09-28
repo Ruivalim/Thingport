@@ -18,7 +18,9 @@ export type RecentImport = {
 
 /** A MakerWorld file URL resolved from the live page, with the print profile it belongs to (null
  *  when unknown). See content/makerworld/downloadResolver.ts. */
-export type ResolvedDownload = { downloadUrl: string; instanceId: string | null };
+/** `design` is the page's own design data for the import (see makerworldDesignForImport) --
+ *  absent when the page data couldn't be trusted to be this model's. */
+export type ResolvedDownload = { downloadUrl: string; instanceId: string | null; design?: Record<string, unknown> | null };
 
 export type ImportSinglePayload = {
   url: string;

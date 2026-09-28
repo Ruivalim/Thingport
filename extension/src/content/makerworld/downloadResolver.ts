@@ -11,7 +11,7 @@
 import type { ResolvedDownload } from "../../shared/messages";
 import { send } from "../../shared/messages";
 import { parseMakerworldModelUrl } from "../../shared/urls";
-import { pickMakerworldInstanceId, readMakerworldDesignForPage } from "./pageData";
+import { makerworldDesignForImport, pickMakerworldInstanceId, readMakerworldDesignForPage } from "./pageData";
 
 // Mirrors every outbound fetch on the backend side (all built on an AbortController timeout) -- a
 // plain fetch() has no timeout at all, so a MakerWorld endpoint that stalls or holds an interactive
@@ -92,12 +92,14 @@ async function resolveFromPageApi(pageUrl: string): Promise<ResolvedDownload | n
   const instanceId = pickMakerworldInstanceId(design, page.requestedInstanceId);
   if (instanceId) {
     const downloadUrl = await fetchInstanceDownloadUrl(instanceId, nonce);
-    if (downloadUrl) return { downloadUrl, instanceId };
+    if (downloadUrl) return { downloadUrl, instanceId, design: makerworldDesignForImport(design) };
   }
   // Model-level, i.e. the default profile's file.
   const apiUrl = `https://makerworld.com/api/v1/models/${String(design.id)}/download`;
   const downloadUrl = extractDownloadUrl(await fetchMakerworldApiJson(apiUrl, nonce));
-  return downloadUrl ? { downloadUrl, instanceId: pickMakerworldInstanceId(design, null) } : null;
+  return downloadUrl
+    ? { downloadUrl, instanceId: pickMakerworldInstanceId(design, null), design: makerworldDesignForImport(design) }
+    : null;
 }
 
 /** The single entry point: tries the real-click capture first (not a guess, so far higher
@@ -110,7 +112,11 @@ export async function resolveMakerworldDownloadUrl(pageUrl: string): Promise<Res
     // hash. Without trustworthy page data, the hash is all there is to go on.
     const page = readMakerworldDesignForPage(pageUrl);
     if (!page) return { downloadUrl: viaClick, instanceId: parseMakerworldModelUrl(pageUrl)?.requestedInstanceId ?? null };
-    return { downloadUrl: viaClick, instanceId: pickMakerworldInstanceId(page.design, page.requestedInstanceId) };
+    return {
+      downloadUrl: viaClick,
+      instanceId: pickMakerworldInstanceId(page.design, page.requestedInstanceId),
+      design: makerworldDesignForImport(page.design),
+    };
   }
   return resolveFromPageApi(pageUrl).catch(() => null);
 }
@@ -122,5 +128,5 @@ export async function resolveMakerworldProfileDownload(pageUrl: string, instance
   const page = readMakerworldDesignForPage(pageUrl);
   if (!page) return null;
   const downloadUrl = await fetchInstanceDownloadUrl(instanceId, page.nonce).catch(() => null);
-  return downloadUrl ? { downloadUrl, instanceId } : null;
+  return downloadUrl ? { downloadUrl, instanceId, design: makerworldDesignForImport(page.design) } : null;
 }

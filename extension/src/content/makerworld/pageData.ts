@@ -112,6 +112,29 @@ export function makerworldProfileIds(design: MakerworldDesign, scope: Makerworld
   return [primary, ...wanted.filter((id) => id !== primary)];
 }
 
+// A design's details past this size (a very long description, say) aren't sent -- the request
+// would outgrow the backend's JSON body limit, and the backend reads the page itself instead.
+const MAX_IMPORT_DESIGN_CHARS = 64 * 1024;
+
+/** The parts of the page's design an import uses -- title, tags, description, creator, cover,
+ *  gallery, categories -- sent with the import so the backend doesn't have to fetch this page
+ *  again for them (see the backend's makerworldMetaFromExtension). Null when too big to send. */
+export function makerworldDesignForImport(design: MakerworldDesign): Record<string, unknown> | null {
+  const source = design as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const key of ["id", "title", "tags", "summary", "coverUrl", "coverPortrait", "coverLandscape", "designCreator"]) {
+    if (source[key] !== undefined) out[key] = source[key];
+  }
+  const pictures = getPath(source, "designExtension", "design_pictures");
+  if (Array.isArray(pictures)) {
+    out.designExtension = {
+      design_pictures: pictures.map((picture) => ({ name: getPath(picture, "name"), url: getPath(picture, "url") })),
+    };
+  }
+  if (Array.isArray(source.categories)) out.categories = source.categories.map((category) => ({ id: getPath(category, "id") }));
+  return JSON.stringify(out).length <= MAX_IMPORT_DESIGN_CHARS ? out : null;
+}
+
 /** The title of the print profile named in the page URL's hash -- null when there's no hash or
  *  the page data is stale (see readMakerworldDesignForPage). */
 export function currentMakerworldProfileTitle(pageUrl: string): string | null {
