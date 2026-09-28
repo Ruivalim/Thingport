@@ -1,9 +1,8 @@
 import { IMPORT_BROWSER_USER_AGENT, IMPORT_TIMEOUT_SECONDS } from "../config";
 import { extractJsonFromBrowserBody, fetchViaFlaresolverr, isFlaresolverrEnabled, looksLikeCloudflareBlock } from "./flaresolverr";
 import {
-  decodeHtmlEntities,
-  htmlToPlainText,
   makerworldAuthorFromDesignCreator,
+  makerworldMetaFromDesign,
   type ImportedAuthorInfo,
   type ImportedPageMetadata,
 } from "./importResolvers";
@@ -343,46 +342,6 @@ export async function fetchMakerworldDesign(
   return result.status === 200 && isRecord(result.data) ? result.data : null;
 }
 
-export type MakerworldGalleryImage = { url: string; filename: string };
-
-/** The model page's photo gallery -- design.designExtension.design_pictures -- distinct from
- * coverUrl/coverPortrait/coverLandscape, which are just crops of the same single cover image
- * for different UI contexts. Confirmed live: a model can have several of these (renders and/or
- * isRealLifePhoto: 1 real-world photos of the print). */
-function extractGalleryImages(design: Record<string, unknown>): MakerworldGalleryImage[] {
-  const extension = design.designExtension;
-  if (!isRecord(extension)) return [];
-  const pictures = extension.design_pictures;
-  if (!Array.isArray(pictures)) return [];
-  const images: MakerworldGalleryImage[] = [];
-  for (const picture of pictures) {
-    if (!isRecord(picture)) continue;
-    const url = typeof picture.url === "string" ? picture.url.trim() : "";
-    if (!url) continue;
-    const filename = typeof picture.name === "string" && picture.name.trim() ? picture.name.trim() : null;
-    images.push({ url, filename: filename ?? url.split("/").pop() ?? "preview.jpg" });
-  }
-  return images;
-}
-
-/** design.categories -- a flat array of `{id, name, ...}` objects, most-specific first (e.g.
- * "Cosplay Weapons" then its parent "Props & Cosplays"). Used to auto-land the import into a
- * Category whose makerworldCatIds overlaps one of these (see importService.ts's
- * resolveCategoryIdByCategory); every id is kept, not just the first, so a category configured for
- * either the specific or the parent category still matches. */
-function extractCategoryIds(design: Record<string, unknown>): number[] {
-  const categories = design.categories;
-  if (!Array.isArray(categories)) return [];
-  const ids: number[] = [];
-  for (const category of categories) {
-    if (!isRecord(category)) continue;
-    const id = category.id;
-    if (typeof id === "number" && Number.isInteger(id)) ids.push(id);
-    else if (typeof id === "string" && /^\d+$/.test(id)) ids.push(Number(id));
-  }
-  return ids;
-}
-
 /**
  * Resolves a MakerWorld design to a real, directly-downloadable (signed S3) URL entirely
  * through api.bambulab.com -- no Cloudflare, no cookie-gated web session, no HTML scraping.
@@ -451,31 +410,16 @@ export async function resolveMakerworldViaCloudApi(
   const body = downloadResult.data;
   if (body.message !== "success" || typeof body.url !== "string" || !body.url.trim()) return null;
 
-  const tags = Array.isArray(design.tags)
-    ? design.tags.filter((tag): tag is string => typeof tag === "string" && tag.trim().length > 0).map((tag) => tag.trim())
-    : [];
-  const summary = typeof design.summary === "string" ? design.summary : null;
-  const designCreator = isRecord(design.designCreator) ? design.designCreator : null;
-  const creator = designCreator ? pickString(designCreator, ["nickName", "name", "handle"]) : null;
-  const previewImageUrl = pickString(design, ["coverUrl", "coverPortrait", "coverLandscape"]);
-  const title = pickString(design, ["title"]);
-  const galleryImages = extractGalleryImages(design);
-  const author = await completeMakerworldAuthor(makerworldAuthorFromDesignCreator(designCreator), paceMs);
-  const siteCategoryIds = extractCategoryIds(design);
+  const meta = makerworldMetaFromDesign(design);
+  const author = await completeMakerworldAuthor(meta.author, paceMs);
 
   return {
     downloadUrl: body.url,
     meta: {
-      title: title ? decodeHtmlEntities(title) : null,
-      tags,
-      description: summary ? htmlToPlainText(summary) : null,
-      creator: author?.name ?? creator,
-      previewImageUrl,
+      ...meta,
+      creator: author?.name ?? meta.creator,
       filename: pickString(body, ["filename"]),
-      galleryImages,
       author,
-      siteCategoryIds,
-      categorySite: siteCategoryIds.length ? "makerworld" : null,
       makerworldProfile: { instanceId: selected.id != null ? String(selected.id) : null },
     },
   };

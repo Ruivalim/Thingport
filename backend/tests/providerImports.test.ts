@@ -298,6 +298,9 @@ describe("importing from MakerWorld", () => {
             tags: ["benchy", "calibration"],
             coverUrl: "https://makerworld.bblmw.com/makerworld/model/benchy/cover.jpg",
             designCreator: creator,
+            designExtension: {
+              design_pictures: [{ name: "side.jpg", url: "https://makerworld.bblmw.com/makerworld/model/benchy/side.jpg" }],
+            },
             defaultInstanceId: Number(instanceId),
             instances: [{ id: Number(instanceId), title: "0.2mm layer" }],
           },
@@ -312,7 +315,7 @@ describe("importing from MakerWorld", () => {
     descriptionIncludes: "classic calibration boat",
     tags: ["Benchy", "Calibration"],
     author: { id: `makerworld:${creator.uid}`, name: creator.name, avatarUrl: creator.avatar },
-    previewImages: 1,
+    previewImages: 2,
     filename: "benchy.3mf",
     ...overrides,
   });
@@ -330,6 +333,7 @@ describe("importing from MakerWorld", () => {
         json({ name: "benchy.3mf", url: "https://makerworld.bblmw.com/makerworld/model/benchy/benchy.3mf" }),
       "https://makerworld.bblmw.com/makerworld/model/benchy/benchy.3mf": threeMf,
       "https://makerworld.bblmw.com/makerworld/model/benchy/cover.jpg": png,
+      "https://makerworld.bblmw.com/makerworld/model/benchy/side.jpg": png,
     });
 
     const res = await request(app).post("/api/import").set(auth()).send({ url: `https://makerworld.com/en/models/${designId}-classic-benchy` });
@@ -346,6 +350,7 @@ describe("importing from MakerWorld", () => {
       "https://makerworld.com/api/v1/design-user-service/user/profile/": cloudflareChallenge,
       "https://makerworld.bblmw.com/makerworld/model/benchy/benchy.3mf": threeMf,
       "https://makerworld.bblmw.com/makerworld/model/benchy/cover.jpg": png,
+      "https://makerworld.bblmw.com/makerworld/model/benchy/side.jpg": png,
     });
 
     const res = await request(app)
@@ -404,7 +409,7 @@ describe("importing from MakerWorld", () => {
       .set(auth())
       .send({ url: `https://makerworld.com/en/models/${designId}-classic-benchy`, makerworld_cookie: "token=test-bearer-token" });
     expect(res.status).toBe(200);
-    await expectFullyImported(res.body.id, expected({ previewImages: 2 }));
+    await expectFullyImported(res.body.id, expected());
   }
 
   it("from the web app with a MakerWorld login: uses MakerWorld's API, with the full author profile when reachable", async () => {

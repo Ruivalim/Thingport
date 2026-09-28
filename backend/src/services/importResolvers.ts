@@ -375,25 +375,78 @@ function makerworldDesignIdFromNextData(data: unknown): string | null {
   return designId ? String(designId) : null;
 }
 
-function makerworldTitleFromNextData(data: unknown): string | null {
-  const title = getPath(data, "props", "pageProps", "design", "title");
-  return typeof title === "string" && title.trim() ? title.trim() : null;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
 }
 
-function makerworldTagsFromNextData(data: unknown): string[] {
-  const tags = getPath(data, "props", "pageProps", "design", "tags");
-  if (!Array.isArray(tags)) return [];
-  return tags.filter((tag): tag is string => typeof tag === "string" && tag.trim().length > 0).map((tag) => tag.trim());
-}
-
-function makerworldCreatorFromNextData(data: unknown): string | null {
-  const creator = getPath(data, "props", "pageProps", "design", "designCreator") as Record<string, unknown> | undefined;
-  if (!creator) return null;
-  for (const key of ["nickName", "name", "handle"]) {
-    const value = creator[key];
+function pickDesignString(source: Record<string, unknown>, keys: string[]): string | null {
+  for (const key of keys) {
+    const value = source[key];
     if (typeof value === "string" && value.trim()) return value.trim();
   }
   return null;
+}
+
+/** The model page's photo gallery -- design.designExtension.design_pictures -- distinct from
+ * coverUrl/coverPortrait/coverLandscape, which are just crops of the same single cover image
+ * for different UI contexts. Confirmed live: a model can have several of these (renders and/or
+ * isRealLifePhoto: 1 real-world photos of the print). */
+function makerworldGalleryImages(design: Record<string, unknown>): { url: string; filename: string }[] {
+  const extension = design.designExtension;
+  if (!isRecord(extension)) return [];
+  const pictures = extension.design_pictures;
+  if (!Array.isArray(pictures)) return [];
+  const images: { url: string; filename: string }[] = [];
+  for (const picture of pictures) {
+    if (!isRecord(picture)) continue;
+    const url = typeof picture.url === "string" ? picture.url.trim() : "";
+    if (!url) continue;
+    const filename = typeof picture.name === "string" && picture.name.trim() ? picture.name.trim() : null;
+    images.push({ url, filename: filename ?? url.split("/").pop() ?? "preview.jpg" });
+  }
+  return images;
+}
+
+/** design.categories -- a flat array of `{id, name, ...}` objects, most-specific first (e.g.
+ * "Cosplay Weapons" then its parent "Props & Cosplays"). Used to auto-land the import into a
+ * Category whose makerworldCatIds overlaps one of these (see importService.ts's
+ * resolveCategoryIdByCategory); every id is kept, not just the first, so a category configured for
+ * either the specific or the parent category still matches. */
+function makerworldCategoryIds(design: Record<string, unknown>): number[] {
+  const categories = design.categories;
+  if (!Array.isArray(categories)) return [];
+  const ids: number[] = [];
+  for (const category of categories) {
+    if (!isRecord(category)) continue;
+    const id = category.id;
+    if (typeof id === "number" && Number.isInteger(id)) ids.push(id);
+    else if (typeof id === "string" && /^\d+$/.test(id)) ids.push(Number(id));
+  }
+  return ids;
+}
+
+/** Everything a MakerWorld design object says about the model -- the same shape whichever way
+ * it was got: the api.bambulab.com design API, the model page's __NEXT_DATA__ (fetched by the
+ * backend), or that same page data sent by the Thingport Grab extension. The author is only the
+ * design's short creator summary (see makerworldAuthorFromDesignCreator); the download-specific
+ * fields (filename, makerworldProfile) are left for the caller. */
+export function makerworldMetaFromDesign(design: unknown): ImportedPageMetadata {
+  const meta = emptyImportedPageMetadata();
+  if (!isRecord(design)) return meta;
+  const title = pickDesignString(design, ["title"]);
+  meta.title = title ? decodeHtmlEntities(title) : null;
+  meta.tags = Array.isArray(design.tags)
+    ? design.tags.filter((tag): tag is string => typeof tag === "string" && tag.trim().length > 0).map((tag) => tag.trim())
+    : [];
+  meta.description = typeof design.summary === "string" && design.summary.trim() ? htmlToPlainText(design.summary) : null;
+  const designCreator = isRecord(design.designCreator) ? design.designCreator : null;
+  meta.creator = designCreator ? pickDesignString(designCreator, ["nickName", "name", "handle"]) : null;
+  meta.author = makerworldAuthorFromDesignCreator(designCreator);
+  meta.previewImageUrl = pickDesignString(design, ["coverUrl", "coverPortrait", "coverLandscape"]);
+  meta.galleryImages = makerworldGalleryImages(design);
+  meta.siteCategoryIds = makerworldCategoryIds(design);
+  meta.categorySite = meta.siteCategoryIds.length ? "makerworld" : null;
+  return meta;
 }
 
 /** An author record from MakerWorld's own summary of a design's creator (design.designCreator --
@@ -427,14 +480,6 @@ export function makerworldAuthorFromDesignCreator(creator: unknown): ImportedAut
   };
 }
 
-function makerworldCoverUrlFromNextData(data: unknown): string | null {
-  for (const key of ["coverUrl", "coverPortrait", "coverLandscape"]) {
-    const value = getPath(data, "props", "pageProps", "design", key);
-    if (typeof value === "string" && value.trim()) return value.trim();
-  }
-  return null;
-}
-
 export function decodeHtmlEntities(value: string): string {
   return value
     .replace(/&nbsp;/g, " ")
@@ -461,12 +506,6 @@ export function htmlToPlainText(html: string): string | null {
     .replace(/\n{3,}/g, "\n\n")
     .trim();
   return text || null;
-}
-
-function makerworldDescriptionFromNextData(data: unknown): string | null {
-  const summary = getPath(data, "props", "pageProps", "design", "summary");
-  if (typeof summary !== "string" || !summary.trim()) return null;
-  return htmlToPlainText(summary);
 }
 
 function genericTitleFromHtml(html: string): string | null {
@@ -540,24 +579,18 @@ export function emptyImportedPageMetadata(): ImportedPageMetadata {
 }
 
 /** Best-effort metadata for a landing page, used to fill in the Print when the caller didn't
- * supply a field explicitly. MakerWorld exposes title/tags/summary/creator/cover image directly
- * on the design object in its NEXT_DATA blob; everywhere else only title is filled in, via the
+ * supply a field explicitly. MakerWorld exposes title/tags/summary/creator/cover image/gallery
+ * directly on the design object in its NEXT_DATA blob (see makerworldMetaFromDesign); everywhere else only title is filled in, via the
  * page's og:title/<title> (still far more useful than the internal filename of whatever the
  * page links to). */
 export function extractPageMetadata(html: string, pageHost: string): ImportedPageMetadata {
   const meta = emptyImportedPageMetadata();
   if (pageHost.endsWith("makerworld.com")) {
-    const nextData = extractNextDataJson(html);
-    if (nextData) {
-      meta.title = makerworldTitleFromNextData(nextData);
-      meta.tags = makerworldTagsFromNextData(nextData);
-      meta.description = makerworldDescriptionFromNextData(nextData);
-      meta.creator = makerworldCreatorFromNextData(nextData);
-      meta.author = makerworldAuthorFromDesignCreator(getPath(nextData, "props", "pageProps", "design", "designCreator"));
-      meta.previewImageUrl = makerworldCoverUrlFromNextData(nextData);
-    }
+    const fromDesign = makerworldMetaFromDesign(getPath(extractNextDataJson(html), "props", "pageProps", "design"));
+    if (!fromDesign.title) fromDesign.title = genericTitleFromHtml(html);
+    return fromDesign;
   }
-  if (!meta.title) meta.title = genericTitleFromHtml(html);
+  meta.title = genericTitleFromHtml(html);
   return meta;
 }
 
