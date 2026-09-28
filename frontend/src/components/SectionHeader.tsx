@@ -16,10 +16,18 @@ export default function SectionHeader({ title, subtitle, onBack, backLabel }: Pr
   return (
     <Stack direction="row" alignItems="flex-start" justifyContent="space-between" gap={2} flexWrap="wrap">
       <Box>
-        <Typography variant="h5" fontWeight={600}>{title}</Typography>
-        <Typography variant="body2" color="text.secondary">{subtitle}</Typography>
+        <Typography variant="h5" fontWeight={600}>
+          {title}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          {subtitle}
+        </Typography>
       </Box>
-      {onBack && <Button variant="outlined" size="small" onClick={onBack}>{backLabel}</Button>}
+      {onBack && (
+        <Button variant="outlined" size="small" onClick={onBack}>
+          {backLabel}
+        </Button>
+      )}
     </Stack>
   );
 }

@@ -82,7 +82,7 @@ export default function PreviewToolbar({
           value={cameraView}
           onChange={(_, value: CameraView | null) => onCameraView(value ?? cameraView)}
         >
-          {CAMERA_VIEWS.map(view => (
+          {CAMERA_VIEWS.map((view) => (
             <ToggleButton key={view} value={view} sx={{ px: 1.25, py: 0.5, textTransform: "none" }}>
               {t(`models:detail.previewToolbar.${view}`)}
             </ToggleButton>
@@ -97,7 +97,7 @@ export default function PreviewToolbar({
           value={renderStyle}
           onChange={(_, value: RenderStyle | null) => value && onRenderStyleChange(value)}
         >
-          {RENDER_STYLES.map(style => (
+          {RENDER_STYLES.map((style) => (
             <ToggleButton key={style} value={style} sx={{ px: 1.25, py: 0.5, textTransform: "none" }}>
               {t(`models:detail.previewToolbar.${style}`)}
             </ToggleButton>
@@ -121,7 +121,7 @@ export default function PreviewToolbar({
                     height: 22,
                     borderRadius: "50%",
                     bgcolor: value,
-                    boxShadow: theme =>
+                    boxShadow: (theme) =>
                       selected
                         ? `0 0 0 2px ${theme.palette.background.paper}, 0 0 0 4px ${theme.palette.text.primary}`
                         : `inset 0 0 0 1px rgba(0, 0, 0, 0.2)`,

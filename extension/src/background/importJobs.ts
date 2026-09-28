@@ -15,7 +15,13 @@ export async function pollJobToCompletion(jobId: string): Promise<ImportJob> {
 
 /** One message covering import and collection filing, so both complete even if the tab navigates
  *  away: the background outlives the content script. */
-export async function importSingle({ url, entries, collectionId, resolved, title }: ImportSinglePayload): Promise<Print | null> {
+export async function importSingle({
+  url,
+  entries,
+  collectionId,
+  resolved,
+  title,
+}: ImportSinglePayload): Promise<Print | null> {
   // A page-resolved download lets the backend skip the resolution calls that trip MakerWorld's
   // CAPTCHA. The profile id lets another profile of an existing model be added as a file.
   const extra = resolved?.downloadUrl

@@ -78,7 +78,7 @@ As a developer-mode "unpacked" extension, until the Chrome Web Store listing is 
 
 ### Firefox
 
-Firefox refuses to install *any* unsigned extension outside of Developer Edition/Nightly, even for
+Firefox refuses to install _any_ unsigned extension outside of Developer Edition/Nightly, even for
 local/unpacked use -- so unlike Chrome, this needs an actual Mozilla-signed build, not just a zip.
 CI signs one on every push to `main` (see [Releases](CONTRIBUTING.md#releases-ci) in the
 development guide):
@@ -149,4 +149,3 @@ The extension is TypeScript and SCSS, built per browser with esbuild. See
 **[CONTRIBUTING.md](CONTRIBUTING.md)** for the development setup, the code layout, building and
 packaging for the Chrome Web Store, Edge Add-ons and addons.mozilla.org, and how the screenshots
 above are generated.
-

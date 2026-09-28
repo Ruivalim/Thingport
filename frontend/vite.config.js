@@ -27,10 +27,7 @@ function parseAllowedHosts(value, extras = []) {
 
   if (!merged.length) return true;
 
-  if (
-    merged.length === 1 &&
-    ["*", "true", "1"].includes(merged[0].toLowerCase())
-  ) {
+  if (merged.length === 1 && ["*", "true", "1"].includes(merged[0].toLowerCase())) {
     return true;
   }
 
@@ -38,9 +35,7 @@ function parseAllowedHosts(value, extras = []) {
 }
 
 const resolvedAllowedHosts = parseAllowedHosts(
-  process.env.VITE_ALLOWED_HOSTS ||
-    process.env.ALLOWED_HOSTS ||
-    process.env.CORS_ORIGINS,
+  process.env.VITE_ALLOWED_HOSTS || process.env.ALLOWED_HOSTS || process.env.CORS_ORIGINS,
 );
 
 export default defineConfig({

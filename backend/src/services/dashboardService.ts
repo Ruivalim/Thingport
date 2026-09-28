@@ -114,9 +114,7 @@ async function fetchTopAuthors(userId: string, limit: number): Promise<Dashboard
     where: { userId, authorId: { not: null } },
     _count: true,
   });
-  const top = grouped
-    .toSorted((a, b) => b._count - a._count)
-    .slice(0, limit);
+  const top = grouped.toSorted((a, b) => b._count - a._count).slice(0, limit);
   if (!top.length) return [];
   const authorIds = top.map((g) => g.authorId as string);
   const authors = await prisma.author.findMany({ where: { id: { in: authorIds } } });
@@ -153,18 +151,27 @@ async function fetchTopProviders(userId: string): Promise<DashboardProvider[]> {
 }
 
 export async function getDashboardSummary(userId: string): Promise<DashboardSummary> {
-  const [collectionCount, modelCount, authorGroups, categoryCount, topViewed, topPrinted, topAuthors, topProviders, recentlyAdded] =
-    await Promise.all([
-      prisma.collection.count({ where: { userId } }),
-      prisma.print.count({ where: { userId } }),
-      prisma.print.groupBy({ by: ["authorId"], where: { userId, authorId: { not: null } } }),
-      prisma.category.count({ where: { userId } }),
-      fetchTopViewed(userId, TOP_MODELS_PREVIEW),
-      fetchTopPrinted(userId, TOP_MODELS_PREVIEW),
-      fetchTopAuthors(userId, TOP_AUTHORS_PREVIEW),
-      fetchTopProviders(userId),
-      fetchRecentlyAdded(userId, RECENTLY_ADDED_LIMIT),
-    ]);
+  const [
+    collectionCount,
+    modelCount,
+    authorGroups,
+    categoryCount,
+    topViewed,
+    topPrinted,
+    topAuthors,
+    topProviders,
+    recentlyAdded,
+  ] = await Promise.all([
+    prisma.collection.count({ where: { userId } }),
+    prisma.print.count({ where: { userId } }),
+    prisma.print.groupBy({ by: ["authorId"], where: { userId, authorId: { not: null } } }),
+    prisma.category.count({ where: { userId } }),
+    fetchTopViewed(userId, TOP_MODELS_PREVIEW),
+    fetchTopPrinted(userId, TOP_MODELS_PREVIEW),
+    fetchTopAuthors(userId, TOP_AUTHORS_PREVIEW),
+    fetchTopProviders(userId),
+    fetchRecentlyAdded(userId, RECENTLY_ADDED_LIMIT),
+  ]);
 
   return {
     collectionCount,

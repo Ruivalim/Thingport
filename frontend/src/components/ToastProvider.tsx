@@ -20,13 +20,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = React.useState(false);
 
   const showToast = React.useCallback((options: ToastOptions) => {
-    setQueue(prev => [...prev, { ...options, key: nextKey++ }]);
+    setQueue((prev) => [...prev, { ...options, key: nextKey++ }]);
   }, []);
 
   React.useEffect(() => {
     if (queue.length && !current) {
       setCurrent(queue[0]);
-      setQueue(prev => prev.slice(1));
+      setQueue((prev) => prev.slice(1));
       setOpen(true);
     } else if (queue.length && current && open) {
       setOpen(false);
@@ -49,7 +49,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         slotProps={{ transition: { onExited: () => setCurrent(null) } }}
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       >
-        <Alert onClose={() => setOpen(false)} severity={current?.severity ?? "success"} variant="filled" sx={{ width: "100%" }}>
+        <Alert
+          onClose={() => setOpen(false)}
+          severity={current?.severity ?? "success"}
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
           {current?.message}
         </Alert>
       </Snackbar>

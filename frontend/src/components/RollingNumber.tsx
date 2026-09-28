@@ -29,7 +29,7 @@ export default function RollingNumber({ value }: Props) {
   useEffect(() => {
     if (value === lastValueRef.current) return;
     setOutgoing(lastValueRef.current);
-    setRollKey(k => k + 1);
+    setRollKey((k) => k + 1);
     lastValueRef.current = value;
   }, [value]);
 

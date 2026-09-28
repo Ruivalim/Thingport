@@ -136,16 +136,24 @@ describe("MakerWorld print profiles", () => {
   }
 
   async function createLegacyPrint(contents: string) {
-    const uploadRes = await request(app).post("/api/upload").set(auth()).attach("files", tmpFile("legacy-profile.stl", contents));
+    const uploadRes = await request(app)
+      .post("/api/upload")
+      .set(auth())
+      .attach("files", tmpFile("legacy-profile.stl", contents));
     expect(uploadRes.status).toBe(200);
     const printId = uploadRes.body.prints[0].id as string;
-    await prisma.print.update({ where: { id: printId }, data: { sourceProvider: "makerworld", sourceExternalId: designId } });
+    await prisma.print.update({
+      where: { id: printId },
+      data: { sourceProvider: "makerworld", sourceExternalId: designId },
+    });
     return printId;
   }
 
   afterEach(async () => {
     global.fetch = originalFetch;
-    const prints = await prisma.print.findMany({ where: { userId, sourceProvider: "makerworld", sourceExternalId: designId } });
+    const prints = await prisma.print.findMany({
+      where: { userId, sourceProvider: "makerworld", sourceExternalId: designId },
+    });
     for (const print of prints) await request(app).delete(`/api/print/${print.id}`).set(auth());
   });
 
@@ -173,7 +181,11 @@ describe("MakerWorld print profiles", () => {
       request(app)
         .post("/api/import")
         .set(auth())
-        .send({ url, resolved_download_url: `https://makerworld.com/files/profile-${instanceId}.stl`, resolved_instance_id: instanceId });
+        .send({
+          url,
+          resolved_download_url: `https://makerworld.com/files/profile-${instanceId}.stl`,
+          resolved_instance_id: instanceId,
+        });
 
     expect((await post(pageUrl, "100")).body.import_outcome).toBe("created");
     expect((await post(`${pageUrl}#profileId-200`, "200")).body.import_outcome).toBe("profile_added");

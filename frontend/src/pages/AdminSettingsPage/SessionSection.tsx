@@ -67,7 +67,9 @@ export default function SessionSection({ onUnauthorized }: Props) {
         if (active) setLoading(false);
       }
     })();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [onUnauthorized]);
 
   const parsed = Number.parseInt(draft, 10);
@@ -97,10 +99,7 @@ export default function SessionSection({ onUnauthorized }: Props) {
 
   return (
     <Stack spacing={3}>
-      <SectionHeader
-        title={t("adminSettings.session.heading")}
-        subtitle={t("adminSettings.session.subtitle")}
-      />
+      <SectionHeader title={t("adminSettings.session.heading")} subtitle={t("adminSettings.session.subtitle")} />
       <Paper variant="outlined" sx={{ p: 2.5 }}>
         <Stack spacing={2}>
           <Alert severity="info">
@@ -112,13 +111,15 @@ export default function SessionSection({ onUnauthorized }: Props) {
             type="number"
             label={t("adminSettings.session.tokenTtlLabel")}
             value={draft}
-            onChange={e => setDraft(e.target.value)}
+            onChange={(e) => setDraft(e.target.value)}
             error={draft !== "" && !isValid}
             helperText={
               draft !== "" && !isValid
                 ? t("adminSettings.session.invalid")
                 : preview
-                  ? t("adminSettings.session.approx", { value: t(`adminSettings.session.units.${preview.unit}`, { count: preview.value }) })
+                  ? t("adminSettings.session.approx", {
+                      value: t(`adminSettings.session.units.${preview.unit}`, { count: preview.value }),
+                    })
                   : t("adminSettings.session.tokenTtlHelp")
             }
             disabled={loading || saving}
@@ -131,10 +132,18 @@ export default function SessionSection({ onUnauthorized }: Props) {
               {saving ? t("adminSettings.session.saving") : t("adminSettings.session.save")}
             </Button>
             {saving && <CircularProgress size={14} />}
-            {status && <Typography variant="caption" color="text.secondary">{status}</Typography>}
+            {status && (
+              <Typography variant="caption" color="text.secondary">
+                {status}
+              </Typography>
+            )}
           </Stack>
 
-          {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
+          {error && (
+            <Alert severity="error" onClose={() => setError(null)}>
+              {error}
+            </Alert>
+          )}
         </Stack>
       </Paper>
     </Stack>

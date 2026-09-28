@@ -180,9 +180,7 @@ function AppLayoutShell({
             onOpenProfile={onOpenProfile}
             onLogout={onLogout}
           />
-          <PageHeaderContext.Provider value={setPageHeader}>
-            {children}
-          </PageHeaderContext.Provider>
+          <PageHeaderContext.Provider value={setPageHeader}>{children}</PageHeaderContext.Provider>
         </Box>
       </Box>
       <ImportProgressBar />

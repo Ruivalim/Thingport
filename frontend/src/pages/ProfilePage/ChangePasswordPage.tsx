@@ -65,8 +65,16 @@ export default function ChangePasswordPage({ onUnauthorized }: Props) {
         backLabel={t("profile.backToProfile")}
       />
 
-      {status && <Alert severity="success" onClose={() => setStatus(null)}>{status}</Alert>}
-      {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
+      {status && (
+        <Alert severity="success" onClose={() => setStatus(null)}>
+          {status}
+        </Alert>
+      )}
+      {error && (
+        <Alert severity="error" onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
 
       <Box component="form" onSubmit={handleSubmit}>
         <Stack spacing={2}>
@@ -74,7 +82,7 @@ export default function ChangePasswordPage({ onUnauthorized }: Props) {
             type="password"
             label={t("profile.currentPasswordLabel")}
             value={currentPassword}
-            onChange={e => setCurrentPassword(e.target.value)}
+            onChange={(e) => setCurrentPassword(e.target.value)}
             autoComplete="current-password"
             required
             fullWidth
@@ -84,7 +92,7 @@ export default function ChangePasswordPage({ onUnauthorized }: Props) {
             type="password"
             label={t("profile.newPasswordLabel")}
             value={newPassword}
-            onChange={e => setNewPassword(e.target.value)}
+            onChange={(e) => setNewPassword(e.target.value)}
             autoComplete="new-password"
             helperText={t("auth.register.passwordHelp")}
             required
@@ -95,7 +103,7 @@ export default function ChangePasswordPage({ onUnauthorized }: Props) {
             type="password"
             label={t("profile.confirmNewPasswordLabel")}
             value={confirmPassword}
-            onChange={e => setConfirmPassword(e.target.value)}
+            onChange={(e) => setConfirmPassword(e.target.value)}
             autoComplete="new-password"
             required
             fullWidth

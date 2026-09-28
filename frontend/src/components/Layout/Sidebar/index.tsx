@@ -53,7 +53,12 @@ function navRowSx(selected: boolean) {
   };
 }
 
-function CollapsedNavIcon({ icon, label, selected, onClick }: {
+function CollapsedNavIcon({
+  icon,
+  label,
+  selected,
+  onClick,
+}: {
   icon: React.ReactNode;
   label: string;
   selected: boolean;
@@ -66,9 +71,7 @@ function CollapsedNavIcon({ icon, label, selected, onClick }: {
         onClick={onClick}
         sx={{ borderRadius: 1, mb: 0.5, justifyContent: "center", px: 0, ...navRowSx(selected) }}
       >
-        <ListItemIcon sx={{ minWidth: 0 }}>
-          {icon}
-        </ListItemIcon>
+        <ListItemIcon sx={{ minWidth: 0 }}>{icon}</ListItemIcon>
       </ListItemButton>
     </Tooltip>
   );
@@ -102,25 +105,37 @@ export default function Sidebar({ isAdmin, onSelectCategory, bookmarksVersion }:
 
   useEffect(() => {
     let cancelled = false;
-    bookmarksApi.list()
-      .then(entries => { if (!cancelled) setBookmarks(entries); })
-      .catch(() => { /* non-critical nav aid -- swallow and leave the list as-is */ });
-    return () => { cancelled = true; };
+    bookmarksApi
+      .list()
+      .then((entries) => {
+        if (!cancelled) setBookmarks(entries);
+      })
+      .catch(() => {
+        /* non-critical nav aid -- swallow and leave the list as-is */
+      });
+    return () => {
+      cancelled = true;
+    };
     // oxlint-disable-next-line react/exhaustive-effect-dependencies
   }, [bookmarksVersion]);
 
   // Optimistic reorder; a failed save refetches the server's order.
   const handleDrop = (draggedId: string, targetId: string) => {
     if (draggedId === targetId) return;
-    setBookmarks(prev => {
-      const from = prev.findIndex(b => b.id === draggedId);
-      const to = prev.findIndex(b => b.id === targetId);
+    setBookmarks((prev) => {
+      const from = prev.findIndex((b) => b.id === draggedId);
+      const to = prev.findIndex((b) => b.id === targetId);
       if (from === -1 || to === -1) return prev;
       const next = prev.slice();
       const [moved] = next.splice(from, 1);
       next.splice(to, 0, moved);
-      bookmarksApi.reorder(next.map(b => b.id)).catch(() => {
-        bookmarksApi.list().then(setBookmarks).catch(() => { /* leave the optimistic order as-is */ });
+      bookmarksApi.reorder(next.map((b) => b.id)).catch(() => {
+        bookmarksApi
+          .list()
+          .then(setBookmarks)
+          .catch(() => {
+            /* leave the optimistic order as-is */
+          });
       });
       return next;
     });
@@ -154,17 +169,17 @@ export default function Sidebar({ isAdmin, onSelectCategory, bookmarksVersion }:
   const onDashboard = location.pathname === "/";
   const onCollections = location.pathname.startsWith("/models/collections");
   const onTags = location.pathname.startsWith("/models/tags");
-  const onModels = (location.pathname.startsWith("/models") && !onCollections && !onTags) || location.pathname.startsWith("/authors");
+  const onModels =
+    (location.pathname.startsWith("/models") && !onCollections && !onTags) || location.pathname.startsWith("/authors");
   const onDownload = location.pathname.startsWith("/downloads");
   const onAdmin = location.pathname.startsWith("/admin");
 
   const toggleCollapsed = () => {
-    setCollapsed(prev => {
+    setCollapsed((prev) => {
       const next = !prev;
       try {
         window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(next));
-      } catch {
-      }
+      } catch {}
       return next;
     });
   };
@@ -228,7 +243,11 @@ export default function Sidebar({ isAdmin, onSelectCategory, bookmarksVersion }:
               onClick={() => navigate("/")}
             />
           ) : (
-            <ListItemButton selected={onDashboard} onClick={() => navigate("/")} sx={{ borderRadius: 1, mb: 0.5, ...navRowSx(onDashboard) }}>
+            <ListItemButton
+              selected={onDashboard}
+              onClick={() => navigate("/")}
+              sx={{ borderRadius: 1, mb: 0.5, ...navRowSx(onDashboard) }}
+            >
               <ListItemIcon sx={{ minWidth: 30 }}>
                 <SpaceDashboardIcon fontSize="small" />
               </ListItemIcon>
@@ -335,7 +354,7 @@ export default function Sidebar({ isAdmin, onSelectCategory, bookmarksVersion }:
                   {t("sidebar.bookmarks")}
                 </Typography>
               )}
-              {bookmarks.map(entry => {
+              {bookmarks.map((entry) => {
                 const { href, label } = bookmarkTarget(entry);
                 const selected = location.pathname === href;
                 return collapsed ? (
@@ -350,12 +369,12 @@ export default function Sidebar({ isAdmin, onSelectCategory, bookmarksVersion }:
                   <ListItemButton
                     key={entry.id}
                     draggable
-                    onDragStart={e => handleDragStart(e, entry.id, label)}
-                    onDragOver={e => {
+                    onDragStart={(e) => handleDragStart(e, entry.id, label)}
+                    onDragOver={(e) => {
                       e.preventDefault();
                       if (draggingId && draggingId !== entry.id) setDragOverId(entry.id);
                     }}
-                    onDrop={e => {
+                    onDrop={(e) => {
                       e.preventDefault();
                       if (draggingId) handleDrop(draggingId, entry.id);
                       setDraggingId(null);

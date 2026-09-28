@@ -1,0 +1,26 @@
+name: Format
+
+# Fails when any file isn't formatted. Run `npm run format` at the repo root to fix.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: web/.nvmrc
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: bridge/go.mod
+      - run: npm ci
+      - run: npx prettier --check .
+      - name: gofmt
+        run: test -z "$(gofmt -l bridge)" || { gofmt -l bridge; exit 1; }

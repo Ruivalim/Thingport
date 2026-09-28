@@ -100,9 +100,7 @@ describe("removing one item from a collection", () => {
     await addPrintsToCollection(collectionA.body.id, [printId]);
     await addPrintsToCollection(collectionB.body.id, [printId]);
 
-    const removeRes = await request(app)
-      .delete(`/api/collection/${collectionA.body.id}/items/${printId}`)
-      .set(auth());
+    const removeRes = await request(app).delete(`/api/collection/${collectionA.body.id}/items/${printId}`).set(auth());
     expect(removeRes.status).toBe(200);
 
     const afterA = await request(app).get(`/api/collection/${collectionA.body.id}`).set(auth());
@@ -142,10 +140,7 @@ describe("collection/print deletion cascades", () => {
     expect(uploadRes.status).toBe(200);
     const printId = uploadRes.body.prints[0].id;
 
-    const collectionRes = await request(app)
-      .post("/api/collections")
-      .set(auth())
-      .send({ name: "Cascade Test A" });
+    const collectionRes = await request(app).post("/api/collections").set(auth()).send({ name: "Cascade Test A" });
     expect(collectionRes.status).toBe(200);
     const collectionId = collectionRes.body.id;
 
@@ -162,10 +157,7 @@ describe("collection/print deletion cascades", () => {
   });
 
   it("deleting a model removes it from every category and collection it's assigned to", async () => {
-    const categoryRes = await request(app)
-      .post("/api/categories")
-      .set(auth())
-      .send({ name: "Cascade Category" });
+    const categoryRes = await request(app).post("/api/categories").set(auth()).send({ name: "Cascade Category" });
     expect(categoryRes.status).toBe(200);
     const categoryId = categoryRes.body.id;
 
@@ -177,10 +169,7 @@ describe("collection/print deletion cascades", () => {
     expect(uploadRes.status).toBe(200);
     const printId = uploadRes.body.prints[0].id;
 
-    const collectionRes = await request(app)
-      .post("/api/collections")
-      .set(auth())
-      .send({ name: "Cascade Test B" });
+    const collectionRes = await request(app).post("/api/collections").set(auth()).send({ name: "Cascade Test B" });
     expect(collectionRes.status).toBe(200);
     const collectionId = collectionRes.body.id;
 

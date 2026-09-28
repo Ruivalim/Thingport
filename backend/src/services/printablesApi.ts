@@ -134,9 +134,9 @@ export type PrintablesModelResolution = {
 
 /** Null for a model that doesn't exist or isn't public. */
 export async function resolvePrintablesModel(modelId: string): Promise<PrintablesModelResolution | null> {
-  const data = (await fetchPrintablesGraphql(MODEL_QUERY, { id: modelId })) as
-    | { data?: { print?: Record<string, unknown> } }
-    | null;
+  const data = (await fetchPrintablesGraphql(MODEL_QUERY, { id: modelId })) as {
+    data?: { print?: Record<string, unknown> };
+  } | null;
   const model = data?.data?.print;
   if (!isRecord(model)) return null;
 
@@ -188,10 +188,7 @@ export async function resolvePrintablesModel(modelId: string): Promise<Printable
 
 /** Printables has no static file URLs; every download goes through this mutation. A file missing
  * from the response is skipped. */
-export async function resolvePrintablesDownloadLinks(
-  modelId: string,
-  fileIds: string[],
-): Promise<Map<string, string>> {
+export async function resolvePrintablesDownloadLinks(modelId: string, fileIds: string[]): Promise<Map<string, string>> {
   const links = new Map<string, string>();
   if (!fileIds.length) return links;
 
@@ -239,15 +236,17 @@ export type PrintablesCollectionEntry = { modelId: string; title: string; cover:
 function titleFromSlug(slug: string): string {
   const words = slug.split("-").filter(Boolean);
   if (!words.length) return slug;
-  return words[0].charAt(0).toUpperCase() + words[0].slice(1) + (words.length > 1 ? " " + words.slice(1).join(" ") : "");
+  return (
+    words[0].charAt(0).toUpperCase() + words[0].slice(1) + (words.length > 1 ? " " + words.slice(1).join(" ") : "")
+  );
 }
 
 const COLLECTION_TITLE_QUERY = `query ($id: ID!) { collection(id: $id) { id name } }`;
 
 export async function fetchPrintablesCollectionTitle(collectionId: string): Promise<string | null> {
-  const data = (await fetchPrintablesGraphql(COLLECTION_TITLE_QUERY, { id: collectionId })) as
-    | { data?: { collection?: Record<string, unknown> } }
-    | null;
+  const data = (await fetchPrintablesGraphql(COLLECTION_TITLE_QUERY, { id: collectionId })) as {
+    data?: { collection?: Record<string, unknown> };
+  } | null;
   const name = data?.data?.collection?.name;
   return typeof name === "string" && name.trim() ? name.trim() : null;
 }

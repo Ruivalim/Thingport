@@ -62,8 +62,16 @@ export default function ChangeEmailPage({ user, onUserUpdated, onUnauthorized }:
       {user?.pending_email && (
         <Alert severity="info">{t("profile.pendingEmailNotice", { email: user.pending_email })}</Alert>
       )}
-      {status && <Alert severity="success" onClose={() => setStatus(null)}>{status}</Alert>}
-      {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
+      {status && (
+        <Alert severity="success" onClose={() => setStatus(null)}>
+          {status}
+        </Alert>
+      )}
+      {error && (
+        <Alert severity="error" onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
 
       <Box component="form" onSubmit={handleSubmit}>
         <Stack spacing={2}>
@@ -71,7 +79,7 @@ export default function ChangeEmailPage({ user, onUserUpdated, onUnauthorized }:
             type="email"
             label={t("profile.newEmailLabel")}
             value={email}
-            onChange={e => setEmail(e.target.value)}
+            onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
             required
             fullWidth
@@ -81,7 +89,7 @@ export default function ChangeEmailPage({ user, onUserUpdated, onUnauthorized }:
             type="password"
             label={t("profile.currentPasswordLabel")}
             value={password}
-            onChange={e => setPassword(e.target.value)}
+            onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
             required
             fullWidth

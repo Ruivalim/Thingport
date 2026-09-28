@@ -13,8 +13,12 @@ export function useCaptchaSettings(): CaptchaSettings | null {
       cached = null;
       return { login: false, register: false, import: false };
     });
-    void cached.then((value) => { if (active) setSettings(value); });
-    return () => { active = false; };
+    void cached.then((value) => {
+      if (active) setSettings(value);
+    });
+    return () => {
+      active = false;
+    };
   }, []);
   return settings;
 }

@@ -8,7 +8,7 @@ export function useInfiniteScroll(onLoadMore: () => void, hasMore: boolean, load
     const node = sentinelRef.current;
     if (!node || !hasMore || loading) return;
     const observer = new IntersectionObserver(
-      entries => {
+      (entries) => {
         if (entries[0]?.isIntersecting) onLoadMore();
       },
       { rootMargin: "400px" },

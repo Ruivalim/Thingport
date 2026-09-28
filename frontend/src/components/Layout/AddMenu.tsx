@@ -101,7 +101,7 @@ export default function AddMenu({ categoryId, makerworldCookie, onUploaded, onUn
             size="small"
             startIcon={<AddIcon fontSize="small" />}
             disabled={upload.isBusy || isImporting}
-            onClick={e => setAnchorEl(e.currentTarget)}
+            onClick={(e) => setAnchorEl(e.currentTarget)}
           >
             {upload.uploading ? t("uploadBar.uploading") : t("common:add")}
           </Button>
@@ -109,11 +109,15 @@ export default function AddMenu({ categoryId, makerworldCookie, onUploaded, onUn
       </Tooltip>
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={closeMenu}>
         <MenuItem onClick={handleUpload}>
-          <ListItemIcon><UploadFileIcon fontSize="small" /></ListItemIcon>
+          <ListItemIcon>
+            <UploadFileIcon fontSize="small" />
+          </ListItemIcon>
           <ListItemText>{t("common:upload")}</ListItemText>
         </MenuItem>
         <MenuItem onClick={openImport}>
-          <ListItemIcon><LinkIcon fontSize="small" /></ListItemIcon>
+          <ListItemIcon>
+            <LinkIcon fontSize="small" />
+          </ListItemIcon>
           <ListItemText>{t("common:import")}</ListItemText>
         </MenuItem>
       </Menu>
@@ -122,7 +126,7 @@ export default function AddMenu({ categoryId, makerworldCookie, onUploaded, onUn
         <DialogTitle>{t("addMenu.importTitle")}</DialogTitle>
         <DialogContent>
           <Stack direction="row" spacing={1} sx={{ mb: 1.5 }}>
-            {IMPORT_PROVIDERS.map(key => {
+            {IMPORT_PROVIDERS.map((key) => {
               const info = IMPORT_PROVIDER_INFO[key];
               const active = detectedProvider === key;
               return (
@@ -130,7 +134,7 @@ export default function AddMenu({ categoryId, makerworldCookie, onUploaded, onUn
                   key={key}
                   label={info.label}
                   size="small"
-                  onClick={() => setExampleProvider(prev => (prev === key ? null : key))}
+                  onClick={() => setExampleProvider((prev) => (prev === key ? null : key))}
                   sx={{
                     fontWeight: 600,
                     bgcolor: active ? info.color : "action.disabledBackground",
@@ -167,8 +171,8 @@ export default function AddMenu({ categoryId, makerworldCookie, onUploaded, onUn
             type="url"
             margin="dense"
             value={linkValue}
-            onChange={e => setLinkValue(e.target.value)}
-            onKeyDown={e => {
+            onChange={(e) => setLinkValue(e.target.value)}
+            onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
                 submitImport();
@@ -185,7 +189,7 @@ export default function AddMenu({ categoryId, makerworldCookie, onUploaded, onUn
               margin="dense"
               label={t("addMenu.profilesLabel")}
               value={profileScope}
-              onChange={e => setProfileScope(e.target.value as MakerworldProfileScope)}
+              onChange={(e) => setProfileScope(e.target.value as MakerworldProfileScope)}
               disabled={upload.importing}
               helperText={profileScope === "url" ? t("addMenu.profilesHelpUrl") : t("addMenu.profilesHelpMany")}
               sx={{ mt: 1.5 }}
@@ -202,11 +206,18 @@ export default function AddMenu({ categoryId, makerworldCookie, onUploaded, onUn
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={closeImport} disabled={upload.importing}>{t("common:cancel")}</Button>
+          <Button onClick={closeImport} disabled={upload.importing}>
+            {t("common:cancel")}
+          </Button>
           <Button
             variant="contained"
             onClick={submitImport}
-            disabled={upload.importing || !linkValue.trim() || isBlockedCollection || (needsCaptcha && !captcha?.captcha_answer.trim())}
+            disabled={
+              upload.importing ||
+              !linkValue.trim() ||
+              isBlockedCollection ||
+              (needsCaptcha && !captcha?.captcha_answer.trim())
+            }
             startIcon={upload.importing ? <CircularProgress size={14} /> : undefined}
           >
             {upload.importing ? t("uploadBar.importing") : t("common:import")}

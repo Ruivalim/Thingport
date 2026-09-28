@@ -73,7 +73,9 @@ export default function StorageSection({ onUnauthorized }: Props) {
         if (active) setStorageLoading(false);
       }
     })();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [onUnauthorized, t]);
 
   const saveStorageSettings = async () => {
@@ -95,7 +97,7 @@ export default function StorageSection({ onUnauthorized }: Props) {
               moved: data.moved,
               skippedSuffix: data.skipped ? t("adminSettings.storage.skippedSuffix", { skipped: data.skipped }) : "",
             })
-          : t("adminSettings.storage.savedNoApply")
+          : t("adminSettings.storage.savedNoApply"),
       );
     } catch (err) {
       if (err instanceof UnauthorizedError) {
@@ -111,26 +113,25 @@ export default function StorageSection({ onUnauthorized }: Props) {
   const isDirty = storageTemplate.trim() !== storageInitial;
   const templateTrimmed = storageTemplate.trim();
   const draftSamples = templateTrimmed
-    ? PLATE_PREVIEW_VALUES.map(values =>
+    ? PLATE_PREVIEW_VALUES.map((values) =>
         Object.entries(values).reduce(
           (value, [token, replacement]) => value.split(`{${token}}`).join(replacement),
-          templateTrimmed
-        )
+          templateTrimmed,
+        ),
       )
     : [];
   const examplePaths = draftSamples.length ? draftSamples : storagePlatePaths;
 
   return (
     <Stack spacing={3}>
-      <SectionHeader
-        title={t("adminSettings.storage.heading")}
-        subtitle={t("adminSettings.storage.subtitle")}
-      />
+      <SectionHeader title={t("adminSettings.storage.heading")} subtitle={t("adminSettings.storage.subtitle")} />
 
       <Paper variant="outlined" sx={{ p: 2.5 }}>
         <Stack spacing={2}>
           <Box>
-            <Typography variant="subtitle1" fontWeight={600}>{t("adminSettings.storage.templateHeading")}</Typography>
+            <Typography variant="subtitle1" fontWeight={600}>
+              {t("adminSettings.storage.templateHeading")}
+            </Typography>
             <Typography variant="body2" color="text.secondary">
               {t("adminSettings.storage.templateDesc")}
             </Typography>
@@ -139,40 +140,49 @@ export default function StorageSection({ onUnauthorized }: Props) {
             size="small"
             label={t("adminSettings.storage.templateLabel")}
             value={storageTemplate}
-            onChange={e => { setStorageTemplate(e.target.value); setStorageStatus(null); }}
+            onChange={(e) => {
+              setStorageTemplate(e.target.value);
+              setStorageStatus(null);
+            }}
             placeholder={t("adminSettings.storage.templatePlaceholder") ?? undefined}
             disabled={storageLoading || storageSaving}
             InputProps={{ sx: { fontFamily: "monospace" } }}
           />
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            {storageTokens.map(token => (
+            {storageTokens.map((token) => (
               <Tooltip key={token} title={t(`adminSettings.storage.tokens.${token}`, { defaultValue: "" })}>
-              <Button
-                size="small"
-                variant="outlined"
-                sx={{ fontFamily: "monospace", textTransform: "none" }}
-                onClick={() => setStorageTemplate(value => {
-                  const tokenText = `{${token}}`;
-                  if (token === "filename" && value.includes(tokenText)) return value;
-                  const filenameSuffix = "/{filename}";
-                  if (value.endsWith(filenameSuffix)) {
-                    return `${value.slice(0, -filenameSuffix.length)}/${tokenText}${filenameSuffix}`;
+                <Button
+                  size="small"
+                  variant="outlined"
+                  sx={{ fontFamily: "monospace", textTransform: "none" }}
+                  onClick={() =>
+                    setStorageTemplate((value) => {
+                      const tokenText = `{${token}}`;
+                      if (token === "filename" && value.includes(tokenText)) return value;
+                      const filenameSuffix = "/{filename}";
+                      if (value.endsWith(filenameSuffix)) {
+                        return `${value.slice(0, -filenameSuffix.length)}/${tokenText}${filenameSuffix}`;
+                      }
+                      return `${value}${value.endsWith("/") || !value ? "" : "/"}${tokenText}`;
+                    })
                   }
-                  return `${value}${value.endsWith("/") || !value ? "" : "/"}${tokenText}`;
-                })}
-              >
-                {`{${token}}`}
-              </Button>
+                >
+                  {`{${token}}`}
+                </Button>
               </Tooltip>
             ))}
           </Stack>
           <Paper variant="outlined" sx={{ p: 1.5, borderStyle: "dashed" }}>
-            <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}
+            >
               {t("adminSettings.storage.examplePathsHeading")}
             </Typography>
             {examplePaths.length ? (
               <Stack spacing={0.5} sx={{ mt: 0.5 }}>
-                {examplePaths.map(path => (
+                {examplePaths.map((path) => (
                   <Typography key={path} variant="caption" sx={{ fontFamily: "monospace", wordBreak: "break-all" }}>
                     {path}
                   </Typography>
@@ -190,14 +200,16 @@ export default function StorageSection({ onUnauthorized }: Props) {
               <Checkbox
                 sx={{ mt: -0.5 }}
                 checked={storageApplyExisting}
-                onChange={e => setStorageApplyExisting(e.target.checked)}
+                onChange={(e) => setStorageApplyExisting(e.target.checked)}
                 disabled={storageLoading || storageSaving}
               />
             }
             label={
               <Box>
                 <Typography variant="body2">{t("adminSettings.storage.reorganizeLabel")}</Typography>
-                <Typography variant="caption" color="text.secondary">{t("adminSettings.storage.reorganizeHint")}</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {t("adminSettings.storage.reorganizeHint")}
+                </Typography>
               </Box>
             }
           />
@@ -210,7 +222,9 @@ export default function StorageSection({ onUnauthorized }: Props) {
               {storageSaving ? t("adminSettings.storage.saving") : t("adminSettings.storage.save")}
             </Button>
             {storageStatus && (
-              <Typography variant="caption" color="text.secondary">{storageStatus}</Typography>
+              <Typography variant="caption" color="text.secondary">
+                {storageStatus}
+              </Typography>
             )}
           </Stack>
         </Stack>

@@ -16,7 +16,10 @@ const SRC = path.join(ROOT, "src");
 
 function compileScss(file: string): { css: string; watchFiles: string[] } {
   const result = sass.compile(file, { style: "compressed" });
-  return { css: result.css, watchFiles: result.loadedUrls.filter((u) => u.protocol === "file:").map((u) => fileURLToPath(u)) };
+  return {
+    css: result.css,
+    watchFiles: result.loadedUrls.filter((u) => u.protocol === "file:").map((u) => fileURLToPath(u)),
+  };
 }
 
 /** `?inline` imports compile to a CSS string (for the shadow root); plain imports emit a CSS file. */
@@ -42,7 +45,11 @@ const scssPlugin: esbuild.Plugin = {
   },
 };
 
-function staticFilesPlugin(target: Target, outdir: string, pkg: { version: string; description: string }): esbuild.Plugin {
+function staticFilesPlugin(
+  target: Target,
+  outdir: string,
+  pkg: { version: string; description: string },
+): esbuild.Plugin {
   return {
     name: "static-files",
     setup(build) {
@@ -57,7 +64,10 @@ function staticFilesPlugin(target: Target, outdir: string, pkg: { version: strin
 }
 
 async function buildTarget(target: Target, watch: boolean): Promise<void> {
-  const pkg = JSON.parse(await readFile(path.join(ROOT, "package.json"), "utf8")) as { version: string; description: string };
+  const pkg = JSON.parse(await readFile(path.join(ROOT, "package.json"), "utf8")) as {
+    version: string;
+    description: string;
+  };
   const outdir = path.join(ROOT, "dist", target);
   await rm(outdir, { recursive: true, force: true });
   await mkdir(outdir, { recursive: true });

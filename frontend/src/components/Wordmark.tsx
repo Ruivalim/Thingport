@@ -17,11 +17,6 @@ export default function Wordmark({ size = "md" }: Props) {
   const theme = useTheme();
   const src = theme.palette.mode === "dark" ? lockupOnDark : lockupColor;
   return (
-    <Box
-      component="img"
-      src={src}
-      alt="Thingport"
-      sx={{ height: HEIGHTS[size], width: "auto", display: "block" }}
-    />
+    <Box component="img" src={src} alt="Thingport" sx={{ height: HEIGHTS[size], width: "auto", display: "block" }} />
   );
 }

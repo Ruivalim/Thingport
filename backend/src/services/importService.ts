@@ -11,7 +11,14 @@ import {
   IMPORT_TIMEOUT_SECONDS,
   IMPORT_USER_AGENT,
 } from "../config";
-import { HttpError, buildImportFilename, guessMimeFromPath, isHtmlContentType, mimeFromContentType, sanitizeFilename } from "../utils/fileUtils";
+import {
+  HttpError,
+  buildImportFilename,
+  guessMimeFromPath,
+  isHtmlContentType,
+  mimeFromContentType,
+  sanitizeFilename,
+} from "../utils/fileUtils";
 import { validateRemoteUrl } from "../utils/urlUtils";
 import { maybeSleep, sleep } from "../utils/concurrency";
 import { fetchViaFlaresolverr, isFlaresolverrEnabled, looksLikeCloudflareBlock, shouldProxyHost } from "./flaresolverr";
@@ -53,7 +60,13 @@ import {
 } from "./printablesApi";
 import { getThingiverseAccessToken } from "./settingsService";
 import { upsertAuthorFromImport } from "./authorService";
-import { addPlatesToPrint, createPrint, resolvePlateFilePath, type NewPlateInput, type PrintMetaInput } from "./printCreation";
+import {
+  addPlatesToPrint,
+  createPrint,
+  resolvePlateFilePath,
+  type NewPlateInput,
+  type PrintMetaInput,
+} from "./printCreation";
 import { plateThumbExists, saveThumbFromBytes } from "./printService";
 import { addPreviewImage } from "./previewImageService";
 import { prisma } from "../db";
@@ -137,8 +150,7 @@ async function fetchWithGuard(url: string, headers: Record<string, string>): Pro
     let hostname = "";
     try {
       hostname = new URL(url).hostname;
-    } catch {
-    }
+    } catch {}
 
     let res: Response;
     if (isFlaresolverrEnabled() && shouldProxyHost(hostname)) {
@@ -174,7 +186,11 @@ async function fetchMakerworldPageDesign(
   await maybeSleep(paceMs);
   let res: Response;
   try {
-    res = await fetchWithGuard(url, { "User-Agent": IMPORT_USER_AGENT, Accept: "*/*", ...makerworldHtmlHeaders(url, cookie) });
+    res = await fetchWithGuard(url, {
+      "User-Agent": IMPORT_USER_AGENT,
+      Accept: "*/*",
+      ...makerworldHtmlHeaders(url, cookie),
+    });
   } catch {
     return null;
   }
@@ -205,7 +221,11 @@ export async function fetchMakerworldPageAuthor(
   await maybeSleep(paceMs);
   let res: Response;
   try {
-    res = await fetchWithGuard(url, { "User-Agent": IMPORT_USER_AGENT, Accept: "*/*", ...makerworldHtmlHeaders(url, cookie) });
+    res = await fetchWithGuard(url, {
+      "User-Agent": IMPORT_USER_AGENT,
+      Accept: "*/*",
+      ...makerworldHtmlHeaders(url, cookie),
+    });
   } catch {
     return null;
   }
@@ -257,7 +277,12 @@ async function tryMakerworldCloudApi(url: string, body: ImportRequestBody): Prom
   if (!bearerToken) return null;
 
   try {
-    const resolved = await resolveMakerworldViaCloudApi(parsed.designId, parsed.requestedInstanceId, bearerToken, body.makerworldPaceMs);
+    const resolved = await resolveMakerworldViaCloudApi(
+      parsed.designId,
+      parsed.requestedInstanceId,
+      bearerToken,
+      body.makerworldPaceMs,
+    );
     return resolved;
   } catch (err) {
     if (err instanceof MakerworldCaptchaError) throw new HttpError(429, err.message);
@@ -563,7 +588,8 @@ export async function checkImportStatus(userId: string, url: string): Promise<Im
   if (!print) return { recognized: true, already_imported: false, print_id: null, state: "not_imported" };
   // Without a profile in the URL, any imported profile counts; asking MakerWorld on every page
   // view isn't worth it.
-  const requestedInstanceId = source.provider === "makerworld" ? parseMakerworldModelUrl(url)?.requestedInstanceId : null;
+  const requestedInstanceId =
+    source.provider === "makerworld" ? parseMakerworldModelUrl(url)?.requestedInstanceId : null;
   if (requestedInstanceId && !print.plates.some((plate) => plate.sourceInstanceId === requestedInstanceId)) {
     const state = print.plates.some((plate) => plate.sourceInstanceId == null) ? "profile_unknown" : "profile_missing";
     return { recognized: true, already_imported: false, print_id: print.id, state };
@@ -678,7 +704,11 @@ function platesOf(printId: string): Promise<Plate[]> {
 }
 
 /** Bulk version of the dedup lookup, for flagging already-imported entries in a listing. */
-export async function findImportedExternalIds(userId: string, provider: string, externalIds: string[]): Promise<Set<string>> {
+export async function findImportedExternalIds(
+  userId: string,
+  provider: string,
+  externalIds: string[],
+): Promise<Set<string>> {
   if (!externalIds.length) return new Set();
   const prints = await prisma.print.findMany({
     where: { userId, sourceProvider: provider, sourceExternalId: { in: externalIds } },
@@ -721,7 +751,13 @@ async function importThingiverseThing(
   userId: string,
   source: { provider: string; externalId: string },
   body: ImportRequestBody,
-): Promise<{ print: Print; plates: Plate[]; author: Author | null; previewImages: PreviewImage[]; alreadyImported: boolean }> {
+): Promise<{
+  print: Print;
+  plates: Plate[];
+  author: Author | null;
+  previewImages: PreviewImage[];
+  alreadyImported: boolean;
+}> {
   const accessToken = await getThingiverseAccessToken();
   if (!accessToken) {
     throw new HttpError(
@@ -740,13 +776,17 @@ async function importThingiverseThing(
     throw err;
   }
   if (!resolved) {
-    throw new HttpError(404, "This Thingiverse Thing could not be found, or isn't accessible with the configured Access Token.");
+    throw new HttpError(
+      404,
+      "This Thingiverse Thing could not be found, or isn't accessible with the configured Access Token.",
+    );
   }
   const { meta, plateFiles, galleryImages } = resolved;
 
   const author = await upsertAuthorFromImport(meta.author ?? null);
   const categoryId =
-    body.category_id ?? (await resolveCategoryIdByCategory(userId, meta.categorySite ?? null, meta.siteCategoryIds ?? []));
+    body.category_id ??
+    (await resolveCategoryIdByCategory(userId, meta.categorySite ?? null, meta.siteCategoryIds ?? []));
   const printMeta: PrintMetaInput = {
     title: body.title ?? meta.title ?? null,
     notes: body.notes ?? meta.description ?? null,
@@ -758,8 +798,12 @@ async function importThingiverseThing(
     sourceExternalId: source.externalId,
   };
 
-  const modelFiles = plateFiles.filter((f: ThingiversePlateFile) => MULTI_FILE_PLATE_EXTS.has(path.extname(f.name).toLowerCase()));
-  const downloadResults = await Promise.all(modelFiles.map((f: ThingiversePlateFile) => downloadPlainFileToTemp(f.url, f.name)));
+  const modelFiles = plateFiles.filter((f: ThingiversePlateFile) =>
+    MULTI_FILE_PLATE_EXTS.has(path.extname(f.name).toLowerCase()),
+  );
+  const downloadResults = await Promise.all(
+    modelFiles.map((f: ThingiversePlateFile) => downloadPlainFileToTemp(f.url, f.name)),
+  );
   const downloaded = downloadResults
     .filter((result): result is { input: NewPlateInput } => result !== null && "input" in result)
     .map((result) => result.input);
@@ -806,18 +850,32 @@ async function importPrintablesModel(
   userId: string,
   source: { provider: string; externalId: string },
   body: ImportRequestBody,
-): Promise<{ print: Print; plates: Plate[]; author: Author | null; previewImages: PreviewImage[]; alreadyImported: boolean }> {
+): Promise<{
+  print: Print;
+  plates: Plate[];
+  author: Author | null;
+  previewImages: PreviewImage[];
+  alreadyImported: boolean;
+}> {
   const resolved = await resolvePrintablesModel(source.externalId);
   if (!resolved) {
     throw new HttpError(404, "This Printables model could not be found, or isn't public.");
   }
   const { meta, plateFiles, galleryImages } = resolved;
 
-  const modelFiles = plateFiles.filter((f: PrintablesPlateFile) => MULTI_FILE_PLATE_EXTS.has(path.extname(f.name).toLowerCase()));
+  const modelFiles = plateFiles.filter((f: PrintablesPlateFile) =>
+    MULTI_FILE_PLATE_EXTS.has(path.extname(f.name).toLowerCase()),
+  );
   if (!modelFiles.length) {
-    throw new HttpError(400, "This Printables model has no downloadable model files (only sliced/print-ready files, if any).");
+    throw new HttpError(
+      400,
+      "This Printables model has no downloadable model files (only sliced/print-ready files, if any).",
+    );
   }
-  const downloadLinks = await resolvePrintablesDownloadLinks(source.externalId, modelFiles.map((f) => f.id));
+  const downloadLinks = await resolvePrintablesDownloadLinks(
+    source.externalId,
+    modelFiles.map((f) => f.id),
+  );
   const downloadResults = await Promise.all(
     modelFiles
       .map((f) => ({ file: f, link: downloadLinks.get(f.id) }))
@@ -833,7 +891,8 @@ async function importPrintablesModel(
 
   const author = await upsertAuthorFromImport(meta.author ?? null);
   const categoryId =
-    body.category_id ?? (await resolveCategoryIdByCategory(userId, meta.categorySite ?? null, meta.siteCategoryIds ?? []));
+    body.category_id ??
+    (await resolveCategoryIdByCategory(userId, meta.categorySite ?? null, meta.siteCategoryIds ?? []));
   const printMeta: PrintMetaInput = {
     title: body.title ?? meta.title ?? null,
     notes: body.notes ?? meta.description ?? null,

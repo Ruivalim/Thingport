@@ -25,7 +25,14 @@ type Props = {
   downloadPlate: (plate: Plate) => void;
 };
 
-export default function DownloadPickerDialog({ open, onClose, downloading, sortedPlates, downloadAllZip, downloadPlate }: Props) {
+export default function DownloadPickerDialog({
+  open,
+  onClose,
+  downloading,
+  sortedPlates,
+  downloadAllZip,
+  downloadPlate,
+}: Props) {
   const { t } = useTranslation(["models", "common"]);
   return (
     <Dialog open={open} onClose={() => !downloading && onClose()} fullWidth maxWidth="xs">
@@ -64,7 +71,9 @@ export default function DownloadPickerDialog({ open, onClose, downloading, sorte
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={downloading}>{t("common:cancel")}</Button>
+        <Button onClick={onClose} disabled={downloading}>
+          {t("common:cancel")}
+        </Button>
       </DialogActions>
     </Dialog>
   );

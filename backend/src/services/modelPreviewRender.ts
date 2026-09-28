@@ -162,7 +162,8 @@ function parseModelSettingsConfig(xml: string): StructuralData {
       const partId = $part.attr("id");
       if (!partId) return;
       const partExtruderVal = $part.children('metadata[key="extruder"]').first().attr("value");
-      if (partExtruderVal) data.partExtruderMap.set(`${objectId}:${partId}`, Math.max(0, parseInt(partExtruderVal, 10) - 1));
+      if (partExtruderVal)
+        data.partExtruderMap.set(`${objectId}:${partId}`, Math.max(0, parseInt(partExtruderVal, 10) - 1));
     });
   });
 
@@ -202,7 +203,10 @@ function parseModelSettingsConfig(xml: string): StructuralData {
   return data;
 }
 
-function parseProjectSettingsJson(text: string): { filamentColors: string[]; buildVolume: { x: number; y: number } | null } {
+function parseProjectSettingsJson(text: string): {
+  filamentColors: string[];
+  buildVolume: { x: number; y: number } | null;
+} {
   try {
     const json = JSON.parse(text) as Record<string, unknown>;
     const filamentColors = Array.isArray(json.filament_colour)
@@ -278,13 +282,19 @@ function createPartFileResolver(loadExternalModel: (path: string) => Promise<str
     while ((cm = componentRe.exec(inner))) {
       const refId = getAttr(cm[1], "objectid");
       const hasPath = (getAttr(cm[1], "p:path") ?? getAttr(cm[1], "path")) !== null;
-      if (refId && !hasPath && objects.has(refId)) refs.push({ refId, transform: parseTransform3MF(getAttr(cm[1], "transform")) });
+      if (refId && !hasPath && objects.has(refId))
+        refs.push({ refId, transform: parseTransform3MF(getAttr(cm[1], "transform")) });
     }
     return refs;
   };
 
   /** Parsed once however many times it's placed. */
-  const objectMeshes = async (path: string, objects: Map<string, string>, id: string, depth: number): Promise<FastMesh[]> => {
+  const objectMeshes = async (
+    path: string,
+    objects: Map<string, string>,
+    id: string,
+    depth: number,
+  ): Promise<FastMesh[]> => {
     const key = `${path}#${id}`;
     const cached = meshCache.get(key);
     if (cached) return cached;
@@ -293,7 +303,9 @@ function createPartFileResolver(loadExternalModel: (path: string) => Promise<str
     if (depth < MAX_COMPONENT_DEPTH) {
       for (const ref of innerRefs(inner, objects)) {
         for (const mesh of await objectMeshes(path, objects, ref.refId, depth + 1)) {
-          meshes.push(ref.transform ? { ...mesh, vertices: applyAffineToVertices(mesh.vertices, ref.transform) } : mesh);
+          meshes.push(
+            ref.transform ? { ...mesh, vertices: applyAffineToVertices(mesh.vertices, ref.transform) } : mesh,
+          );
         }
       }
     }
@@ -425,7 +437,7 @@ async function parseMainModel(
       const compObjectId = getAttr(cAttrs, "objectid");
       const transform = parseTransform3MF(getAttr(cAttrs, "transform"));
       const partKey = compObjectId ? `${objectId}:${compObjectId}` : null;
-      const compExtruder = partKey ? structural.partExtruderMap.get(partKey) ?? defaultExtruder : defaultExtruder;
+      const compExtruder = partKey ? (structural.partExtruderMap.get(partKey) ?? defaultExtruder) : defaultExtruder;
 
       if (extPath) {
         for (const mesh of await partFiles.meshes(extPath, compObjectId)) {
@@ -489,7 +501,7 @@ async function parseMainModel(
       const itemPlateId = findPlateIdAttr(attrs);
       const objectPlateId = objects.get(objectId)?.plateId ?? null;
       const objectName = structural.objectNameById.get(objectId);
-      const namePlateId = objectName ? plateAssignmentsByName.get(objectName) ?? null : null;
+      const namePlateId = objectName ? (plateAssignmentsByName.get(objectName) ?? null) : null;
       buildItems.push({ objectId, transform, plateId: itemPlateId ?? objectPlateId ?? namePlateId ?? null });
     }
   }
@@ -552,7 +564,8 @@ async function parseThreeMfFast(srcPath: string): Promise<ParsedModel | PreviewR
       else if (entry.name === MAIN_MODEL_PATH) mainModelText = buf.toString("utf-8");
       else {
         const plateMatch = entry.name.match(/^Metadata\/plate_(\d+)\.json$/);
-        if (plateMatch) plateJsonEntries.push({ plateIndex: Number.parseInt(plateMatch[1], 10), text: buf.toString("utf-8") });
+        if (plateMatch)
+          plateJsonEntries.push({ plateIndex: Number.parseInt(plateMatch[1], 10), text: buf.toString("utf-8") });
         const thumbMatch = entry.name.match(/^Metadata\/(?:plate|top)_(\d+)\.png$/);
         if (thumbMatch) {
           const idx = Number.parseInt(thumbMatch[1], 10);
@@ -579,8 +592,7 @@ async function parseThreeMfFast(srcPath: string): Promise<ParsedModel | PreviewR
       for (const entry of json.bbox_objects ?? []) {
         if (entry?.name) plateAssignmentsByName.set(entry.name, plateIndex);
       }
-    } catch {
-    }
+    } catch {}
   }
 
   const externalModelCache = new Map<string, string | null>();
@@ -716,10 +728,7 @@ function meshTriangleCount(mesh: import("three").Mesh): number {
 
 /** Simplifies merged meshes in place when their total exceeds `budget` triangles; null when
  *  already within budget. */
-async function simplifyGroupMeshes(
-  root: import("three").Group,
-  budget: number,
-): Promise<SimplifiedSummary | null> {
+async function simplifyGroupMeshes(root: import("three").Group, budget: number): Promise<SimplifiedSummary | null> {
   const THREE = await import("three");
   const meshes: InstanceType<typeof THREE.Mesh>[] = [];
   root.traverse((obj) => {
@@ -743,7 +752,9 @@ async function simplifyGroupMeshes(
     const target = Math.max(SIMPLIFY_MIN_MESH_TRIANGLES, Math.floor((count * budget) / total));
     const positions = mesh.geometry.getAttribute("position").array as Float32Array;
     const indices = index.array instanceof Uint32Array ? index.array : Uint32Array.from(index.array);
-    const [simplified] = MeshoptSimplifier.simplify(indices, positions, 3, target * 3, SIMPLIFY_MAX_ERROR, ["LockBorder"]);
+    const [simplified] = MeshoptSimplifier.simplify(indices, positions, 3, target * 3, SIMPLIFY_MAX_ERROR, [
+      "LockBorder",
+    ]);
     // Drop unused vertices so the GLB actually gets smaller.
     const [remap, uniqueVertices] = MeshoptSimplifier.compactMesh(simplified);
     const compacted = new Float32Array(uniqueVertices * 3);

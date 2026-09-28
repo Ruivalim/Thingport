@@ -62,11 +62,11 @@ export default function CollectionsPage({ onUnauthorized, onBookmarksChanged, th
   };
 
   const handleCollectionUpdated = (updated: Collection) => {
-    setCollections(prev => prev.map(c => (c.id === updated.id ? updated : c)));
+    setCollections((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
   };
 
   const handleCollectionDeleted = (id: string) => {
-    setCollections(prev => prev.filter(c => c.id !== id));
+    setCollections((prev) => prev.filter((c) => c.id !== id));
   };
 
   return (
@@ -89,7 +89,7 @@ export default function CollectionsPage({ onUnauthorized, onBookmarksChanged, th
             "@media (max-width: 860px)": { gridTemplateColumns: "repeat(2, 1fr)" },
           }}
         >
-          {collections.map(collection => (
+          {collections.map((collection) => (
             <CollectionCard
               key={collection.id}
               collection={collection}
@@ -108,9 +108,7 @@ export default function CollectionsPage({ onUnauthorized, onBookmarksChanged, th
         </Stack>
       )}
 
-      {formOpen && (
-        <CollectionFormModal onClose={() => setFormOpen(false)} onSubmit={createCollection} />
-      )}
+      {formOpen && <CollectionFormModal onClose={() => setFormOpen(false)} onSubmit={createCollection} />}
     </Stack>
   );
 }

@@ -64,7 +64,7 @@ export function useZipImportPrompt() {
     }
     reset();
     setState({ config });
-    return new Promise<void>(resolve => {
+    return new Promise<void>((resolve) => {
       resolveRef.current = resolve;
     });
   };
@@ -76,7 +76,7 @@ export function useZipImportPrompt() {
     try {
       const list = await state.config.loadEntries();
       setEntries(list);
-      setSelected(new Set(list.map(entry => entry.path)));
+      setSelected(new Set(list.map((entry) => entry.path)));
       setStage("select");
     } catch (err) {
       setError(errorMessage(err, t("zipImport.readError")));
@@ -117,7 +117,7 @@ export function useZipImportPrompt() {
   };
 
   const toggleEntry = (path: string) => {
-    setSelected(prev => {
+    setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(path)) next.delete(path);
       else next.add(path);
@@ -126,7 +126,7 @@ export function useZipImportPrompt() {
   };
 
   const selectAll = () => {
-    setSelected(new Set(entries.map(entry => entry.path)));
+    setSelected(new Set(entries.map((entry) => entry.path)));
   };
 
   const clearAll = () => {
@@ -196,15 +196,19 @@ function ZipImportModal({
   const entryCount = entries.length;
   const title = useMemo(
     () => (stage === "choice" ? t("zipImport.title") : t("zipImport.chooseFilesTitle")),
-    [stage, t]
+    [stage, t],
   );
 
   return (
     <Dialog open onClose={busy ? undefined : onClose} maxWidth="md" fullWidth>
       <DialogTitle sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 2 }}>
         <Box>
-          <Typography variant="h6" component="div">{title}</Typography>
-          <Typography variant="body2" color="text.secondary">{label}</Typography>
+          <Typography variant="h6" component="div">
+            {title}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {label}
+          </Typography>
         </Box>
         <IconButton size="small" onClick={onClose} disabled={busy} aria-label={t("zipImport.close") ?? undefined}>
           <CloseIcon fontSize="small" />
@@ -251,11 +255,7 @@ function ZipImportModal({
               />
 
               <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
-                <Button
-                  variant="contained"
-                  onClick={onImportSelected}
-                  disabled={busy || selectedCount === 0}
-                >
+                <Button variant="contained" onClick={onImportSelected} disabled={busy || selectedCount === 0}>
                   {t("zipImport.importSelected")}
                 </Button>
                 <Button variant="outlined" onClick={onClose} disabled={busy}>

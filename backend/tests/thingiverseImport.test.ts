@@ -47,11 +47,17 @@ function jsonResponse(status: number, body: unknown): Response {
 }
 
 function pngResponse(): Response {
-  return new Response(Buffer.from(ONE_PIXEL_PNG_BASE64, "base64"), { status: 200, headers: { "content-type": "image/png" } });
+  return new Response(Buffer.from(ONE_PIXEL_PNG_BASE64, "base64"), {
+    status: 200,
+    headers: { "content-type": "image/png" },
+  });
 }
 
 function stlResponse(name: string): Response {
-  return new Response(`solid ${name}\nendsolid ${name}\n`, { status: 200, headers: { "content-type": "application/sla" } });
+  return new Response(`solid ${name}\nendsolid ${name}\n`, {
+    status: 200,
+    headers: { "content-type": "application/sla" },
+  });
 }
 
 function pdfResponse(): Response {
@@ -99,18 +105,16 @@ describe("importPrintFromUrl -- Thingiverse", () => {
   });
 
   it("fails clearly when no Access Token is configured", async () => {
-    await expect(
-      importPrintFromUrl(userId, THING_URL, { url: THING_URL, tags: [] }),
-    ).rejects.toThrow(/isn't configured/i);
+    await expect(importPrintFromUrl(userId, THING_URL, { url: THING_URL, tags: [] })).rejects.toThrow(
+      /isn't configured/i,
+    );
   });
 
   it("throws a clear auth error when the configured token is rejected", async () => {
     await setThingiverseAccessToken(ACCESS_TOKEN);
     global.fetch = mockThingiverseFetch({ detailStatus: 401, detailBody: { error: "invalid" } });
 
-    await expect(
-      importPrintFromUrl(userId, THING_URL, { url: THING_URL, tags: [] }),
-    ).rejects.toThrow(/access token/i);
+    await expect(importPrintFromUrl(userId, THING_URL, { url: THING_URL, tags: [] })).rejects.toThrow(/access token/i);
   });
 
   it("imports a Thing's model files as plates, matches category, and attaches metadata + images", async () => {

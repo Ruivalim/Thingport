@@ -48,7 +48,9 @@ export default function SeeMoreDialog<T>({ open, onClose, title, emptyText, fetc
             <CircularProgress size={28} />
           </Stack>
         ) : items.length === 0 ? (
-          <Typography color="text.secondary" sx={{ py: 2 }}>{emptyText}</Typography>
+          <Typography color="text.secondary" sx={{ py: 2 }}>
+            {emptyText}
+          </Typography>
         ) : (
           <List dense disablePadding>
             {items.map((item, index) => (

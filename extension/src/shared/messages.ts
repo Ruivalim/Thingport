@@ -16,7 +16,11 @@ export type RecentImport = {
 
 /** See content/makerworld/downloadResolver.ts. */
 /** `design` is absent when the page data couldn't be trusted to be this model's. */
-export type ResolvedDownload = { downloadUrl: string; instanceId: string | null; design?: Record<string, unknown> | null };
+export type ResolvedDownload = {
+  downloadUrl: string;
+  instanceId: string | null;
+  design?: Record<string, unknown> | null;
+};
 
 export type ImportSinglePayload = {
   url: string;

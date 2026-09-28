@@ -27,14 +27,18 @@ export default function SimplifySection({ onUnauthorized }: Props) {
   React.useEffect(() => {
     let active = true;
     settingsApi.getRendering().then(
-      (settings) => { if (active) setEnabled(settings.simplify_previews); },
+      (settings) => {
+        if (active) setEnabled(settings.simplify_previews);
+      },
       (err) => {
         if (!active) return;
         if (err instanceof UnauthorizedError) onUnauthorized?.();
         else setError(t("adminSettings.rendering.simplify.loadFailed"));
       },
     );
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [onUnauthorized, t]);
 
   const toggle = async (next: boolean) => {
@@ -65,10 +69,18 @@ export default function SimplifySection({ onUnauthorized }: Props) {
             <AlertTitle>{t("adminSettings.rendering.simplify.infoTitle")}</AlertTitle>
             {t("adminSettings.rendering.simplify.infoWhat")}
             <Box component="ul" sx={{ mt: 1, mb: 0, pl: 2.5 }}>
-              <li><Typography variant="body2">{t("adminSettings.rendering.simplify.infoFiles")}</Typography></li>
-              <li><Typography variant="body2">{t("adminSettings.rendering.simplify.infoBenefit")}</Typography></li>
-              <li><Typography variant="body2">{t("adminSettings.rendering.simplify.infoCost")}</Typography></li>
-              <li><Typography variant="body2">{t("adminSettings.rendering.simplify.infoChange")}</Typography></li>
+              <li>
+                <Typography variant="body2">{t("adminSettings.rendering.simplify.infoFiles")}</Typography>
+              </li>
+              <li>
+                <Typography variant="body2">{t("adminSettings.rendering.simplify.infoBenefit")}</Typography>
+              </li>
+              <li>
+                <Typography variant="body2">{t("adminSettings.rendering.simplify.infoCost")}</Typography>
+              </li>
+              <li>
+                <Typography variant="body2">{t("adminSettings.rendering.simplify.infoChange")}</Typography>
+              </li>
             </Box>
           </Alert>
           <Stack direction="row" spacing={1} alignItems="center">
@@ -82,15 +94,25 @@ export default function SimplifySection({ onUnauthorized }: Props) {
               }
               label={
                 <Box>
-                  <Typography variant="body2" fontWeight={600}>{t("adminSettings.rendering.simplify.label")}</Typography>
-                  <Typography variant="caption" color="text.secondary">{t(enabled ? "adminSettings.rendering.simplify.helpOn" : "adminSettings.rendering.simplify.helpOff")}</Typography>
+                  <Typography variant="body2" fontWeight={600}>
+                    {t("adminSettings.rendering.simplify.label")}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {t(
+                      enabled ? "adminSettings.rendering.simplify.helpOn" : "adminSettings.rendering.simplify.helpOff",
+                    )}
+                  </Typography>
                 </Box>
               }
               sx={{ alignItems: "flex-start", m: 0, "& .MuiSwitch-root": { mt: -0.5 } }}
             />
             {saving && <CircularProgress size={16} />}
           </Stack>
-          {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
+          {error && (
+            <Alert severity="error" onClose={() => setError(null)}>
+              {error}
+            </Alert>
+          )}
         </Stack>
       </Paper>
     </Stack>

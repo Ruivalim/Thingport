@@ -282,4 +282,3 @@ General Public License for more details.
 
 If you run a modified version of Thingport as a network service, the AGPL requires you to offer its
 users the corresponding source code.
-

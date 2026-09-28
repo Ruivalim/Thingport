@@ -286,7 +286,9 @@ describe("plate add/remove/reorder/rename", () => {
 
     res = await auth(request(app).delete(`/api/print/${printId}/plates/${original.id}`));
     expect(res.status).toBe(200);
-    res = await auth(request(app).post(`/api/print/${printId}/plate/${added.id}/rename`)).send({ filename: original.filename });
+    res = await auth(request(app).post(`/api/print/${printId}/plate/${added.id}/rename`)).send({
+      filename: original.filename,
+    });
     expect(res.status).toBe(200);
     expect(res.body.print.plates).toEqual([expect.objectContaining({ id: added.id, filename: original.filename })]);
   });
@@ -302,7 +304,10 @@ describe("category CRUD + cycle rejection", () => {
     expect(list.status).toBe(200);
     expect(list.body.some((f: any) => f.id === categoryId)).toBe(true);
 
-    const update = await auth(request(app).patch(`/api/category/${categoryId}`)).send({ name: "Test Category A Renamed", tags: [] });
+    const update = await auth(request(app).patch(`/api/category/${categoryId}`)).send({
+      name: "Test Category A Renamed",
+      tags: [],
+    });
     expect(update.status).toBe(200);
     expect(update.body.name).toBe("Test Category A Renamed");
 
@@ -311,7 +316,11 @@ describe("category CRUD + cycle rejection", () => {
   });
 
   it("rejects a parent that does not exist", async () => {
-    const res = await auth(request(app).post("/api/categories")).send({ name: "Orphan", tags: [], parent_id: "does-not-exist" });
+    const res = await auth(request(app).post("/api/categories")).send({
+      name: "Orphan",
+      tags: [],
+      parent_id: "does-not-exist",
+    });
     expect(res.status).toBe(400);
   });
 
@@ -407,8 +416,14 @@ describe("zip download arcname structure", () => {
     const tmpZip = path.join(os.tmpdir(), `test-${Date.now()}.zip`);
     fs.writeFileSync(tmpZip, zipRes.body as Buffer);
     const entries = await listZipEntries(tmpZip);
-    const names = entries.filter((e) => !e.isDirectory).map((e) => e.name).toSorted();
-    expect(names).toEqual(["Zip Category Test/Zippy Print/supporting/readme.txt", "Zip Category Test/Zippy Print/zippy.stl"]);
+    const names = entries
+      .filter((e) => !e.isDirectory)
+      .map((e) => e.name)
+      .toSorted();
+    expect(names).toEqual([
+      "Zip Category Test/Zippy Print/supporting/readme.txt",
+      "Zip Category Test/Zippy Print/zippy.stl",
+    ]);
     fs.rmSync(tmpZip, { force: true });
   });
 });

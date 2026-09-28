@@ -11,5 +11,7 @@ export function formatPreparedDuration(t: TFunction, totalSeconds?: number | nul
     days ? t("library:duration.days", { count: days }) : "",
     hours ? t("library:duration.hours", { count: hours }) : "",
     minutes ? t("library:duration.minutes", { count: minutes }) : "",
-  ].filter(Boolean).join(" ");
+  ]
+    .filter(Boolean)
+    .join(" ");
 }

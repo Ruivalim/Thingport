@@ -9,17 +9,23 @@ const listeners = new Set<(value: string | null) => void>();
 function load(): Promise<string | null> {
   if (cached !== undefined) return Promise.resolve(cached);
   if (!inFlight) {
-    inFlight = settingsApi.getSlicer()
-      .then(res => { cached = res.slicer ?? null; return cached; })
+    inFlight = settingsApi
+      .getSlicer()
+      .then((res) => {
+        cached = res.slicer ?? null;
+        return cached;
+      })
       .catch(() => null)
-      .finally(() => { inFlight = null; });
+      .finally(() => {
+        inFlight = null;
+      });
   }
   return inFlight;
 }
 
 export function setCachedSlicerPreference(value: string | null) {
   cached = value;
-  listeners.forEach(listener => listener(value));
+  listeners.forEach((listener) => listener(value));
 }
 
 export function useSlicerPreference(): string | null {
@@ -27,7 +33,9 @@ export function useSlicerPreference(): string | null {
 
   useEffect(() => {
     let cancelled = false;
-    void load().then(v => { if (!cancelled) setValue(v); });
+    void load().then((v) => {
+      if (!cancelled) setValue(v);
+    });
     listeners.add(setValue);
     return () => {
       cancelled = true;

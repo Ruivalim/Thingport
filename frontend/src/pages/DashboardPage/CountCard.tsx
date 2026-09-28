@@ -25,14 +25,21 @@ export default function CountCard({ icon, count, label, onClick }: Props) {
         borderColor: (theme) => (theme.palette.mode === "dark" ? "transparent" : "divider"),
         ...(onClick && {
           cursor: "pointer",
-          transition: (theme) => theme.transitions.create("background-color", { duration: theme.transitions.duration.shortest }),
+          transition: (theme) =>
+            theme.transitions.create("background-color", { duration: theme.transitions.duration.shortest }),
           "&:hover": { bgcolor: "action.hover" },
         }),
       }}
     >
-      <Typography component="div" sx={{ color: "primary.main", display: "flex" }}>{icon}</Typography>
-      <Typography variant="h3" fontWeight={700} sx={{ color: (theme) => theme.thingport.headingText }}>{count}</Typography>
-      <Typography variant="body2" color="text.secondary">{label}</Typography>
+      <Typography component="div" sx={{ color: "primary.main", display: "flex" }}>
+        {icon}
+      </Typography>
+      <Typography variant="h3" fontWeight={700} sx={{ color: (theme) => theme.thingport.headingText }}>
+        {count}
+      </Typography>
+      <Typography variant="body2" color="text.secondary">
+        {label}
+      </Typography>
     </Paper>
   );
 }

@@ -12,8 +12,8 @@ SCSS. You need Node.js 20 or newer. Everything below runs from this `extension/`
 
 ```bash
 npm install
-npm run dev            # build dist/chrome and rebuild on every change
-npm run dev:firefox    # same for dist/firefox
+npm run dev         # build dist/chrome and rebuild on every change
+npm run dev:firefox # same for dist/firefox
 ```
 
 Load the build output as an unpacked extension, and reload it (the circular arrow on its card in
@@ -65,20 +65,20 @@ uses the light one.
 
 ### Scripts
 
-| Command | What it does |
-| --- | --- |
-| `npm run dev` / `dev:firefox` | Watch build of `dist/chrome` / `dist/firefox` |
-| `npm run build` | Builds `dist/chrome`, `dist/firefox` and `dist/edge` |
-| `npm run build:chrome` / `build:firefox` / `build:edge` | Builds one browser |
-| `npm run zip` | Builds everything and packages the store zips (below) |
-| `npm run zip:chrome` / `zip:firefox` / `zip:edge` | Same for one store |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm run lint` | oxlint (also run on commit by the repo's pre-commit hook) |
-| `npm run lint:firefox` | Builds for Firefox and runs `web-ext lint` on the result |
-| `npm run screenshots` | Regenerates the README screenshots (see below) |
-| `npm run store-assets` | Renders the store logo, promotional tiles and PNG screenshots (see below) |
-| `npm run verify` | Typecheck + lint + build |
-| `npm run release:dry-run` | Shows the next version semantic-release would release, and why (Node 22.14+) |
+| Command                                                 | What it does                                                                 |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `npm run dev` / `dev:firefox`                           | Watch build of `dist/chrome` / `dist/firefox`                                |
+| `npm run build`                                         | Builds `dist/chrome`, `dist/firefox` and `dist/edge`                         |
+| `npm run build:chrome` / `build:firefox` / `build:edge` | Builds one browser                                                           |
+| `npm run zip`                                           | Builds everything and packages the store zips (below)                        |
+| `npm run zip:chrome` / `zip:firefox` / `zip:edge`       | Same for one store                                                           |
+| `npm run typecheck`                                     | `tsc --noEmit`                                                               |
+| `npm run lint`                                          | oxlint (also run on commit by the repo's pre-commit hook)                    |
+| `npm run lint:firefox`                                  | Builds for Firefox and runs `web-ext lint` on the result                     |
+| `npm run screenshots`                                   | Regenerates the README screenshots (see below)                               |
+| `npm run store-assets`                                  | Renders the store logo, promotional tiles and PNG screenshots (see below)    |
+| `npm run verify`                                        | Typecheck + lint + build                                                     |
+| `npm run release:dry-run`                               | Shows the next version semantic-release would release, and why (Node 22.14+) |
 
 The only difference between the browser builds is `manifest.json` (see `scripts/manifest.ts`):
 Chrome and Edge run the background as a service worker, Firefox as an event page
@@ -90,12 +90,12 @@ Chrome and Edge run the background as a service worker, Firefox as an event page
 `npm run zip` writes one upload-ready zip per store to `dist/zips/`, each with `manifest.json` at
 its root:
 
-| File | Where it goes |
-| --- | --- |
-| `thingport-grab-chrome.zip` | [Chrome Web Store developer dashboard](https://chrome.google.com/webstore/devconsole) |
-| `thingport-grab-edge.zip` | [Microsoft Edge Add-ons Partner Center](https://partner.microsoft.com/dashboard/microsoftedge/overview) |
-| `thingport-grab-firefox.zip` | [addons.mozilla.org Developer Hub](https://addons.mozilla.org/developers/) |
-| `thingport-grab-sources.zip` | AMO too -- it asks for the source whenever the submitted code comes out of a build step |
+| File                         | Where it goes                                                                                           |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `thingport-grab-chrome.zip`  | [Chrome Web Store developer dashboard](https://chrome.google.com/webstore/devconsole)                   |
+| `thingport-grab-edge.zip`    | [Microsoft Edge Add-ons Partner Center](https://partner.microsoft.com/dashboard/microsoftedge/overview) |
+| `thingport-grab-firefox.zip` | [addons.mozilla.org Developer Hub](https://addons.mozilla.org/developers/)                              |
+| `thingport-grab-sources.zip` | AMO too -- it asks for the source whenever the submitted code comes out of a build step                 |
 
 The bundles aren't minified, so reviewers can read them as-is; the sources zip lets them rebuild
 them byte-for-byte with `npm ci && npm run build:firefox`. Upload the zips from a
@@ -110,18 +110,18 @@ Secrets and variables > Actions > Variables), so they don't have to be hard-code
 **Microsoft Edge Add-ons** (live; new versions are published by CI, see
 [Publishing to Edge automatically](#publishing-to-edge-automatically)):
 
-| | Value |
-| --- | --- |
-| Listing | https://microsoftedge.microsoft.com/addons/detail/kahfidpmojfocohinlmglnfoaimocbol |
-| Extension (CRX) ID | `kahfidpmojfocohinlmglnfoaimocbol` -- repo variable `EDGE_EXTENSION_ID` |
-| Product ID | `8c5f106c-5a45-438f-8e0b-2d0c0584d253` -- repo variable `EDGE_PRODUCT_ID`, used by the publish API |
-| Store ID | `0RDCKH3TMN7G` |
+|                    | Value                                                                                              |
+| ------------------ | -------------------------------------------------------------------------------------------------- |
+| Listing            | https://microsoftedge.microsoft.com/addons/detail/kahfidpmojfocohinlmglnfoaimocbol                 |
+| Extension (CRX) ID | `kahfidpmojfocohinlmglnfoaimocbol` -- repo variable `EDGE_EXTENSION_ID`                            |
+| Product ID         | `8c5f106c-5a45-438f-8e0b-2d0c0584d253` -- repo variable `EDGE_PRODUCT_ID`, used by the publish API |
+| Store ID           | `0RDCKH3TMN7G`                                                                                     |
 
 **Chrome Web Store** (submitted; the listing URL works once review passes):
 
-| | Value |
-| --- | --- |
-| Listing | https://chromewebstore.google.com/detail/nmblahmglpbplmfcggghdgohohlaeiee |
+|              | Value                                                                     |
+| ------------ | ------------------------------------------------------------------------- |
+| Listing      | https://chromewebstore.google.com/detail/nmblahmglpbplmfcggghdgohohlaeiee |
 | Extension ID | `nmblahmglpbplmfcggghdgohohlaeiee` -- repo variable `CHROME_EXTENSION_ID` |
 
 Publishing to Chrome from CI (not set up yet) needs a Google Cloud OAuth client for the
@@ -132,19 +132,18 @@ Edge also issued a public key for the listing. Don't add it to the manifest (`ke
 builds -- the stores set that themselves. It's only useful for giving an unpacked development build
 the same extension ID as the store version.
 
-
 ### Store listing images
 
 `npm run store-assets` renders everything a listing asks for into `docs/store/`, from the HTML
 templates in `store-assets/` (styled like the website's social card):
 
-| File | Size | Use |
-| --- | --- | --- |
-| `logo.png` | 300x300 | Store logo |
-| `store-icon.png` | 128x128 | Chrome Web Store icon -- transparent, 96x96 artwork with 16px padding |
-| `tile-small.png` | 440x280 | Small promotional tile |
-| `tile-large.png` | 1400x560 | Large promotional tile -- the extension's real panel (its compiled stylesheet) on a placeholder page |
-| `screenshots/*.png` | 1280x800 | The README's page screenshots as PNG, which is all the stores accept |
+| File                | Size     | Use                                                                                                  |
+| ------------------- | -------- | ---------------------------------------------------------------------------------------------------- |
+| `logo.png`          | 300x300  | Store logo                                                                                           |
+| `store-icon.png`    | 128x128  | Chrome Web Store icon -- transparent, 96x96 artwork with 16px padding                                |
+| `tile-small.png`    | 440x280  | Small promotional tile                                                                               |
+| `tile-large.png`    | 1400x560 | Large promotional tile -- the extension's real panel (its compiled stylesheet) on a placeholder page |
+| `screenshots/*.png` | 1280x800 | The README's page screenshots as PNG, which is all the stores accept                                 |
 
 Run `npm run screenshots` first when the screenshots need refreshing. They show live provider
 pages, so check them before uploading: a front-page model can be someone else's trademarked
@@ -154,7 +153,7 @@ character, and Printables pages carry its own ads. Pick neutral models with
 ### Regenerating the screenshots
 
 ```bash
-npx playwright install chromium   # once
+npx playwright install chromium # once
 npm run screenshots
 ```
 
@@ -191,12 +190,12 @@ Nobody edits `version` in `package.json` by hand -- semantic-release derives it 
 (`semantic-release-monorepo`, configured in `.releaserc.json`), so backend, frontend and web
 commits never move the extension's version. Of those:
 
-| Commit | Release |
-| --- | --- |
-| `feat: ...` | minor -- 1.2.0 → 1.3.0 |
-| `fix: ...`, `perf: ...` | patch -- 1.2.0 → 1.2.1 |
-| `feat!: ...`, or a `BREAKING CHANGE:` footer | major -- 1.2.0 → 2.0.0 |
-| `docs:`, `refactor:`, `chore:`, `ci:`, `test:`, `style:`, `build:` | none on its own |
+| Commit                                                             | Release                |
+| ------------------------------------------------------------------ | ---------------------- |
+| `feat: ...`                                                        | minor -- 1.2.0 → 1.3.0 |
+| `fix: ...`, `perf: ...`                                            | patch -- 1.2.0 → 1.2.1 |
+| `feat!: ...`, or a `BREAKING CHANGE:` footer                       | major -- 1.2.0 → 2.0.0 |
+| `docs:`, `refactor:`, `chore:`, `ci:`, `test:`, `style:`, `build:` | none on its own        |
 
 The highest one wins, so a week of three fixes and one feature is one minor release. Two things
 follow from this:
@@ -261,8 +260,8 @@ The job skips itself (with a notice in the run) until these exist:
    this repo's folder:
 
    ```bash
-   gh secret set EDGE_CLIENT_ID   # paste the Client ID when prompted
-   gh secret set EDGE_API_KEY     # paste the API key when prompted
+   gh secret set EDGE_CLIENT_ID # paste the Client ID when prompted
+   gh secret set EDGE_API_KEY   # paste the API key when prompted
    ```
 
 5. `EDGE_PRODUCT_ID` is already a repo **variable** (see [Store listings](#store-listings)).
@@ -292,8 +291,8 @@ changing it once builds have been signed and distributed.
 
 `browser_specific_settings.gecko.data_collection_permissions` is declared as `["none"]` -- Mozilla
 requires every add-on to disclose this (as of policy effective 2025-11-03) and rejects signing
-without it. This only covers data sent *off-device to the extension's developer or a third party
-it controls* -- the credentials/cookies this extension sends to your own self-hosted Thingport
+without it. This only covers data sent _off-device to the extension's developer or a third party
+it controls_ -- the credentials/cookies this extension sends to your own self-hosted Thingport
 instance don't count, since that's a destination you configure and control, not the developer. If
 that ever changes (e.g. adding telemetry to a Thingport-operated service), update this declaration
 to match.

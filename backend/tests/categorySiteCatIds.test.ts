@@ -59,7 +59,10 @@ describe("PATCH /category/:id/meta -- multi-value category ids", () => {
     const categoryId = await createCategory("Clearable Category");
     await request(app).patch(`/api/category/${categoryId}/meta`).set(auth()).send({ printables_cat_ids: "42" });
 
-    const res = await request(app).patch(`/api/category/${categoryId}/meta`).set(auth()).send({ printables_cat_ids: "   " });
+    const res = await request(app)
+      .patch(`/api/category/${categoryId}/meta`)
+      .set(auth())
+      .send({ printables_cat_ids: "   " });
     expect(res.status).toBe(200);
     expect(res.body.printables_cat_ids).toBe("");
 

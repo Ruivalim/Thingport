@@ -45,7 +45,11 @@ describe("toPrintOut -- source_provider / source_url", () => {
 
   it("is null for an upload with no known source", async () => {
     const user = await prisma.user.create({
-      data: { email: `source-url-test-2-${Date.now()}@example.com`, passwordHash: "x", displayName: "Source URL Test 2" },
+      data: {
+        email: `source-url-test-2-${Date.now()}@example.com`,
+        passwordHash: "x",
+        displayName: "Source URL Test 2",
+      },
     });
     const print = await prisma.print.create({
       data: { userId: user.id, name: "Uploaded", nameNormalized: "uploaded" },

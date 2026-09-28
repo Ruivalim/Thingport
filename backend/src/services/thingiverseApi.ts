@@ -73,7 +73,10 @@ async function rawApiFetch(url: string): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
   try {
-    return await fetch(url, { headers: { "User-Agent": IMPORT_BROWSER_USER_AGENT, Accept: "application/json" }, signal: controller.signal });
+    return await fetch(url, {
+      headers: { "User-Agent": IMPORT_BROWSER_USER_AGENT, Accept: "application/json" },
+      signal: controller.signal,
+    });
   } finally {
     clearTimeout(timeout);
   }
@@ -96,7 +99,11 @@ async function fetchThingiverseApiJson(path: string, accessToken: string): Promi
     }
   } else {
     res = await rawApiFetch(url);
-    if ((res.status === 429 || res.status === 403) && isFlaresolverrEnabled() && looksLikeCloudflareBlock(res.headers)) {
+    if (
+      (res.status === 429 || res.status === 403) &&
+      isFlaresolverrEnabled() &&
+      looksLikeCloudflareBlock(res.headers)
+    ) {
       const solved = await fetchViaFlaresolverr(url);
       if (solved) {
         viaBrowser = true;
@@ -142,11 +149,15 @@ export type ThingiverseThingResolution = {
   galleryImages: ThingiverseGalleryImage[];
 };
 
-function extractCreatorAuthor(creator: Record<string, unknown>): { creator: string | null; author: ImportedAuthorInfo | null } {
+function extractCreatorAuthor(creator: Record<string, unknown>): {
+  creator: string | null;
+  author: ImportedAuthorInfo | null;
+} {
   const name = typeof creator.name === "string" && creator.name.trim() ? creator.name.trim() : null;
   const externalId = creator.id != null ? String(creator.id) : null;
   if (!externalId) return { creator: name, author: null };
-  const publicUrl = typeof creator.public_url === "string" && creator.public_url.trim() ? creator.public_url.trim() : null;
+  const publicUrl =
+    typeof creator.public_url === "string" && creator.public_url.trim() ? creator.public_url.trim() : null;
   const author: ImportedAuthorInfo = {
     provider: THINGIVERSE_PROVIDER,
     externalId,
@@ -163,7 +174,10 @@ function extractCreatorAuthor(creator: Record<string, unknown>): { creator: stri
 
 /** Null for a Thing that doesn't exist or isn't accessible; throws ThingiverseAuthError for a
  * rejected token. */
-export async function resolveThingiverseThing(thingId: string, accessToken: string): Promise<ThingiverseThingResolution | null> {
+export async function resolveThingiverseThing(
+  thingId: string,
+  accessToken: string,
+): Promise<ThingiverseThingResolution | null> {
   const detail = await fetchThingiverseApiJson(`/things/${thingId}`, accessToken);
   if (!isRecord(detail)) return null;
 
@@ -203,19 +217,22 @@ export async function resolveThingiverseThing(thingId: string, accessToken: stri
           meta.categorySite = THINGIVERSE_PROVIDER;
         }
       }
-    } catch {
-    }
+    } catch {}
   }
 
   const zipData = isRecord(detail.zip_data) ? detail.zip_data : null;
   const plateFiles: ThingiversePlateFile[] = Array.isArray(zipData?.files)
     ? zipData.files
-        .filter((f): f is Record<string, unknown> => isRecord(f) && typeof f.name === "string" && typeof f.url === "string")
+        .filter(
+          (f): f is Record<string, unknown> => isRecord(f) && typeof f.name === "string" && typeof f.url === "string",
+        )
         .map((f) => ({ name: f.name as string, url: f.url as string }))
     : [];
   const galleryImages: ThingiverseGalleryImage[] = Array.isArray(zipData?.images)
     ? zipData.images
-        .filter((f): f is Record<string, unknown> => isRecord(f) && typeof f.name === "string" && typeof f.url === "string")
+        .filter(
+          (f): f is Record<string, unknown> => isRecord(f) && typeof f.name === "string" && typeof f.url === "string",
+        )
         .map((f) => ({ name: f.name as string, url: f.url as string }))
     : [];
 
@@ -279,7 +296,10 @@ export async function fetchThingiverseCollectionThings(
   );
 }
 
-export async function fetchThingiverseCollectionTitle(collectionId: string, accessToken: string): Promise<string | null> {
+export async function fetchThingiverseCollectionTitle(
+  collectionId: string,
+  accessToken: string,
+): Promise<string | null> {
   const data = await fetchThingiverseApiJson(`/collections/${encodeURIComponent(collectionId)}`, accessToken);
   return isRecord(data) && typeof data.name === "string" && data.name.trim() ? data.name.trim() : null;
 }

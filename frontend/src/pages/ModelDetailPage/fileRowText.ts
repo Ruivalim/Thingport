@@ -6,6 +6,8 @@ export function fileRowText(t: TFunction, filename: string, index: number): { pr
   const type = extOf(filename).toUpperCase();
   return {
     primary: stemOf(filename),
-    secondary: type ? t("models:detail.fileMeta", { n: index + 1, type }) : t("models:detail.fileLabel", { n: index + 1 }),
+    secondary: type
+      ? t("models:detail.fileMeta", { n: index + 1, type })
+      : t("models:detail.fileLabel", { n: index + 1 }),
   };
 }

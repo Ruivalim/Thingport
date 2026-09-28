@@ -14,7 +14,15 @@ function jsonResponse(status: number, body: unknown): Response {
 }
 
 function modelItem(id: number) {
-  return { id: String(id), model: { id: String(id), name: `Model ${id}`, slug: `collected-model-${id}`, image: { filePath: `media/prints/${id}/title.jpg` } } };
+  return {
+    id: String(id),
+    model: {
+      id: String(id),
+      name: `Model ${id}`,
+      slug: `collected-model-${id}`,
+      image: { filePath: `media/prints/${id}/title.jpg` },
+    },
+  };
 }
 
 /** A deleted/hidden model: skipped, not a crash. */
@@ -31,7 +39,10 @@ function collectionTitleResponse(name: string | null) {
 }
 
 /** Routes by request body. `pages` is keyed by the cursor each page expects (null for the first). */
-function mockCollectionFetch(opts: { title?: string | null; pages: Record<string, { items: unknown[]; nextCursor: string | null }> }) {
+function mockCollectionFetch(opts: {
+  title?: string | null;
+  pages: Record<string, { items: unknown[]; nextCursor: string | null }>;
+}) {
   return vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(async (_input, init) => {
     const body = JSON.parse(String(init?.body ?? "{}"));
     if (typeof body.query === "string" && body.query.includes("moreCollectionModels")) {
@@ -46,16 +57,20 @@ function mockCollectionFetch(opts: { title?: string | null; pages: Record<string
 
 describe("parsePrintablesCollectionUrl", () => {
   it("recognizes a Collection page, with or without the @handle prefix", () => {
-    expect(parsePrintablesCollectionUrl(`https://www.printables.com/@joshuaargh/collections/${COLLECTION_ID}`)).toEqual({
-      collectionId: COLLECTION_ID,
-    });
+    expect(parsePrintablesCollectionUrl(`https://www.printables.com/@joshuaargh/collections/${COLLECTION_ID}`)).toEqual(
+      {
+        collectionId: COLLECTION_ID,
+      },
+    );
     expect(parsePrintablesCollectionUrl(`https://www.printables.com/collections/${COLLECTION_ID}`)).toEqual({
       collectionId: COLLECTION_ID,
     });
   });
 
   it("rejects a single model URL, a profile page, and unrelated hosts", () => {
-    expect(parsePrintablesCollectionUrl("https://www.printables.com/model/1786545-strong-garden-hose-holder")).toBeNull();
+    expect(
+      parsePrintablesCollectionUrl("https://www.printables.com/model/1786545-strong-garden-hose-holder"),
+    ).toBeNull();
     expect(parsePrintablesCollectionUrl("https://www.printables.com/@joshuaargh")).toBeNull();
     expect(parsePrintablesCollectionUrl(`https://example.com/collections/${COLLECTION_ID}`)).toBeNull();
   });
@@ -169,7 +184,10 @@ describe("POST /import/printables-collection/entries", () => {
   });
 
   it("lists a collection's models as importable entries, with the real collection name as title", async () => {
-    global.fetch = mockCollectionFetch({ title: COLLECTION_TITLE, pages: { null: { items: [modelItem(1)], nextCursor: "" } } });
+    global.fetch = mockCollectionFetch({
+      title: COLLECTION_TITLE,
+      pages: { null: { items: [modelItem(1)], nextCursor: "" } },
+    });
 
     const res = await request(app)
       .post("/api/import/printables-collection/entries")
@@ -181,7 +199,12 @@ describe("POST /import/printables-collection/entries", () => {
     expect(res.body.total).toBe(1);
     expect(res.body.truncated).toBe(false);
     expect(res.body.entries).toEqual([
-      { design_id: "1", title: "Collected model 1", cover: "https://media.printables.com/media/prints/1/title.jpg", already_imported: false },
+      {
+        design_id: "1",
+        title: "Collected model 1",
+        cover: "https://media.printables.com/media/prints/1/title.jpg",
+        already_imported: false,
+      },
     ]);
   });
 
@@ -215,7 +238,10 @@ describe("POST /import/printables-collection/entries", () => {
         sourceExternalId: "1",
       },
     });
-    global.fetch = mockCollectionFetch({ title: COLLECTION_TITLE, pages: { null: { items: [modelItem(1)], nextCursor: "" } } });
+    global.fetch = mockCollectionFetch({
+      title: COLLECTION_TITLE,
+      pages: { null: { items: [modelItem(1)], nextCursor: "" } },
+    });
 
     const res = await request(app)
       .post("/api/import/printables-collection/entries")
@@ -224,7 +250,12 @@ describe("POST /import/printables-collection/entries", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.entries).toEqual([
-      { design_id: "1", title: "Collected model 1", cover: "https://media.printables.com/media/prints/1/title.jpg", already_imported: true },
+      {
+        design_id: "1",
+        title: "Collected model 1",
+        cover: "https://media.printables.com/media/prints/1/title.jpg",
+        already_imported: true,
+      },
     ]);
   });
 

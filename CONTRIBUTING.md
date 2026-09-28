@@ -29,15 +29,15 @@ Getting the project running locally is covered in [docs/DEVELOPMENT.md](docs/DEV
 
 4. **Push** to your fork and open a pull request against `main`.
 
-A husky pre-commit hook runs oxlint over whichever project you touched. If it blocks your commit,
-fix the lint error rather than passing `--no-verify`.
+A husky pre-commit hook formats your staged files and runs oxlint over whichever project you touched.
+If it blocks your commit, fix the lint error rather than passing `--no-verify`.
 
 ## Before you push
 
 Run whatever covers the area you changed:
 
 ```bash
-npm --prefix frontend run verify   # typecheck + lint + tests + build
+npm --prefix frontend run verify # typecheck + lint + tests + build
 npm --prefix backend run lint
 ```
 
@@ -47,14 +47,15 @@ default configuration points at your development database.
 
 ## What CI checks
 
-Workflows are path-filtered, so only the parts you touched run:
+Formatting is checked on every pull request (`npm run format:check`). The other workflows are
+path-filtered, so only the parts you touched run:
 
-| You changed | CI runs |
-| --- | --- |
-| `backend/**` | oxlint, then a multi-arch Docker image build (which runs `tsc`) |
-| `frontend/**` | oxlint, `tsc --noEmit`, then a Docker image build |
+| You changed    | CI runs                                                                                         |
+| -------------- | ----------------------------------------------------------------------------------------------- |
+| `backend/**`   | oxlint, then a multi-arch Docker image build (which runs `tsc`)                                 |
+| `frontend/**`  | oxlint, `tsc --noEmit`, then a Docker image build                                               |
 | `extension/**` | oxlint, `tsc --noEmit`, the Chrome/Edge/Firefox builds, and `web-ext lint` on the Firefox build |
-| `bridge/**` | `go test ./...` and a build for Windows, Linux and macOS |
+| `bridge/**`    | `go test ./...` and a build for Windows, Linux and macOS                                        |
 
 Nothing is published from a pull request -- images are built to prove they build, but only pushes
 to `main` publish anything.
@@ -72,13 +73,15 @@ If you couldn't verify something end to end, say so. That's useful information, 
 
 ## Code style
 
-- **Match the surrounding code.** This codebase uses long explanatory comments that say *why*
+- **Match the surrounding code.** This codebase uses long explanatory comments that say _why_
   something is the way it is -- particularly where behaviour is non-obvious or a workaround exists.
   Follow that where it helps; don't narrate what the code already says.
-- oxlint is the linter for every TypeScript project (backend, frontend, extension). There's no
-  Prettier config -- match the formatting of the file you're editing.
+- Prettier formats everything it can (config in `.prettierrc.json`), `gofmt` the bridge and
+  `prisma format` the schema. Run `npm run format` at the repo root; the pre-commit hook does it for
+  staged files.
+- oxlint is the linter for every TypeScript project (backend, frontend, extension).
 - The extension is TypeScript + SCSS built with esbuild, and its background has to run as a Chrome
-  service worker *and* a Firefox event page. See
+  service worker _and_ a Firefox event page. See
   [extension/CONTRIBUTING.md](extension/CONTRIBUTING.md) before changing it.
 - Frontend is TypeScript with `strict: true`. Don't reach for `any` to get past a type error.
 

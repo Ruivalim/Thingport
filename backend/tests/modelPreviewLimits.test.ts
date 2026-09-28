@@ -11,9 +11,8 @@ vi.hoisted(() => {
 });
 
 const { writeZip } = await import("../src/utils/zipWriter");
-const { generateModelPreviewGlb, modelPreviewGlbExists, modelPreviewGlbPath } = await import(
-  "../src/services/modelPreviewCache"
-);
+const { generateModelPreviewGlb, modelPreviewGlbExists, modelPreviewGlbPath } =
+  await import("../src/services/modelPreviewCache");
 
 const MODEL_XML = `<?xml version="1.0" encoding="UTF-8"?>
 <model xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02" unit="millimeter">

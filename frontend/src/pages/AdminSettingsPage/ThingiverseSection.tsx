@@ -38,7 +38,9 @@ export default function ThingiverseSection({ onUnauthorized }: Props) {
         if (active) setLoading(false);
       }
     })();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [onUnauthorized]);
 
   const save = async () => {
@@ -105,7 +107,7 @@ export default function ThingiverseSection({ onUnauthorized }: Props) {
           <TextField
             label={t("adminSettings.thingiverse.tokenLabel")}
             value={draft}
-            onChange={e => setDraft(e.target.value)}
+            onChange={(e) => setDraft(e.target.value)}
             placeholder={t("adminSettings.thingiverse.tokenPlaceholder") ?? undefined}
             helperText={configured ? t("adminSettings.thingiverse.tokenHelperConfigured") : undefined}
             disabled={loading || saving}

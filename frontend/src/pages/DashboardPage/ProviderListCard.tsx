@@ -21,15 +21,24 @@ export default function ProviderListCard({ providers }: Props) {
   return (
     <Paper
       variant="outlined"
-      sx={{ p: 2.5, display: "flex", flexDirection: "column", borderColor: (theme) => (theme.palette.mode === "dark" ? "transparent" : "divider") }}
+      sx={{
+        p: 2.5,
+        display: "flex",
+        flexDirection: "column",
+        borderColor: (theme) => (theme.palette.mode === "dark" ? "transparent" : "divider"),
+      }}
     >
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1, color: "primary.main" }}>
         <PublicIcon />
-        <Typography variant="h6" fontWeight={700} sx={{ color: (theme) => theme.thingport.headingText }}>{t("dashboard.topProviders.title")}</Typography>
+        <Typography variant="h6" fontWeight={700} sx={{ color: (theme) => theme.thingport.headingText }}>
+          {t("dashboard.topProviders.title")}
+        </Typography>
       </Box>
 
       {providers.length === 0 ? (
-        <Typography color="text.secondary" sx={{ py: 2 }}>{t("dashboard.topProviders.empty")}</Typography>
+        <Typography color="text.secondary" sx={{ py: 2 }}>
+          {t("dashboard.topProviders.empty")}
+        </Typography>
       ) : (
         <List dense disablePadding>
           {providers.map((p) => {

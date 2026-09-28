@@ -57,7 +57,7 @@ function bytesToDataUrl(bytes: Uint8Array, mime: string): Promise<string> {
 }
 
 function createThumbnailGetter(zipEntries: Record<string, Uint8Array>): (plateIndex: number) => Promise<string | null> {
-  return async plateIndex => {
+  return async (plateIndex) => {
     for (const path of [`Metadata/plate_${plateIndex}.png`, `Metadata/top_${plateIndex}.png`]) {
       const bytes = zipEntries[path];
       if (bytes) return bytesToDataUrl(bytes, "image/png");
@@ -67,7 +67,7 @@ function createThumbnailGetter(zipEntries: Record<string, Uint8Array>): (plateIn
 }
 
 function nextTick(): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, 0));
+  return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 const YIELD_EVERY_N_VERTICES = 20000;
@@ -80,10 +80,22 @@ function parseTransform3MF(transformStr: string | null): THREE.Matrix4 {
   const values = transformStr.trim().split(/\s+/).map(parseFloat);
   if (values.length >= 12) {
     matrix.set(
-      values[0], values[1], values[2], values[9],
-      values[3], values[4], values[5], values[10],
-      values[6], values[7], values[8], values[11],
-      0, 0, 0, 1
+      values[0],
+      values[1],
+      values[2],
+      values[9],
+      values[3],
+      values[4],
+      values[5],
+      values[10],
+      values[6],
+      values[7],
+      values[8],
+      values[11],
+      0,
+      0,
+      0,
+      1,
     );
   }
   return matrix;
@@ -105,7 +117,7 @@ async function parseMeshFromDoc(doc: ElementSource, defaultExtruder = 0): Promis
       vertices.push(
         parseFloat(v.getAttribute("x") || "0"),
         parseFloat(v.getAttribute("y") || "0"),
-        parseFloat(v.getAttribute("z") || "0")
+        parseFloat(v.getAttribute("z") || "0"),
       );
       if (k > 0 && k % YIELD_EVERY_N_VERTICES === 0) await nextTick();
     }
@@ -116,7 +128,7 @@ async function parseMeshFromDoc(doc: ElementSource, defaultExtruder = 0): Promis
       triangles.push(
         parseInt(t.getAttribute("v1") || "0", 10),
         parseInt(t.getAttribute("v2") || "0", 10),
-        parseInt(t.getAttribute("v3") || "0", 10)
+        parseInt(t.getAttribute("v3") || "0", 10),
       );
       if (k > 0 && k % YIELD_EVERY_N_TRIANGLES === 0) await nextTick();
     }
@@ -129,11 +141,15 @@ async function parseMeshFromDoc(doc: ElementSource, defaultExtruder = 0): Promis
 }
 
 function parsePlateIdFromAttributes(element: Element): number | null {
-  const plateAttribute = Array.from(element.attributes).find(attr => {
+  const plateAttribute = Array.from(element.attributes).find((attr) => {
     const name = attr.name.toLowerCase();
     return (
-      name === "plate_id" || name === "plater_id" || name === "plateid" || name === "platerid" ||
-      name.endsWith(":plate_id") || name.endsWith(":plater_id")
+      name === "plate_id" ||
+      name === "plater_id" ||
+      name === "plateid" ||
+      name === "platerid" ||
+      name.endsWith(":plate_id") ||
+      name.endsWith(":plater_id")
     );
   });
   if (!plateAttribute?.value) return null;
@@ -142,7 +158,10 @@ function parsePlateIdFromAttributes(element: Element): number | null {
 }
 
 /** Best-effort; callers fall back to defaults. */
-function parseProjectSettings(text: string): { filamentColors: string[]; buildVolume: { x: number; y: number } | null } {
+function parseProjectSettings(text: string): {
+  filamentColors: string[];
+  buildVolume: { x: number; y: number } | null;
+} {
   let filamentColors: string[] = [];
   let buildVolume: { x: number; y: number } | null = null;
   try {
@@ -156,8 +175,7 @@ function parseProjectSettings(text: string): { filamentColors: string[]; buildVo
       const match = area[2].match(/^(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)$/);
       if (match) buildVolume = { x: parseFloat(match[1]), y: parseFloat(match[2]) };
     }
-  } catch {
-  }
+  } catch {}
   return { filamentColors, buildVolume };
 }
 
@@ -201,7 +219,7 @@ async function parse3MF(zipEntries: Record<string, Uint8Array>): Promise<ParsedB
         if (!objectId) continue;
 
         const directMetadata = Array.from(objEl.children).filter(
-          el => el.tagName === "metadata" && el.getAttribute("key") === "extruder"
+          (el) => el.tagName === "metadata" && el.getAttribute("key") === "extruder",
         );
         if (directMetadata.length > 0) {
           const extruderVal = directMetadata[0].getAttribute("value");
@@ -209,7 +227,7 @@ async function parse3MF(zipEntries: Record<string, Uint8Array>): Promise<ParsedB
         }
 
         const nameMetadata = Array.from(objEl.children).find(
-          el => el.tagName === "metadata" && el.getAttribute("key") === "name"
+          (el) => el.tagName === "metadata" && el.getAttribute("key") === "name",
         );
         const objectName = nameMetadata?.getAttribute("value");
         if (objectName) objectNameById.set(objectId, objectName);
@@ -220,7 +238,7 @@ async function parse3MF(zipEntries: Record<string, Uint8Array>): Promise<ParsedB
           const partId = partEl.getAttribute("id");
           if (!partId) continue;
           const partMetadata = Array.from(partEl.children).filter(
-            el => el.tagName === "metadata" && el.getAttribute("key") === "extruder"
+            (el) => el.tagName === "metadata" && el.getAttribute("key") === "extruder",
           );
           if (partMetadata.length > 0) {
             const extruderVal = partMetadata[0].getAttribute("value");
@@ -252,8 +270,9 @@ async function parse3MF(zipEntries: Record<string, Uint8Array>): Promise<ParsedB
           }
         }
         if (plateId == null) continue;
-        if (plateOffsetX !== 0 || plateOffsetY !== 0) plateOffsets.set(plateId, { offsetX: plateOffsetX, offsetY: plateOffsetY });
-        const nameMeta = Array.from(metadataElements).find(m => m.getAttribute("key") === "plater_name");
+        if (plateOffsetX !== 0 || plateOffsetY !== 0)
+          plateOffsets.set(plateId, { offsetX: plateOffsetX, offsetY: plateOffsetY });
+        const nameMeta = Array.from(metadataElements).find((m) => m.getAttribute("key") === "plater_name");
         const nameVal = nameMeta?.getAttribute("value")?.trim();
         if (nameVal) plateNames.set(plateId, nameVal);
 
@@ -268,8 +287,7 @@ async function parse3MF(zipEntries: Record<string, Uint8Array>): Promise<ParsedB
           }
         }
       }
-    } catch {
-    }
+    } catch {}
   }
 
   // Fallback for files MakerWorld didn't slice: plate_N.json keyed by object name.
@@ -289,15 +307,16 @@ async function parse3MF(zipEntries: Record<string, Uint8Array>): Promise<ParsedB
       }
       if (Array.isArray(json.bbox_all) && json.bbox_all.length >= 4) {
         const [minX, minY, maxX, maxY] = json.bbox_all;
-        if ([minX, minY, maxX, maxY].every(v => Number.isFinite(v))) {
+        if ([minX, minY, maxX, maxY].every((v) => Number.isFinite(v))) {
           plateBounds.set(plateIndex, { minX, minY, maxX, maxY });
         }
       }
-    } catch {
-    }
+    } catch {}
   }
 
-  const mainModelPath = Object.keys(zipEntries).find(name => name === "3D/3dmodel.model" || name.endsWith("/3dmodel.model"));
+  const mainModelPath = Object.keys(zipEntries).find(
+    (name) => name === "3D/3dmodel.model" || name.endsWith("/3dmodel.model"),
+  );
   let filamentColors: string[] = [];
   let buildVolume: { x: number; y: number } | null = null;
   const projectSettingsBytes = findEntry("Metadata/project_settings.config");
@@ -308,7 +327,7 @@ async function parse3MF(zipEntries: Record<string, Uint8Array>): Promise<ParsedB
   }
 
   if (!mainModelPath) {
-    const anyModelPath = Object.keys(zipEntries).find(name => name.endsWith(".model"));
+    const anyModelPath = Object.keys(zipEntries).find((name) => name.endsWith(".model"));
     if (anyModelPath) {
       const doc = loadModelFile(anyModelPath);
       if (doc) {
@@ -368,7 +387,7 @@ async function parse3MF(zipEntries: Record<string, Uint8Array>): Promise<ParsedB
       if (!extDoc) continue;
 
       const partKey = compObjectId ? `${objectId}:${compObjectId}` : null;
-      const compExtruder = partKey ? partExtruderMap.get(partKey) ?? defaultExtruder : defaultExtruder;
+      const compExtruder = partKey ? (partExtruderMap.get(partKey) ?? defaultExtruder) : defaultExtruder;
       // A part file can hold every part of a multi-part object, so take only the one this component
       // names. Mirrors modelPreviewRender.ts's createPartFileResolver.
       const targetEl = compObjectId
@@ -408,7 +427,7 @@ async function parse3MF(zipEntries: Record<string, Uint8Array>): Promise<ParsedB
       const itemPlateId = parsePlateIdFromAttributes(itemEl);
       const objectPlateId = objects.get(objectId)?.plateId ?? null;
       const objectName = objectNameById.get(objectId);
-      const namePlateId = objectName ? plateAssignmentsByName.get(objectName) ?? null : null;
+      const namePlateId = objectName ? (plateAssignmentsByName.get(objectName) ?? null) : null;
       buildItems.push({ objectId, transform, plateId: itemPlateId ?? objectPlateId ?? namePlateId ?? null });
     }
   }
@@ -420,7 +439,7 @@ async function parse3MF(zipEntries: Record<string, Uint8Array>): Promise<ParsedB
   }
   const plates: PlateSummary[] = Array.from(objectCountByPlate.keys())
     .toSorted((a, b) => a - b)
-    .map(index => ({ index, name: plateNames.get(index) ?? null, objectCount: objectCountByPlate.get(index) ?? 0 }));
+    .map((index) => ({ index, name: plateNames.get(index) ?? null, objectCount: objectCountByPlate.get(index) ?? 0 }));
 
   return {
     parsed: { objects, buildItems, plateBounds, plateOffsets },
@@ -450,10 +469,7 @@ export type CachedBambuGlb = {
 /** "failed": the browser mustn't try either, since it would exhaust its memory. "fallback": parse
  *  the raw file in the browser. */
 export type CachedGlbOutcome =
-  | { status: "ready"; glb: CachedBambuGlb }
-  | { status: "generating" }
-  | { status: "failed" }
-  | { status: "fallback" };
+  { status: "ready"; glb: CachedBambuGlb } | { status: "generating" } | { status: "failed" } | { status: "fallback" };
 
 async function previewErrorCode(res: Response): Promise<string | null> {
   try {
@@ -529,7 +545,7 @@ function createGeometryFromMesh(mesh: MeshData): THREE.BufferGeometry {
 export function buildBambuModelGroup(
   parsedData: Parsed3MFData,
   selectedPlateId: number | null,
-  filamentColors: string[]
+  filamentColors: string[],
 ): THREE.Group {
   const { objects, buildItems } = parsedData;
   const group = new THREE.Group();
@@ -541,9 +557,11 @@ export function buildBambuModelGroup(
   };
 
   const geometriesByExtruder = new Map<number, THREE.BufferGeometry[]>();
-  const hasPlateAssignments = buildItems.some(item => item.plateId != null);
+  const hasPlateAssignments = buildItems.some((item) => item.plateId != null);
   const plateFilteredItems =
-    selectedPlateId == null || !hasPlateAssignments ? buildItems : buildItems.filter(item => item.plateId === selectedPlateId);
+    selectedPlateId == null || !hasPlateAssignments
+      ? buildItems
+      : buildItems.filter((item) => item.plateId === selectedPlateId);
   const activeBuildItems = plateFilteredItems.length > 0 ? plateFilteredItems : buildItems;
 
   for (const item of activeBuildItems) {
@@ -556,7 +574,11 @@ export function buildBambuModelGroup(
         v.applyMatrix4(item.transform);
         transformedVertices.push(v.x, v.y, v.z);
       }
-      const geometry = createGeometryFromMesh({ vertices: transformedVertices, triangles: meshData.triangles, extruder: meshData.extruder });
+      const geometry = createGeometryFromMesh({
+        vertices: transformedVertices,
+        triangles: meshData.triangles,
+        extruder: meshData.extruder,
+      });
       if (!geometriesByExtruder.has(meshData.extruder)) geometriesByExtruder.set(meshData.extruder, []);
       geometriesByExtruder.get(meshData.extruder)!.push(geometry);
     }
@@ -571,7 +593,7 @@ export function buildBambuModelGroup(
       mesh.castShadow = true;
       group.add(mesh);
     }
-    if (geometries.length > 1) geometries.forEach(g => g.dispose());
+    if (geometries.length > 1) geometries.forEach((g) => g.dispose());
   }
 
   return group;

@@ -42,7 +42,7 @@ function CoverTile({
   const navigate = useNavigate();
   return (
     <Box
-      onClick={e => {
+      onClick={(e) => {
         e.stopPropagation();
         navigate(`/models/${print.id}`);
       }}
@@ -74,12 +74,20 @@ const STACK_LAYERS = [
   { insetPx: 20, dropPx: 12, opacity: 0.55 },
   { insetPx: 10, dropPx: 6, opacity: 0.8 },
 ];
-const STACK_DEPTH_PX = Math.max(...STACK_LAYERS.map(layer => layer.dropPx));
+const STACK_DEPTH_PX = Math.max(...STACK_LAYERS.map((layer) => layer.dropPx));
 
 const cardBackground = (muiTheme: Theme) =>
   muiTheme.palette.mode === "dark" ? muiTheme.thingport.pageBackground : muiTheme.palette.grey[100];
 
-export default function CollectionCard({ collection, theme, previewMode, onUpdated, onDeleted, onUnauthorized, onBookmarksChanged }: Props) {
+export default function CollectionCard({
+  collection,
+  theme,
+  previewMode,
+  onUpdated,
+  onDeleted,
+  onUnauthorized,
+  onBookmarksChanged,
+}: Props) {
   const { t } = useTranslation(["models", "common"]);
   const navigate = useNavigate();
   const coverItems = collection.cover_items.slice(0, COVER_TILE_LIMIT);
@@ -124,17 +132,20 @@ export default function CollectionCard({ collection, theme, previewMode, onUpdat
           sx={{
             width: "100%",
             aspectRatio: "4 / 3",
-            bgcolor: (muiTheme) => (muiTheme.palette.mode === "dark" ? muiTheme.thingport.pageBackground : muiTheme.palette.grey[200]),
+            bgcolor: (muiTheme) =>
+              muiTheme.palette.mode === "dark" ? muiTheme.thingport.pageBackground : muiTheme.palette.grey[200],
           }}
         >
           {coverItems.length === 0 && (
-            <Stack alignItems="center" justifyContent="center" sx={{ width: "100%", height: "100%", color: "text.disabled" }}>
+            <Stack
+              alignItems="center"
+              justifyContent="center"
+              sx={{ width: "100%", height: "100%", color: "text.disabled" }}
+            >
               <Typography variant="caption">{t("models:collections.card.empty")}</Typography>
             </Stack>
           )}
-          {coverItems.length === 1 && (
-            <CoverTile print={coverItems[0]} theme={theme} previewMode={previewMode} />
-          )}
+          {coverItems.length === 1 && <CoverTile print={coverItems[0]} theme={theme} previewMode={previewMode} />}
           {coverItems.length > 1 && (
             <Box
               sx={{
@@ -162,7 +173,7 @@ export default function CollectionCard({ collection, theme, previewMode, onUpdat
         {!collection.system_key && (
           <Box
             className="collection-card-actions"
-            onClick={e => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
             sx={{
               position: "absolute",
               top: 8,
@@ -194,9 +205,7 @@ export default function CollectionCard({ collection, theme, previewMode, onUpdat
           }}
         >
           <Stack direction="row" alignItems="center" spacing={0.5} minWidth={0}>
-            {collection.system_key && (
-              <LockIcon sx={{ fontSize: 14, color: "text.disabled", flexShrink: 0 }} />
-            )}
+            {collection.system_key && <LockIcon sx={{ fontSize: 14, color: "text.disabled", flexShrink: 0 }} />}
             <Typography
               variant="body2"
               fontWeight={600}

@@ -55,11 +55,11 @@ async function extractFromZip(bytes: Uint8Array): Promise<PreviewPayload | null>
       const detected = detectImageMime(data);
       return { name, data, ext, detected };
     })
-    .filter(entry => entry.data?.length && ((entry.ext && IMAGE_EXTS.has(entry.ext)) || entry.detected));
+    .filter((entry) => entry.data?.length && ((entry.ext && IMAGE_EXTS.has(entry.ext)) || entry.detected));
   if (!candidates.length) {
     return extractBase64FromZipEntries(entries);
   }
-  const preferred = candidates.filter(entry => /preview|thumb|thumbnail/i.test(entry.name));
+  const preferred = candidates.filter((entry) => /preview|thumb|thumbnail/i.test(entry.name));
   const selection = pickLargest(preferred.length ? preferred : candidates);
   if (!selection) return null;
   const mime = selection.detected || MIME_BY_EXT[selection.ext] || "image/png";
@@ -187,7 +187,10 @@ function extractDataUrlImage(text: string): PreviewPayload | null {
   const metaStart = start + "data:".length;
   const metaEnd = text.indexOf("base64,", metaStart);
   if (metaEnd === -1) return null;
-  const mime = text.slice(metaStart, metaEnd - 1).trim().toLowerCase();
+  const mime = text
+    .slice(metaStart, metaEnd - 1)
+    .trim()
+    .toLowerCase();
   const dataStart = metaEnd + "base64,".length;
   const dataEnd = readBase64End(text, dataStart);
   if (dataEnd <= dataStart) return null;
@@ -222,10 +225,7 @@ function readBase64End(text: string, start: number): number {
   let end = start;
   for (; end < text.length; end += 1) {
     const code = text.charCodeAt(end);
-    const isAlphaNum =
-      (code >= 48 && code <= 57) ||
-      (code >= 65 && code <= 90) ||
-      (code >= 97 && code <= 122);
+    const isAlphaNum = (code >= 48 && code <= 57) || (code >= 65 && code <= 90) || (code >= 97 && code <= 122);
     if (isAlphaNum || code === 43 || code === 47 || code === 61) {
       continue;
     }
@@ -305,21 +305,11 @@ function findZipSlice(bytes: Uint8Array): Uint8Array | null {
 }
 
 function readUint32LE(bytes: Uint8Array, offset: number) {
-  return (
-    (bytes[offset] |
-      (bytes[offset + 1] << 8) |
-      (bytes[offset + 2] << 16) |
-      (bytes[offset + 3] << 24)) >>> 0
-  );
+  return (bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24)) >>> 0;
 }
 
 function readUint32BE(bytes: Uint8Array, offset: number) {
-  return (
-    ((bytes[offset] << 24) >>> 0) +
-    (bytes[offset + 1] << 16) +
-    (bytes[offset + 2] << 8) +
-    bytes[offset + 3]
-  );
+  return ((bytes[offset] << 24) >>> 0) + (bytes[offset + 1] << 16) + (bytes[offset + 2] << 8) + bytes[offset + 3];
 }
 
 function readAscii(bytes: Uint8Array, offset: number, length: number) {

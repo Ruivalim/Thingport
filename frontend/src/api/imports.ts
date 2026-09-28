@@ -82,8 +82,7 @@ export const importsApi = {
       try {
         const data = await res.json();
         if (typeof data?.detail === "string") message = data.detail;
-      } catch {
-      }
+      } catch {}
       throw new Error(message);
     }
     return res.json();
@@ -235,7 +234,9 @@ export const importsApi = {
   },
 
   /** Returns immediately; ImportJobContext polls the job. */
-  fromThingiverseCollection: async (payload: ImportLinkPayload & { thing_ids: string[] }): Promise<{ job_id: string }> => {
+  fromThingiverseCollection: async (
+    payload: ImportLinkPayload & { thing_ids: string[] },
+  ): Promise<{ job_id: string }> => {
     const res = await fetch(`${apiBase()}/import/thingiverse-collection`, {
       method: "POST",
       headers: authHeaders({ "Content-Type": "application/json" }),
@@ -268,7 +269,9 @@ export const importsApi = {
   },
 
   /** Returns immediately; ImportJobContext polls the job. */
-  fromPrintablesCollection: async (payload: ImportLinkPayload & { model_ids: string[] }): Promise<{ job_id: string }> => {
+  fromPrintablesCollection: async (
+    payload: ImportLinkPayload & { model_ids: string[] },
+  ): Promise<{ job_id: string }> => {
     const res = await fetch(`${apiBase()}/import/printables-collection`, {
       method: "POST",
       headers: authHeaders({ "Content-Type": "application/json" }),

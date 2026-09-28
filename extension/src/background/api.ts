@@ -18,8 +18,7 @@ async function errorDetail(res: Response, fallback: string): Promise<string> {
   try {
     const body = (await res.json()) as { detail?: string } | null;
     if (body && body.detail) return body.detail;
-  } catch {
-  }
+  } catch {}
   return fallback;
 }
 
@@ -38,7 +37,12 @@ export async function loginAndStoreToken(credentials: Credentials): Promise<stri
 }
 
 export async function ensureToken(config: ConfiguredConfig, { forceRefresh = false } = {}): Promise<string> {
-  if (!forceRefresh && config.token && config.tokenExpiresAt && config.tokenExpiresAt - Date.now() > TOKEN_REFRESH_MARGIN_MS) {
+  if (
+    !forceRefresh &&
+    config.token &&
+    config.tokenExpiresAt &&
+    config.tokenExpiresAt - Date.now() > TOKEN_REFRESH_MARGIN_MS
+  ) {
     return config.token;
   }
   return loginAndStoreToken(config);
@@ -57,7 +61,12 @@ export async function apiCall<T = unknown>(method: string, path: string, body?: 
   const config = await requireConfig();
 
   let finalBody = body as Record<string, unknown> | undefined;
-  if (path.startsWith("/import") && finalBody && !finalBody.makerworld_cookie && isMakerworldUrl(finalBody.url as string)) {
+  if (
+    path.startsWith("/import") &&
+    finalBody &&
+    !finalBody.makerworld_cookie &&
+    isMakerworldUrl(finalBody.url as string)
+  ) {
     const liveCookie = await getLiveMakerworldCookie();
     if (liveCookie) {
       finalBody = { ...finalBody, makerworld_cookie: liveCookie };

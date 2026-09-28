@@ -14,7 +14,10 @@ let snapshotJobQueue: Promise<void> = Promise.resolve();
 
 export function queueSnapshotJob<T>(job: () => Promise<T>): Promise<T> {
   const result = snapshotJobQueue.then(job, job);
-  snapshotJobQueue = result.then(() => undefined, () => undefined);
+  snapshotJobQueue = result.then(
+    () => undefined,
+    () => undefined,
+  );
   return result;
 }
 
@@ -31,7 +34,7 @@ function createSnapshotRenderer() {
 async function acquireSnapshotRenderer() {
   let release!: () => void;
   const wait = snapshotLock;
-  snapshotLock = snapshotLock.then(() => new Promise<void>(resolve => (release = resolve)));
+  snapshotLock = snapshotLock.then(() => new Promise<void>((resolve) => (release = resolve)));
   await wait;
   snapshotRenderer = createSnapshotRenderer();
   const renderer = snapshotRenderer;
@@ -51,7 +54,7 @@ export async function generateModelSnapshot(
   ext: string,
   width: number,
   height: number,
-  theme: ResolvedTheme
+  theme: ResolvedTheme,
 ) {
   const normalized = (ext || "").toLowerCase();
   const object = await loadObjectFromAsset(normalized, url);

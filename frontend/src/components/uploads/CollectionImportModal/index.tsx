@@ -16,7 +16,12 @@ import CollectionEntryList from "./CollectionEntryList";
 
 type CollectionPromptConfig = {
   label: string;
-  loadEntries: () => Promise<{ title: string | null; total: number; truncated: boolean; entries: ImportCollectionEntry[] }>;
+  loadEntries: () => Promise<{
+    title: string | null;
+    total: number;
+    truncated: boolean;
+    entries: ImportCollectionEntry[];
+  }>;
   onImportSelected: (designIds: string[]) => Promise<void>;
 };
 
@@ -71,7 +76,7 @@ export function useCollectionImportPrompt() {
       setTotal(result.total);
       setTruncated(result.truncated);
       setEntries(result.entries);
-      setSelected(new Set(result.entries.filter(entry => !entry.already_imported).map(entry => entry.design_id)));
+      setSelected(new Set(result.entries.filter((entry) => !entry.already_imported).map((entry) => entry.design_id)));
       setStage("select");
     } catch (err) {
       setError(errorMessage(err, t("collectionImport.loadError")));
@@ -86,7 +91,7 @@ export function useCollectionImportPrompt() {
     reset();
     setState({ config });
     void load(config);
-    return new Promise<void>(resolve => {
+    return new Promise<void>((resolve) => {
       resolveRef.current = resolve;
     });
   };
@@ -110,9 +115,9 @@ export function useCollectionImportPrompt() {
   };
 
   const toggleEntry = (designId: string) => {
-    const entry = entries.find(e => e.design_id === designId);
+    const entry = entries.find((e) => e.design_id === designId);
     if (entry?.already_imported) return;
-    setSelected(prev => {
+    setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(designId)) next.delete(designId);
       else next.add(designId);
@@ -120,10 +125,10 @@ export function useCollectionImportPrompt() {
     });
   };
 
-  const selectableEntries = entries.filter(entry => !entry.already_imported);
+  const selectableEntries = entries.filter((entry) => !entry.already_imported);
 
   const selectAll = () => {
-    setSelected(new Set(selectableEntries.map(entry => entry.design_id)));
+    setSelected(new Set(selectableEntries.map((entry) => entry.design_id)));
   };
 
   const clearAll = () => {
@@ -201,9 +206,16 @@ function CollectionImportModalView({
           <Typography variant="h6" component="div">
             {collectionTitle || t("collectionImport.title")}
           </Typography>
-          <Typography variant="body2" color="text.secondary">{label}</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {label}
+          </Typography>
         </Box>
-        <IconButton size="small" onClick={onClose} disabled={busy} aria-label={t("collectionImport.close") ?? undefined}>
+        <IconButton
+          size="small"
+          onClick={onClose}
+          disabled={busy}
+          aria-label={t("collectionImport.close") ?? undefined}
+        >
           <CloseIcon fontSize="small" />
         </IconButton>
       </DialogTitle>
@@ -212,14 +224,18 @@ function CollectionImportModalView({
           {stage === "loading" && (
             <Stack alignItems="center" spacing={1.5} sx={{ py: 4 }}>
               <CircularProgress size={28} />
-              <Typography variant="body2" color="text.secondary">{t("collectionImport.loading")}</Typography>
+              <Typography variant="body2" color="text.secondary">
+                {t("collectionImport.loading")}
+              </Typography>
             </Stack>
           )}
 
           {stage === "select" && (
             <Stack spacing={1.5}>
               {truncated && (
-                <Alert severity="info">{t("collectionImport.truncatedNotice", { loaded: entries.length, total })}</Alert>
+                <Alert severity="info">
+                  {t("collectionImport.truncatedNotice", { loaded: entries.length, total })}
+                </Alert>
               )}
               <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1}>
                 <Typography variant="body2" color="text.secondary">

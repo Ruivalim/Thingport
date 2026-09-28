@@ -150,7 +150,7 @@ async function buildWrapperFixture3mf(destPath: string): Promise<void> {
 
 // `+ 0` turns -0 into 0, which toEqual would treat as different.
 function positionsOf(mesh: any): number[] {
-  return Array.from(mesh.geometry.attributes.position.array as ArrayLike<number>, v => v + 0);
+  return Array.from(mesh.geometry.attributes.position.array as ArrayLike<number>, (v) => v + 0);
 }
 
 describe("modelPreviewCache", () => {
@@ -358,17 +358,26 @@ describe("modelPreviewCache -- memory safety", () => {
 
   it("never retries a plate whose previous generation died mid-run", async () => {
     const fixture = path.join(outDir, "crashed.3mf");
-    await buildModelOnly3mf(fixture, singleItemModelXml(`<object id="1" type="model">${ONE_TRIANGLE_MESH}</object>`, "1"));
+    await buildModelOnly3mf(
+      fixture,
+      singleItemModelXml(`<object id="1" type="model">${ONE_TRIANGLE_MESH}</object>`, "1"),
+    );
 
     const plateId = newPlateId("crashed");
-    await fs.writeFile(path.join(path.dirname(modelPreviewGlbPath("x")), `${plateId}.pending`), "left by a killed process");
+    await fs.writeFile(
+      path.join(path.dirname(modelPreviewGlbPath("x")), `${plateId}.pending`),
+      "left by a killed process",
+    );
     await generateModelPreviewGlb(plateId, fixture);
     expect(modelPreviewGlbExists(plateId)).toBe(false);
   });
 
   it("removes its in-progress marker once generation finishes", async () => {
     const fixture = path.join(outDir, "ok.3mf");
-    await buildModelOnly3mf(fixture, singleItemModelXml(`<object id="1" type="model">${ONE_TRIANGLE_MESH}</object>`, "1"));
+    await buildModelOnly3mf(
+      fixture,
+      singleItemModelXml(`<object id="1" type="model">${ONE_TRIANGLE_MESH}</object>`, "1"),
+    );
 
     const plateId = newPlateId("ok");
     await generateModelPreviewGlb(plateId, fixture);
@@ -404,7 +413,8 @@ describe("modelPreviewCache -- multi-part objects sharing one part file", () => 
 
   afterAll(async () => {
     for (const id of plateIds) {
-      for (const ext of [".v3.glb", ".v3.error", ".pending"]) await fs.rm(path.join(cacheDir(), `${id}${ext}`), { force: true });
+      for (const ext of [".v3.glb", ".v3.error", ".pending"])
+        await fs.rm(path.join(cacheDir(), `${id}${ext}`), { force: true });
     }
   });
 
@@ -473,7 +483,8 @@ describe("modelPreviewState", () => {
 
   afterAll(async () => {
     for (const id of plateIds) {
-      for (const ext of [".v3.glb", ".v3.error", ".pending"]) await fs.rm(path.join(cacheDir(), `${id}${ext}`), { force: true });
+      for (const ext of [".v3.glb", ".v3.error", ".pending"])
+        await fs.rm(path.join(cacheDir(), `${id}${ext}`), { force: true });
     }
   });
 
@@ -501,7 +512,10 @@ describe("modelPreviewState", () => {
 
   it("says generating while a render is queued or running", async () => {
     const fixture = path.join(await fs.mkdtemp(path.join(os.tmpdir(), "thingport-state-")), "ok.3mf");
-    await buildModelOnly3mf(fixture, singleItemModelXml(`<object id="1" type="model">${ONE_TRIANGLE_MESH}</object>`, "1"));
+    await buildModelOnly3mf(
+      fixture,
+      singleItemModelXml(`<object id="1" type="model">${ONE_TRIANGLE_MESH}</object>`, "1"),
+    );
     const plateId = newPlateId("running");
     const run = generateModelPreviewGlb(plateId, fixture);
     expect(modelPreviewState(plateId)).toBe("generating");

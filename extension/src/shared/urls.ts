@@ -39,7 +39,9 @@ export function makerworldModelUrl(designId: string): string {
 
 export function isMakerworldCollectionUrl(url: string): boolean {
   const parsed = parse(url);
-  return Boolean(parsed && parsed.hostname.toLowerCase().endsWith("makerworld.com") && /\/collections\/\d+/i.test(parsed.pathname));
+  return Boolean(
+    parsed && parsed.hostname.toLowerCase().endsWith("makerworld.com") && /\/collections\/\d+/i.test(parsed.pathname),
+  );
 }
 
 export function isMakerworldUrl(url: string | undefined | null): boolean {

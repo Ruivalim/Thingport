@@ -64,7 +64,11 @@ export default function AuthorPage({ theme, previewMode, onUnauthorized, viewer,
     : author?.name || author?.handle || t("models:card.unknownAuthor");
 
   usePageHeader({
-    title: isSelf ? t("models:author.myModelsPageTitle") : author ? t("models:author.pageTitleWithName", { name: displayName }) : undefined,
+    title: isSelf
+      ? t("models:author.myModelsPageTitle")
+      : author
+        ? t("models:author.pageTitleWithName", { name: displayName })
+        : undefined,
     subtitle: !isSelf && author ? t("models:author.subtitle") : undefined,
   });
 
@@ -117,7 +121,9 @@ export default function AuthorPage({ theme, previewMode, onUnauthorized, viewer,
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authorId, isSelf]);
 
@@ -126,7 +132,7 @@ export default function AuthorPage({ theme, previewMode, onUnauthorized, viewer,
     setLoadingMore(true);
     try {
       const result = await printsApi.list({ author_id: isSelf ? SELF_AUTHOR_ID : authorId, limit: PAGE_SIZE, offset });
-      setItems(prev => [...prev, ...result.items]);
+      setItems((prev) => [...prev, ...result.items]);
       setOffset(offset + result.items.length);
       setHasMore(result.hasMore);
     } catch (err) {
@@ -138,8 +144,8 @@ export default function AuthorPage({ theme, previewMode, onUnauthorized, viewer,
 
   const loadMoreSentinelRef = useInfiniteScroll(loadMore, hasMore, loading || loadingMore);
 
-  const linkedToMe = Boolean(author && myLinks.some(a => a.id === author.id));
-  const viewerHasProviderLinked = Boolean(author && myLinks.some(a => a.provider === author.provider));
+  const linkedToMe = Boolean(author && myLinks.some((a) => a.id === author.id));
+  const viewerHasProviderLinked = Boolean(author && myLinks.some((a) => a.provider === author.provider));
   const canClaim = !isSelf && Boolean(author) && !author!.is_linked && !viewerHasProviderLinked;
 
   const handleClaim = async () => {
@@ -154,7 +160,7 @@ export default function AuthorPage({ theme, previewMode, onUnauthorized, viewer,
     try {
       const result = await authorsApi.link(author.id);
       setAuthor(result.author);
-      setMyLinks(prev => [...prev, result.author]);
+      setMyLinks((prev) => [...prev, result.author]);
       onUserUpdated?.(result.user);
       showToast({ message: t("models:author.linkSuccess", { name: displayName }) });
     } catch (err) {
@@ -214,7 +220,7 @@ export default function AuthorPage({ theme, previewMode, onUnauthorized, viewer,
             // Stretch so the profile column's border runs the grid's full height.
             alignItems: "stretch",
             pt: 3,
-            pb: 3
+            pb: 3,
           }}
         >
           <Box
@@ -228,79 +234,88 @@ export default function AuthorPage({ theme, previewMode, onUnauthorized, viewer,
             <Avatar src={avatarUrl} sx={{ width: 112, height: 112, fontSize: 40 }}>
               <PersonIcon fontSize="large" />
             </Avatar>
-            <Typography variant="h5" fontWeight={700} sx={{ mt: 2 }}>{displayName}</Typography>
+            <Typography variant="h5" fontWeight={700} sx={{ mt: 2 }}>
+              {displayName}
+            </Typography>
             {!isSelf && author?.handle && (
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>@{author.handle}</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                @{author.handle}
+              </Typography>
             )}
-            {isSelf ? (
-              myLinks.length > 0 && (
-                <Stack direction="row" flexWrap="wrap" useFlexGap spacing={1} sx={{ mt: 1.5 }}>
-                  {myLinks.map(linked => {
-                    const info = printProviderInfo(linked.provider);
-                    return (
-                      <Chip
-                        key={linked.id}
-                        label={info.label}
-                        size="small"
-                        clickable
-                        onClick={() => navigate(`/authors/${linked.id}`)}
-                        sx={{ bgcolor: info.color, color: info.textColor ?? "#fff", fontWeight: 600 }}
-                      />
-                    );
-                  })}
-                </Stack>
-              )
-            ) : (
-              (providerInfo || linkedToMe || canClaim) && (
-                <Stack direction="row" flexWrap="wrap" alignItems="center" spacing={1} sx={{ mt: 1.5 }}>
-                  {providerInfo && profileUrl && (
-                    <Box
-                      component="a"
-                      href={profileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title={t("models:author.viewOnProvider", { provider: providerInfo.label })}
-                      sx={{
-                        display: "inline-block",
-                        px: 1.25,
-                        py: 0.5,
-                        borderRadius: 1,
-                        fontSize: 12,
-                        fontWeight: 600,
-                        lineHeight: 1.6,
-                        color: "#fff",
-                        textDecoration: "none",
-                        bgcolor: providerInfo.color,
-                      }}
-                    >
-                      {providerInfo.label}
-                    </Box>
-                  )}
-                  {linkedToMe && (
-                    <Stack direction="row" alignItems="center" spacing={0.5} sx={{ color: "success.main" }}>
-                      <CheckCircleIcon sx={{ fontSize: 16 }} />
-                      <Typography variant="caption" fontWeight={600} color="inherit">
-                        {t("models:author.linkedBadge")}
-                      </Typography>
-                    </Stack>
-                  )}
-                  {canClaim && (
-                    <Button size="small" variant="outlined" disabled={linking} onClick={handleClaim}>
-                      {t("models:author.itsMe")}
-                    </Button>
-                  )}
-                </Stack>
-              )
-            )}
+            {isSelf
+              ? myLinks.length > 0 && (
+                  <Stack direction="row" flexWrap="wrap" useFlexGap spacing={1} sx={{ mt: 1.5 }}>
+                    {myLinks.map((linked) => {
+                      const info = printProviderInfo(linked.provider);
+                      return (
+                        <Chip
+                          key={linked.id}
+                          label={info.label}
+                          size="small"
+                          clickable
+                          onClick={() => navigate(`/authors/${linked.id}`)}
+                          sx={{ bgcolor: info.color, color: info.textColor ?? "#fff", fontWeight: 600 }}
+                        />
+                      );
+                    })}
+                  </Stack>
+                )
+              : (providerInfo || linkedToMe || canClaim) && (
+                  <Stack direction="row" flexWrap="wrap" alignItems="center" spacing={1} sx={{ mt: 1.5 }}>
+                    {providerInfo && profileUrl && (
+                      <Box
+                        component="a"
+                        href={profileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={t("models:author.viewOnProvider", { provider: providerInfo.label })}
+                        sx={{
+                          display: "inline-block",
+                          px: 1.25,
+                          py: 0.5,
+                          borderRadius: 1,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          lineHeight: 1.6,
+                          color: "#fff",
+                          textDecoration: "none",
+                          bgcolor: providerInfo.color,
+                        }}
+                      >
+                        {providerInfo.label}
+                      </Box>
+                    )}
+                    {linkedToMe && (
+                      <Stack direction="row" alignItems="center" spacing={0.5} sx={{ color: "success.main" }}>
+                        <CheckCircleIcon sx={{ fontSize: 16 }} />
+                        <Typography variant="caption" fontWeight={600} color="inherit">
+                          {t("models:author.linkedBadge")}
+                        </Typography>
+                      </Stack>
+                    )}
+                    {canClaim && (
+                      <Button size="small" variant="outlined" disabled={linking} onClick={handleClaim}>
+                        {t("models:author.itsMe")}
+                      </Button>
+                    )}
+                  </Stack>
+                )}
 
-            <Typography variant="subtitle1" fontWeight={700} sx={{ mt: 3, mb: 1 }}>{t("models:author.bio")}</Typography>
-            <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", color: bioText ? "text.primary" : "text.disabled" }}>
+            <Typography variant="subtitle1" fontWeight={700} sx={{ mt: 3, mb: 1 }}>
+              {t("models:author.bio")}
+            </Typography>
+            <Typography
+              variant="body2"
+              sx={{ whiteSpace: "pre-wrap", color: bioText ? "text.primary" : "text.disabled" }}
+            >
               {bioText || t("models:author.noBio")}
             </Typography>
           </Box>
 
           <Box sx={{ minWidth: 0, pt: 3, pb: 3 }}>
-            <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>{t("models:pageTitle")}</Typography>
+            <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
+              {t("models:pageTitle")}
+            </Typography>
             {items.length ? (
               <Stack spacing={2}>
                 <Box
@@ -315,15 +330,17 @@ export default function AuthorPage({ theme, previewMode, onUnauthorized, viewer,
                     "@media (max-width: 860px)": { gridTemplateColumns: "repeat(1, 1fr)" },
                   }}
                 >
-                  {items.map(item => (
+                  {items.map((item) => (
                     <ModelCard
                       key={item.id}
                       item={item}
                       theme={theme}
                       previewMode={previewMode}
-                      onDeleted={deletedId => setItems(prev => prev.filter(i => i.id !== deletedId))}
-                      onFavoriteChange={updated => setItems(prev => prev.map(i => (i.id === updated.id ? updated : i)))}
-                      onUpdated={updated => setItems(prev => prev.map(i => (i.id === updated.id ? updated : i)))}
+                      onDeleted={(deletedId) => setItems((prev) => prev.filter((i) => i.id !== deletedId))}
+                      onFavoriteChange={(updated) =>
+                        setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)))
+                      }
+                      onUpdated={(updated) => setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)))}
                       onUnauthorized={onUnauthorized}
                       viewer={viewer}
                     />
@@ -341,7 +358,9 @@ export default function AuthorPage({ theme, previewMode, onUnauthorized, viewer,
                 )}
               </Stack>
             ) : (
-              <Typography variant="body2" color="text.secondary">{t("models:author.noModels")}</Typography>
+              <Typography variant="body2" color="text.secondary">
+                {t("models:author.noModels")}
+              </Typography>
             )}
           </Box>
         </Box>

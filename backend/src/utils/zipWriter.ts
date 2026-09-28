@@ -26,7 +26,8 @@ function crc32Update(crc: number, buf: Buffer): number {
 
 function dosDateTime(date: Date): { time: number; date: number } {
   const time = ((date.getHours() & 0x1f) << 11) | ((date.getMinutes() & 0x3f) << 5) | ((date.getSeconds() >> 1) & 0x1f);
-  const dateVal = (((date.getFullYear() - 1980) & 0x7f) << 9) | (((date.getMonth() + 1) & 0xf) << 5) | (date.getDate() & 0x1f);
+  const dateVal =
+    (((date.getFullYear() - 1980) & 0x7f) << 9) | (((date.getMonth() + 1) & 0xf) << 5) | (date.getDate() & 0x1f);
   return { time, date: dateVal };
 }
 

@@ -169,4 +169,3 @@ export async function setAuthTokenTtl(seconds: number): Promise<void> {
     update: { value: seconds },
   });
 }
-

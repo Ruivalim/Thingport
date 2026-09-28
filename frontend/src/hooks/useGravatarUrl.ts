@@ -10,7 +10,7 @@ export function useGravatarUrl(email: string | undefined, size = 128): string | 
       return;
     }
     let cancelled = false;
-    gravatarUrl(email, size).then(result => {
+    gravatarUrl(email, size).then((result) => {
       if (!cancelled) setUrl(result);
     });
     return () => {

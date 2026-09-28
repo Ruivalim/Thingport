@@ -24,7 +24,9 @@ beforeAll(async () => {
     .post("/api/register")
     .send({ displayName: "Admin Test", email: adminEmail, password: "password123" });
   if (adminRegister.status !== 200) {
-    throw new Error(`Failed to register admin during test setup: ${adminRegister.status} ${JSON.stringify(adminRegister.body)}`);
+    throw new Error(
+      `Failed to register admin during test setup: ${adminRegister.status} ${JSON.stringify(adminRegister.body)}`,
+    );
   }
   await prisma.user.update({ where: { id: adminRegister.body.user.id }, data: { role: "ADMIN" } });
   // Tokens embed the role at issue time, so a promoted account needs a fresh login to pick it up.
@@ -52,7 +54,9 @@ async function waitForLog(
   const deadline = Date.now() + timeoutMs;
   for (;;) {
     const res = await request(app).get("/api/admin/logs").set(auth(token));
-    const found = (res.body as Array<{ action: string; target_id: string | null; details: Record<string, unknown> }>).find(predicate);
+    const found = (
+      res.body as Array<{ action: string; target_id: string | null; details: Record<string, unknown> }>
+    ).find(predicate);
     if (found || Date.now() > deadline) return found;
     await new Promise((r) => setTimeout(r, 50));
   }
@@ -154,18 +158,27 @@ describe("admin audit logs", () => {
       .send({ name: "Audit Log Test Collection", tags: [] });
     const collectionId = createRes.body.id;
 
-    const created = await waitForLog(adminToken, (l) => l.action === "collection_created" && l.target_id === collectionId);
+    const created = await waitForLog(
+      adminToken,
+      (l) => l.action === "collection_created" && l.target_id === collectionId,
+    );
     expect(created).toBeTruthy();
 
     await request(app)
       .patch(`/api/collection/${collectionId}`)
       .set(auth(memberToken))
       .send({ name: "Audit Log Test Collection Renamed", tags: [] });
-    const edited = await waitForLog(adminToken, (l) => l.action === "collection_edited" && l.target_id === collectionId);
+    const edited = await waitForLog(
+      adminToken,
+      (l) => l.action === "collection_edited" && l.target_id === collectionId,
+    );
     expect(edited).toBeTruthy();
 
     await request(app).delete(`/api/collection/${collectionId}`).set(auth(memberToken));
-    const deleted = await waitForLog(adminToken, (l) => l.action === "collection_deleted" && l.target_id === collectionId);
+    const deleted = await waitForLog(
+      adminToken,
+      (l) => l.action === "collection_deleted" && l.target_id === collectionId,
+    );
     expect(deleted).toBeTruthy();
   });
 

@@ -56,15 +56,25 @@ export default function VerifyEmailPage({ onSuccess }: Props) {
         </Box>
         {error ? (
           <Stack spacing={2} alignItems="center">
-            <Alert severity="error" sx={{ width: "100%" }}>{error}</Alert>
-            <Button variant="contained" onClick={() => { window.history.replaceState(null, "", "/"); window.location.reload(); }}>
+            <Alert severity="error" sx={{ width: "100%" }}>
+              {error}
+            </Alert>
+            <Button
+              variant="contained"
+              onClick={() => {
+                window.history.replaceState(null, "", "/");
+                window.location.reload();
+              }}
+            >
               {t("auth.verifyEmail.backToSignIn")}
             </Button>
           </Stack>
         ) : (
           <Stack spacing={2} alignItems="center">
             <CircularProgress size={28} />
-            <Typography variant="body2" color="text.secondary">{t("auth.verifyEmail.verifying")}</Typography>
+            <Typography variant="body2" color="text.secondary">
+              {t("auth.verifyEmail.verifying")}
+            </Typography>
           </Stack>
         )}
       </Stack>

@@ -45,7 +45,10 @@ function jsonResponse(status: number, body: unknown): Response {
 }
 
 function pngResponse(): Response {
-  return new Response(Buffer.from(ONE_PIXEL_PNG_BASE64, "base64"), { status: 200, headers: { "content-type": "image/png" } });
+  return new Response(Buffer.from(ONE_PIXEL_PNG_BASE64, "base64"), {
+    status: 200,
+    headers: { "content-type": "image/png" },
+  });
 }
 
 function threeMfResponse(): Response {
@@ -92,9 +95,9 @@ describe("importPrintFromUrl -- Printables", () => {
 
   it("returns a clear error when the model doesn't exist / isn't public", async () => {
     global.fetch = mockPrintablesFetch({ modelBody: { data: { print: null } } });
-    await expect(
-      importPrintFromUrl(userId, MODEL_URL, { url: MODEL_URL, tags: [] }),
-    ).rejects.toThrow(/could not be found/i);
+    await expect(importPrintFromUrl(userId, MODEL_URL, { url: MODEL_URL, tags: [] })).rejects.toThrow(
+      /could not be found/i,
+    );
   });
 
   it("imports a model's files as plates, matches category, and attaches metadata + images", async () => {

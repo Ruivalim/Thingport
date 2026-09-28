@@ -9,18 +9,24 @@ const listeners = new Set<(value: boolean) => void>();
 function load(): Promise<boolean> {
   if (cached !== undefined) return Promise.resolve(cached);
   if (!inFlight) {
-    inFlight = settingsApi.getAuthorPreview()
-      .then(res => { cached = res.enabled; return cached; })
+    inFlight = settingsApi
+      .getAuthorPreview()
+      .then((res) => {
+        cached = res.enabled;
+        return cached;
+      })
       // A failed load shouldn't silently switch the feature off.
       .catch(() => true)
-      .finally(() => { inFlight = null; });
+      .finally(() => {
+        inFlight = null;
+      });
   }
   return inFlight;
 }
 
 export function setCachedAuthorPreviewEnabled(value: boolean) {
   cached = value;
-  listeners.forEach(listener => listener(value));
+  listeners.forEach((listener) => listener(value));
 }
 
 export function useAuthorPreviewEnabled(): boolean {
@@ -28,7 +34,9 @@ export function useAuthorPreviewEnabled(): boolean {
 
   useEffect(() => {
     let cancelled = false;
-    void load().then(v => { if (!cancelled) setValue(v); });
+    void load().then((v) => {
+      if (!cancelled) setValue(v);
+    });
     listeners.add(setValue);
     return () => {
       cancelled = true;

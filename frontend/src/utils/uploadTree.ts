@@ -25,7 +25,7 @@ function normalizeRelativePath(path: string) {
 }
 
 export function entriesFromFileList(files: FileList | File[]): UploadEntry[] {
-  return Array.from(files || []).map(file => {
+  return Array.from(files || []).map((file) => {
     const anyFile = file as File & { webkitRelativePath?: string };
     const relativePath = normalizeRelativePath(anyFile.webkitRelativePath || file.name);
     return { file, relativePath: relativePath || file.name };
@@ -54,7 +54,7 @@ async function traverseEntry(entry: FileSystemEntry, parentPath: string, output:
   if (entry.isDirectory && entry.createReader) {
     const reader = entry.createReader();
     const entries = await readAllEntries(reader);
-    await Promise.all(entries.map(child => traverseEntry(child, entryPath, output)));
+    await Promise.all(entries.map((child) => traverseEntry(child, entryPath, output)));
   }
 }
 
@@ -62,11 +62,11 @@ export async function entriesFromDataTransfer(dataTransfer: DataTransfer): Promi
   const output: UploadEntry[] = [];
   const items = Array.from(dataTransfer.items || []);
   const entryItems = items
-    .map(item => (item as unknown as { webkitGetAsEntry?: () => FileSystemEntry | null }).webkitGetAsEntry?.())
+    .map((item) => (item as unknown as { webkitGetAsEntry?: () => FileSystemEntry | null }).webkitGetAsEntry?.())
     .filter(Boolean) as FileSystemEntry[];
 
   if (entryItems.length) {
-    await Promise.all(entryItems.map(entry => traverseEntry(entry, "", output)));
+    await Promise.all(entryItems.map((entry) => traverseEntry(entry, "", output)));
     return output;
   }
 
@@ -88,7 +88,7 @@ export async function entriesFromDataTransfer(dataTransfer: DataTransfer): Promi
 export async function uploadEntriesToCategory(
   entries: UploadEntry[],
   parentCategoryId: string | null,
-  onUnauthorized?: () => void
+  onUnauthorized?: () => void,
 ) {
   const failed: string[] = [];
   let uploaded = 0;

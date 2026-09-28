@@ -38,14 +38,14 @@ export function createOrientationGizmo(renderer: THREE.WebGLRenderer): Orientati
   const camera = new THREE.OrthographicCamera(-1.6, 1.6, 1.6, -1.6, 0.1, 10);
 
   const textures = FACE_LABELS.map(makeFaceTexture);
-  const materials = textures.map(map => new THREE.MeshBasicMaterial({ map }));
+  const materials = textures.map((map) => new THREE.MeshBasicMaterial({ map }));
   const geometry = new THREE.BoxGeometry(1.8, 1.8, 1.8);
   const cube = new THREE.Mesh(geometry, materials);
   scene.add(cube);
 
   const edges = new THREE.LineSegments(
     new THREE.EdgesGeometry(geometry),
-    new THREE.LineBasicMaterial({ color: 0x9a9a9a })
+    new THREE.LineBasicMaterial({ color: 0x9a9a9a }),
   );
   scene.add(edges);
 
@@ -75,8 +75,8 @@ export function createOrientationGizmo(renderer: THREE.WebGLRenderer): Orientati
       geometry.dispose();
       edges.geometry.dispose();
       (edges.material as THREE.Material).dispose();
-      materials.forEach(m => m.dispose());
-      textures.forEach(t => t.dispose());
+      materials.forEach((m) => m.dispose());
+      textures.forEach((t) => t.dispose());
     },
   };
 }

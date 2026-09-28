@@ -23,12 +23,16 @@ export function detectImportProvider(url: string): ImportProviderKey | null {
 /** Collection pages go to the collection picker instead of the single-link flow. */
 export function isMakerworldCollectionUrl(url: string): boolean {
   const parsed = parseUrl(url);
-  return Boolean(parsed && parsed.hostname.toLowerCase().endsWith("makerworld.com") && /\/collections\/\d+/i.test(parsed.pathname));
+  return Boolean(
+    parsed && parsed.hostname.toLowerCase().endsWith("makerworld.com") && /\/collections\/\d+/i.test(parsed.pathname),
+  );
 }
 
 export function isMakerworldModelUrl(url: string): boolean {
   const parsed = parseUrl(url);
-  return Boolean(parsed && parsed.hostname.toLowerCase().endsWith("makerworld.com") && /\/models?\/\d+/i.test(parsed.pathname));
+  return Boolean(
+    parsed && parsed.hostname.toLowerCase().endsWith("makerworld.com") && /\/models?\/\d+/i.test(parsed.pathname),
+  );
 }
 
 /** Thingiverse and Printables have their own backend import paths, so skip the generic inspect/zip

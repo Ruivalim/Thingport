@@ -38,12 +38,9 @@ import TagInput from "../../components/TagInput";
 import { translateCategoryDisplay } from "../../utils/translateCategoryDisplay";
 
 type ImageItem =
-  | { kind: "existing"; id: string; url: string }
-  | { kind: "new"; localId: string; file: File; previewUrl: string };
+  { kind: "existing"; id: string; url: string } | { kind: "new"; localId: string; file: File; previewUrl: string };
 
-type PlateItem =
-  | { kind: "existing"; id: string; filename: string }
-  | { kind: "new"; localId: string; file: File };
+type PlateItem = { kind: "existing"; id: string; filename: string } | { kind: "new"; localId: string; file: File };
 
 function imageKey(img: ImageItem): string {
   return img.kind === "existing" ? img.id : img.localId;
@@ -83,14 +80,14 @@ export default function EditModelModal({ print, onClose, onUnauthorized, onUpdat
   const hasImportedAuthor = Boolean(print.author || print.creator || print.source_provider);
   const showViewerAsAuthor = !hasImportedAuthor && Boolean(viewer);
   const [authorResetPending, setAuthorResetPending] = useState(false);
-  const [images, setImages] = useState<ImageItem[]>(
-    () => print.preview_images.map((img): ImageItem => ({ kind: "existing", id: img.id, url: img.url })),
+  const [images, setImages] = useState<ImageItem[]>(() =>
+    print.preview_images.map((img): ImageItem => ({ kind: "existing", id: img.id, url: img.url })),
   );
   // Removals are tracked explicitly rather than diffed: a new upload's thumbnail may still be
   // generating, and a diff would delete it as soon as it appeared.
   const [removedImageIds, setRemovedImageIds] = useState<Set<string>>(new Set());
-  const [plateItems, setPlateItems] = useState<PlateItem[]>(
-    () => print.plates.map((p): PlateItem => ({ kind: "existing", id: p.id, filename: p.filename })),
+  const [plateItems, setPlateItems] = useState<PlateItem[]>(() =>
+    print.plates.map((p): PlateItem => ({ kind: "existing", id: p.id, filename: p.filename })),
   );
   const [categories, setCategories] = useState<Category[] | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -102,7 +99,10 @@ export default function EditModelModal({ print, onClose, onUnauthorized, onUpdat
   const addFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    categoriesApi.list().then(setCategories).catch(() => setCategories([]));
+    categoriesApi
+      .list()
+      .then(setCategories)
+      .catch(() => setCategories([]));
   }, []);
 
   const markDirty = () => setDirty(true);
@@ -120,7 +120,9 @@ export default function EditModelModal({ print, onClose, onUnauthorized, onUpdat
       }
     }
     const byPosition = (a: Category, b: Category) => a.position - b.position || a.name.localeCompare(b.name);
-    Object.keys(childrenMap).forEach((key) => { childrenMap[key] = childrenMap[key].toSorted(byPosition); });
+    Object.keys(childrenMap).forEach((key) => {
+      childrenMap[key] = childrenMap[key].toSorted(byPosition);
+    });
     return { roots: rootList.toSorted(byPosition), childrenByParent: childrenMap };
   }, [categories]);
   const categoryName = (c: Category) => translateCategoryDisplay(c, i18n).name;
@@ -144,13 +146,23 @@ export default function EditModelModal({ print, onClose, onUnauthorized, onUpdat
     markDirty();
   };
   const moveImageBy = (key: string, dir: -1 | 1) => {
-    setImages((prev) => moveItem(prev, prev.findIndex((img) => imageKey(img) === key), dir));
+    setImages((prev) =>
+      moveItem(
+        prev,
+        prev.findIndex((img) => imageKey(img) === key),
+        dir,
+      ),
+    );
     markDirty();
   };
 
   const onAddFiles = (fileList: FileList | null) => {
     if (!fileList?.length) return;
-    const newItems: PlateItem[] = Array.from(fileList).map((file) => ({ kind: "new", localId: crypto.randomUUID(), file }));
+    const newItems: PlateItem[] = Array.from(fileList).map((file) => ({
+      kind: "new",
+      localId: crypto.randomUUID(),
+      file,
+    }));
     setPlateItems((prev) => [...prev, ...newItems]);
     markDirty();
   };
@@ -159,7 +171,13 @@ export default function EditModelModal({ print, onClose, onUnauthorized, onUpdat
     markDirty();
   };
   const movePlateItemBy = (key: string, dir: -1 | 1) => {
-    setPlateItems((prev) => moveItem(prev, prev.findIndex((p) => plateKey(p) === key), dir));
+    setPlateItems((prev) =>
+      moveItem(
+        prev,
+        prev.findIndex((p) => plateKey(p) === key),
+        dir,
+      ),
+    );
     markDirty();
   };
 
@@ -283,7 +301,10 @@ export default function EditModelModal({ print, onClose, onUnauthorized, onUpdat
           <TextField
             label={t("models:edit.titleLabel")}
             value={title}
-            onChange={(e) => { setTitle(e.target.value); markDirty(); }}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              markDirty();
+            }}
             disabled={saving}
             fullWidth
             // oxlint-disable-next-line jsx-a11y/no-autofocus
@@ -296,20 +317,27 @@ export default function EditModelModal({ print, onClose, onUnauthorized, onUpdat
               labelId="edit-model-category-label"
               label={t("models:detail.category")}
               value={categoryId ?? ""}
-              onChange={(e) => { setCategoryId(e.target.value || null); markDirty(); }}
+              onChange={(e) => {
+                setCategoryId(e.target.value || null);
+                markDirty();
+              }}
             >
               <MenuItem value="">{t("models:edit.noCategory")}</MenuItem>
-              {roots.flatMap((root) => [
-                // A disabled MenuItem, not ListSubheader: MUI's Select still handles clicks on the latter and
-                // gets stuck open.
-                <MenuItem key={`h-${root.id}`} disabled divider sx={{ fontWeight: 700, opacity: "1 !important" }}>
-                  {categoryName(root)}
-                </MenuItem>,
-              ].concat(
-                (childrenByParent[root.id] ?? []).map((child) => (
-                  <MenuItem key={child.id} value={child.id} sx={{ pl: 3 }}>{categoryName(child)}</MenuItem>
-                )),
-              ))}
+              {roots.flatMap((root) =>
+                [
+                  // A disabled MenuItem, not ListSubheader: MUI's Select still handles clicks on the latter and
+                  // gets stuck open.
+                  <MenuItem key={`h-${root.id}`} disabled divider sx={{ fontWeight: 700, opacity: "1 !important" }}>
+                    {categoryName(root)}
+                  </MenuItem>,
+                ].concat(
+                  (childrenByParent[root.id] ?? []).map((child) => (
+                    <MenuItem key={child.id} value={child.id} sx={{ pl: 3 }}>
+                      {categoryName(child)}
+                    </MenuItem>
+                  )),
+                ),
+              )}
             </Select>
           </FormControl>
 
@@ -321,11 +349,14 @@ export default function EditModelModal({ print, onClose, onUnauthorized, onUpdat
               <Typography variant="body2">
                 {authorResetPending
                   ? t("models:edit.authorWillBeYou")
-                  : (print.author?.name || print.author?.handle || print.creator ||
-                     (showViewerAsAuthor ? viewer!.display_name : null) || t("models:card.unknownAuthor"))}
+                  : print.author?.name ||
+                    print.author?.handle ||
+                    print.creator ||
+                    (showViewerAsAuthor ? viewer!.display_name : null) ||
+                    t("models:card.unknownAuthor")}
               </Typography>
-              {hasImportedAuthor && (
-                authorResetPending ? (
+              {hasImportedAuthor &&
+                (authorResetPending ? (
                   <Button size="small" disabled={saving} onClick={() => setAuthorResetPending(false)}>
                     {t("models:edit.undoResetAuthor")}
                   </Button>
@@ -334,19 +365,23 @@ export default function EditModelModal({ print, onClose, onUnauthorized, onUpdat
                     size="small"
                     disabled={saving}
                     startIcon={<RestartAltIcon fontSize="small" />}
-                    onClick={() => { setAuthorResetPending(true); markDirty(); }}
+                    onClick={() => {
+                      setAuthorResetPending(true);
+                      markDirty();
+                    }}
                   >
                     {t("models:edit.resetAuthor")}
                   </Button>
-                )
-              )}
+                ))}
             </Stack>
           </Box>
 
           <Divider />
 
           <Box>
-            <Typography variant="subtitle2" sx={{ mb: 1 }}>{t("models:edit.previewImages")}</Typography>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              {t("models:edit.previewImages")}
+            </Typography>
             <Stack direction="row" spacing={1} sx={{ overflowX: "auto", pb: 0.5 }}>
               {images.map((img, idx) => {
                 const key = imageKey(img);
@@ -365,7 +400,11 @@ export default function EditModelModal({ print, onClose, onUnauthorized, onUpdat
                       borderColor: "divider",
                     }}
                   >
-                    <Box component="img" src={src} sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                    <Box
+                      component="img"
+                      src={src}
+                      sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                    />
                     {idx === 0 && (
                       <Chip
                         label={t("models:edit.thumbnailBadge")}
@@ -377,7 +416,14 @@ export default function EditModelModal({ print, onClose, onUnauthorized, onUpdat
                       size="small"
                       disabled={saving}
                       onClick={() => removeImage(key)}
-                      sx={{ position: "absolute", top: 2, right: 2, bgcolor: "rgba(0,0,0,0.55)", color: "#fff", "&:hover": { bgcolor: "rgba(0,0,0,0.75)" } }}
+                      sx={{
+                        position: "absolute",
+                        top: 2,
+                        right: 2,
+                        bgcolor: "rgba(0,0,0,0.55)",
+                        color: "#fff",
+                        "&:hover": { bgcolor: "rgba(0,0,0,0.75)" },
+                      }}
                     >
                       <CloseIcon sx={{ fontSize: 14 }} />
                     </IconButton>
@@ -433,7 +479,10 @@ export default function EditModelModal({ print, onClose, onUnauthorized, onUpdat
                 accept="image/*"
                 multiple
                 hidden
-                onChange={(e) => { onAddImages(e.target.files); e.target.value = ""; }}
+                onChange={(e) => {
+                  onAddImages(e.target.files);
+                  e.target.value = "";
+                }}
               />
             </Stack>
           </Box>
@@ -441,7 +490,10 @@ export default function EditModelModal({ print, onClose, onUnauthorized, onUpdat
           <TextField
             label={t("models:detail.description")}
             value={notes}
-            onChange={(e) => { setNotes(e.target.value); markDirty(); }}
+            onChange={(e) => {
+              setNotes(e.target.value);
+              markDirty();
+            }}
             disabled={saving}
             fullWidth
             multiline
@@ -452,13 +504,21 @@ export default function EditModelModal({ print, onClose, onUnauthorized, onUpdat
             <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
               {t("models:detail.tags")}
             </Typography>
-            <TagInput value={tags} onChange={(v) => { setTags(v); markDirty(); }} />
+            <TagInput
+              value={tags}
+              onChange={(v) => {
+                setTags(v);
+                markDirty();
+              }}
+            />
           </Box>
 
           <Divider />
 
           <Box>
-            <Typography variant="subtitle2" sx={{ mb: 1 }}>{t("models:edit.modelFiles")}</Typography>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              {t("models:edit.modelFiles")}
+            </Typography>
             <Stack spacing={1}>
               {plateItems.map((p, idx) => {
                 const key = plateKey(p);
@@ -472,15 +532,25 @@ export default function EditModelModal({ print, onClose, onUnauthorized, onUpdat
                     sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1, px: 1, py: 0.5 }}
                   >
                     <InsertDriveFileIcon fontSize="small" color="action" />
-                    <Typography variant="body2" noWrap sx={{ flex: 1 }}>{filename}</Typography>
+                    <Typography variant="body2" noWrap sx={{ flex: 1 }}>
+                      {filename}
+                    </Typography>
                     {p.kind === "new" && <Chip label={t("models:edit.newBadge")} size="small" />}
                     <IconButton size="small" disabled={saving || idx === 0} onClick={() => movePlateItemBy(key, -1)}>
                       <ArrowUpwardIcon fontSize="small" />
                     </IconButton>
-                    <IconButton size="small" disabled={saving || idx === plateItems.length - 1} onClick={() => movePlateItemBy(key, 1)}>
+                    <IconButton
+                      size="small"
+                      disabled={saving || idx === plateItems.length - 1}
+                      onClick={() => movePlateItemBy(key, 1)}
+                    >
                       <ArrowDownwardIcon fontSize="small" />
                     </IconButton>
-                    <IconButton size="small" disabled={saving || plateItems.length <= 1} onClick={() => removePlateItem(key)}>
+                    <IconButton
+                      size="small"
+                      disabled={saving || plateItems.length <= 1}
+                      onClick={() => removePlateItem(key)}
+                    >
                       <DeleteIcon fontSize="small" color="error" />
                     </IconButton>
                   </Stack>
@@ -500,14 +570,19 @@ export default function EditModelModal({ print, onClose, onUnauthorized, onUpdat
                 type="file"
                 multiple
                 hidden
-                onChange={(e) => { onAddFiles(e.target.files); e.target.value = ""; }}
+                onChange={(e) => {
+                  onAddFiles(e.target.files);
+                  e.target.value = "";
+                }}
               />
             </Stack>
           </Box>
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button onClick={requestClose} disabled={saving}>{t("common:cancel")}</Button>
+        <Button onClick={requestClose} disabled={saving}>
+          {t("common:cancel")}
+        </Button>
         <Button
           variant="contained"
           onClick={handleUpdate}

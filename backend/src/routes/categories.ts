@@ -95,7 +95,10 @@ const MAX_CAT_IDS = 50;
 function parseCatIdsInput(raw: string | null | undefined): number[] {
   const trimmed = (raw ?? "").trim();
   if (!trimmed) return [];
-  const tokens = trimmed.split(";").map((t) => t.trim()).filter(Boolean);
+  const tokens = trimmed
+    .split(";")
+    .map((t) => t.trim())
+    .filter(Boolean);
   const ids: number[] = [];
   const seen = new Set<number>();
   for (const token of tokens) {

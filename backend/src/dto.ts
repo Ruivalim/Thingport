@@ -1,5 +1,16 @@
 import fs from "node:fs";
-import type { Author, Collection, Category, ImportJob, Notification, Plate, PreviewImage, Print, PrintFile, User } from "@prisma/client";
+import type {
+  Author,
+  Collection,
+  Category,
+  ImportJob,
+  Notification,
+  Plate,
+  PreviewImage,
+  Print,
+  PrintFile,
+  User,
+} from "@prisma/client";
 import { plateThumbExists, plateThumbPath } from "./services/printService";
 import { previewImageExists, previewImagePath } from "./services/previewImageService";
 import { preparedFilename } from "./services/preparedPrint";
@@ -213,8 +224,7 @@ export function toPrintOut(
   const sortedPlates = plates.toSorted((a, b) => a.position - b.position);
   const plateOuts = sortedPlates.map((p) => toPlateOut(print.id, p));
   const supportingCount = files.filter((f) => f.role === "SUPPORTING").length;
-  const totalSize =
-    plates.reduce((sum, p) => sum + p.size, 0) + files.reduce((sum, f) => sum + f.size, 0);
+  const totalSize = plates.reduce((sum, p) => sum + p.size, 0) + files.reduce((sum, f) => sum + f.size, 0);
   const previewImageOuts = previewImages
     .toSorted((a, b) => a.position - b.position)
     .map(toPreviewImageOut)

@@ -56,7 +56,7 @@ export default function CollectionFormModal({ collection, onClose, onSubmit }: P
           <TextField
             label={t("models:collections.form.nameLabel")}
             value={name}
-            onChange={e => setName(e.target.value)}
+            onChange={(e) => setName(e.target.value)}
             disabled={saving}
             fullWidth
             // oxlint-disable-next-line jsx-a11y/no-autofocus
@@ -66,7 +66,7 @@ export default function CollectionFormModal({ collection, onClose, onSubmit }: P
           <TextField
             label={t("models:collections.form.descriptionLabel")}
             value={description}
-            onChange={e => setDescription(e.target.value)}
+            onChange={(e) => setDescription(e.target.value)}
             disabled={saving}
             fullWidth
             multiline
@@ -76,12 +76,18 @@ export default function CollectionFormModal({ collection, onClose, onSubmit }: P
             <Typography variant="body2" color="text.secondary">
               {t("models:collections.form.tagsLabel")}
             </Typography>
-            <TagInput value={tags} onChange={setTags} placeholder={t("models:collections.form.tagsPlaceholder") ?? undefined} />
+            <TagInput
+              value={tags}
+              onChange={setTags}
+              placeholder={t("models:collections.form.tagsPlaceholder") ?? undefined}
+            />
           </Stack>
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={saving}>{t("common:cancel")}</Button>
+        <Button onClick={onClose} disabled={saving}>
+          {t("common:cancel")}
+        </Button>
         <Button
           variant="contained"
           onClick={handleSubmit}

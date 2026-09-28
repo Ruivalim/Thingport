@@ -6,7 +6,8 @@ let template: SVGSVGElement | null = null;
  *  dropped (its id would repeat) and the icon is aria-hidden. */
 export function createIcon(): SVGSVGElement {
   if (!template) {
-    const parsed = new DOMParser().parseFromString(iconSvg, "image/svg+xml").documentElement as unknown as SVGSVGElement;
+    const parsed = new DOMParser().parseFromString(iconSvg, "image/svg+xml")
+      .documentElement as unknown as SVGSVGElement;
     parsed.querySelector("title")?.remove();
     parsed.removeAttribute("role");
     parsed.removeAttribute("aria-labelledby");

@@ -30,7 +30,11 @@ beforeAll(async () => {
     .post("/api/register")
     .send({ displayName: "Captcha Admin", email: email("captcha-admin"), password: "password123" });
   await prisma.user.update({ where: { id: adminRegister.body.user.id }, data: { role: "ADMIN" } });
-  adminToken = (await request(app).post("/api/login").send({ email: email("captcha-admin"), password: "password123" })).body.token;
+  adminToken = (
+    await request(app)
+      .post("/api/login")
+      .send({ email: email("captcha-admin"), password: "password123" })
+  ).body.token;
 
   const memberRegister = await request(app)
     .post("/api/register")
@@ -55,7 +59,9 @@ describe("captcha settings", () => {
   });
 
   it("can only be changed by an admin, one place at a time", async () => {
-    expect((await request(app).patch("/api/settings/captcha").set(auth(memberToken)).send({ login: true })).status).toBe(403);
+    expect(
+      (await request(app).patch("/api/settings/captcha").set(auth(memberToken)).send({ login: true })).status,
+    ).toBe(403);
     const res = await request(app).patch("/api/settings/captcha").set(auth(adminToken)).send({ login: true });
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ login: true, register: false, import: false });
@@ -77,7 +83,9 @@ describe("GET /api/captcha", () => {
 
 describe("captcha on login", () => {
   const login = (extra: object = {}) =>
-    request(app).post("/api/login").send({ email: email("captcha-member"), password: "password123", ...extra });
+    request(app)
+      .post("/api/login")
+      .send({ email: email("captcha-member"), password: "password123", ...extra });
 
   it("isn't asked for while turned off", async () => {
     expect((await login()).status).toBe(200);
@@ -99,7 +107,9 @@ describe("captcha on login", () => {
   it("is case-insensitive", async () => {
     await setCaptchaSettings({ login: true });
     const { captcha_id, captcha_answer } = solved();
-    const swapped = [...captcha_answer].map((c) => (c === c.toLowerCase() ? c.toUpperCase() : c.toLowerCase())).join("");
+    const swapped = [...captcha_answer]
+      .map((c) => (c === c.toLowerCase() ? c.toUpperCase() : c.toLowerCase()))
+      .join("");
     expect((await login({ captcha_id, captcha_answer: ` ${swapped} ` })).status).toBe(200);
   });
 
@@ -120,7 +130,9 @@ describe("captcha on login", () => {
 
   it("is checked before the password, so a wrong password still costs a captcha", async () => {
     await setCaptchaSettings({ login: true });
-    const res = await request(app).post("/api/login").send({ email: email("captcha-member"), password: "nope" });
+    const res = await request(app)
+      .post("/api/login")
+      .send({ email: email("captcha-member"), password: "nope" });
     expect(res.body.code).toBe("CAPTCHA_REQUIRED");
   });
 
@@ -143,7 +155,9 @@ describe("captcha on login", () => {
 
 describe("captcha on registration", () => {
   const register = (name: string, extra: object = {}) =>
-    request(app).post("/api/register").send({ displayName: name, email: email(name), password: "password123", ...extra });
+    request(app)
+      .post("/api/register")
+      .send({ displayName: name, email: email(name), password: "password123", ...extra });
 
   it("is required once turned on", async () => {
     await setCaptchaSettings({ register: true });
@@ -154,7 +168,13 @@ describe("captcha on registration", () => {
 
   it("doesn't affect login", async () => {
     await setCaptchaSettings({ register: true });
-    expect((await request(app).post("/api/login").send({ email: email("captcha-member"), password: "password123" })).status).toBe(200);
+    expect(
+      (
+        await request(app)
+          .post("/api/login")
+          .send({ email: email("captcha-member"), password: "password123" })
+      ).status,
+    ).toBe(200);
   });
 });
 
@@ -166,8 +186,14 @@ describe("captcha on import", () => {
       ["/api/import/zip", { url: "https://example.com/models.zip", entries: ["a.stl"] }],
       ["/api/import/collection", { url: "https://makerworld.com/en/collections/1", design_ids: ["1"] }],
       ["/api/import/thingiverse-likes", { url: "https://www.thingiverse.com/someone/likes", thing_ids: ["1"] }],
-      ["/api/import/thingiverse-collection", { url: "https://www.thingiverse.com/someone/collections/1", thing_ids: ["1"] }],
-      ["/api/import/printables-collection", { url: "https://www.printables.com/@someone/collections/1", model_ids: ["1"] }],
+      [
+        "/api/import/thingiverse-collection",
+        { url: "https://www.thingiverse.com/someone/collections/1", thing_ids: ["1"] },
+      ],
+      [
+        "/api/import/printables-collection",
+        { url: "https://www.printables.com/@someone/collections/1", model_ids: ["1"] },
+      ],
     ];
     const codes: Record<string, string> = {};
     for (const [path, body] of starts) {
@@ -175,7 +201,10 @@ describe("captcha on import", () => {
     }
     expect(codes).toEqual(Object.fromEntries(starts.map(([path]) => [path, "CAPTCHA_REQUIRED"])));
     // Import status is a read, not an import -- no captcha.
-    const status = await request(app).get("/api/import/status").query({ url: "https://example.com/model.stl" }).set(auth(memberToken));
+    const status = await request(app)
+      .get("/api/import/status")
+      .query({ url: "https://example.com/model.stl" })
+      .set(auth(memberToken));
     expect(status.body.code).not.toBe("CAPTCHA_REQUIRED");
   });
 
@@ -184,9 +213,15 @@ describe("captcha on import", () => {
     // Nothing listens here, so the import fails, but only after the captcha.
     const body = { url: "http://127.0.0.1:9/model.stl" };
     const captchaCodes = ["CAPTCHA_REQUIRED", "CAPTCHA_INVALID"];
-    const withCaptcha = await request(app).post("/api/import").set(auth(memberToken)).send({ ...body, ...solved() });
+    const withCaptcha = await request(app)
+      .post("/api/import")
+      .set(auth(memberToken))
+      .send({ ...body, ...solved() });
     expect(captchaCodes).not.toContain(withCaptcha.body.code);
-    const fromGrab = await request(app).post("/api/import").set({ ...auth(memberToken), "X-Thingport-Client": "grab" }).send(body);
+    const fromGrab = await request(app)
+      .post("/api/import")
+      .set({ ...auth(memberToken), "X-Thingport-Client": "grab" })
+      .send(body);
     expect(captchaCodes).not.toContain(fromGrab.body.code);
   });
 });

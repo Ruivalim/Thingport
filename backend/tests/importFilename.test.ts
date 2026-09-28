@@ -20,9 +20,7 @@ describe("parseContentDisposition", () => {
   });
 
   it("still prefers the filename*= form, which names its own charset", () => {
-    expect(parseContentDisposition("attachment; filename*=UTF-8''%E5%93%A8%E5%AD%90.3mf")).toBe(
-      "哨子.3mf",
-    );
+    expect(parseContentDisposition("attachment; filename*=UTF-8''%E5%93%A8%E5%AD%90.3mf")).toBe("哨子.3mf");
   });
 
   it("is unchanged for plain ASCII", () => {
@@ -49,10 +47,7 @@ describe("sanitizeFilename", () => {
 describe("buildImportFilename", () => {
   it("writes a correctly encoded name for a MakerWorld-style download", () => {
     const mangled = Buffer.from("哨子.3mf", "utf8").toString("latin1");
-    const name = buildImportFilename(
-      "https://example.invalid/download",
-      headers(`attachment; filename="${mangled}"`),
-    );
+    const name = buildImportFilename("https://example.invalid/download", headers(`attachment; filename="${mangled}"`));
     expect(name).toBe("哨子.3mf");
     // oxlint-disable-next-line no-control-regex -- asserting there are no control chars is the point here.
     expect(/[\u0000-\u001f\u007f-\u009f]/.test(name)).toBe(false);

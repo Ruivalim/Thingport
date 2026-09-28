@@ -1,5 +1,10 @@
 import { IMPORT_BROWSER_USER_AGENT, IMPORT_TIMEOUT_SECONDS } from "../config";
-import { extractJsonFromBrowserBody, fetchViaFlaresolverr, isFlaresolverrEnabled, looksLikeCloudflareBlock } from "./flaresolverr";
+import {
+  extractJsonFromBrowserBody,
+  fetchViaFlaresolverr,
+  isFlaresolverrEnabled,
+  looksLikeCloudflareBlock,
+} from "./flaresolverr";
 import { maybeSleep } from "../utils/concurrency";
 import {
   isCaptchaChallenge,
@@ -44,7 +49,11 @@ async function fetchCollectionJson(url: string, bearerToken: string | null, pace
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), IMPORT_TIMEOUT_SECONDS * 1000);
   try {
-    const res = await fetch(url, { headers: collectionHeaders(bearerToken), redirect: "follow", signal: controller.signal });
+    const res = await fetch(url, {
+      headers: collectionHeaders(bearerToken),
+      redirect: "follow",
+      signal: controller.signal,
+    });
     if (res.status === 403 && isFlaresolverrEnabled() && looksLikeCloudflareBlock(res.headers)) {
       const solved = await fetchViaFlaresolverr(url, bearerToken ? `token=${bearerToken}` : null);
       if (!solved) return null;

@@ -22,8 +22,12 @@ type Props = {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <Stack direction="row" justifyContent="space-between" alignItems="baseline" spacing={2}>
-      <Typography variant="body2" color="text.secondary">{label}</Typography>
-      <Typography variant="body2" sx={{ fontFamily: "monospace" }}>{value}</Typography>
+      <Typography variant="body2" color="text.secondary">
+        {label}
+      </Typography>
+      <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
+        {value}
+      </Typography>
     </Stack>
   );
 }
@@ -59,7 +63,9 @@ export default function DatabaseTab({ onUnauthorized }: Props) {
     }
   }, [onUnauthorized, t]);
 
-  React.useEffect(() => { void load(); }, [load]);
+  React.useEffect(() => {
+    void load();
+  }, [load]);
 
   const confirmSwitch = async () => {
     setConfirmOpen(false);
@@ -92,7 +98,8 @@ export default function DatabaseTab({ onUnauthorized }: Props) {
   }
 
   const unset = t("adminSettings.database.unset");
-  const isDirty = database.trim() !== (info.database ?? "") || user.trim() !== (info.user ?? "") || password.trim() !== "";
+  const isDirty =
+    database.trim() !== (info.database ?? "") || user.trim() !== (info.user ?? "") || password.trim() !== "";
 
   return (
     <Stack spacing={3}>
@@ -110,14 +117,14 @@ export default function DatabaseTab({ onUnauthorized }: Props) {
           <TextField
             label={t("adminSettings.database.nameLabel")}
             value={database}
-            onChange={e => setDatabase(e.target.value)}
+            onChange={(e) => setDatabase(e.target.value)}
             disabled={saving}
             fullWidth
           />
           <TextField
             label={t("adminSettings.database.userLabel")}
             value={user}
-            onChange={e => setUser(e.target.value)}
+            onChange={(e) => setUser(e.target.value)}
             disabled={saving}
             fullWidth
             autoComplete="off"
@@ -126,7 +133,7 @@ export default function DatabaseTab({ onUnauthorized }: Props) {
             type="password"
             label={t("adminSettings.database.passwordLabel")}
             value={password}
-            onChange={e => setPassword(e.target.value)}
+            onChange={(e) => setPassword(e.target.value)}
             placeholder={t("adminSettings.database.passwordPlaceholder") ?? undefined}
             disabled={saving}
             fullWidth
@@ -142,10 +149,18 @@ export default function DatabaseTab({ onUnauthorized }: Props) {
               {saving ? t("adminSettings.database.saving") : t("adminSettings.database.testAndSave")}
             </Button>
             {saving && <CircularProgress size={14} />}
-            {status && <Typography variant="caption" color="text.secondary">{status}</Typography>}
+            {status && (
+              <Typography variant="caption" color="text.secondary">
+                {status}
+              </Typography>
+            )}
           </Stack>
 
-          {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
+          {error && (
+            <Alert severity="error" onClose={() => setError(null)}>
+              {error}
+            </Alert>
+          )}
         </Stack>
       </Paper>
 

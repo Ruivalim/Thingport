@@ -29,7 +29,13 @@ type Props = {
   viewer?: AuthUser | null;
 };
 
-export default function CollectionDetailPage({ theme, previewMode, onUnauthorized, onBookmarksChanged, viewer }: Props) {
+export default function CollectionDetailPage({
+  theme,
+  previewMode,
+  onUnauthorized,
+  onBookmarksChanged,
+  viewer,
+}: Props) {
   const { collectionId } = useParams<{ collectionId: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation(["models", "common"]);
@@ -42,10 +48,11 @@ export default function CollectionDetailPage({ theme, previewMode, onUnauthorize
   const [hasMore, setHasMore] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const sortModeParam = searchParams.get("orderBy");
-  const sortMode: PrintSortMode = sortModeParam === "popular" || sortModeParam === "downloads" ? sortModeParam : "newest";
+  const sortMode: PrintSortMode =
+    sortModeParam === "popular" || sortModeParam === "downloads" ? sortModeParam : "newest";
 
   const setSortMode = (mode: PrintSortMode) => {
-    setSearchParams(prev => {
+    setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       if (mode === "newest") next.delete("orderBy");
       else next.set("orderBy", mode);
@@ -56,26 +63,29 @@ export default function CollectionDetailPage({ theme, previewMode, onUnauthorize
   const goBack = () => navigate("/models/collections");
 
   usePageHeader({
-    title: collection ? t("models:collections.detail.title", { name: collectionDisplayName(collection, t) }) : undefined,
+    title: collection
+      ? t("models:collections.detail.title", { name: collectionDisplayName(collection, t) })
+      : undefined,
     subtitle: collection ? t("models:collections.detail.subtitle") : undefined,
-    actions: collection && !collection.system_key ? (
-      <Stack direction="row" alignItems="center" spacing={0.5}>
-        <CollectionBookmarkButton
-          collectionId={collection.id}
-          bookmarked={collection.bookmarked}
-          onUnauthorized={onUnauthorized}
-          onBookmarksChanged={onBookmarksChanged}
-          onToggled={bookmarked => setCollection(prev => (prev ? { ...prev, bookmarked } : prev))}
-        />
-        <CollectionActionsMenu
-          collection={collection}
-          onUpdated={setCollection}
-          onUnauthorized={onUnauthorized}
-          onDeleted={goBack}
-          onBookmarksChanged={onBookmarksChanged}
-        />
-      </Stack>
-    ) : undefined,
+    actions:
+      collection && !collection.system_key ? (
+        <Stack direction="row" alignItems="center" spacing={0.5}>
+          <CollectionBookmarkButton
+            collectionId={collection.id}
+            bookmarked={collection.bookmarked}
+            onUnauthorized={onUnauthorized}
+            onBookmarksChanged={onBookmarksChanged}
+            onToggled={(bookmarked) => setCollection((prev) => (prev ? { ...prev, bookmarked } : prev))}
+          />
+          <CollectionActionsMenu
+            collection={collection}
+            onUpdated={setCollection}
+            onUnauthorized={onUnauthorized}
+            onDeleted={goBack}
+            onBookmarksChanged={onBookmarksChanged}
+          />
+        </Stack>
+      ) : undefined,
   });
 
   const handleError = (err: unknown, message?: string) => {
@@ -112,7 +122,9 @@ export default function CollectionDetailPage({ theme, previewMode, onUnauthorize
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collectionId, sortMode]);
 
@@ -120,8 +132,13 @@ export default function CollectionDetailPage({ theme, previewMode, onUnauthorize
     if (loadingMore || !hasMore || !collectionId) return;
     setLoadingMore(true);
     try {
-      const result = await printsApi.list({ collection_id: collectionId, order_by: sortMode, limit: PAGE_SIZE, offset });
-      setItems(prev => [...prev, ...result.items]);
+      const result = await printsApi.list({
+        collection_id: collectionId,
+        order_by: sortMode,
+        limit: PAGE_SIZE,
+        offset,
+      });
+      setItems((prev) => [...prev, ...result.items]);
       setOffset(offset + result.items.length);
       setHasMore(result.hasMore);
     } catch (err) {
@@ -152,7 +169,9 @@ export default function CollectionDetailPage({ theme, previewMode, onUnauthorize
   return (
     <Stack spacing={2} sx={{ maxWidth: "1920px", mx: "auto" }}>
       {collection.description && (
-        <Typography variant="body2" color="text.secondary">{collection.description}</Typography>
+        <Typography variant="body2" color="text.secondary">
+          {collection.description}
+        </Typography>
       )}
       <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
         <SortTabs value={sortMode} onChange={setSortMode} />
@@ -172,24 +191,24 @@ export default function CollectionDetailPage({ theme, previewMode, onUnauthorize
               "@media (max-width: 860px)": { gridTemplateColumns: "repeat(2, 1fr)" },
             }}
           >
-            {items.map(item => (
+            {items.map((item) => (
               <ModelCard
                 key={item.id}
                 item={item}
                 theme={theme}
                 previewMode={previewMode}
-                onDeleted={deletedId => setItems(prev => prev.filter(i => i.id !== deletedId))}
-                onFavoriteChange={updated =>
-                  setItems(prev =>
+                onDeleted={(deletedId) => setItems((prev) => prev.filter((i) => i.id !== deletedId))}
+                onFavoriteChange={(updated) =>
+                  setItems((prev) =>
                     // Unfavoriting inside Favourites drops the item immediately.
                     collection?.system_key === "favorites" && !updated.is_favorite
-                      ? prev.filter(i => i.id !== updated.id)
-                      : prev.map(i => (i.id === updated.id ? updated : i)),
+                      ? prev.filter((i) => i.id !== updated.id)
+                      : prev.map((i) => (i.id === updated.id ? updated : i)),
                   )
                 }
                 collectionId={collection && !collection.system_key ? collection.id : undefined}
-                onRemovedFromCollection={removedId => setItems(prev => prev.filter(i => i.id !== removedId))}
-                onUpdated={updated => setItems(prev => prev.map(i => (i.id === updated.id ? updated : i)))}
+                onRemovedFromCollection={(removedId) => setItems((prev) => prev.filter((i) => i.id !== removedId))}
+                onUpdated={(updated) => setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)))}
                 onUnauthorized={onUnauthorized}
                 viewer={viewer}
               />

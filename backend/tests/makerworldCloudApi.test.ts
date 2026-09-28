@@ -57,11 +57,15 @@ describe("resolveMakerworldViaCloudApi", () => {
     });
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    await expect(resolveMakerworldViaCloudApi("456", null, "test-token")).rejects.toBeInstanceOf(MakerworldCaptchaError);
+    await expect(resolveMakerworldViaCloudApi("456", null, "test-token")).rejects.toBeInstanceOf(
+      MakerworldCaptchaError,
+    );
     expect(makerworldCaptchaCooloffActive()).toBe(true);
 
     const callsAfterFirstChallenge = fetchMock.mock.calls.length;
-    await expect(resolveMakerworldViaCloudApi("789", null, "test-token")).rejects.toBeInstanceOf(MakerworldCaptchaError);
+    await expect(resolveMakerworldViaCloudApi("789", null, "test-token")).rejects.toBeInstanceOf(
+      MakerworldCaptchaError,
+    );
     expect(fetchMock.mock.calls.length).toBe(callsAfterFirstChallenge);
   });
 });

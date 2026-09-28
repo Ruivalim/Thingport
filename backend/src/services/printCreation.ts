@@ -209,7 +209,11 @@ export async function createPrint(
   return { print, plates };
 }
 
-export async function addPlatesToPrint(userId: string, printId: string, plateInputs: NewPlateInput[]): Promise<Plate[]> {
+export async function addPlatesToPrint(
+  userId: string,
+  printId: string,
+  plateInputs: NewPlateInput[],
+): Promise<Plate[]> {
   const print = await prisma.print.findFirst({ where: { id: printId, userId } });
   if (!print) throw new Error("Print not found");
   const maxPosition = await prisma.plate.aggregate({ where: { printId }, _max: { position: true } });
@@ -229,8 +233,7 @@ export async function deletePlateFiles(plate: Pick<Plate, "storagePath">): Promi
   try {
     await fs.rm(abs, { force: true });
     await pruneEmptyStorageDirs(path.dirname(abs));
-  } catch {
-  }
+  } catch {}
 }
 
 export function mimeForUpload(contentType: string | null | undefined, filename: string): string {

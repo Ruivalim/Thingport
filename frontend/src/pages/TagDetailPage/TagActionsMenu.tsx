@@ -23,12 +23,19 @@ export default function TagActionsMenu({ tag, onUnauthorized }: Props) {
 
   return (
     <>
-      <IconButton size="small" onClick={e => setAnchorEl(e.currentTarget)} aria-label={t("common:more") ?? undefined}>
+      <IconButton size="small" onClick={(e) => setAnchorEl(e.currentTarget)} aria-label={t("common:more") ?? undefined}>
         <MoreVertIcon fontSize="small" />
       </IconButton>
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={closeMenu}>
-        <MenuItem onClick={() => { closeMenu(); setDownloadOpen(true); }}>
-          <ListItemIcon><DownloadIcon fontSize="small" /></ListItemIcon>
+        <MenuItem
+          onClick={() => {
+            closeMenu();
+            setDownloadOpen(true);
+          }}
+        >
+          <ListItemIcon>
+            <DownloadIcon fontSize="small" />
+          </ListItemIcon>
           <ListItemText>{t("models:tags.downloadAllZip")}</ListItemText>
         </MenuItem>
       </Menu>

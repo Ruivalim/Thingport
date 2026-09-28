@@ -11,7 +11,9 @@ export function isTarget(value: string): value is Target {
 const PROVIDER_MATCHES = ["*://*.thingiverse.com/*", "*://*.makerworld.com/*", "*://*.printables.com/*"];
 
 function iconSet(variant: "color" | "dark"): Record<string, string> {
-  return Object.fromEntries([16, 32, 48, 128].map((size) => [String(size), `icons/thingport-icon-${variant}-${size}.png`]));
+  return Object.fromEntries(
+    [16, 32, 48, 128].map((size) => [String(size), `icons/thingport-icon-${variant}-${size}.png`]),
+  );
 }
 
 export function buildManifest(target: Target, pkg: { version: string; description: string }): Record<string, unknown> {

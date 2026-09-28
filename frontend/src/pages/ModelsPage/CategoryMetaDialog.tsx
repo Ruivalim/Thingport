@@ -60,7 +60,7 @@ export default function CategoryMetaDialog({ category, onClose, onSave }: Props)
             label={t("models:categories.manager.metaTitleLabel")}
             fullWidth
             value={title}
-            onChange={e => setTitle(e.target.value)}
+            onChange={(e) => setTitle(e.target.value)}
             disabled={saving}
             // oxlint-disable-next-line jsx-a11y/no-autofocus
             autoFocus
@@ -71,7 +71,7 @@ export default function CategoryMetaDialog({ category, onClose, onSave }: Props)
             multiline
             minRows={3}
             value={description}
-            onChange={e => setDescription(e.target.value)}
+            onChange={(e) => setDescription(e.target.value)}
             disabled={saving}
           />
           <Stack direction="row" spacing={2}>
@@ -81,7 +81,7 @@ export default function CategoryMetaDialog({ category, onClose, onSave }: Props)
               helperText={t("models:categories.manager.catIdsHelp")}
               fullWidth
               value={makerworldCatIds}
-              onChange={e => setMakerworldCatIds(e.target.value)}
+              onChange={(e) => setMakerworldCatIds(e.target.value)}
               disabled={saving}
             />
             <TextField
@@ -90,7 +90,7 @@ export default function CategoryMetaDialog({ category, onClose, onSave }: Props)
               helperText={t("models:categories.manager.catIdsHelp")}
               fullWidth
               value={thingiverseCatIds}
-              onChange={e => setThingiverseCatIds(e.target.value)}
+              onChange={(e) => setThingiverseCatIds(e.target.value)}
               disabled={saving}
             />
             <TextField
@@ -99,7 +99,7 @@ export default function CategoryMetaDialog({ category, onClose, onSave }: Props)
               helperText={t("models:categories.manager.catIdsHelp")}
               fullWidth
               value={printablesCatIds}
-              onChange={e => setPrintablesCatIds(e.target.value)}
+              onChange={(e) => setPrintablesCatIds(e.target.value)}
               disabled={saving}
             />
           </Stack>
@@ -107,7 +107,9 @@ export default function CategoryMetaDialog({ category, onClose, onSave }: Props)
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={saving}>{t("common:cancel")}</Button>
+        <Button onClick={onClose} disabled={saving}>
+          {t("common:cancel")}
+        </Button>
         <Button
           variant="contained"
           onClick={handleSave}

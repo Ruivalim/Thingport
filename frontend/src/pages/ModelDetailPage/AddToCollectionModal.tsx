@@ -66,7 +66,9 @@ export default function AddToCollectionModal({
       } else {
         await collectionsApi.removeItem(collection.id, printId);
       }
-      setCollections((prev) => prev?.map((c) => (c.id === collection.id ? { ...c, in_collection: nextIn } : c)) ?? prev);
+      setCollections(
+        (prev) => prev?.map((c) => (c.id === collection.id ? { ...c, in_collection: nextIn } : c)) ?? prev,
+      );
       if (collection.id === collectionId && !nextIn) onRemovedFromCollection?.();
     } catch (err) {
       if (err instanceof UnauthorizedError) {

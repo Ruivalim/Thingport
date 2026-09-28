@@ -41,7 +41,9 @@ export default function RegistrationsPanel({ onUnauthorized }: Props) {
         if (active) setLoading(false);
       }
     })();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [onUnauthorized]);
 
   const handleChange = async (next: boolean) => {
@@ -69,7 +71,12 @@ export default function RegistrationsPanel({ onUnauthorized }: Props) {
   return (
     <Paper variant="outlined" sx={{ p: 2.5 }}>
       <Stack spacing={1.5}>
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ sm: "center" }} justifyContent="space-between">
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={2}
+          alignItems={{ sm: "center" }}
+          justifyContent="space-between"
+        >
           <Stack spacing={0.5}>
             <Stack direction="row" spacing={1.5} alignItems="center">
               <FormControlLabel
@@ -77,7 +84,7 @@ export default function RegistrationsPanel({ onUnauthorized }: Props) {
                   <Switch
                     checked={allow}
                     disabled={loading || saving}
-                    onChange={e => void handleChange(e.target.checked)}
+                    onChange={(e) => void handleChange(e.target.checked)}
                   />
                 }
                 label={t("adminSettings.registrations.allowLabel")}
@@ -101,7 +108,11 @@ export default function RegistrationsPanel({ onUnauthorized }: Props) {
           )}
         </Stack>
 
-        {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
+        {error && (
+          <Alert severity="error" onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
       </Stack>
       <InviteUsersDialog open={inviteOpen} onClose={() => setInviteOpen(false)} />
     </Paper>

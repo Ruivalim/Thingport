@@ -55,7 +55,7 @@ export function useImportModePrompt() {
     setBusy(false);
     setError(null);
     setState({ config });
-    return new Promise<void>(resolve => {
+    return new Promise<void>((resolve) => {
       resolveRef.current = resolve;
     });
   };
@@ -107,8 +107,12 @@ function ImportModeModal({
     <Dialog open onClose={busy ? undefined : onClose} maxWidth="sm" fullWidth>
       <DialogTitle sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 2 }}>
         <Box>
-          <Typography variant="h6" component="div">{t("importMode.title", { count })}</Typography>
-          <Typography variant="body2" color="text.secondary">{label}</Typography>
+          <Typography variant="h6" component="div">
+            {t("importMode.title", { count })}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {label}
+          </Typography>
         </Box>
         <IconButton size="small" onClick={onClose} disabled={busy} aria-label={t("importMode.close") ?? undefined}>
           <CloseIcon fontSize="small" />

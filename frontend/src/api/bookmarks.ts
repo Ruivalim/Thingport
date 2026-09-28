@@ -3,8 +3,7 @@ import { apiBase, assertOk } from "./client";
 
 /** Tags and collections share one list, sorted by the user's manual order. */
 export type BookmarkEntry =
-  | { id: string; type: "tag"; tag: string }
-  | { id: string; type: "collection"; collection_id: string; name: string };
+  { id: string; type: "tag"; tag: string } | { id: string; type: "collection"; collection_id: string; name: string };
 
 export const bookmarksApi = {
   list: async (): Promise<BookmarkEntry[]> => {

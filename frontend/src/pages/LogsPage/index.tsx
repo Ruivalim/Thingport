@@ -66,7 +66,10 @@ export default function LogsPage({ onUnauthorized }: Props) {
   const [to, setTo] = React.useState("");
 
   React.useEffect(() => {
-    adminApi.listUsers().then(setUsers).catch(() => undefined);
+    adminApi
+      .listUsers()
+      .then(setUsers)
+      .catch(() => undefined);
   }, []);
 
   const loadLogs = React.useCallback(async () => {
@@ -87,7 +90,9 @@ export default function LogsPage({ onUnauthorized }: Props) {
     }
   }, [userId, from, to, onUnauthorized, t]);
 
-  React.useEffect(() => { void loadLogs(); }, [loadLogs]);
+  React.useEffect(() => {
+    void loadLogs();
+  }, [loadLogs]);
 
   const formatDetails = (log: LogEntry): string => {
     const d = log.details;
@@ -133,7 +138,9 @@ export default function LogsPage({ onUnauthorized }: Props) {
             >
               <MenuItem value="">{t("adminSettings.logs.allUsers")}</MenuItem>
               {users.map((u) => (
-                <MenuItem key={u.id} value={u.id}>{u.display_name} ({u.email})</MenuItem>
+                <MenuItem key={u.id} value={u.id}>
+                  {u.display_name} ({u.email})
+                </MenuItem>
               ))}
             </Select>
           </FormControl>
@@ -156,7 +163,11 @@ export default function LogsPage({ onUnauthorized }: Props) {
         </Stack>
       </Paper>
 
-      {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
+      {error && (
+        <Alert severity="error" onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
 
       {loading ? (
         <Stack alignItems="center" sx={{ py: 2 }}>
@@ -164,7 +175,9 @@ export default function LogsPage({ onUnauthorized }: Props) {
         </Stack>
       ) : logs.length === 0 ? (
         <Paper variant="outlined" sx={{ p: 3 }}>
-          <Typography variant="body2" color="text.secondary">{t("adminSettings.logs.empty")}</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {t("adminSettings.logs.empty")}
+          </Typography>
         </Paper>
       ) : (
         <Paper variant="outlined">
@@ -185,7 +198,9 @@ export default function LogsPage({ onUnauthorized }: Props) {
                     <TableCell>
                       <Box>
                         <Typography variant="body2">{log.user_display_name}</Typography>
-                        <Typography variant="caption" color="text.secondary">{log.user_email}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {log.user_email}
+                        </Typography>
                       </Box>
                     </TableCell>
                     <TableCell>

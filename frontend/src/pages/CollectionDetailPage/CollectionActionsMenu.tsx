@@ -107,7 +107,7 @@ export default function CollectionActionsMenu({
     <>
       <IconButton
         size="small"
-        onClick={e => setAnchorEl(e.currentTarget)}
+        onClick={(e) => setAnchorEl(e.currentTarget)}
         aria-label={t("common:more") ?? undefined}
         disabled={deleting || bookmarking}
         sx={triggerSx}
@@ -117,22 +117,44 @@ export default function CollectionActionsMenu({
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={closeMenu}>
         <MenuItem onClick={handleToggleBookmark}>
           <ListItemIcon>
-            {collection.bookmarked ? <BookmarkIcon fontSize="small" color="primary" /> : <BookmarkBorderIcon fontSize="small" />}
+            {collection.bookmarked ? (
+              <BookmarkIcon fontSize="small" color="primary" />
+            ) : (
+              <BookmarkBorderIcon fontSize="small" />
+            )}
           </ListItemIcon>
           <ListItemText>
-            {collection.bookmarked ? t("models:collections.unbookmarkCollection") : t("models:collections.bookmarkCollection")}
+            {collection.bookmarked
+              ? t("models:collections.unbookmarkCollection")
+              : t("models:collections.bookmarkCollection")}
           </ListItemText>
         </MenuItem>
-        <MenuItem onClick={() => { closeMenu(); setDownloadOpen(true); }}>
-          <ListItemIcon><DownloadIcon fontSize="small" /></ListItemIcon>
+        <MenuItem
+          onClick={() => {
+            closeMenu();
+            setDownloadOpen(true);
+          }}
+        >
+          <ListItemIcon>
+            <DownloadIcon fontSize="small" />
+          </ListItemIcon>
           <ListItemText>{t("models:collections.downloadAllZip")}</ListItemText>
         </MenuItem>
-        <MenuItem onClick={() => { closeMenu(); setEditOpen(true); }}>
-          <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
+        <MenuItem
+          onClick={() => {
+            closeMenu();
+            setEditOpen(true);
+          }}
+        >
+          <ListItemIcon>
+            <EditIcon fontSize="small" />
+          </ListItemIcon>
           <ListItemText>{t("common:edit")}</ListItemText>
         </MenuItem>
         <MenuItem onClick={handleDelete}>
-          <ListItemIcon><DeleteIcon fontSize="small" color="error" /></ListItemIcon>
+          <ListItemIcon>
+            <DeleteIcon fontSize="small" color="error" />
+          </ListItemIcon>
           <ListItemText sx={{ color: "error.main" }}>{t("common:delete")}</ListItemText>
         </MenuItem>
       </Menu>

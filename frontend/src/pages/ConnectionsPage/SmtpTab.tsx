@@ -40,7 +40,9 @@ export default function SmtpTab({ onUnauthorized }: Props) {
     }
   }, [onUnauthorized, t]);
 
-  React.useEffect(() => { void load(); }, [load]);
+  React.useEffect(() => {
+    void load();
+  }, [load]);
 
   const save = async () => {
     setSaving(true);
@@ -90,7 +92,7 @@ export default function SmtpTab({ onUnauthorized }: Props) {
         <TextField
           label={t("adminSettings.smtp.hostLabel")}
           value={settings.host ?? ""}
-          onChange={e => setSettings(s => ({ ...s, host: e.target.value }))}
+          onChange={(e) => setSettings((s) => ({ ...s, host: e.target.value }))}
           placeholder={t("adminSettings.smtp.hostPlaceholder") ?? undefined}
           disabled={disabled}
           sx={{ flex: "2 1 260px" }}
@@ -99,7 +101,7 @@ export default function SmtpTab({ onUnauthorized }: Props) {
           type="number"
           label={t("adminSettings.smtp.portLabel")}
           value={settings.port}
-          onChange={e => setSettings(s => ({ ...s, port: Number(e.target.value) || s.port }))}
+          onChange={(e) => setSettings((s) => ({ ...s, port: Number(e.target.value) || s.port }))}
           disabled={disabled}
           sx={{ flex: "1 1 120px" }}
         />
@@ -109,14 +111,16 @@ export default function SmtpTab({ onUnauthorized }: Props) {
         control={
           <Switch
             checked={settings.secure}
-            onChange={e => setSettings(s => ({ ...s, secure: e.target.checked }))}
+            onChange={(e) => setSettings((s) => ({ ...s, secure: e.target.checked }))}
             disabled={disabled}
           />
         }
         label={
           <Box>
             <Typography variant="body2">{t("adminSettings.smtp.secureLabel")}</Typography>
-            <Typography variant="caption" color="text.secondary">{t("adminSettings.smtp.secureHint")}</Typography>
+            <Typography variant="caption" color="text.secondary">
+              {t("adminSettings.smtp.secureHint")}
+            </Typography>
           </Box>
         }
       />
@@ -125,7 +129,7 @@ export default function SmtpTab({ onUnauthorized }: Props) {
         <TextField
           label={t("adminSettings.smtp.userLabel")}
           value={settings.user ?? ""}
-          onChange={e => setSettings(s => ({ ...s, user: e.target.value }))}
+          onChange={(e) => setSettings((s) => ({ ...s, user: e.target.value }))}
           disabled={disabled}
           autoComplete="off"
           sx={{ flex: "1 1 220px" }}
@@ -134,7 +138,7 @@ export default function SmtpTab({ onUnauthorized }: Props) {
           type="password"
           label={t("adminSettings.smtp.passwordLabel")}
           value={password}
-          onChange={e => setPassword(e.target.value)}
+          onChange={(e) => setPassword(e.target.value)}
           placeholder={t("adminSettings.smtp.passwordPlaceholder") ?? undefined}
           disabled={disabled}
           autoComplete="new-password"
@@ -145,7 +149,7 @@ export default function SmtpTab({ onUnauthorized }: Props) {
       <TextField
         label={t("adminSettings.smtp.fromLabel")}
         value={settings.from}
-        onChange={e => setSettings(s => ({ ...s, from: e.target.value }))}
+        onChange={(e) => setSettings((s) => ({ ...s, from: e.target.value }))}
         placeholder={t("adminSettings.smtp.fromPlaceholder") ?? undefined}
         disabled={disabled}
         fullWidth
@@ -156,10 +160,18 @@ export default function SmtpTab({ onUnauthorized }: Props) {
           {saving ? t("adminSettings.smtp.saving") : t("adminSettings.smtp.save")}
         </Button>
         {saving && <CircularProgress size={14} />}
-        {status && <Typography variant="caption" color="text.secondary">{status}</Typography>}
+        {status && (
+          <Typography variant="caption" color="text.secondary">
+            {status}
+          </Typography>
+        )}
       </Stack>
 
-      {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
+      {error && (
+        <Alert severity="error" onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
     </Stack>
   );
 }

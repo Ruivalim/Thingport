@@ -50,7 +50,9 @@ export default function CollectionBookmarkButton({
     }
   };
 
-  const label = isBookmarked ? t("models:collections.unbookmarkCollection") : t("models:collections.bookmarkCollection");
+  const label = isBookmarked
+    ? t("models:collections.unbookmarkCollection")
+    : t("models:collections.bookmarkCollection");
 
   return (
     <Tooltip title={label}>

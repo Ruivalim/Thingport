@@ -58,7 +58,17 @@ function rowTextSx(active: boolean, extra?: object) {
 }
 
 /** A two-level tree: a root selects all its subcategories' models; one root is expanded at a time. */
-export default function CategoriesPanel({ categories, loading, selectedId, onSelect, onCreate, onRename, onDelete, onReorder, onUpdateMeta }: Props) {
+export default function CategoriesPanel({
+  categories,
+  loading,
+  selectedId,
+  onSelect,
+  onCreate,
+  onRename,
+  onDelete,
+  onReorder,
+  onUpdateMeta,
+}: Props) {
   const { t, i18n } = useTranslation(["models", "common"]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [managerOpen, setManagerOpen] = useState(false);
@@ -70,7 +80,7 @@ export default function CategoriesPanel({ categories, loading, selectedId, onSel
   // the child never renders.
   useEffect(() => {
     if (!selectedId) return;
-    const selected = categories.find(c => c.id === selectedId);
+    const selected = categories.find((c) => c.id === selectedId);
     if (!selected) return;
     setExpandedId(selected.parent_id || selected.id);
   }, [selectedId, categories]);
@@ -78,7 +88,7 @@ export default function CategoriesPanel({ categories, loading, selectedId, onSel
   const { roots, childrenByParent } = useMemo(() => {
     const childrenMap: Record<string, Category[]> = {};
     const rootList: Category[] = [];
-    categories.forEach(f => {
+    categories.forEach((f) => {
       if (f.parent_id) {
         if (!childrenMap[f.parent_id]) childrenMap[f.parent_id] = [];
         childrenMap[f.parent_id].push(f);
@@ -87,7 +97,7 @@ export default function CategoriesPanel({ categories, loading, selectedId, onSel
       }
     });
     const byPosition = (a: Category, b: Category) => a.position - b.position || a.name.localeCompare(b.name);
-    Object.keys(childrenMap).forEach(key => {
+    Object.keys(childrenMap).forEach((key) => {
       childrenMap[key] = childrenMap[key].toSorted(byPosition);
     });
     return {
@@ -116,9 +126,15 @@ export default function CategoriesPanel({ categories, loading, selectedId, onSel
         }}
       >
         <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 0.5, pb: 1 }}>
-          <Typography variant="subtitle1" fontWeight={700}>{t("models:categories.title")}</Typography>
+          <Typography variant="subtitle1" fontWeight={700}>
+            {t("models:categories.title")}
+          </Typography>
           <Tooltip title={t("models:categories.manageTooltip") ?? ""}>
-            <IconButton size="small" onClick={() => setManagerOpen(true)} aria-label={t("models:categories.manageTooltip") ?? undefined}>
+            <IconButton
+              size="small"
+              onClick={() => setManagerOpen(true)}
+              aria-label={t("models:categories.manageTooltip") ?? undefined}
+            >
               <SettingsIcon fontSize="small" />
             </IconButton>
           </Tooltip>
@@ -138,55 +154,60 @@ export default function CategoriesPanel({ categories, loading, selectedId, onSel
             </Stack>
           )}
 
-          {!loading && roots.map(root => {
-            const children = childrenByParent[root.id] || [];
-            const isOpen = expandedId === root.id;
-            const isRootActive = isOpen && selectedId === root.id;
-            return (
-              <Stack key={root.id}>
-                <ListItemButton onClick={() => handleRootClick(root.id)} sx={rowSx(isRootActive)}>
-                  <ListItemText
-                    primary={displayName(root) || untitledLabel}
-                    primaryTypographyProps={rowTextSx(isRootActive, { fontWeight: 600 })}
-                  />
-                  <ChevronRightIcon
-                    fontSize="small"
-                    sx={{
-                      ml: 0.5,
-                      flexShrink: 0,
-                      transform: isOpen ? "rotate(90deg)" : "none",
-                      transition: "transform 0.15s",
-                      color: (theme) => (isRootActive ? theme.thingport.selectedNavText : theme.thingport.navInactiveText),
-                    }}
-                  />
-                </ListItemButton>
-                <Collapse in={isOpen} timeout="auto" unmountOnExit>
-                  <List component="div" disablePadding>
-                    {children.map(child => {
-                      const isChildSelected = selectedId === child.id;
-                      return (
-                        <ListItemButton
-                          key={child.id}
-                          onClick={() => onSelect(child.id)}
-                          sx={{ pl: 4, ...rowSx(isChildSelected) }}
-                        >
-                          <ListItemText
-                            primary={displayName(child) || untitledLabel}
-                            primaryTypographyProps={rowTextSx(isChildSelected, isChildSelected ? { fontWeight: 700 } : undefined)}
-                          />
-                        </ListItemButton>
-                      );
-                    })}
-                    {!children.length && (
-                      <Typography variant="caption" color="text.secondary" sx={{ pl: 4, display: "block", py: 0.5 }}>
-                        {t("models:categories.noSubcategories")}
-                      </Typography>
-                    )}
-                  </List>
-                </Collapse>
-              </Stack>
-            );
-          })}
+          {!loading &&
+            roots.map((root) => {
+              const children = childrenByParent[root.id] || [];
+              const isOpen = expandedId === root.id;
+              const isRootActive = isOpen && selectedId === root.id;
+              return (
+                <Stack key={root.id}>
+                  <ListItemButton onClick={() => handleRootClick(root.id)} sx={rowSx(isRootActive)}>
+                    <ListItemText
+                      primary={displayName(root) || untitledLabel}
+                      primaryTypographyProps={rowTextSx(isRootActive, { fontWeight: 600 })}
+                    />
+                    <ChevronRightIcon
+                      fontSize="small"
+                      sx={{
+                        ml: 0.5,
+                        flexShrink: 0,
+                        transform: isOpen ? "rotate(90deg)" : "none",
+                        transition: "transform 0.15s",
+                        color: (theme) =>
+                          isRootActive ? theme.thingport.selectedNavText : theme.thingport.navInactiveText,
+                      }}
+                    />
+                  </ListItemButton>
+                  <Collapse in={isOpen} timeout="auto" unmountOnExit>
+                    <List component="div" disablePadding>
+                      {children.map((child) => {
+                        const isChildSelected = selectedId === child.id;
+                        return (
+                          <ListItemButton
+                            key={child.id}
+                            onClick={() => onSelect(child.id)}
+                            sx={{ pl: 4, ...rowSx(isChildSelected) }}
+                          >
+                            <ListItemText
+                              primary={displayName(child) || untitledLabel}
+                              primaryTypographyProps={rowTextSx(
+                                isChildSelected,
+                                isChildSelected ? { fontWeight: 700 } : undefined,
+                              )}
+                            />
+                          </ListItemButton>
+                        );
+                      })}
+                      {!children.length && (
+                        <Typography variant="caption" color="text.secondary" sx={{ pl: 4, display: "block", py: 0.5 }}>
+                          {t("models:categories.noSubcategories")}
+                        </Typography>
+                      )}
+                    </List>
+                  </Collapse>
+                </Stack>
+              );
+            })}
 
           {!loading && !roots.length && (
             <Typography variant="body2" color="text.secondary" sx={{ px: 1, py: 1 }}>

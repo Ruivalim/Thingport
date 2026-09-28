@@ -15,7 +15,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
   {
     name: "3D Printer",
     metaTitle: "3D Printer",
-    metaDescription: "Whether you're looking to enhance your 3D printing experience with accessories or need to replace a printer part with a printed one, we have you covered. You can download and print models from a wide selection available just a click away.",
+    metaDescription:
+      "Whether you're looking to enhance your 3D printing experience with accessories or need to replace a printer part with a printed one, we have you covered. You can download and print models from a wide selection available just a click away.",
     makerworldCatIds: [900],
     thingiverseCatIds: [73],
     printablesCatIds: [1],
@@ -23,7 +24,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "3D Printer Accessories",
         metaTitle: "3D Printer Accessories",
-        metaDescription: "Elevate your 3D printing experience with our curated selection of premium accessories. Discover a wide range of essential tools and components designed to optimize print quality, enhance performance, and expand the capabilities of your 3D printer.",
+        metaDescription:
+          "Elevate your 3D printing experience with our curated selection of premium accessories. Discover a wide range of essential tools and components designed to optimize print quality, enhance performance, and expand the capabilities of your 3D printer.",
         makerworldCatIds: [901],
         thingiverseCatIds: [127],
         printablesCatIds: [40],
@@ -31,7 +33,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "3D Printer Parts",
         metaTitle: "3D Printer Parts & Upgrades",
-        metaDescription: "Transform your 3D printer into a powerhouse of precision and performance with our extensive range of high-quality 3D printer parts and upgrades. Whether you're seeking to enhance print accuracy, increase printing speed, or expand your printer's functionality, our carefully curated selection of replacement parts and innovative upgrades caters to every need.",
+        metaDescription:
+          "Transform your 3D printer into a powerhouse of precision and performance with our extensive range of high-quality 3D printer parts and upgrades. Whether you're seeking to enhance print accuracy, increase printing speed, or expand your printer's functionality, our carefully curated selection of replacement parts and innovative upgrades caters to every need.",
         makerworldCatIds: [902],
         thingiverseCatIds: [128, 152, 126],
         printablesCatIds: [134, 138, 136, 135, 2, 137],
@@ -39,7 +42,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "Test Models",
         metaTitle: "3D Printer Test Models",
-        metaDescription: "Ensure flawless prints and optimal performance with our collection of essential 3D printer test models. These meticulously designed models provide a comprehensive platform for evaluating printer settings, diagnosing potential issues, and validating print quality.",
+        metaDescription:
+          "Ensure flawless prints and optimal performance with our collection of essential 3D printer test models. These meticulously designed models provide a comprehensive platform for evaluating printer settings, diagnosing potential issues, and validating print quality.",
         makerworldCatIds: [903],
         thingiverseCatIds: [129],
         printablesCatIds: [12],
@@ -49,7 +53,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
   {
     name: "Art",
     metaTitle: "3D Printed Art Models",
-    metaDescription: "Explore the \"Art\" category of 3D printing models and discover a wide range of stunning designs that can be printed and displayed in any environment. From 2D art to sculptures, download premium model files and add a touch of beauty and creativity to your space with these unique designs.",
+    metaDescription:
+      'Explore the "Art" category of 3D printing models and discover a wide range of stunning designs that can be printed and displayed in any environment. From 2D art to sculptures, download premium model files and add a touch of beauty and creativity to your space with these unique designs.',
     makerworldCatIds: [100],
     thingiverseCatIds: [63],
     printablesCatIds: [13],
@@ -57,7 +62,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "2D Art",
         metaTitle: "2D Art Models",
-        metaDescription: "Bring your favorite paintings, drawings, and illustrations to life with our innovative collection of 3D printed 2D art models. Experience the beauty of art in a new dimension as we transform cherished 2D artworks into stunning 3D printed creations.",
+        metaDescription:
+          "Bring your favorite paintings, drawings, and illustrations to life with our innovative collection of 3D printed 2D art models. Experience the beauty of art in a new dimension as we transform cherished 2D artworks into stunning 3D printed creations.",
         makerworldCatIds: [101],
         thingiverseCatIds: [144],
         printablesCatIds: [16],
@@ -65,21 +71,24 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "Coin & Badges",
         metaTitle: "3D Printed Coin & Badges",
-        metaDescription: "Create unique and memorable keepsakes with our collection of customizable 3D printed coins and badges. Commemorate special events, recognize achievements, or simply express your individuality with personalized designs that are sure to impress.",
+        metaDescription:
+          "Create unique and memorable keepsakes with our collection of customizable 3D printed coins and badges. Commemorate special events, recognize achievements, or simply express your individuality with personalized designs that are sure to impress.",
         makerworldCatIds: [103],
         thingiverseCatIds: [143],
       },
       {
         name: "Signs & Logos",
         metaTitle: "3D Printed Signs & Logos",
-        metaDescription: "Elevate your branding and signage with our collection of impactful 3D printed signs and logos. Create custom signage for businesses, events, or home décor that stands out from the crowd.",
+        metaDescription:
+          "Elevate your branding and signage with our collection of impactful 3D printed signs and logos. Create custom signage for businesses, events, or home décor that stands out from the crowd.",
         makerworldCatIds: [102],
         thingiverseCatIds: [76],
       },
       {
         name: "Sculptures",
         metaTitle: "3D Printed Sculptures",
-        metaDescription: "Explore a world of captivating 3D printed sculptures that showcase the artistry and innovation of this transformative technology. From lifelike figures and abstract forms to intricate details and mesmerizing textures, our curated collection of 3D printed sculptures offers a diverse range of artistic expressions that will inspire and amaze.",
+        metaDescription:
+          "Explore a world of captivating 3D printed sculptures that showcase the artistry and innovation of this transformative technology. From lifelike figures and abstract forms to intricate details and mesmerizing textures, our curated collection of 3D printed sculptures offers a diverse range of artistic expressions that will inspire and amaze.",
         makerworldCatIds: [104],
         thingiverseCatIds: [80],
         printablesCatIds: [14],
@@ -87,7 +96,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "Other Art Models",
         metaTitle: "Other Art Models",
-        metaDescription: "Transform your home décor with unique 3D printed art models. Discover vases, lamps, boxes, sculptures, and more!",
+        metaDescription:
+          "Transform your home décor with unique 3D printed art models. Discover vases, lamps, boxes, sculptures, and more!",
         makerworldCatIds: [105],
         thingiverseCatIds: [75, 78, 79, 145],
         printablesCatIds: [15, 41],
@@ -97,7 +107,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
   {
     name: "Education",
     metaTitle: "3D Printed Educational Models",
-    metaDescription: "Explore 3D printing designs to enhance learning and create interactive educational tools. Discover a wide range of 3D printable models covering subjects such as science, geography, history, mathematics, and more. Ideal for educators and learners of all ages.",
+    metaDescription:
+      "Explore 3D printing designs to enhance learning and create interactive educational tools. Discover a wide range of 3D printable models covering subjects such as science, geography, history, mathematics, and more. Ideal for educators and learners of all ages.",
     makerworldCatIds: [500],
     thingiverseCatIds: [69],
     printablesCatIds: [90],
@@ -105,21 +116,24 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "Biology",
         metaTitle: "3D Printed Biology Models",
-        metaDescription: "Explore the intricate world of life with our meticulously crafted 3D printed biology models, visualizing and understanding anatomy, molecular structures, and biological processes.",
+        metaDescription:
+          "Explore the intricate world of life with our meticulously crafted 3D printed biology models, visualizing and understanding anatomy, molecular structures, and biological processes.",
         makerworldCatIds: [503],
         thingiverseCatIds: [106],
       },
       {
         name: "Chemistry",
         metaTitle: "3D Printed Chemistry Models",
-        metaDescription: "Unravel the mysteries of matter with our captivating 3D printed chemistry models, visualizing and understanding molecular structures, chemical compounds, and complex reactions.",
+        metaDescription:
+          "Unravel the mysteries of matter with our captivating 3D printed chemistry models, visualizing and understanding molecular structures, chemical compounds, and complex reactions.",
         makerworldCatIds: [505],
         printablesCatIds: [92],
       },
       {
         name: "Engineering",
         metaTitle: "3D Printed Engineering Models",
-        metaDescription: "Transform abstract engineering concepts into tangible realities with our innovative 3D printed models, exploring mechanical components, architectural structures, and electronic circuits.",
+        metaDescription:
+          "Transform abstract engineering concepts into tangible realities with our innovative 3D printed models, exploring mechanical components, architectural structures, and electronic circuits.",
         makerworldCatIds: [501],
         thingiverseCatIds: [104],
         printablesCatIds: [93],
@@ -127,14 +141,16 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "Geography",
         metaTitle: "3D Printed Geography Models",
-        metaDescription: "Embark on a geographical journey around the world with our captivating 3D printed models, visualizing mountain ranges, continents, oceans, rivers, and climate patterns.",
+        metaDescription:
+          "Embark on a geographical journey around the world with our captivating 3D printed models, visualizing mountain ranges, continents, oceans, rivers, and climate patterns.",
         makerworldCatIds: [506],
         printablesCatIds: [98],
       },
       {
         name: "Mathematics",
         metaTitle: "3D Printed Mathematics Models",
-        metaDescription: "Transform abstract mathematical concepts into tangible representations with our engaging 3D printed models, visualizing geometric shapes, mathematical functions, and complex mathematical concepts.",
+        metaDescription:
+          "Transform abstract mathematical concepts into tangible representations with our engaging 3D printed models, visualizing geometric shapes, mathematical functions, and complex mathematical concepts.",
         makerworldCatIds: [502],
         thingiverseCatIds: [105],
         printablesCatIds: [94],
@@ -142,7 +158,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "Physics & Astronomy",
         metaTitle: "3D Printed Physics & Astronomy Models",
-        metaDescription: "Unravel the mysteries of the universe with our captivating 3D printed physics and astronomy models, visualizing physical forces, astronomical phenomena, and complex scientific theories.",
+        metaDescription:
+          "Unravel the mysteries of the universe with our captivating 3D printed physics and astronomy models, visualizing physical forces, astronomical phenomena, and complex scientific theories.",
         makerworldCatIds: [504],
         thingiverseCatIds: [148],
         printablesCatIds: [91],
@@ -150,7 +167,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "Other Education Models",
         metaTitle: "Other Education Models",
-        metaDescription: "Discover a world of endless learning possibilities with our diverse collection of 3D printed educational models, exploring history, social studies, art, design, language, and literature.",
+        metaDescription:
+          "Discover a world of endless learning possibilities with our diverse collection of 3D printed educational models, exploring history, social studies, art, design, language, and literature.",
         makerworldCatIds: [507],
         printablesCatIds: [96],
       },
@@ -159,7 +177,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
   {
     name: "Fashion",
     metaTitle: "3D Printed Fashion Models",
-    metaDescription: "Discover contemporary and stylish 3D printable fashion accessories in the \"Fashion\" category. Create your own unique 3D printed items, from jewelry to purses, wallets, and belts, and express your personal fashion sense with these premium model files.",
+    metaDescription:
+      'Discover contemporary and stylish 3D printable fashion accessories in the "Fashion" category. Create your own unique 3D printed items, from jewelry to purses, wallets, and belts, and express your personal fashion sense with these premium model files.',
     makerworldCatIds: [200],
     thingiverseCatIds: [64],
     printablesCatIds: [17],
@@ -167,54 +186,62 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "Bags",
         metaTitle: "3D Printed Bags",
-        metaDescription: "Embrace a unique blend of functionality and fashion-forward design with our durable and eco-friendly 3D printed bags, ranging from trendy handbags to practical backpacks.",
+        metaDescription:
+          "Embrace a unique blend of functionality and fashion-forward design with our durable and eco-friendly 3D printed bags, ranging from trendy handbags to practical backpacks.",
         makerworldCatIds: [201],
       },
       {
         name: "Clothes",
         metaTitle: "3D Printed Clothes Accessories",
-        metaDescription: "Elevate your style with our eye-catching and personalized 3D printed clothes accessories, from statement-making necklaces and bracelets to bold earrings and scarves.",
+        metaDescription:
+          "Elevate your style with our eye-catching and personalized 3D printed clothes accessories, from statement-making necklaces and bracelets to bold earrings and scarves.",
         makerworldCatIds: [202],
         thingiverseCatIds: [142],
       },
       {
         name: "Earrings",
         metaTitle: "3D Printed Earrings",
-        metaDescription: "Make a statement with our collection of exquisite and unique 3D printed earrings, featuring a wide variety of designs from delicate and feminine to bold and geometric.",
+        metaDescription:
+          "Make a statement with our collection of exquisite and unique 3D printed earrings, featuring a wide variety of designs from delicate and feminine to bold and geometric.",
         makerworldCatIds: [206],
         thingiverseCatIds: [139],
       },
       {
         name: "Footwear",
         metaTitle: "3D Printed Footwear",
-        metaDescription: "Experience the ultimate in comfort and style with our innovative and customizable 3D printed footwear, designed to provide exceptional support and make a fashion statement.",
+        metaDescription:
+          "Experience the ultimate in comfort and style with our innovative and customizable 3D printed footwear, designed to provide exceptional support and make a fashion statement.",
         makerworldCatIds: [204],
       },
       {
         name: "Glasses",
         metaTitle: "3D Printed Glasses",
-        metaDescription: "See the world in a new light with our stylish and functional 3D printed glasses, offering a variety of frames and lenses to create both fashionable and practical eyewear.",
+        metaDescription:
+          "See the world in a new light with our stylish and functional 3D printed glasses, offering a variety of frames and lenses to create both fashionable and practical eyewear.",
         makerworldCatIds: [203],
         thingiverseCatIds: [83],
       },
       {
         name: "Jewelry",
         metaTitle: "3D Printed Jewelry",
-        metaDescription: "Make one-of-a-kind pieces of jewelry with our amazing 3D printed jewelry, featuring a wide range of designs from delicate and intricate to bold and statement-making.",
+        metaDescription:
+          "Make one-of-a-kind pieces of jewelry with our amazing 3D printed jewelry, featuring a wide range of designs from delicate and intricate to bold and statement-making.",
         makerworldCatIds: [208],
         thingiverseCatIds: [84, 82],
       },
       {
         name: "Rings",
         metaTitle: "3D Printed Rings",
-        metaDescription: "Find the perfect ring to symbolize your love or commitment with our unique and personalized 3D printed rings, including classic wedding bands, modern statement rings, and personalized rings with custom engravings.",
+        metaDescription:
+          "Find the perfect ring to symbolize your love or commitment with our unique and personalized 3D printed rings, including classic wedding bands, modern statement rings, and personalized rings with custom engravings.",
         makerworldCatIds: [205],
         thingiverseCatIds: [85],
       },
       {
         name: "Other Fashion Models",
         metaTitle: "Other Fashion Models",
-        metaDescription: "Discover a world of endless fashion possibilities with our diverse collection of 3D printed fashion models, including hats, belts, and hair accessories.",
+        metaDescription:
+          "Discover a world of endless fashion possibilities with our diverse collection of 3D printed fashion models, including hats, belts, and hair accessories.",
         makerworldCatIds: [207],
         thingiverseCatIds: [81, 130],
         printablesCatIds: [18, 20, 42],
@@ -224,7 +251,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
   {
     name: "Hobby & DIY",
     metaTitle: "3D Printed Hobby & DIY Models",
-    metaDescription: "3D Printers are awesome if you are into DIY activities. And this category is just as awesome as a resource for your 3D printing needs related to your DIY hobby. From electronics to RC vehicles or Robotics, you'll find something to get busy with.",
+    metaDescription:
+      "3D Printers are awesome if you are into DIY activities. And this category is just as awesome as a resource for your 3D printing needs related to your DIY hobby. From electronics to RC vehicles or Robotics, you'll find something to get busy with.",
     makerworldCatIds: [300],
     thingiverseCatIds: [66],
     printablesCatIds: [48],
@@ -232,7 +260,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "Electronics",
         metaTitle: "3D Printed Equipments for Electronics",
-        metaDescription: "Elevate your electronics projects with our precision-crafted 3D printed electronic components, enclosures, and accessories.",
+        metaDescription:
+          "Elevate your electronics projects with our precision-crafted 3D printed electronic components, enclosures, and accessories.",
         makerworldCatIds: [301],
         thingiverseCatIds: [92],
         printablesCatIds: [52],
@@ -240,7 +269,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "Music",
         metaTitle: "3D Printed Musical Instruments",
-        metaDescription: "Create unique and personalized 3D printed musical instruments, from flutes and drums to guitars and synthesizers.",
+        metaDescription:
+          "Create unique and personalized 3D printed musical instruments, from flutes and drums to guitars and synthesizers.",
         makerworldCatIds: [303],
         thingiverseCatIds: [94],
         printablesCatIds: [95],
@@ -248,14 +278,16 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "RC",
         metaTitle: "3D Printed RC Models",
-        metaDescription: "Experience the thrill of crafting and controlling your own 3D printed RC vehicles, drones, and airplanes.",
+        metaDescription:
+          "Experience the thrill of crafting and controlling your own 3D printed RC vehicles, drones, and airplanes.",
         makerworldCatIds: [304],
         thingiverseCatIds: [95],
       },
       {
         name: "Robotics",
         metaTitle: "3D Printed Robotics",
-        metaDescription: "Explore the world of robotics with our amazing 3D printed robot parts, frames, and actuators.",
+        metaDescription:
+          "Explore the world of robotics with our amazing 3D printed robot parts, frames, and actuators.",
         makerworldCatIds: [305],
         thingiverseCatIds: [96],
         printablesCatIds: [64],
@@ -263,7 +295,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "Sport & Outdoors",
         metaTitle: "3D Printed Sport & Outdoor Models",
-        metaDescription: "Unleash your athletic spirit and explore the outdoors with Sport & Outdoor! Craft custom gear, design personalized accessories, and discover a world of 3D printed models to fuel your active lifestyle. Start your Sport & Outdoor 3D printing today!",
+        metaDescription:
+          "Unleash your athletic spirit and explore the outdoors with Sport & Outdoor! Craft custom gear, design personalized accessories, and discover a world of 3D printed models to fuel your active lifestyle. Start your Sport & Outdoor 3D printing today!",
         makerworldCatIds: [306],
         thingiverseCatIds: [140],
         printablesCatIds: [9, 83, 74, 85, 84],
@@ -271,7 +304,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "Vehicles",
         metaTitle: "3D Printed Vehicles",
-        metaDescription: "Design and build your dream 3D printed vehicles, from cars and motorcycles to spaceships and submarines.",
+        metaDescription:
+          "Design and build your dream 3D printed vehicles, from cars and motorcycles to spaceships and submarines.",
         makerworldCatIds: [302],
         thingiverseCatIds: [155],
         printablesCatIds: [89],
@@ -279,7 +313,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "Other Hobby & DIY",
         metaTitle: "Other Hobby & DIY Models",
-        metaDescription: "Discover endless possibilities for creativity and self-expression with our diverse collection of 3D printed hobby and DIY models.",
+        metaDescription:
+          "Discover endless possibilities for creativity and self-expression with our diverse collection of 3D printed hobby and DIY models.",
         makerworldCatIds: [307],
         thingiverseCatIds: [93],
         printablesCatIds: [51, 82],
@@ -289,7 +324,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
   {
     name: "Household",
     metaTitle: "3D Printed Household Models",
-    metaDescription: "If you're reading this, then you probably need to fix or upgrade something in your household by printing one of the various models available. From regular door handles to complex decor designs or useful upgrades for your garden, we're sure there's something useful for you. So get printing!",
+    metaDescription:
+      "If you're reading this, then you probably need to fix or upgrade something in your household by printing one of the various models available. From regular door handles to complex decor designs or useful upgrades for your garden, we're sure there's something useful for you. So get printing!",
     makerworldCatIds: [400],
     thingiverseCatIds: [67],
     printablesCatIds: [3],
@@ -297,7 +333,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "Decor",
         metaTitle: "3D Printed Home Decor",
-        metaDescription: "Elevate your home décor with our unique and eye-catching 3D printed vases, sculptures, wall hangings, and other decorative items.",
+        metaDescription:
+          "Elevate your home décor with our unique and eye-catching 3D printed vases, sculptures, wall hangings, and other decorative items.",
         makerworldCatIds: [401],
         thingiverseCatIds: [97],
         printablesCatIds: [44],
@@ -305,14 +342,16 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "Festivities",
         metaTitle: "3D Printed Festival Models",
-        metaDescription: "Celebrate special occasions and holidays with our festive 3D printed decorations, ornaments, and figurines.",
+        metaDescription:
+          "Celebrate special occasions and holidays with our festive 3D printed decorations, ornaments, and figurines.",
         makerworldCatIds: [403],
         printablesCatIds: [65, 69, 68, 70],
       },
       {
         name: "Garden",
         metaTitle: "3D Printed Garden Models",
-        metaDescription: "Transform your outdoor spaces into a whimsical wonderland with our charming and customizable 3D printed garden ornaments, planters, and sculptures.",
+        metaDescription:
+          "Transform your outdoor spaces into a whimsical wonderland with our charming and customizable 3D printed garden ornaments, planters, and sculptures.",
         makerworldCatIds: [402],
         thingiverseCatIds: [98],
         printablesCatIds: [53, 71],
@@ -320,7 +359,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "Office",
         metaTitle: "3D Printed Office Models",
-        metaDescription: "Enhance your workspace with our functional and stylish 3D printed office organizers, pen holders, and desk accessories.",
+        metaDescription:
+          "Enhance your workspace with our functional and stylish 3D printed office organizers, pen holders, and desk accessories.",
         makerworldCatIds: [404],
         thingiverseCatIds: [101],
         printablesCatIds: [29],
@@ -328,7 +368,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "Pets",
         metaTitle: "3D Printed Pet Models",
-        metaDescription: "Create personalized pet accessories and toys with our customizable 3D printed pet tags, bowls, and toys.",
+        metaDescription:
+          "Create personalized pet accessories and toys with our customizable 3D printed pet tags, bowls, and toys.",
         makerworldCatIds: [405],
         thingiverseCatIds: [103],
         printablesCatIds: [57],
@@ -336,7 +377,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "Other Household Models",
         metaTitle: "Other Household Models",
-        metaDescription: "Discover a world of endless possibilities for home organization, personalization, and fun with our diverse collection of 3D printed household models.",
+        metaDescription:
+          "Discover a world of endless possibilities for home organization, personalization, and fun with our diverse collection of 3D printed household models.",
         makerworldCatIds: [406],
         thingiverseCatIds: [99, 147, 146, 100, 153],
         printablesCatIds: [5, 6, 139, 4, 7, 45],
@@ -346,7 +388,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
   {
     name: "Miniatures",
     metaTitle: "3D Printed Miniatures",
-    metaDescription: "If you like miniatures, then you've come to the right place. From mystical creatures and animals to architectural designs, we're sure you will find something to spice up your game night!",
+    metaDescription:
+      "If you like miniatures, then you've come to the right place. From mystical creatures and animals to architectural designs, we're sure you will find something to spice up your game night!",
     makerworldCatIds: [600],
     thingiverseCatIds: [70],
     printablesCatIds: [101],
@@ -354,7 +397,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "Animals",
         metaTitle: "3D Printed Animals",
-        metaDescription: "Populate your gaming worlds with our realistic and detailed 3D printed animals, from majestic dragons to playful pets.",
+        metaDescription:
+          "Populate your gaming worlds with our realistic and detailed 3D printed animals, from majestic dragons to playful pets.",
         makerworldCatIds: [601],
         thingiverseCatIds: [107],
         printablesCatIds: [61],
@@ -362,7 +406,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "Architecture",
         metaTitle: "3D Printed Architectures",
-        metaDescription: "Construct stunning and realistic 3D printed buildings, castles, and other architectural wonders for your miniature landscapes.",
+        metaDescription:
+          "Construct stunning and realistic 3D printed buildings, castles, and other architectural wonders for your miniature landscapes.",
         makerworldCatIds: [602],
         thingiverseCatIds: [108],
         printablesCatIds: [103, 62],
@@ -370,7 +415,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "Creatures",
         metaTitle: "3D Printed Creatures",
-        metaDescription: "Unleash your imagination with our collection of fantastical 3D printed creatures, from mythical monsters to mischievous fairies.",
+        metaDescription:
+          "Unleash your imagination with our collection of fantastical 3D printed creatures, from mythical monsters to mischievous fairies.",
         makerworldCatIds: [603],
         thingiverseCatIds: [109],
         printablesCatIds: [97],
@@ -378,7 +424,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "People",
         metaTitle: "3D Printed People",
-        metaDescription: "Create diverse and realistic 3D printed characters for your tabletop games, role-playing adventures, and dioramas.",
+        metaDescription:
+          "Create diverse and realistic 3D printed characters for your tabletop games, role-playing adventures, and dioramas.",
         makerworldCatIds: [604],
         thingiverseCatIds: [112],
         printablesCatIds: [60],
@@ -386,7 +433,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "Other Miniatures",
         metaTitle: "Other Miniatures",
-        metaDescription: "Discover a vast array of unique and personalized 3D printed miniatures to enhance your gaming experiences and collections.",
+        metaDescription:
+          "Discover a vast array of unique and personalized 3D printed miniatures to enhance your gaming experiences and collections.",
         makerworldCatIds: [605],
         thingiverseCatIds: [110, 111, 115, 116],
         printablesCatIds: [104, 105, 75],
@@ -396,34 +444,39 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
   {
     name: "Props & Cosplays",
     metaTitle: "3D Printed Props & Cosplays",
-    metaDescription: "Even if it's not Halloween, there's always time for printing a cool mask, helmet or other cosplay-related prints. Don't wait until it's too late, and start printing your awesome new outfit!",
+    metaDescription:
+      "Even if it's not Halloween, there's always time for printing a cool mask, helmet or other cosplay-related prints. Don't wait until it's too late, and start printing your awesome new outfit!",
     makerworldCatIds: [1000],
     printablesCatIds: [76],
     children: [
       {
         name: "Costumes",
         metaTitle: "3D Printed Costumes",
-        metaDescription: "Create stunning and authentic 3D printed costumes, from superhero suits to fantasy armor, for your next cosplay event or Halloween.",
+        metaDescription:
+          "Create stunning and authentic 3D printed costumes, from superhero suits to fantasy armor, for your next cosplay event or Halloween.",
         makerworldCatIds: [1003],
         printablesCatIds: [77],
       },
       {
         name: "Masks & Helmets",
         metaTitle: "3D Printed Masks & Helmets",
-        metaDescription: "Elevate your cosplay with our detailed and realistic 3D printed masks, helmets, and other facial accessories.",
+        metaDescription:
+          "Elevate your cosplay with our detailed and realistic 3D printed masks, helmets, and other facial accessories.",
         makerworldCatIds: [1001],
         printablesCatIds: [78],
       },
       {
         name: "Cosplay Weapons",
         metaTitle: "3D Printed Props for Cosplay Weapons",
-        metaDescription: "Dive into the amazing cosplay world with our 3D printed props! We've got finely designed swords and shields, ideal for you to embody your favorite characters. Unleash their power and enjoy immersive role-playing!",
+        metaDescription:
+          "Dive into the amazing cosplay world with our 3D printed props! We've got finely designed swords and shields, ideal for you to embody your favorite characters. Unleash their power and enjoy immersive role-playing!",
         makerworldCatIds: [1002],
       },
       {
         name: "Other Props & Cosplays",
         metaTitle: "Other Props & Cosplays",
-        metaDescription: "Enhance your cosplay with our diverse collection of 3D printed props, accessories, and gadgets to complete your transformation.",
+        metaDescription:
+          "Enhance your cosplay with our diverse collection of 3D printed props, accessories, and gadgets to complete your transformation.",
         makerworldCatIds: [1004],
         thingiverseCatIds: [114],
         printablesCatIds: [81, 80],
@@ -433,14 +486,16 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
   {
     name: "Tools",
     metaTitle: "3D Printed Tools",
-    metaDescription: "There's never enough tools to have, or a way to organize those tools in an efficient manner. But this section is the perfect location to find the files you need to print a specific jig or an organizer for your latest gadget.",
+    metaDescription:
+      "There's never enough tools to have, or a way to organize those tools in an efficient manner. But this section is the perfect location to find the files you need to print a specific jig or an organizer for your latest gadget.",
     makerworldCatIds: [700],
     thingiverseCatIds: [71],
     children: [
       {
         name: "Gadgets",
         metaTitle: "3D Printed Gadgets",
-        metaDescription: "Uncover a world of possibilities with our collection of unique and practical 3D printed gadgets, from phone holders to desk organizers.",
+        metaDescription:
+          "Uncover a world of possibilities with our collection of unique and practical 3D printed gadgets, from phone holders to desk organizers.",
         makerworldCatIds: [705],
         thingiverseCatIds: [65],
         printablesCatIds: [21, 25, 27, 26, 28, 100, 140, 43],
@@ -448,34 +503,39 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "Hand Tools",
         metaTitle: "3D Printed Hand Tools",
-        metaDescription: "Enhance your toolbox with our durable and customizable 3D printed hand tools, wrenches, and screwdrivers.",
+        metaDescription:
+          "Enhance your toolbox with our durable and customizable 3D printed hand tools, wrenches, and screwdrivers.",
         makerworldCatIds: [703],
         thingiverseCatIds: [118],
       },
       {
         name: "Machine Tools",
         metaTitle: "3D Printed Machine Tools",
-        metaDescription: "Upgrade your workshop with our precision-crafted 3D printed machine tools, jigs, and fixtures.",
+        metaDescription:
+          "Upgrade your workshop with our precision-crafted 3D printed machine tools, jigs, and fixtures.",
         makerworldCatIds: [704],
         thingiverseCatIds: [117],
       },
       {
         name: "Measure Tools",
         metaTitle: "3D Printed Measure Tools",
-        metaDescription: "Ensure precise measurements with our accurate and versatile 3D printed measuring tools, rulers, and calipers.",
+        metaDescription:
+          "Ensure precise measurements with our accurate and versatile 3D printed measuring tools, rulers, and calipers.",
         makerworldCatIds: [702],
       },
       {
         name: "Medical Tools",
         metaTitle: "3D Printed Medical Tools",
-        metaDescription: "Experience the future of medicine with our innovative 3D printed medical tools, surgical guides, and implants.",
+        metaDescription:
+          "Experience the future of medicine with our innovative 3D printed medical tools, surgical guides, and implants.",
         makerworldCatIds: [707],
         printablesCatIds: [87, 88, 99],
       },
       {
         name: "Organizers",
         metaTitle: "3D Printed Organizers",
-        metaDescription: "Keep your workspace and belongings tidy with our functional and customizable 3D printed organizers, trays, and containers.",
+        metaDescription:
+          "Keep your workspace and belongings tidy with our functional and customizable 3D printed organizers, trays, and containers.",
         makerworldCatIds: [701],
         thingiverseCatIds: [102, 120],
         printablesCatIds: [50],
@@ -483,7 +543,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "Other Tools",
         metaTitle: "Other Tools",
-        metaDescription: "Discover a vast array of specialized and niche 3D printed tools to meet your specific needs and interests.",
+        metaDescription:
+          "Discover a vast array of specialized and niche 3D printed tools to meet your specific needs and interests.",
         makerworldCatIds: [706],
         thingiverseCatIds: [141, 86, 87, 88, 90, 91, 119],
         printablesCatIds: [49],
@@ -493,7 +554,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
   {
     name: "Toys & Games",
     metaTitle: "3D Printed Toys & Games",
-    metaDescription: "This section is dedicated to printable fun! You will find various board games, toys, puzzles and games which are all ready to be printed and enjoyed after a quick print.",
+    metaDescription:
+      "This section is dedicated to printable fun! You will find various board games, toys, puzzles and games which are all ready to be printed and enjoyed after a quick print.",
     makerworldCatIds: [800],
     thingiverseCatIds: [72],
     printablesCatIds: [30],
@@ -501,7 +563,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "Board Games",
         metaTitle: "3D Printed Board Games",
-        metaDescription: "Elevate your game nights with our unique and customizable 3D printed board games, chess sets, and game pieces.",
+        metaDescription:
+          "Elevate your game nights with our unique and customizable 3D printed board games, chess sets, and game pieces.",
         makerworldCatIds: [802],
         thingiverseCatIds: [122, 113, 151],
         printablesCatIds: [31],
@@ -509,21 +572,24 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "Characters",
         metaTitle: "3D Printed Characters",
-        metaDescription: "Create your own personalized 3D printed characters, action figures, and dolls for imaginative play and storytelling.",
+        metaDescription:
+          "Create your own personalized 3D printed characters, action figures, and dolls for imaginative play and storytelling.",
         makerworldCatIds: [801],
         printablesCatIds: [36],
       },
       {
         name: "Outdoor Toys",
         metaTitle: "3D Printed Outdoor Toys",
-        metaDescription: "Encourage active play and outdoor adventures with our durable and engaging 3D printed outdoor toys, frisbees, and sports equipment.",
+        metaDescription:
+          "Encourage active play and outdoor adventures with our durable and engaging 3D printed outdoor toys, frisbees, and sports equipment.",
         makerworldCatIds: [803],
         printablesCatIds: [34],
       },
       {
         name: "Puzzles",
         metaTitle: "3D Printed Puzzles",
-        metaDescription: "Challenge your mind and test your problem-solving skills with our intricate and captivating 3D printed puzzles.",
+        metaDescription:
+          "Challenge your mind and test your problem-solving skills with our intricate and captivating 3D printed puzzles.",
         makerworldCatIds: [804],
         thingiverseCatIds: [125],
         printablesCatIds: [33],
@@ -531,7 +597,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "Construction Sets",
         metaTitle: "3D Printed Construction Sets",
-        metaDescription: "Build and create incredible structures with our versatile and educational 3D printed construction sets, from classic building blocks to STEM-inspired designs.",
+        metaDescription:
+          "Build and create incredible structures with our versatile and educational 3D printed construction sets, from classic building blocks to STEM-inspired designs.",
         makerworldCatIds: [806],
         thingiverseCatIds: [121],
         printablesCatIds: [37],
@@ -539,7 +606,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "Other Toys & Games",
         metaTitle: "Other Toys & Games",
-        metaDescription: "Discover a world of endless possibilities for play, learning, and creativity with our diverse collection of 3D printed toys and games.",
+        metaDescription:
+          "Discover a world of endless possibilities for play, learning, and creativity with our diverse collection of 3D printed toys and games.",
         makerworldCatIds: [805],
         thingiverseCatIds: [149, 124, 123],
         printablesCatIds: [38, 47],
@@ -549,43 +617,50 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
   {
     name: "Generative 3D Model",
     metaTitle: "Generative 3D Model",
-    metaDescription: "Here you can find creative models built using 3D model generators. They are beautifully crafted and may provide inspiration on how to utilize these generators.",
+    metaDescription:
+      "Here you can find creative models built using 3D model generators. They are beautifully crafted and may provide inspiration on how to utilize these generators.",
     makerworldCatIds: [2000],
     children: [
       {
         name: "Hueforge & Lithophane",
         metaTitle: "Hueforge & Lithophane",
-        metaDescription: "Transform your favorite images into stunning 3D art pieces with Hueforge and create mesmerizing lithophanes that glow with light.",
+        metaDescription:
+          "Transform your favorite images into stunning 3D art pieces with Hueforge and create mesmerizing lithophanes that glow with light.",
         makerworldCatIds: [2001],
       },
       {
         name: "Make My Sign",
         metaTitle: "Make My Sign",
-        metaDescription: "Create personalized and eye-catching signs using our user-friendly Make My Sign tool, perfect for home décor, businesses, and special occasions.",
+        metaDescription:
+          "Create personalized and eye-catching signs using our user-friendly Make My Sign tool, perfect for home décor, businesses, and special occasions.",
         makerworldCatIds: [2002],
       },
       {
         name: "Make My Vase",
         metaTitle: "Make My Vase",
-        metaDescription: "Design and customize unique and beautiful vases with our intuitive Make My Vase tool, from simple shapes to intricate patterns, solid or hollow.",
+        metaDescription:
+          "Design and customize unique and beautiful vases with our intuitive Make My Vase tool, from simple shapes to intricate patterns, solid or hollow.",
         makerworldCatIds: [2003],
       },
       {
         name: "Pixel Puzzle Maker",
         metaTitle: "Pixel Puzzle Maker",
-        metaDescription: "Convert your cherished images into captivating pixel art puzzles using our Pixel Puzzle Maker tool, perfect for fun challenges and creative displays.",
+        metaDescription:
+          "Convert your cherished images into captivating pixel art puzzles using our Pixel Puzzle Maker tool, perfect for fun challenges and creative displays.",
         makerworldCatIds: [2004],
       },
       {
         name: "Relief Sculpture Maker",
         metaTitle: "Relief Sculpture Maker",
-        metaDescription: "Elevate your artwork with our 3D to Relief Sculpture tool, seamlessly transforming 3D models or images into stunning bas-relief sculptures.",
+        metaDescription:
+          "Elevate your artwork with our 3D to Relief Sculpture tool, seamlessly transforming 3D models or images into stunning bas-relief sculptures.",
         makerworldCatIds: [2005],
       },
       {
         name: "AI Scanner",
         metaTitle: "AI Scanner",
-        metaDescription: "Recreate 3D assets with remarkable accuracy using our AI Scanner tool, simply capture a continuous video and let the AI do the rest.",
+        metaDescription:
+          "Recreate 3D assets with remarkable accuracy using our AI Scanner tool, simply capture a continuous video and let the AI do the rest.",
         makerworldCatIds: [2006],
       },
       {
@@ -615,7 +690,8 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       {
         name: "Christmas Ornament Maker",
         metaTitle: "Christmas Ornament Maker",
-        metaDescription: "Create personalized, spinning 2D Christmas ornaments with the Christmas Ornament Maker, perfect for decorations or gifts.",
+        metaDescription:
+          "Create personalized, spinning 2D Christmas ornaments with the Christmas Ornament Maker, perfect for decorations or gifts.",
         makerworldCatIds: [2011],
       },
       {

@@ -53,7 +53,10 @@ async function startOperation(url: string, init: RequestInit, what: string): Pro
   const res = await fetch(url, init);
   if (res.status !== 202) {
     const body = await res.text().catch(() => "");
-    const hint = res.status === 401 ? " -- the API key or client ID is wrong, or the key has expired (Partner Center > Publish API)." : "";
+    const hint =
+      res.status === 401
+        ? " -- the API key or client ID is wrong, or the key has expired (Partner Center > Publish API)."
+        : "";
     throw new Error(`${what} failed: HTTP ${res.status} ${body}${hint}`);
   }
   const location = res.headers.get("location");
@@ -65,13 +68,16 @@ async function waitFor(url: string, auth: Record<string, string>, what: string):
   const deadline = Date.now() + POLL_TIMEOUT_MS;
   for (;;) {
     const res = await fetch(url, { headers: auth });
-    if (!res.ok) throw new Error(`${what}: status check failed with HTTP ${res.status} ${await res.text().catch(() => "")}`);
+    if (!res.ok)
+      throw new Error(`${what}: status check failed with HTTP ${res.status} ${await res.text().catch(() => "")}`);
     const operation = (await res.json()) as Operation;
     if (operation.status !== "InProgress") {
       if (operation.status === "Succeeded") return operation;
       const hint = operation.errorCode ? ERROR_HINTS[operation.errorCode] : undefined;
       const details = operation.errors?.length ? `\n  ${JSON.stringify(operation.errors)}` : "";
-      throw new Error(`${what} failed (${operation.errorCode || "no error code"}): ${operation.message}${details}${hint ? `\n  ${hint}` : ""}`);
+      throw new Error(
+        `${what} failed (${operation.errorCode || "no error code"}): ${operation.message}${details}${hint ? `\n  ${hint}` : ""}`,
+      );
     }
     if (Date.now() > deadline) throw new Error(`${what} still in progress after ${POLL_TIMEOUT_MS / 60000} minutes`);
     await sleep(POLL_INTERVAL_MS);
@@ -95,7 +101,8 @@ async function main(): Promise<void> {
   const uploaded = await waitFor(`${productUrl}/submissions/draft/package/operations/${uploadId}`, auth, "Upload");
   console.log(`Upload processed: ${uploaded.message ?? "ok"}`);
 
-  const notes = argValue("--notes") ?? "Automated update. Testing instructions are unchanged from the previous submission.";
+  const notes =
+    argValue("--notes") ?? "Automated update. Testing instructions are unchanged from the previous submission.";
   const publishId = await startOperation(
     `${productUrl}/submissions`,
     { method: "POST", headers: { ...auth, "Content-Type": "application/json" }, body: JSON.stringify({ notes }) },

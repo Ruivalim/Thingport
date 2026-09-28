@@ -24,7 +24,8 @@ import { resolveThingiverseThing, ThingiverseAuthError } from "./thingiverseApi"
 const LOOKUP_PROVIDERS = ["makerworld", "thingiverse", "printables"] as const;
 type LookupProvider = (typeof LOOKUP_PROVIDERS)[number];
 
-export type LookupProblem = "thingiverse_no_token" | "thingiverse_token_rejected" | "makerworld_captcha" | "makerworld_login_rejected";
+export type LookupProblem =
+  "thingiverse_no_token" | "thingiverse_token_rejected" | "makerworld_captcha" | "makerworld_login_rejected";
 
 export type AuthorLinkingRun = {
   running: boolean;

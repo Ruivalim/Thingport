@@ -17,7 +17,10 @@ async function sendMail(message: { to: string; subject: string; text: string; ht
 }
 
 function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+  return value.replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
+  );
 }
 
 export async function sendVerificationEmail(to: string, displayName: string, token: string): Promise<void> {
@@ -31,7 +34,12 @@ export async function sendVerificationEmail(to: string, displayName: string, tok
 }
 
 /** `link` is the full registration URL, token included. */
-export async function sendInvitationEmail(to: string, inviterName: string, link: string, expiresInDays: number): Promise<void> {
+export async function sendInvitationEmail(
+  to: string,
+  inviterName: string,
+  link: string,
+  expiresInDays: number,
+): Promise<void> {
   await sendMail({
     to,
     subject: "You're invited to Thingport",

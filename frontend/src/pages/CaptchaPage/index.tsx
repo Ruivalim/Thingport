@@ -33,17 +33,26 @@ export default function CaptchaPage({ onUnauthorized }: Props) {
 
   const loadPreview = React.useCallback(() => {
     setPreview(null);
-    captchaApi.get().then((c) => setPreview(c.image), () => setPreview(null));
+    captchaApi.get().then(
+      (c) => setPreview(c.image),
+      () => setPreview(null),
+    );
   }, []);
 
   React.useEffect(() => {
     let active = true;
     captchaApi.getSettings().then(
-      (value) => { if (active) setSettings(value); },
-      () => { if (active) setError(t("adminSettings.captcha.loadFailed")); },
+      (value) => {
+        if (active) setSettings(value);
+      },
+      () => {
+        if (active) setError(t("adminSettings.captcha.loadFailed"));
+      },
     );
     loadPreview();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [t, loadPreview]);
 
   const toggle = async (place: CaptchaPlace, enabled: boolean) => {
@@ -92,26 +101,50 @@ export default function CaptchaPage({ onUnauthorized }: Props) {
               </Typography>
             </Box>
           ))}
-          {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
+          {error && (
+            <Alert severity="error" onClose={() => setError(null)}>
+              {error}
+            </Alert>
+          )}
         </Stack>
       </Paper>
 
       <Paper variant="outlined" sx={{ p: 2.5 }}>
         <Stack spacing={1.5}>
-          <Typography variant="subtitle2" fontWeight={600}>{t("adminSettings.captcha.previewHeading")}</Typography>
+          <Typography variant="subtitle2" fontWeight={600}>
+            {t("adminSettings.captcha.previewHeading")}
+          </Typography>
           <Stack direction="row" spacing={1} alignItems="center">
-            <Box sx={{ width: 160, height: 56, borderRadius: 1, overflow: "hidden", border: "1px solid", borderColor: "divider" }}>
+            <Box
+              sx={{
+                width: 160,
+                height: 56,
+                borderRadius: 1,
+                overflow: "hidden",
+                border: "1px solid",
+                borderColor: "divider",
+              }}
+            >
               {preview ? (
-                <Box component="img" src={preview} alt={t("captcha.imageAlt")} sx={{ width: 160, height: 56, display: "block" }} />
+                <Box
+                  component="img"
+                  src={preview}
+                  alt={t("captcha.imageAlt")}
+                  sx={{ width: 160, height: 56, display: "block" }}
+                />
               ) : (
                 <Skeleton variant="rectangular" width={160} height={56} />
               )}
             </Box>
             <Tooltip title={t("captcha.newImage")}>
-              <IconButton onClick={loadPreview} aria-label={t("captcha.newImage")}><RefreshIcon /></IconButton>
+              <IconButton onClick={loadPreview} aria-label={t("captcha.newImage")}>
+                <RefreshIcon />
+              </IconButton>
             </Tooltip>
           </Stack>
-          <Typography variant="body2" color="text.secondary">{t("adminSettings.captcha.previewHelp")}</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {t("adminSettings.captcha.previewHelp")}
+          </Typography>
           <Alert severity="info">{t("adminSettings.captcha.extensionNote")}</Alert>
         </Stack>
       </Paper>

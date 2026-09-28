@@ -40,7 +40,9 @@ export default function ProfilePage({ user, makerworldCookie, onUpdateMakerWorld
           <Typography variant="subtitle1" fontWeight={600} sx={{ color: (muiTheme) => muiTheme.thingport.headingText }}>
             {user?.display_name}
           </Typography>
-          <Typography variant="body2" color="text.secondary">{user?.email}</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {user?.email}
+          </Typography>
         </Box>
       </Stack>
 
@@ -54,12 +56,16 @@ export default function ProfilePage({ user, makerworldCookie, onUpdateMakerWorld
               </Typography>
             )}
           </Box>
-          <Button variant="text" onClick={() => navigate("/profile/email")}>{t("profile.changeEmailLink")}</Button>
+          <Button variant="text" onClick={() => navigate("/profile/email")}>
+            {t("profile.changeEmailLink")}
+          </Button>
         </Stack>
 
         <Stack direction="row" alignItems="center" justifyContent="space-between" gap={1}>
           <Typography variant="body1">••••••••</Typography>
-          <Button variant="text" onClick={() => navigate("/profile/password")}>{t("profile.changePasswordLink")}</Button>
+          <Button variant="text" onClick={() => navigate("/profile/password")}>
+            {t("profile.changePasswordLink")}
+          </Button>
         </Stack>
       </Stack>
 
@@ -67,7 +73,11 @@ export default function ProfilePage({ user, makerworldCookie, onUpdateMakerWorld
       <SlicerPicker onUnauthorized={onUnauthorized} />
 
       <Divider />
-      <MakerworldCookieSection cookie={makerworldCookie} onUpdateMakerWorld={onUpdateMakerWorld} onUnauthorized={onUnauthorized} />
+      <MakerworldCookieSection
+        cookie={makerworldCookie}
+        onUpdateMakerWorld={onUpdateMakerWorld}
+        onUnauthorized={onUnauthorized}
+      />
 
       <Divider />
       <LanguagePicker />

@@ -7,9 +7,9 @@ plain static HTML. The only JavaScript is the theme toggle.
 ```bash
 cd web
 npm install
-npm run dev      # http://localhost:4321/
-npm run build    # static output in dist/
-npm run check    # type-check
+npm run dev   # http://localhost:4321/
+npm run build # static output in dist/
+npm run check # type-check
 ```
 
 Requires Node 22.12+ (see `.nvmrc`).

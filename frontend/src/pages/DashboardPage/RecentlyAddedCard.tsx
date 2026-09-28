@@ -35,21 +35,38 @@ export default function RecentlyAddedCard({ models }: Props) {
   return (
     <Paper
       variant="outlined"
-      sx={{ p: 2.5, display: "flex", flexDirection: "column", borderColor: (theme) => (theme.palette.mode === "dark" ? "transparent" : "divider") }}
+      sx={{
+        p: 2.5,
+        display: "flex",
+        flexDirection: "column",
+        borderColor: (theme) => (theme.palette.mode === "dark" ? "transparent" : "divider"),
+      }}
     >
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1, color: "primary.main" }}>
         <NewReleasesIcon />
-        <Typography variant="h6" fontWeight={700} sx={{ color: (theme) => theme.thingport.headingText }}>{t("dashboard.recentlyAdded.title")}</Typography>
+        <Typography variant="h6" fontWeight={700} sx={{ color: (theme) => theme.thingport.headingText }}>
+          {t("dashboard.recentlyAdded.title")}
+        </Typography>
       </Box>
 
       {models.length === 0 ? (
-        <Typography color="text.secondary" sx={{ py: 2 }}>{t("dashboard.recentlyAdded.empty")}</Typography>
+        <Typography color="text.secondary" sx={{ py: 2 }}>
+          {t("dashboard.recentlyAdded.empty")}
+        </Typography>
       ) : (
         <List dense disablePadding>
           {models.map((model) => (
-            <ListItemButton key={model.id} onClick={() => navigate(`/models/${model.id}`)} sx={{ borderRadius: 1, px: 1 }}>
+            <ListItemButton
+              key={model.id}
+              onClick={() => navigate(`/models/${model.id}`)}
+              sx={{ borderRadius: 1, px: 1 }}
+            >
               <ListItemAvatar sx={{ minWidth: 48 }}>
-                <Avatar src={model.thumb_url ? printsApi.fileUrl(model.thumb_url) : undefined} variant="rounded" sx={{ width: 40, height: 40 }}>
+                <Avatar
+                  src={model.thumb_url ? printsApi.fileUrl(model.thumb_url) : undefined}
+                  variant="rounded"
+                  sx={{ width: 40, height: 40 }}
+                >
                   <ViewInArIcon fontSize="small" />
                 </Avatar>
               </ListItemAvatar>

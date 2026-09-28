@@ -16,7 +16,11 @@ import { type Print, printsApi } from "../../api/prints";
 import { MODEL_EXTS } from "../../constants/fileTypes";
 import { extOf } from "../../utils/fileExtensions";
 import PlateThumbnail from "../../components/media/PlateThumbnail";
-import ModelViewer, { type CameraView, type ModelViewerHandle, type RenderStyle } from "../../components/media/ModelViewer";
+import ModelViewer, {
+  type CameraView,
+  type ModelViewerHandle,
+  type RenderStyle,
+} from "../../components/media/ModelViewer";
 import type { PlateSummary } from "../../utils/bambuThreeMf";
 import PreviewToolbar, { DEFAULT_PREVIEW_COLOR } from "./PreviewToolbar";
 import { fileRowText } from "./fileRowText";
@@ -34,7 +38,7 @@ export default function Model3DPreviewModal({ print, onClose }: Props) {
   const { t } = useTranslation(["models", "library", "common"]);
   const sortedPlates = useMemo(() => print.plates.toSorted((a, b) => a.position - b.position), [print.plates]);
   const [activePlateId, setActivePlateId] = useState<string | null>(sortedPlates[0]?.id ?? null);
-  const activePlate = sortedPlates.find(p => p.id === activePlateId) || sortedPlates[0];
+  const activePlate = sortedPlates.find((p) => p.id === activePlateId) || sortedPlates[0];
   const ext = activePlate ? extOf(activePlate.filename) : "";
   const is3d = Boolean(activePlate) && MODEL_EXTS.has(ext);
 
@@ -65,7 +69,7 @@ export default function Model3DPreviewModal({ print, onClose }: Props) {
     setInternalPlates(plates);
     setSelectedInternalPlateId(plates[0]?.index ?? null);
     setInternalThumbnails({});
-    Promise.all(plates.map(async plate => [plate.index, await getThumbnail(plate.index)] as const)).then(pairs => {
+    Promise.all(plates.map(async (plate) => [plate.index, await getThumbnail(plate.index)] as const)).then((pairs) => {
       setInternalThumbnails(Object.fromEntries(pairs));
     });
   };
@@ -152,7 +156,7 @@ export default function Model3DPreviewModal({ print, onClose }: Props) {
                 </Divider>
               )}
               <List disablePadding>
-                {internalPlates.map(plate => (
+                {internalPlates.map((plate) => (
                   <ListItemButton
                     key={plate.index}
                     selected={plate.index === selectedInternalPlateId}

@@ -19,7 +19,12 @@ export function invitationLink(email: string, token: string, origin: string | nu
 }
 
 /** Replaces any existing invitation for the address. Requires closed registrations and SMTP. */
-export async function inviteUser(params: { email: string; invitedById: string; inviterName: string; origin: string | null }): Promise<Invitation> {
+export async function inviteUser(params: {
+  email: string;
+  invitedById: string;
+  inviterName: string;
+  origin: string | null;
+}): Promise<Invitation> {
   const email = params.email.trim().toLowerCase();
   if (await getAllowRegistrations(true)) {
     throw new HttpError(400, "Registrations are open, so anyone can sign up without an invitation.");
@@ -41,7 +46,12 @@ export async function inviteUser(params: { email: string; invitedById: string; i
   });
 
   try {
-    await sendInvitationEmail(email, params.inviterName, invitationLink(email, token, params.origin), INVITATION_TTL_DAYS);
+    await sendInvitationEmail(
+      email,
+      params.inviterName,
+      invitationLink(email, token, params.origin),
+      INVITATION_TTL_DAYS,
+    );
   } catch (err) {
     console.error("[invitations] Failed to send invitation email:", err);
     // Keep a re-invite's earlier, already delivered link working.

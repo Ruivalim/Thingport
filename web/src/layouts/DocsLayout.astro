@@ -70,8 +70,18 @@ const jsonLd = [
         {
           (prev || next) && (
             <nav class="pager" aria-label="Previous and next page">
-              {prev && <a class="card" href={url(`docs/${prev.slug}/`)}><span class="muted">Previous</span>{prev.nav}</a>}
-              {next && <a class="card next" href={url(`docs/${next.slug}/`)}><span class="muted">Next</span>{next.nav}</a>}
+              {prev && (
+                <a class="card" href={url(`docs/${prev.slug}/`)}>
+                  <span class="muted">Previous</span>
+                  {prev.nav}
+                </a>
+              )}
+              {next && (
+                <a class="card next" href={url(`docs/${next.slug}/`)}>
+                  <span class="muted">Next</span>
+                  {next.nav}
+                </a>
+              )}
             </nav>
           )
         }

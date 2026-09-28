@@ -16,7 +16,7 @@ export async function listZipEntries(filePath: string): Promise<ZipEntryInfo[]> 
   return new Promise((resolve, reject) => {
     const entries: ZipEntryInfo[] = [];
     zipfile.on("entry", (entry) => {
-      const isDirectory = entry.fileName.endsWith('/');
+      const isDirectory = entry.fileName.endsWith("/");
       entries.push({ name: entry.fileName, size: entry.uncompressedSize, isDirectory });
       zipfile.readEntry();
     });
@@ -47,7 +47,7 @@ export async function readZipEntry(filePath: string, entryName: string, maxBytes
       else resolve(value);
     };
     zipfile.on("entry", (entry) => {
-      if (entry.fileName !== entryName || entry.fileName.endsWith('/')) {
+      if (entry.fileName !== entryName || entry.fileName.endsWith("/")) {
         zipfile.readEntry();
         return;
       }
@@ -92,7 +92,7 @@ export async function walkZipEntries(
   const zipfile = await openZip(filePath);
   await new Promise<void>((resolve, reject) => {
     zipfile.on("entry", (entry) => {
-      const isDirectory = entry.fileName.endsWith('/');
+      const isDirectory = entry.fileName.endsWith("/");
       const info: ZipEntryInfo = { name: entry.fileName, size: entry.uncompressedSize, isDirectory };
       if (isDirectory || !shouldExtract(info)) {
         zipfile.readEntry();

@@ -68,8 +68,16 @@ export default function ModelActionsMenu({
   const [addToCollectionOpen, setAddToCollectionOpen] = useState(false);
   // Driven by ?edit=<id> so links and the back button open/close it.
   const editOpen = searchParams.get("edit") === print.id;
-  const { pickerOpen, setPickerOpen, downloading, handleDownload, downloadPlate, downloadAllZip, sortedPlates, recordUse } =
-    useDownloadPrint(print, onUnauthorized, onUpdated);
+  const {
+    pickerOpen,
+    setPickerOpen,
+    downloading,
+    handleDownload,
+    downloadPlate,
+    downloadAllZip,
+    sortedPlates,
+    recordUse,
+  } = useDownloadPrint(print, onUnauthorized, onUpdated);
 
   const closeMenu = () => setAnchorEl(null);
 
@@ -146,7 +154,7 @@ export default function ModelActionsMenu({
         <span>
           <IconButton
             size="small"
-            onClick={e => setAnchorEl(e.currentTarget)}
+            onClick={(e) => setAnchorEl(e.currentTarget)}
             aria-label={t("common:moreActions") ?? undefined}
             disabled={deleting || removingFromCollection}
             sx={triggerSx}
@@ -162,26 +170,41 @@ export default function ModelActionsMenu({
         </span>
       </Tooltip>
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={closeMenu}>
-        <MenuItem onClick={() => { closeMenu(); setAddToCollectionOpen(true); }}>
-          <ListItemIcon><PlaylistAddIcon fontSize="small" /></ListItemIcon>
+        <MenuItem
+          onClick={() => {
+            closeMenu();
+            setAddToCollectionOpen(true);
+          }}
+        >
+          <ListItemIcon>
+            <PlaylistAddIcon fontSize="small" />
+          </ListItemIcon>
           <ListItemText>{t("models:detail.addToCollection")}</ListItemText>
         </MenuItem>
         {collectionId && (
           <MenuItem onClick={handleRemoveFromCollection}>
-            <ListItemIcon><PlaylistRemoveIcon fontSize="small" /></ListItemIcon>
+            <ListItemIcon>
+              <PlaylistRemoveIcon fontSize="small" />
+            </ListItemIcon>
             <ListItemText>{t("models:detail.removeFromCollection")}</ListItemText>
           </MenuItem>
         )}
         <MenuItem onClick={onDownloadClick} disabled={downloading}>
-          <ListItemIcon><DownloadIcon fontSize="small" /></ListItemIcon>
+          <ListItemIcon>
+            <DownloadIcon fontSize="small" />
+          </ListItemIcon>
           <ListItemText>{t("common:download")}</ListItemText>
         </MenuItem>
         <MenuItem onClick={openEdit}>
-          <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
+          <ListItemIcon>
+            <EditIcon fontSize="small" />
+          </ListItemIcon>
           <ListItemText>{t("common:edit")}</ListItemText>
         </MenuItem>
         <MenuItem onClick={handleDelete}>
-          <ListItemIcon><DeleteIcon fontSize="small" color="error" /></ListItemIcon>
+          <ListItemIcon>
+            <DeleteIcon fontSize="small" color="error" />
+          </ListItemIcon>
           <ListItemText sx={{ color: "error.main" }}>{t("common:delete")}</ListItemText>
         </MenuItem>
         <Divider />
@@ -201,7 +224,9 @@ export default function ModelActionsMenu({
           }}
           disabled={slicerTargets.length === 0}
         >
-          <ListItemIcon><LaunchIcon fontSize="small" /></ListItemIcon>
+          <ListItemIcon>
+            <LaunchIcon fontSize="small" />
+          </ListItemIcon>
           <ListItemText>
             {slicerOption
               ? t("models:detail.openInSlicer", { slicer: slicerOption.label })
@@ -209,14 +234,10 @@ export default function ModelActionsMenu({
           </ListItemText>
         </MenuItem>
         {providerInfo && print.source_url && (
-          <MenuItem
-            component="a"
-            href={print.source_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={closeMenu}
-          >
-            <ListItemIcon><OpenInNewIcon fontSize="small" /></ListItemIcon>
+          <MenuItem component="a" href={print.source_url} target="_blank" rel="noopener noreferrer" onClick={closeMenu}>
+            <ListItemIcon>
+              <OpenInNewIcon fontSize="small" />
+            </ListItemIcon>
             <ListItemText>{t("models:detail.openInProvider", { provider: providerInfo.label })}</ListItemText>
           </MenuItem>
         )}

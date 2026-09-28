@@ -19,12 +19,19 @@ export default function CollectionsActionsMenu({ onAddCollection }: Props) {
 
   return (
     <>
-      <IconButton size="small" onClick={e => setAnchorEl(e.currentTarget)} aria-label={t("common:more") ?? undefined}>
+      <IconButton size="small" onClick={(e) => setAnchorEl(e.currentTarget)} aria-label={t("common:more") ?? undefined}>
         <MoreVertIcon fontSize="small" />
       </IconButton>
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={closeMenu}>
-        <MenuItem onClick={() => { closeMenu(); onAddCollection(); }}>
-          <ListItemIcon><AddIcon fontSize="small" /></ListItemIcon>
+        <MenuItem
+          onClick={() => {
+            closeMenu();
+            onAddCollection();
+          }}
+        >
+          <ListItemIcon>
+            <AddIcon fontSize="small" />
+          </ListItemIcon>
           <ListItemText>{t("models:collections.newCollection")}</ListItemText>
         </MenuItem>
       </Menu>

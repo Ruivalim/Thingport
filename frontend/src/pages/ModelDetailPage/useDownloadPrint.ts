@@ -24,7 +24,7 @@ export function useDownloadPrint(print: Print, onUnauthorized?: () => void, onRe
   const recordUse = () => {
     printsApi
       .recordDownload(print.id)
-      .then(updated => {
+      .then((updated) => {
         if (updated && typeof updated === "object" && updated.id === print.id) onRecorded?.(updated);
       })
       .catch(() => {});
@@ -71,5 +71,14 @@ export function useDownloadPrint(print: Print, onUnauthorized?: () => void, onRe
 
   const sortedPlates = print.plates.toSorted((a, b) => a.position - b.position);
 
-  return { pickerOpen, setPickerOpen, downloading, handleDownload, downloadPlate, downloadAllZip, sortedPlates, recordUse };
+  return {
+    pickerOpen,
+    setPickerOpen,
+    downloading,
+    handleDownload,
+    downloadPlate,
+    downloadAllZip,
+    sortedPlates,
+    recordUse,
+  };
 }

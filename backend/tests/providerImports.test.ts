@@ -19,9 +19,8 @@ vi.mock("node:dns/promises", () => ({
 const { createApp } = await import("../src/app");
 const { prisma } = await import("../src/db");
 const { writeZip } = await import("../src/utils/zipWriter");
-const { getPreviewMode, setPreviewMode, getThingiverseAccessToken, setThingiverseAccessToken } = await import(
-  "../src/services/settingsService"
-);
+const { getPreviewMode, setPreviewMode, getThingiverseAccessToken, setThingiverseAccessToken } =
+  await import("../src/services/settingsService");
 
 const app = createApp();
 const stamp = Date.now();
@@ -109,14 +108,22 @@ async function expectFullyImported(printId: string, expected: Expected) {
   expect(print.tags.toSorted()).toEqual(expected.tags.toSorted());
 
   // A linked record, not just the plain-text name.
-  expect(print.author).toMatchObject({ id: expected.author.id, name: expected.author.name, avatar_url: expected.author.avatarUrl });
-  const authorPage = await request(app).get(`/api/author/${encodeURIComponent(expected.author.id)}`).set(auth());
+  expect(print.author).toMatchObject({
+    id: expected.author.id,
+    name: expected.author.name,
+    avatar_url: expected.author.avatarUrl,
+  });
+  const authorPage = await request(app)
+    .get(`/api/author/${encodeURIComponent(expected.author.id)}`)
+    .set(auth());
   expect(authorPage.status).toBe(200);
   expect(authorPage.body.author ?? authorPage.body).toMatchObject({ id: expected.author.id });
 
   expect(print.preview_images).toHaveLength(expected.previewImages);
   for (const image of print.preview_images) {
-    const file = await request(app).get(`/api${image.url.split("?")[0]}`).set(auth());
+    const file = await request(app)
+      .get(`/api${image.url.split("?")[0]}`)
+      .set(auth());
     expect(file.status).toBe(200);
     expect(file.headers["content-type"]).toBe("image/jpeg");
   }
@@ -124,16 +131,26 @@ async function expectFullyImported(printId: string, expected: Expected) {
   expect(print.plates).toHaveLength(1);
   const [plate] = print.plates;
   expect(plate.filename).toBe(expected.filename);
-  const download = await request(app).get(`/api${plate.url}`).set(auth()).buffer(true).parse((r, cb) => {
-    const chunks: Buffer[] = [];
-    r.on("data", (c: Buffer) => chunks.push(c));
-    r.on("end", () => cb(null, Buffer.concat(chunks)));
-  });
+  const download = await request(app)
+    .get(`/api${plate.url}`)
+    .set(auth())
+    .buffer(true)
+    .parse((r, cb) => {
+      const chunks: Buffer[] = [];
+      r.on("data", (c: Buffer) => chunks.push(c));
+      r.on("end", () => cb(null, Buffer.concat(chunks)));
+    });
   expect(download.status).toBe(200);
   expect(Buffer.compare(download.body as Buffer, threeMfBytes)).toBe(0);
 
   expect(plate.thumb_url).toBeTruthy();
-  expect((await request(app).get(`/api${plate.thumb_url.split("?")[0]}`).set(auth())).status).toBe(200);
+  expect(
+    (
+      await request(app)
+        .get(`/api${plate.thumb_url.split("?")[0]}`)
+        .set(auth())
+    ).status,
+  ).toBe(200);
 
   expect(plate.preview_glb_url).toBeTruthy();
   const glbPath = `/api${plate.preview_glb_url.split("?")[0]}`;
@@ -157,7 +174,11 @@ beforeAll(async () => {
   await setPreviewMode("automatic");
   const res = await request(app)
     .post("/api/register")
-    .send({ displayName: "Provider Import Test", email: `provider-imports-${stamp}@example.com`, password: "password123" });
+    .send({
+      displayName: "Provider Import Test",
+      email: `provider-imports-${stamp}@example.com`,
+      password: "password123",
+    });
   token = res.body.token;
 });
 
@@ -200,13 +221,20 @@ describe("importing from Thingiverse", () => {
       "https://cdn.thingiverse.com/renders/dragon/render.png": png,
     });
 
-    const res = await request(app).post("/api/import").set(auth()).send({ url: `https://www.thingiverse.com/thing:${thingId}` });
+    const res = await request(app)
+      .post("/api/import")
+      .set(auth())
+      .send({ url: `https://www.thingiverse.com/thing:${thingId}` });
     expect(res.status).toBe(200);
     await expectFullyImported(res.body.id, {
       title: "Articulated Test Dragon",
       descriptionIncludes: "dragon, printed in place",
       tags: ["Dragon", "Print in place"], // normalized casing
-      author: { id: "thingiverse:5150", name: "DragonMaker", avatarUrl: "https://cdn.thingiverse.com/renders/dragonmaker/avatar.jpg" },
+      author: {
+        id: "thingiverse:5150",
+        name: "DragonMaker",
+        avatarUrl: "https://cdn.thingiverse.com/renders/dragonmaker/avatar.jpg",
+      },
       previewImages: 2,
       filename: "dragon.3mf",
     });
@@ -236,7 +264,12 @@ describe("importing from Printables", () => {
               id: modelId,
               name: "Sturdy Wall Hook",
               description: "<p>Holds up to <b>5 kg</b>.</p>",
-              user: { id: "31337", handle: "hookmaker", publicUsername: "HookMaker", avatarFilePath: "media/auth/avatars/hookmaker.png" },
+              user: {
+                id: "31337",
+                handle: "hookmaker",
+                publicUsername: "HookMaker",
+                avatarFilePath: "media/auth/avatars/hookmaker.png",
+              },
               image: { filePath: "media/prints/hook-cover.jpg" },
               images: [{ filePath: "media/prints/hook-cover.jpg" }, { filePath: "media/prints/hook-side.jpg" }],
               tags: [{ name: "hook" }, { name: "wall" }],
@@ -251,13 +284,20 @@ describe("importing from Printables", () => {
       "https://media.printables.com/media/prints/hook-side.jpg": png,
     });
 
-    const res = await request(app).post("/api/import").set(auth()).send({ url: `https://www.printables.com/model/${modelId}-sturdy-wall-hook` });
+    const res = await request(app)
+      .post("/api/import")
+      .set(auth())
+      .send({ url: `https://www.printables.com/model/${modelId}-sturdy-wall-hook` });
     expect(res.status).toBe(200);
     await expectFullyImported(res.body.id, {
       title: "Sturdy Wall Hook",
       descriptionIncludes: "Holds up to 5 kg",
       tags: ["Hook", "Wall"],
-      author: { id: "printables:31337", name: "HookMaker", avatarUrl: "https://media.printables.com/media/auth/avatars/hookmaker.png" },
+      author: {
+        id: "printables:31337",
+        name: "HookMaker",
+        avatarUrl: "https://media.printables.com/media/auth/avatars/hookmaker.png",
+      },
       previewImages: 2,
       filename: "hook.3mf",
     });
@@ -284,7 +324,9 @@ describe("importing from MakerWorld", () => {
             coverUrl: "https://makerworld.bblmw.com/makerworld/model/benchy/cover.jpg",
             designCreator: creator,
             designExtension: {
-              design_pictures: [{ name: "side.jpg", url: "https://makerworld.bblmw.com/makerworld/model/benchy/side.jpg" }],
+              design_pictures: [
+                { name: "side.jpg", url: "https://makerworld.bblmw.com/makerworld/model/benchy/side.jpg" },
+              ],
             },
             defaultInstanceId: Number(instanceId),
             instances: [{ id: Number(instanceId), title: "0.2mm layer" }],
@@ -334,7 +376,10 @@ describe("importing from MakerWorld", () => {
       "https://makerworld.bblmw.com/makerworld/model/benchy/side.jpg": png,
     });
 
-    const res = await request(app).post("/api/import").set(auth()).send({ url: `https://makerworld.com/en/models/${designId}-classic-benchy` });
+    const res = await request(app)
+      .post("/api/import")
+      .set(auth())
+      .send({ url: `https://makerworld.com/en/models/${designId}-classic-benchy` });
     expect(res.status).toBe(200);
     await expectFullyImported(res.body.id, expected());
   });
@@ -426,7 +471,9 @@ describe("importing from MakerWorld", () => {
           coverUrl: "https://makerworld.bblmw.com/makerworld/model/benchy/cover.jpg",
           designCreator: creator,
           designExtension: {
-            design_pictures: [{ name: "side.jpg", url: "https://makerworld.bblmw.com/makerworld/model/benchy/side.jpg" }],
+            design_pictures: [
+              { name: "side.jpg", url: "https://makerworld.bblmw.com/makerworld/model/benchy/side.jpg" },
+            ],
           },
           defaultInstanceId: 1,
           instances: [{ id: 1, profileId: Number(profileId) }],
@@ -454,7 +501,10 @@ describe("importing from MakerWorld", () => {
     const res = await request(app)
       .post("/api/import")
       .set(auth())
-      .send({ url: `https://makerworld.com/en/models/${designId}-classic-benchy`, makerworld_cookie: "token=test-bearer-token" });
+      .send({
+        url: `https://makerworld.com/en/models/${designId}-classic-benchy`,
+        makerworld_cookie: "token=test-bearer-token",
+      });
     expect(res.status).toBe(200);
     await expectFullyImported(res.body.id, expected());
   }
@@ -462,7 +512,11 @@ describe("importing from MakerWorld", () => {
   it("from the web app with a MakerWorld login: uses MakerWorld's API, with the full author profile when reachable", async () => {
     await importWithLogin(String((stamp % 1_000_000_000) + 20), true);
     const author = await prisma.author.findUniqueOrThrow({ where: { id: `makerworld:${creator.uid}` } });
-    expect(author).toMatchObject({ bio: "I print boats.", links: ["https://example.com/benchyfan"], handle: creator.handle });
+    expect(author).toMatchObject({
+      bio: "I print boats.",
+      links: ["https://example.com/benchyfan"],
+      handle: creator.handle,
+    });
   });
 
   it("from the web app with a MakerWorld login, profile blocked: still links the author, keeping known details", async () => {

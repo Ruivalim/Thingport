@@ -24,7 +24,7 @@ import {
 
 // A folder pick always prefixes relativePath with the folder name.
 function isFlatFileSet(entries: { file: File; relativePath: string }[]) {
-  return entries.length > 1 && entries.every(entry => entry.relativePath === entry.file.name);
+  return entries.length > 1 && entries.every((entry) => entry.relativePath === entry.file.name);
 }
 
 type Props = {
@@ -88,8 +88,8 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
   const uploadEntries = async (entries: ReturnType<typeof entriesFromFileList>) => {
     if (!entries.length) return;
     setUploading(true);
-    const normalEntries = entries.filter(entry => !isZipFile(entry.file.name));
-    const zipEntries = entries.filter(entry => isZipFile(entry.file.name));
+    const normalEntries = entries.filter((entry) => !isZipFile(entry.file.name));
+    const zipEntries = entries.filter((entry) => isZipFile(entry.file.name));
     let uploaded = 0;
     const failed: string[] = [];
     const prints: Print[] = [];
@@ -101,11 +101,11 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
     if (normalEntries.length) {
       if (isFlatFileSet(normalEntries)) {
         await importModePrompt.prompt({
-          label: normalEntries.map(entry => entry.file.name).join(", "),
+          label: normalEntries.map((entry) => entry.file.name).join(", "),
           count: normalEntries.length,
           onChoose: async (mode: ImportMode) => {
             if (mode === "multiplate") {
-              applyResult(await uploadFlatAsMultiplate(normalEntries.map(entry => entry.file)));
+              applyResult(await uploadFlatAsMultiplate(normalEntries.map((entry) => entry.file)));
             } else {
               applyResult(await uploadEntriesToCategory(normalEntries, categoryId || null, onUnauthorized));
             }
@@ -189,7 +189,11 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
   };
 
   /** `profileScope`: which MakerWorld print profiles to import; more than the link's runs as a job. */
-  const submitImport = async (rawUrl: string, captcha?: CaptchaAnswer | null, profileScope: MakerworldProfileScope = "url") => {
+  const submitImport = async (
+    rawUrl: string,
+    captcha?: CaptchaAnswer | null,
+    profileScope: MakerworldProfileScope = "url",
+  ) => {
     const url = rawUrl.trim();
     if (!url) return;
     setImporting(true);

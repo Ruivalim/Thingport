@@ -18,11 +18,6 @@ const HEIGHTS: Record<NonNullable<Props["size"]>, string> = {
 export default function BrandMark({ theme, size = "md" }: Props) {
   const src = theme === "dark" ? markOnDark : markColor;
   return (
-    <Box
-      component="img"
-      src={src}
-      alt="Thingport"
-      sx={{ height: HEIGHTS[size], width: "auto", display: "block" }}
-    />
+    <Box component="img" src={src} alt="Thingport" sx={{ height: HEIGHTS[size], width: "auto", display: "block" }} />
   );
 }

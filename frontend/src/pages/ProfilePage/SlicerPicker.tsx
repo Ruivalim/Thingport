@@ -30,16 +30,21 @@ export default function SlicerPicker({ onUnauthorized }: Props) {
 
   React.useEffect(() => {
     let active = true;
-    settingsApi.getSlicer()
-      .then(res => {
+    settingsApi
+      .getSlicer()
+      .then((res) => {
         if (!active) return;
         setValue(res.slicer ?? "");
       })
-      .catch(err => {
+      .catch((err) => {
         if (active && err instanceof UnauthorizedError) onUnauthorized?.();
       })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [onUnauthorized]);
 
   const handleChange = async (e: SelectChangeEvent) => {
@@ -85,8 +90,10 @@ export default function SlicerPicker({ onUnauthorized }: Props) {
               value={value}
               onChange={handleChange}
             >
-              {SLICER_OPTIONS.map(opt => (
-                <MenuItem key={opt.id} value={opt.id}>{opt.label}</MenuItem>
+              {SLICER_OPTIONS.map((opt) => (
+                <MenuItem key={opt.id} value={opt.id}>
+                  {opt.label}
+                </MenuItem>
               ))}
             </Select>
           </FormControl>
@@ -95,12 +102,18 @@ export default function SlicerPicker({ onUnauthorized }: Props) {
         {isBridgedSlicer(value) && (
           <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
             {t("profile.slicer.bridgeRequiredPrefix", {
-              slicer: SLICER_OPTIONS.find(opt => opt.id === value)?.label ?? value,
+              slicer: SLICER_OPTIONS.find((opt) => opt.id === value)?.label ?? value,
             })}{" "}
-            <Link component={RouterLink} to="/downloads">{t("profile.slicer.bridgeRequiredLink")}</Link>
+            <Link component={RouterLink} to="/downloads">
+              {t("profile.slicer.bridgeRequiredLink")}
+            </Link>
           </Typography>
         )}
-        {status && <Typography variant="caption" color="error" sx={{ display: "block", mt: 1 }}>{status}</Typography>}
+        {status && (
+          <Typography variant="caption" color="error" sx={{ display: "block", mt: 1 }}>
+            {status}
+          </Typography>
+        )}
       </Paper>
     </Box>
   );

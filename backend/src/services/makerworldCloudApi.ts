@@ -1,5 +1,10 @@
 import { IMPORT_BROWSER_USER_AGENT, IMPORT_TIMEOUT_SECONDS } from "../config";
-import { extractJsonFromBrowserBody, fetchViaFlaresolverr, isFlaresolverrEnabled, looksLikeCloudflareBlock } from "./flaresolverr";
+import {
+  extractJsonFromBrowserBody,
+  fetchViaFlaresolverr,
+  isFlaresolverrEnabled,
+  looksLikeCloudflareBlock,
+} from "./flaresolverr";
 import {
   makerworldAuthorFromDesignCreator,
   makerworldMetaFromDesign,
@@ -15,7 +20,12 @@ import {
   noteCaptchaChallenge,
 } from "./makerworldCaptcha";
 
-export { MAKERWORLD_CAPTCHA_MESSAGE, makerworldCaptchaCooloffActive, MakerworldAuthError, MakerworldCaptchaError } from "./makerworldCaptcha";
+export {
+  MAKERWORLD_CAPTCHA_MESSAGE,
+  makerworldCaptchaCooloffActive,
+  MakerworldAuthError,
+  MakerworldCaptchaError,
+} from "./makerworldCaptcha";
 
 // makerworld.com puts Cloudflare and a Geetest CAPTCHA in front of download resolution;
 // api.bambulab.com is the same Bambu Cloud backend (same bearer token) without either.
@@ -44,15 +54,16 @@ function cloudApiHeaders(bearerToken: string): Record<string, string> {
 // treating it as real and triggering the hours-long captcha cooloff.
 const TRANSIENT_418_RETRY_DELAY_MS = 1500;
 
-async function fetchCloudJson(
-  url: string,
-  bearerToken: string,
-): Promise<{ status: number; data: unknown } | null> {
+async function fetchCloudJson(url: string, bearerToken: string): Promise<{ status: number; data: unknown } | null> {
   for (let attempt = 0; attempt < 2; attempt++) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), CLOUD_API_TIMEOUT_MS);
     try {
-      const res = await fetch(url, { headers: cloudApiHeaders(bearerToken), redirect: "follow", signal: controller.signal });
+      const res = await fetch(url, {
+        headers: cloudApiHeaders(bearerToken),
+        redirect: "follow",
+        signal: controller.signal,
+      });
       if (res.status === 418 && attempt === 0) {
         await sleep(TRANSIENT_418_RETRY_DELAY_MS);
         continue;
@@ -253,7 +264,9 @@ export function selectMakerworldProfiles(
   scope: MakerworldProfileScope,
   requestedInstanceId: string | null,
 ): string[] {
-  const instances = Array.isArray(design.instances) ? design.instances.filter(isRecord).filter((inst) => inst.id != null) : [];
+  const instances = Array.isArray(design.instances)
+    ? design.instances.filter(isRecord).filter((inst) => inst.id != null)
+    : [];
   const ids = instances.map(instanceIdOf);
   const defaultId = design.defaultInstanceId != null ? String(design.defaultInstanceId) : null;
   const primary =
@@ -264,7 +277,8 @@ export function selectMakerworldProfiles(
   if (!primary) return [];
   if (scope === "url") return [primary];
 
-  const designerUid = isRecord(design.designCreator) && design.designCreator.uid != null ? String(design.designCreator.uid) : null;
+  const designerUid =
+    isRecord(design.designCreator) && design.designCreator.uid != null ? String(design.designCreator.uid) : null;
   const wanted = instances
     .filter((inst) => {
       if (scope === "all") return true;

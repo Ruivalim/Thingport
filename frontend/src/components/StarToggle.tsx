@@ -135,10 +135,7 @@ export default function StarToggle({
           sx={playing ? { animation: `${sparkleWidth} .65s 1` } : undefined}
         />
       </Box>
-      <StarIcon
-        fontSize="inherit"
-        sx={{ position: "relative", ...(playing && { animation: `${popping} .5s 1` }) }}
-      />
+      <StarIcon fontSize="inherit" sx={{ position: "relative", ...(playing && { animation: `${popping} .5s 1` }) }} />
     </IconButton>
   );
 }

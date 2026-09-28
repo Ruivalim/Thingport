@@ -49,9 +49,11 @@ export default function TriggersPage({ onUnauthorized }: Props) {
     }
   }, [onUnauthorized, t]);
 
-  React.useEffect(() => { void loadUsers(); }, [loadUsers]);
+  React.useEffect(() => {
+    void loadUsers();
+  }, [loadUsers]);
 
-  const selectedUser = users.find(u => u.id === selectedUserId) || null;
+  const selectedUser = users.find((u) => u.id === selectedUserId) || null;
 
   const openConfirm = () => {
     if (!selectedUser) return;
@@ -65,7 +67,8 @@ export default function TriggersPage({ onUnauthorized }: Props) {
     setConfirmOpen(false);
   };
 
-  const confirmMatches = Boolean(selectedUser) && confirmText.trim().toLowerCase() === selectedUser?.email.toLowerCase();
+  const confirmMatches =
+    Boolean(selectedUser) && confirmText.trim().toLowerCase() === selectedUser?.email.toLowerCase();
 
   const handleDelete = async () => {
     if (!selectedUser || !confirmMatches) return;
@@ -113,12 +116,16 @@ export default function TriggersPage({ onUnauthorized }: Props) {
                   labelId="trigger-user-select-label"
                   label={t("adminSettings.triggers.userLabel")}
                   value={selectedUserId}
-                  onChange={e => setSelectedUserId(e.target.value)}
+                  onChange={(e) => setSelectedUserId(e.target.value)}
                   disabled={deleting}
                 >
-                  {users.map(u => (
+                  {users.map((u) => (
                     <MenuItem key={u.id} value={u.id}>
-                      {t("adminSettings.triggers.userOption", { name: u.display_name, email: u.email, count: u.print_count })}
+                      {t("adminSettings.triggers.userOption", {
+                        name: u.display_name,
+                        email: u.email,
+                        count: u.print_count,
+                      })}
                     </MenuItem>
                   ))}
                 </Select>
@@ -134,8 +141,16 @@ export default function TriggersPage({ onUnauthorized }: Props) {
             </Stack>
           )}
 
-          {status && <Alert severity="success" onClose={() => setStatus(null)}>{status}</Alert>}
-          {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
+          {status && (
+            <Alert severity="success" onClose={() => setStatus(null)}>
+              {status}
+            </Alert>
+          )}
+          {error && (
+            <Alert severity="error" onClose={() => setError(null)}>
+              {error}
+            </Alert>
+          )}
         </Stack>
       </Paper>
 
@@ -158,7 +173,7 @@ export default function TriggersPage({ onUnauthorized }: Props) {
               fullWidth
               size="small"
               value={confirmText}
-              onChange={e => setConfirmText(e.target.value)}
+              onChange={(e) => setConfirmText(e.target.value)}
               placeholder={selectedUser?.email}
               disabled={deleting}
               // oxlint-disable-next-line jsx-a11y/no-autofocus
@@ -167,7 +182,9 @@ export default function TriggersPage({ onUnauthorized }: Props) {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={closeConfirm} disabled={deleting}>{t("common:cancel")}</Button>
+          <Button onClick={closeConfirm} disabled={deleting}>
+            {t("common:cancel")}
+          </Button>
           <Button
             variant="contained"
             color="error"

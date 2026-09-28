@@ -17,11 +17,7 @@ function assertCollectionNameNotReserved(name: string): void {
 }
 
 /** So a raw Prisma unique-constraint error never reaches the client. */
-export async function assertCollectionNameAvailable(
-  userId: string,
-  name: string,
-  excludeId?: string,
-): Promise<void> {
+export async function assertCollectionNameAvailable(userId: string, name: string, excludeId?: string): Promise<void> {
   assertCollectionNameNotReserved(name);
   const existing = await prisma.collection.findFirst({
     where: {

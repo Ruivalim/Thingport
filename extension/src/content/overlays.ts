@@ -57,7 +57,10 @@ export type ScanOverlay = { update(count: number): void; remove(): void };
 export function mountScanOverlay(root: ShadowRoot): ScanOverlay {
   const overlay = document.createElement("div");
   overlay.className = "tg-overlay";
-  overlay.innerHTML = overlayHtml("Scanning collection models…", `<div class="tg-overlay__count" data-role="count">0 found so far</div>`);
+  overlay.innerHTML = overlayHtml(
+    "Scanning collection models…",
+    `<div class="tg-overlay__count" data-role="count">0 found so far</div>`,
+  );
   fillIcons(overlay);
   root.appendChild(overlay);
   const countEl = overlay.querySelector<HTMLElement>('[data-role="count"]')!;

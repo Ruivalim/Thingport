@@ -33,7 +33,17 @@ type Props = {
   viewer?: AuthUser | null;
 };
 
-export default function ModelsPage({ categoryId, onSelectCategory, categoriesVersion, onCategoriesChanged, printsVersion, onUnauthorized, theme, previewMode, viewer }: Props) {
+export default function ModelsPage({
+  categoryId,
+  onSelectCategory,
+  categoriesVersion,
+  onCategoriesChanged,
+  printsVersion,
+  onUnauthorized,
+  theme,
+  previewMode,
+  viewer,
+}: Props) {
   const { t } = useTranslation(["models", "common"]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
@@ -44,10 +54,11 @@ export default function ModelsPage({ categoryId, onSelectCategory, categoriesVer
   const [hasMore, setHasMore] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const sortModeParam = searchParams.get("orderBy");
-  const sortMode: PrintSortMode = sortModeParam === "popular" || sortModeParam === "downloads" ? sortModeParam : "newest";
+  const sortMode: PrintSortMode =
+    sortModeParam === "popular" || sortModeParam === "downloads" ? sortModeParam : "newest";
 
   const setSortMode = (mode: PrintSortMode) => {
-    setSearchParams(prev => {
+    setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       if (mode === "newest") next.delete("orderBy");
       else next.set("orderBy", mode);
@@ -75,7 +86,7 @@ export default function ModelsPage({ categoryId, onSelectCategory, categoriesVer
       return;
     }
     if ((searchParams.get("category") || null) === categoryId) return;
-    setSearchParams(prev => {
+    setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       if (categoryId) next.set("category", categoryId);
       else next.delete("category");
@@ -87,13 +98,13 @@ export default function ModelsPage({ categoryId, onSelectCategory, categoriesVer
   // A root category includes the models in all its subcategories.
   const categoryIdFilter = useMemo(() => {
     if (!categoryId) return undefined;
-    const isRoot = categories.some(f => f.id === categoryId && !f.parent_id);
+    const isRoot = categories.some((f) => f.id === categoryId && !f.parent_id);
     if (!isRoot) return categoryId;
-    const childIds = categories.filter(f => f.parent_id === categoryId).map(f => f.id);
+    const childIds = categories.filter((f) => f.parent_id === categoryId).map((f) => f.id);
     return [categoryId, ...childIds];
   }, [categoryId, categories]);
 
-  const selectedCategory = categoryId ? categories.find(f => f.id === categoryId) ?? null : null;
+  const selectedCategory = categoryId ? (categories.find((f) => f.id === categoryId) ?? null) : null;
   usePageHeader({
     title: selectedCategory ? selectedCategory.name || t("models:categories.untitled") : undefined,
     subtitle: selectedCategory ? t("models:categories.subtitle") : undefined,
@@ -128,7 +139,12 @@ export default function ModelsPage({ categoryId, onSelectCategory, categoriesVer
     setLoading(true);
     (async () => {
       try {
-        const result = await printsApi.list({ category_id: categoryIdFilter, order_by: sortMode, limit: PAGE_SIZE, offset: 0 });
+        const result = await printsApi.list({
+          category_id: categoryIdFilter,
+          order_by: sortMode,
+          limit: PAGE_SIZE,
+          offset: 0,
+        });
         setItems(result.items);
         setOffset(result.items.length);
         setHasMore(result.hasMore);
@@ -145,8 +161,13 @@ export default function ModelsPage({ categoryId, onSelectCategory, categoriesVer
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
     try {
-      const result = await printsApi.list({ category_id: categoryIdFilter, order_by: sortMode, limit: PAGE_SIZE, offset });
-      setItems(prev => [...prev, ...result.items]);
+      const result = await printsApi.list({
+        category_id: categoryIdFilter,
+        order_by: sortMode,
+        limit: PAGE_SIZE,
+        offset,
+      });
+      setItems((prev) => [...prev, ...result.items]);
       setOffset(offset + result.items.length);
       setHasMore(result.hasMore);
     } catch (err) {
@@ -168,7 +189,7 @@ export default function ModelsPage({ categoryId, onSelectCategory, categoriesVer
   };
 
   const renameCategory = async (id: string, name: string) => {
-    const existing = categories.find(f => f.id === id);
+    const existing = categories.find((f) => f.id === id);
     try {
       await categoriesApi.update(id, name, existing?.tags || [], existing?.parent_id || undefined);
       onCategoriesChanged();
@@ -249,15 +270,17 @@ export default function ModelsPage({ categoryId, onSelectCategory, categoriesVer
                   "@media (max-width: 860px)": { gridTemplateColumns: "repeat(1, 1fr)" },
                 }}
               >
-                {items.map(item => (
+                {items.map((item) => (
                   <ModelCard
                     key={item.id}
                     item={item}
                     theme={theme}
                     previewMode={previewMode}
-                    onDeleted={deletedId => setItems(prev => prev.filter(i => i.id !== deletedId))}
-                    onFavoriteChange={updated => setItems(prev => prev.map(i => (i.id === updated.id ? updated : i)))}
-                    onUpdated={updated => setItems(prev => prev.map(i => (i.id === updated.id ? updated : i)))}
+                    onDeleted={(deletedId) => setItems((prev) => prev.filter((i) => i.id !== deletedId))}
+                    onFavoriteChange={(updated) =>
+                      setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)))
+                    }
+                    onUpdated={(updated) => setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)))}
                     onUnauthorized={onUnauthorized}
                     viewer={viewer}
                   />

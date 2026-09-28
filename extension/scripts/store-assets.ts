@@ -40,7 +40,10 @@ await mkdir(OUT_DIR, { recursive: true });
 const browser = await chromium.launch();
 try {
   for (const asset of ASSETS) {
-    const page = await browser.newPage({ viewport: { width: asset.width, height: asset.height }, deviceScaleFactor: 1 });
+    const page = await browser.newPage({
+      viewport: { width: asset.width, height: asset.height },
+      deviceScaleFactor: 1,
+    });
     await page.goto(pathToFileURL(path.join(TEMPLATES, asset.template)).href, { waitUntil: "load" });
     await page.addStyleTag({ content: CONTENT_CSS });
     await page.evaluate(() => document.fonts.ready);

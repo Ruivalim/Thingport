@@ -23,10 +23,14 @@ function thingEntry(id: number) {
 
 describe("parseThingiverseCollectionUrl", () => {
   it("recognizes a Collection page, with or without the trailing /things", () => {
-    expect(parseThingiverseCollectionUrl(`https://www.thingiverse.com/Derzinskas/collections/${COLLECTION_ID}/things`)).toEqual({
+    expect(
+      parseThingiverseCollectionUrl(`https://www.thingiverse.com/Derzinskas/collections/${COLLECTION_ID}/things`),
+    ).toEqual({
       collectionId: COLLECTION_ID,
     });
-    expect(parseThingiverseCollectionUrl(`https://www.thingiverse.com/Derzinskas/collections/${COLLECTION_ID}`)).toEqual({
+    expect(
+      parseThingiverseCollectionUrl(`https://www.thingiverse.com/Derzinskas/collections/${COLLECTION_ID}`),
+    ).toEqual({
       collectionId: COLLECTION_ID,
     });
   });
@@ -71,7 +75,9 @@ describe("fetchThingiverseCollectionThings / fetchThingiverseCollectionTitle", (
   });
 
   it("returns null for a collection with no name (or that doesn't exist)", async () => {
-    global.fetch = vi.fn<(input: RequestInfo | URL) => Promise<Response>>(async () => jsonResponse(404, { error: "not found" })) as unknown as typeof fetch;
+    global.fetch = vi.fn<(input: RequestInfo | URL) => Promise<Response>>(async () =>
+      jsonResponse(404, { error: "not found" }),
+    ) as unknown as typeof fetch;
     const title = await fetchThingiverseCollectionTitle("999999999", ACCESS_TOKEN);
     expect(title).toBeNull();
   });
@@ -118,7 +124,12 @@ describe("POST /import/thingiverse-collection/entries", () => {
     expect(res.status).toBe(200);
     expect(res.body.title).toBe(COLLECTION_TITLE);
     expect(res.body.entries).toEqual([
-      { design_id: "1", title: "Collected Thing 1", cover: "https://cdn.thingiverse.com/assets/test/1.jpg", already_imported: false },
+      {
+        design_id: "1",
+        title: "Collected Thing 1",
+        cover: "https://cdn.thingiverse.com/assets/test/1.jpg",
+        already_imported: false,
+      },
     ]);
   });
 
@@ -146,7 +157,12 @@ describe("POST /import/thingiverse-collection/entries", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.entries).toEqual([
-      { design_id: "1", title: "Collected Thing 1", cover: "https://cdn.thingiverse.com/assets/test/1.jpg", already_imported: true },
+      {
+        design_id: "1",
+        title: "Collected Thing 1",
+        cover: "https://cdn.thingiverse.com/assets/test/1.jpg",
+        already_imported: true,
+      },
     ]);
   });
 

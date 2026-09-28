@@ -28,8 +28,7 @@ async function readAuthError(res: Response): Promise<never> {
     const data = await res.json();
     if (typeof data?.detail === "string") message = data.detail;
     if (typeof data?.code === "string") code = data.code;
-  } catch {
-  }
+  } catch {}
   if (code === "EMAIL_NOT_VERIFIED") throw new EmailNotVerifiedError(message);
   throw new Error(message);
 }
@@ -99,7 +98,6 @@ export const authApi = {
   logout: async (): Promise<void> => {
     try {
       await fetch(`${apiBase()}/logout`, { method: "POST", headers: authHeaders() });
-    } catch {
-    }
+    } catch {}
   },
 };

@@ -18,7 +18,9 @@ function likeEntry(id: number) {
 
 describe("parseThingiverseLikesUrl", () => {
   it("recognizes a user's Likes page", () => {
-    expect(parseThingiverseLikesUrl("https://www.thingiverse.com/Derzinskas/likes")).toEqual({ username: "Derzinskas" });
+    expect(parseThingiverseLikesUrl("https://www.thingiverse.com/Derzinskas/likes")).toEqual({
+      username: "Derzinskas",
+    });
     expect(parseThingiverseLikesUrl("https://thingiverse.com/someone/likes/")).toEqual({ username: "someone" });
   });
 
@@ -41,20 +43,35 @@ describe("fetchThingiverseUserLikes", () => {
       const url = String(input);
       const pageMatch = url.match(/page=(\d+)/);
       const page = pageMatch ? Number(pageMatch[1]) : 1;
-      if (page === 1) return jsonResponse(200, Array.from({ length: 30 }, (_, i) => likeEntry(i + 1)));
-      if (page === 2) return jsonResponse(200, Array.from({ length: 5 }, (_, i) => likeEntry(31 + i)));
+      if (page === 1)
+        return jsonResponse(
+          200,
+          Array.from({ length: 30 }, (_, i) => likeEntry(i + 1)),
+        );
+      if (page === 2)
+        return jsonResponse(
+          200,
+          Array.from({ length: 5 }, (_, i) => likeEntry(31 + i)),
+        );
       throw new Error(`Unexpected page ${page}`);
     }) as unknown as typeof fetch;
 
     const result = await fetchThingiverseUserLikes(USERNAME, ACCESS_TOKEN);
     expect(result.entries.length).toBe(35);
     expect(result.truncated).toBe(false);
-    expect(result.entries[0]).toEqual({ thingId: "1", title: "Liked Thing 1", cover: "https://cdn.thingiverse.com/assets/test/1.jpg" });
+    expect(result.entries[0]).toEqual({
+      thingId: "1",
+      title: "Liked Thing 1",
+      cover: "https://cdn.thingiverse.com/assets/test/1.jpg",
+    });
   });
 
   it("stops at maxItems and reports truncated", async () => {
     global.fetch = vi.fn<(input: RequestInfo | URL) => Promise<Response>>(async () =>
-      jsonResponse(200, Array.from({ length: 30 }, (_, i) => likeEntry(i + 1))),
+      jsonResponse(
+        200,
+        Array.from({ length: 30 }, (_, i) => likeEntry(i + 1)),
+      ),
     ) as unknown as typeof fetch;
 
     const result = await fetchThingiverseUserLikes(USERNAME, ACCESS_TOKEN, 10);
@@ -63,7 +80,9 @@ describe("fetchThingiverseUserLikes", () => {
   });
 
   it("returns an empty result for a user with no likes (or who doesn't exist)", async () => {
-    global.fetch = vi.fn<(input: RequestInfo | URL) => Promise<Response>>(async () => jsonResponse(200, [])) as unknown as typeof fetch;
+    global.fetch = vi.fn<(input: RequestInfo | URL) => Promise<Response>>(async () =>
+      jsonResponse(200, []),
+    ) as unknown as typeof fetch;
 
     const result = await fetchThingiverseUserLikes(USERNAME, ACCESS_TOKEN);
     expect(result.entries).toEqual([]);
@@ -118,8 +137,18 @@ describe("POST /import/thingiverse-likes/entries", () => {
     expect(res.status).toBe(200);
     expect(res.body.title).toBe(`${USERNAME}'s Thingiverse Likes`);
     expect(res.body.entries).toEqual([
-      { design_id: "1", title: "Liked Thing 1", cover: "https://cdn.thingiverse.com/assets/test/1.jpg", already_imported: false },
-      { design_id: "2", title: "Liked Thing 2", cover: "https://cdn.thingiverse.com/assets/test/2.jpg", already_imported: false },
+      {
+        design_id: "1",
+        title: "Liked Thing 1",
+        cover: "https://cdn.thingiverse.com/assets/test/1.jpg",
+        already_imported: false,
+      },
+      {
+        design_id: "2",
+        title: "Liked Thing 2",
+        cover: "https://cdn.thingiverse.com/assets/test/2.jpg",
+        already_imported: false,
+      },
     ]);
   });
 
@@ -145,8 +174,18 @@ describe("POST /import/thingiverse-likes/entries", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.entries).toEqual([
-      { design_id: "1", title: "Liked Thing 1", cover: "https://cdn.thingiverse.com/assets/test/1.jpg", already_imported: true },
-      { design_id: "2", title: "Liked Thing 2", cover: "https://cdn.thingiverse.com/assets/test/2.jpg", already_imported: false },
+      {
+        design_id: "1",
+        title: "Liked Thing 1",
+        cover: "https://cdn.thingiverse.com/assets/test/1.jpg",
+        already_imported: true,
+      },
+      {
+        design_id: "2",
+        title: "Liked Thing 2",
+        cover: "https://cdn.thingiverse.com/assets/test/2.jpg",
+        already_imported: false,
+      },
     ]);
   });
 

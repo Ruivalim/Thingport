@@ -69,7 +69,8 @@ export async function loadSingleItem(): Promise<void> {
   }
   renderPanel(statusHtml("Checking link…"));
   const { provider, type } = ctx().classification;
-  const skipInspect = (provider === "thingiverse" && type === "thing") || (provider === "printables" && type === "model");
+  const skipInspect =
+    (provider === "thingiverse" && type === "thing") || (provider === "printables" && type === "model");
 
   let zipFilename: string | null = null;
   if (skipInspect) {
@@ -178,7 +179,13 @@ async function runDirectImport(opts?: { entries?: string[] }): Promise<void> {
     if (print?.import_outcome === "profile_added") {
       renderPanel(successHtml(link, "Added this print profile's file to the model you already had.", "Profile added"));
     } else if (print?.import_outcome === "already_imported") {
-      renderPanel(successHtml(link, "This print profile's file was already on the model -- nothing new was added.", "Already in your library"));
+      renderPanel(
+        successHtml(
+          link,
+          "This print profile's file was already on the model -- nothing new was added.",
+          "Already in your library",
+        ),
+      );
     } else {
       renderPanel(successHtml(link));
     }
@@ -212,7 +219,12 @@ async function runProfilesImport(scope: MakerworldProfileScope, collectionId: st
         ? await resolveMakerworldDownloadUrl(url).catch(() => null)
         : await resolveMakerworldProfileDownload(url, instanceId).catch(() => null);
     try {
-      const print = await request("IMPORT_SINGLE", { url: index === 0 ? url : profileUrl(url, instanceId), collectionId, resolved, title });
+      const print = await request("IMPORT_SINGLE", {
+        url: index === 0 ? url : profileUrl(url, instanceId),
+        collectionId,
+        resolved,
+        title,
+      });
       printId = print?.id ?? printId;
       if (print?.import_outcome === "already_imported") already++;
       else added++;
@@ -233,5 +245,7 @@ async function runProfilesImport(scope: MakerworldProfileScope, collectionId: st
   const parts = [`${added} print profile${added === 1 ? "" : "s"} imported`];
   if (already) parts.push(`${already} already on the model`);
   if (failed) parts.push(`${failed} failed`);
-  renderPanel(successHtml(`${instanceUrl}/models/${printId}`, `${parts.join(", ")}.`, failed ? "Partly imported" : undefined));
+  renderPanel(
+    successHtml(`${instanceUrl}/models/${printId}`, `${parts.join(", ")}.`, failed ? "Partly imported" : undefined),
+  );
 }

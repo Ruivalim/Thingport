@@ -14,7 +14,12 @@ import {
   type MakerworldProfileScope,
 } from "./makerworldCloudApi";
 import { fetchMakerworldCollectionTitle, parseMakerworldCollectionUrl } from "./makerworldCollections";
-import { downloadImportToTemp, fetchMakerworldDesignForImport, importPrintFromUrl, type ImportRequestBody } from "./importService";
+import {
+  downloadImportToTemp,
+  fetchMakerworldDesignForImport,
+  importPrintFromUrl,
+  type ImportRequestBody,
+} from "./importService";
 import { upsertAuthorFromImport } from "./authorService";
 import { extractZipEntriesToPrints } from "./zipService";
 import { fetchThingiverseCollectionTitle } from "./thingiverseApi";
@@ -53,15 +58,24 @@ async function markJobFailed(jobId: string, err: unknown): Promise<void> {
 }
 
 /** Imports several print profiles of one MakerWorld model as one model with a file per profile. */
-export async function runMakerworldProfilesImportJob(jobId: string, userId: string, body: MakerworldProfilesImportJobBody): Promise<void> {
+export async function runMakerworldProfilesImportJob(
+  jobId: string,
+  userId: string,
+  body: MakerworldProfilesImportJobBody,
+): Promise<void> {
   try {
     const parsed = parseMakerworldModelUrl(body.url);
     if (!parsed) throw new HttpError(400, "Not a MakerWorld model link");
-    const design = await fetchMakerworldDesignForImport(parsed.designId, resolveMakerworldCookie(body), IMPORT_MAKERWORLD_CALL_DELAY_MS);
+    const design = await fetchMakerworldDesignForImport(
+      parsed.designId,
+      resolveMakerworldCookie(body),
+      IMPORT_MAKERWORLD_CALL_DELAY_MS,
+    );
     if (!design) throw new HttpError(400, "Couldn't read this model's print profiles from MakerWorld");
     const profileIds = selectMakerworldProfiles(design, body.scope, parsed.requestedInstanceId);
     if (!profileIds.length) throw new HttpError(400, "This model has no print profiles to import");
-    const title = typeof design.title === "string" && design.title.trim() ? decodeHtmlEntities(design.title.trim()) : null;
+    const title =
+      typeof design.title === "string" && design.title.trim() ? decodeHtmlEntities(design.title.trim()) : null;
     await updateJob(jobId, { total: profileIds.length, sourceLabel: title });
 
     let processed = 0;
@@ -94,7 +108,14 @@ export async function runMakerworldProfilesImportJob(jobId: string, userId: stri
       await updateJob(jobId, { processed, imported, alreadyInLibrary, failedCount: failed }).catch(() => undefined);
     }
 
-    await updateJob(jobId, { status: "DONE", resultPrintId: printId, processed, imported, alreadyInLibrary, failedCount: failed });
+    await updateJob(jobId, {
+      status: "DONE",
+      resultPrintId: printId,
+      processed,
+      imported,
+      alreadyInLibrary,
+      failedCount: failed,
+    });
     void createLog({
       userId,
       action: "import_completed",
@@ -105,9 +126,13 @@ export async function runMakerworldProfilesImportJob(jobId: string, userId: stri
     const bodyParts: string[] = [];
     if (alreadyInLibrary) bodyParts.push(`${alreadyInLibrary} already on the model`);
     if (stopReason === "rateLimited") {
-      bodyParts.push(`the rest blocked by a MakerWorld CAPTCHA challenge — this usually clears in 1-4 hours, then import the model again to add the missing profiles`);
+      bodyParts.push(
+        `the rest blocked by a MakerWorld CAPTCHA challenge — this usually clears in 1-4 hours, then import the model again to add the missing profiles`,
+      );
     } else if (stopReason === "auth") {
-      bodyParts.push(`the rest failed because your MakerWorld session expired — update the cookie in Settings and import again`);
+      bodyParts.push(
+        `the rest failed because your MakerWorld session expired — update the cookie in Settings and import again`,
+      );
     } else if (failed) {
       bodyParts.push(`${failed} failed`);
     }
@@ -123,7 +148,11 @@ export async function runMakerworldProfilesImportJob(jobId: string, userId: stri
   }
 }
 
-export async function runCollectionImportJob(jobId: string, userId: string, body: CollectionImportJobBody): Promise<void> {
+export async function runCollectionImportJob(
+  jobId: string,
+  userId: string,
+  body: CollectionImportJobBody,
+): Promise<void> {
   try {
     let imported = 0;
     let alreadyInLibrary = 0;
@@ -158,7 +187,9 @@ export async function runCollectionImportJob(jobId: string, userId: string, body
       } finally {
         processed++;
         // A progress-write failure mustn't fail the whole batch.
-        await updateJob(jobId, { processed, imported, alreadyInLibrary, failedCount: failed.length }).catch(() => undefined);
+        await updateJob(jobId, { processed, imported, alreadyInLibrary, failedCount: failed.length }).catch(
+          () => undefined,
+        );
       }
     });
 
@@ -169,7 +200,11 @@ export async function runCollectionImportJob(jobId: string, userId: string, body
       const parsed = parseMakerworldCollectionUrl(url);
       if (parsed) {
         const bearerToken = extractMakerworldBearerToken(resolveMakerworldCookie(body));
-        collectionTitle = await fetchMakerworldCollectionTitle(parsed.collectionId, bearerToken, IMPORT_MAKERWORLD_CALL_DELAY_MS);
+        collectionTitle = await fetchMakerworldCollectionTitle(
+          parsed.collectionId,
+          bearerToken,
+          IMPORT_MAKERWORLD_CALL_DELAY_MS,
+        );
         if (collectionTitle) {
           const collection = await findOrCreateCollectionByName(userId, collectionTitle);
           await addPrintsToCollection(collection.id, successPrintIds);
@@ -192,7 +227,13 @@ export async function runCollectionImportJob(jobId: string, userId: string, body
       userId,
       action: "import_completed",
       targetId: resultCollectionId,
-      details: { provider: "makerworld", sourceLabel: collectionTitle, imported, alreadyInLibrary, failed: failed.length },
+      details: {
+        provider: "makerworld",
+        sourceLabel: collectionTitle,
+        imported,
+        alreadyInLibrary,
+        failed: failed.length,
+      },
     });
 
     const label = collectionTitle ? `"${collectionTitle}"` : "a MakerWorld collection";
@@ -205,7 +246,10 @@ export async function runCollectionImportJob(jobId: string, userId: string, body
         `${rateLimited} blocked by a MakerWorld CAPTCHA challenge (too many requests at once) — this usually clears in 1-4 hours, then retry the same collection`,
       );
     }
-    if (authFailed) bodyParts.push(`${authFailed} failed because your MakerWorld session expired — update the cookie in Settings and retry`);
+    if (authFailed)
+      bodyParts.push(
+        `${authFailed} failed because your MakerWorld session expired — update the cookie in Settings and retry`,
+      );
     if (otherFailed) bodyParts.push(`${otherFailed} failed`);
     await createNotification(userId, {
       title: `Imported ${imported} of ${body.design_ids.length} models from MakerWorld`,
@@ -267,7 +311,9 @@ async function runThingiverseThingsImportJob(
         else if (reason === "auth") authFailed++;
       } finally {
         processed++;
-        await updateJob(jobId, { processed, imported, alreadyInLibrary, failedCount: failed.length }).catch(() => undefined);
+        await updateJob(jobId, { processed, imported, alreadyInLibrary, failedCount: failed.length }).catch(
+          () => undefined,
+        );
       }
       if (index < body.thing_ids.length - 1) await sleep(IMPORT_COLLECTION_DELAY_MS);
     });
@@ -294,7 +340,13 @@ async function runThingiverseThingsImportJob(
       userId,
       action: "import_completed",
       targetId: resultCollectionId,
-      details: { provider: "thingiverse", sourceLabel: collectionTitle, imported, alreadyInLibrary, failed: failed.length },
+      details: {
+        provider: "thingiverse",
+        sourceLabel: collectionTitle,
+        imported,
+        alreadyInLibrary,
+        failed: failed.length,
+      },
     });
 
     const bodyParts: string[] = [];
@@ -320,7 +372,11 @@ async function runThingiverseThingsImportJob(
   }
 }
 
-export async function runThingiverseLikesImportJob(jobId: string, userId: string, body: ThingiverseLikesImportJobBody): Promise<void> {
+export async function runThingiverseLikesImportJob(
+  jobId: string,
+  userId: string,
+  body: ThingiverseLikesImportJobBody,
+): Promise<void> {
   await runThingiverseThingsImportJob(
     jobId,
     userId,
@@ -340,12 +396,17 @@ export async function runThingiverseCollectionImportJob(
     userId,
     body,
     async (accessToken) =>
-      (await fetchThingiverseCollectionTitle(body.collectionId, accessToken)) ?? `Thingiverse Collection ${body.collectionId}`,
+      (await fetchThingiverseCollectionTitle(body.collectionId, accessToken)) ??
+      `Thingiverse Collection ${body.collectionId}`,
     (collectionTitle) => `"${collectionTitle}"`,
   );
 }
 
-export async function runPrintablesCollectionImportJob(jobId: string, userId: string, body: PrintablesCollectionImportJobBody): Promise<void> {
+export async function runPrintablesCollectionImportJob(
+  jobId: string,
+  userId: string,
+  body: PrintablesCollectionImportJobBody,
+): Promise<void> {
   try {
     let imported = 0;
     let alreadyInLibrary = 0;
@@ -375,13 +436,16 @@ export async function runPrintablesCollectionImportJob(jobId: string, userId: st
         else if (reason === "rateLimited") rateLimited++;
       } finally {
         processed++;
-        await updateJob(jobId, { processed, imported, alreadyInLibrary, failedCount: failed.length }).catch(() => undefined);
+        await updateJob(jobId, { processed, imported, alreadyInLibrary, failedCount: failed.length }).catch(
+          () => undefined,
+        );
       }
       if (index < body.model_ids.length - 1) await sleep(IMPORT_COLLECTION_DELAY_MS);
     });
 
     let resultCollectionId: string | null = null;
-    const collectionTitle = (await fetchPrintablesCollectionTitle(body.collectionId)) ?? `Printables Collection ${body.collectionId}`;
+    const collectionTitle =
+      (await fetchPrintablesCollectionTitle(body.collectionId)) ?? `Printables Collection ${body.collectionId}`;
     if (successPrintIds.length) {
       const collection = await findOrCreateCollectionByName(userId, collectionTitle);
       await addPrintsToCollection(collection.id, successPrintIds);
@@ -402,7 +466,13 @@ export async function runPrintablesCollectionImportJob(jobId: string, userId: st
       userId,
       action: "import_completed",
       targetId: resultCollectionId,
-      details: { provider: "printables", sourceLabel: collectionTitle, imported, alreadyInLibrary, failed: failed.length },
+      details: {
+        provider: "printables",
+        sourceLabel: collectionTitle,
+        imported,
+        alreadyInLibrary,
+        failed: failed.length,
+      },
     });
 
     const bodyParts: string[] = [];

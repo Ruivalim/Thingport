@@ -16,9 +16,7 @@ export default function TagBadge({ tag, onRemove }: TagBadgeProps) {
       label={tag}
       size="small"
       onDelete={onRemove}
-      deleteIcon={
-        onRemove ? <span aria-label={t("tagInput.removeTag", { tag })}>×</span> : undefined
-      }
+      deleteIcon={onRemove ? <span aria-label={t("tagInput.removeTag", { tag })}>×</span> : undefined}
       sx={{
         backgroundColor: colors.bg,
         color: colors.text,

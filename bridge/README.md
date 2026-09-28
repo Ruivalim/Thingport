@@ -47,7 +47,7 @@ step rather than a plain double-click:
 
 ```bash
 chmod +x ~/Downloads/thingport-bridge-macos
-xattr -d com.apple.quarantine ~/Downloads/thingport-bridge-macos   # downloaded files are quarantined by Gatekeeper
+xattr -d com.apple.quarantine ~/Downloads/thingport-bridge-macos # downloaded files are quarantined by Gatekeeper
 ~/Downloads/thingport-bridge-macos --install
 ```
 
@@ -57,6 +57,7 @@ open System Settings -> Privacy & Security and allow it there instead of using `
 
 If the terminal instead prints `Killed: 9` (or `[1] ... killed`) the moment you run it, that's a
 stale, invalidly-signed binary rather than a Gatekeeper block -- re-sign it yourself and retry:
+
 ```bash
 codesign --force -s - ~/Downloads/thingport-bridge-macos
 ```
@@ -68,36 +69,41 @@ You need Go installed (1.21+ recommended). macOS builds also need Xcode's comman
 on macOS itself.
 
 Windows (PowerShell):
+
 ```powershell
 cd bridge
 go build -o dist\thingport-bridge.exe .\cmd\thingport-bridge
 ```
 
 Linux (bash):
+
 ```bash
 cd bridge
 go build -o dist/thingport-bridge ./cmd/thingport-bridge
 ```
 
 macOS (bash), universal binary:
+
 ```bash
 cd bridge
 GOARCH=arm64 go build -o dist/thingport-bridge-arm64 ./cmd/thingport-bridge
 GOARCH=amd64 go build -o dist/thingport-bridge-amd64 ./cmd/thingport-bridge
 lipo -create -output dist/thingport-bridge-macos dist/thingport-bridge-arm64 dist/thingport-bridge-amd64
-codesign --force -s - dist/thingport-bridge-macos   # lipo invalidates each slice's signature;
-                                                        # without this, arm64 Macs SIGKILL it on launch
+codesign --force -s - dist/thingport-bridge-macos # lipo invalidates each slice's signature;
+# without this, arm64 Macs SIGKILL it on launch
 ```
 
 ## Install (manual)
 
 Windows (PowerShell):
+
 ```powershell
 cd bridge\scripts
 .\install-windows.ps1 -BridgePath "..\dist\thingport-bridge.exe"
 ```
 
 Linux (bash):
+
 ```bash
 cd bridge/scripts
 ./install-linux.sh ../dist/thingport-bridge
@@ -107,6 +113,7 @@ You can also run the binary directly: `thingport-bridge --install` (this is requ
 convenient, on macOS -- see above).
 
 If your shell blocks scripts, set the execution policy for the current user:
+
 ```powershell
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
@@ -130,6 +137,7 @@ If you still want it, on macOS:
 
 **Or, a LaunchAgent** -- save as `~/Library/LaunchAgents/com.thingport.bridge.plist` (replace
 `YOUR_USERNAME`):
+
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -146,7 +154,9 @@ If you still want it, on macOS:
 </dict>
 </plist>
 ```
+
 then:
+
 ```bash
 mkdir -p ~/Library/LaunchAgents
 # save the file above as ~/Library/LaunchAgents/com.thingport.bridge.plist

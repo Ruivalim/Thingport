@@ -10,9 +10,21 @@ import { errorHtml, statusHtml, successHtml } from "./results";
 type BatchKey = "thingiverse:likes" | "thingiverse:collection" | "printables:collection";
 
 const BATCH_ENDPOINTS: Record<BatchKey, { entries: string; start: string; idField: string }> = {
-  "thingiverse:likes": { entries: "/import/thingiverse-likes/entries", start: "/import/thingiverse-likes", idField: "thing_ids" },
-  "thingiverse:collection": { entries: "/import/thingiverse-collection/entries", start: "/import/thingiverse-collection", idField: "thing_ids" },
-  "printables:collection": { entries: "/import/printables-collection/entries", start: "/import/printables-collection", idField: "model_ids" },
+  "thingiverse:likes": {
+    entries: "/import/thingiverse-likes/entries",
+    start: "/import/thingiverse-likes",
+    idField: "thing_ids",
+  },
+  "thingiverse:collection": {
+    entries: "/import/thingiverse-collection/entries",
+    start: "/import/thingiverse-collection",
+    idField: "thing_ids",
+  },
+  "printables:collection": {
+    entries: "/import/printables-collection/entries",
+    start: "/import/printables-collection",
+    idField: "model_ids",
+  },
 };
 
 function endpoints() {

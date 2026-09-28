@@ -91,7 +91,9 @@ export default function TopBar({
           </Tooltip>
         )}
         <Box sx={{ minWidth: 0 }}>
-          <Typography variant="h6" fontWeight={700} noWrap>{title}</Typography>
+          <Typography variant="h6" fontWeight={700} noWrap>
+            {title}
+          </Typography>
           {subtitle && (
             <Typography variant="caption" noWrap sx={{ display: "block", mt: "-4px", color: "text.secondary" }}>
               {subtitle}

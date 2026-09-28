@@ -18,7 +18,11 @@ export default function ConnectionsPage({ onUnauthorized }: Props) {
 
   return (
     <Stack spacing={3}>
-      <Tabs value={tab} onChange={(_e, value) => setTab(value)} sx={{ borderBottom: "1px solid", borderColor: "divider" }}>
+      <Tabs
+        value={tab}
+        onChange={(_e, value) => setTab(value)}
+        sx={{ borderBottom: "1px solid", borderColor: "divider" }}
+      >
         <Tab value="smtp" label={t("adminSettings.smtp.tabLabel")} />
         <Tab value="database" label={t("adminSettings.database.tabLabel")} />
       </Tabs>

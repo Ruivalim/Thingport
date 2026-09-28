@@ -25,14 +25,26 @@ let adminToken: string;
 beforeAll(async () => {
   const res = await request(app)
     .post("/api/register")
-    .send({ displayName: "Author Linking Test", email: `author-linking-${stamp}@example.com`, password: "password123" });
+    .send({
+      displayName: "Author Linking Test",
+      email: `author-linking-${stamp}@example.com`,
+      password: "password123",
+    });
   userId = res.body.user.id;
   memberToken = res.body.token;
   const admin = await request(app)
     .post("/api/register")
-    .send({ displayName: "Author Linking Admin", email: `author-linking-admin-${stamp}@example.com`, password: "password123" });
+    .send({
+      displayName: "Author Linking Admin",
+      email: `author-linking-admin-${stamp}@example.com`,
+      password: "password123",
+    });
   await prisma.user.update({ where: { id: admin.body.user.id }, data: { role: "ADMIN" } });
-  adminToken = (await request(app).post("/api/login").send({ email: `author-linking-admin-${stamp}@example.com`, password: "password123" })).body.token;
+  adminToken = (
+    await request(app)
+      .post("/api/login")
+      .send({ email: `author-linking-admin-${stamp}@example.com`, password: "password123" })
+  ).body.token;
 });
 
 async function unattributedPrint(label: string, provider: string, creator: string | null) {
@@ -49,7 +61,12 @@ async function unattributedPrint(label: string, provider: string, creator: strin
   });
 }
 
-function authorInfo(provider: string, externalId: string, name: string | null, handle: string | null = null): ImportedAuthorInfo {
+function authorInfo(
+  provider: string,
+  externalId: string,
+  name: string | null,
+  handle: string | null = null,
+): ImportedAuthorInfo {
   return {
     provider,
     externalId: `${externalId}-${stamp}`,
@@ -105,7 +122,12 @@ describe("linking earlier imports to their author", () => {
 
   it("links every model an existing author matches when run for all", async () => {
     const author = await prisma.author.create({
-      data: { id: `makerworld:startup-${stamp}`, provider: "makerworld", externalId: `startup-${stamp}`, name: `Startup Author ${stamp}` },
+      data: {
+        id: `makerworld:startup-${stamp}`,
+        provider: "makerworld",
+        externalId: `startup-${stamp}`,
+        name: `Startup Author ${stamp}`,
+      },
     });
     const print = await unattributedPrint("startup", "makerworld", `Startup Author ${stamp}`);
     expect(await linkUnattributedPrints()).toBeGreaterThanOrEqual(1);
@@ -129,7 +151,16 @@ function mockFetch(routes: Record<string, () => Response>) {
 }
 
 function newRun(): AuthorLinkingRun {
-  return { running: true, startedAt: new Date().toISOString(), finishedAt: null, toLookUp: 0, lookedUp: 0, linked: 0, notFound: 0, problems: [] };
+  return {
+    running: true,
+    startedAt: new Date().toISOString(),
+    finishedAt: null,
+    toLookUp: 0,
+    lookedUp: 0,
+    linked: 0,
+    notFound: 0,
+    problems: [],
+  };
 }
 
 describe("looking up authors no known author matches", () => {
@@ -155,7 +186,10 @@ describe("looking up authors no known author matches", () => {
       where: { id: (await unattributedPrint("lookup-p2", "printables", creator)).id },
       data: { sourceExternalId: `other-${stamp}` },
     });
-    await prisma.print.update({ where: { id: first.id }, data: { sourceExternalId: modelId, createdAt: new Date(Date.now() + 60_000) } });
+    await prisma.print.update({
+      where: { id: first.id },
+      data: { sourceExternalId: modelId, createdAt: new Date(Date.now() + 60_000) },
+    });
     let modelQueries = 0;
     mockFetch({
       "https://api.printables.com/graphql/": () => {
@@ -165,7 +199,12 @@ describe("looking up authors no known author matches", () => {
             print: {
               id: modelId,
               name: "Anything",
-              user: { id: `p-${stamp}`, handle: `pperson${stamp}`, publicUsername: `Printables Person ${stamp}`, avatarFilePath: "media/a.png" },
+              user: {
+                id: `p-${stamp}`,
+                handle: `pperson${stamp}`,
+                publicUsername: `Printables Person ${stamp}`,
+                avatarFilePath: "media/a.png",
+              },
               stls: [],
             },
           },
@@ -181,7 +220,9 @@ describe("looking up authors no known author matches", () => {
     expect(await authorOf(second.id)).toBe(authorId);
     expect(modelQueries).toBe(1);
     expect(run.linked).toBeGreaterThanOrEqual(2);
-    expect((await prisma.author.findUniqueOrThrow({ where: { id: authorId } })).avatarUrl).toBe("https://media.printables.com/media/a.png");
+    expect((await prisma.author.findUniqueOrThrow({ where: { id: authorId } })).avatarUrl).toBe(
+      "https://media.printables.com/media/a.png",
+    );
   });
 
   it("uses the model owner's MakerWorld login to read MakerWorld's API", async () => {
@@ -194,7 +235,14 @@ describe("looking up authors no known author matches", () => {
       const url = String(input);
       if (url === `https://api.bambulab.com/v1/design-service/design/${designId}`) {
         authorization = new Headers(init?.headers).get("authorization");
-        return json({ id: Number(designId), designCreator: { uid: 777000 + (stamp % 1000), name: `MW Person ${stamp}`, avatar: "https://public-cdn.bblmw.com/a.png" } });
+        return json({
+          id: Number(designId),
+          designCreator: {
+            uid: 777000 + (stamp % 1000),
+            name: `MW Person ${stamp}`,
+            avatar: "https://public-cdn.bblmw.com/a.png",
+          },
+        });
       }
       return new Response("not found", { status: 404 }); // the author profile: behind Cloudflare
     }) as unknown as typeof fetch;
@@ -229,7 +277,12 @@ describe("Administration > Triggers > Link missing authors", () => {
   it("says what it can link -- which decides whether it's shown -- then links it in the background", async () => {
     mockFetch({});
     const author = await prisma.author.create({
-      data: { id: `thingiverse:trigger-${stamp}`, provider: "thingiverse", externalId: `trigger-${stamp}`, name: `Trigger Author ${stamp}` },
+      data: {
+        id: `thingiverse:trigger-${stamp}`,
+        provider: "thingiverse",
+        externalId: `trigger-${stamp}`,
+        name: `Trigger Author ${stamp}`,
+      },
     });
     const first = await unattributedPrint("trigger-a", "thingiverse", `Trigger Author ${stamp}`);
     const second = await unattributedPrint("trigger-b", "thingiverse", `trigger author ${stamp}`);

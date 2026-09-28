@@ -33,7 +33,9 @@ export default function LinkAuthorsSection({ onUnauthorized }: Props) {
     }
   }, [onUnauthorized]);
 
-  React.useEffect(() => { void refresh(); }, [refresh]);
+  React.useEffect(() => {
+    void refresh();
+  }, [refresh]);
 
   React.useEffect(() => {
     if (!running) return;
@@ -63,14 +65,22 @@ export default function LinkAuthorsSection({ onUnauthorized }: Props) {
     <Paper variant="outlined" sx={{ p: 2.5 }}>
       <Stack spacing={2}>
         <Box>
-          <Typography variant="subtitle1" fontWeight={600}>{t("adminSettings.triggers.linkAuthorsTitle")}</Typography>
-          <Typography variant="body2" color="text.secondary">{t("adminSettings.triggers.linkAuthorsDesc")}</Typography>
+          <Typography variant="subtitle1" fontWeight={600}>
+            {t("adminSettings.triggers.linkAuthorsTitle")}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {t("adminSettings.triggers.linkAuthorsDesc")}
+          </Typography>
         </Box>
 
         {run?.running ? (
           <Stack spacing={1}>
             <Typography variant="body2">
-              {t("adminSettings.triggers.linkAuthorsProgress", { done: run.lookedUp, total: run.toLookUp, linked: run.linked })}
+              {t("adminSettings.triggers.linkAuthorsProgress", {
+                done: run.lookedUp,
+                total: run.toLookUp,
+                linked: run.linked,
+              })}
             </Typography>
             <LinearProgress
               variant={run.toLookUp ? "determinate" : "indeterminate"}
@@ -87,7 +97,9 @@ export default function LinkAuthorsSection({ onUnauthorized }: Props) {
                 {[
                   linkable > 0 ? t("adminSettings.triggers.linkAuthorsLinkable", { count: linkable }) : null,
                   lookup > 0 ? t("adminSettings.triggers.linkAuthorsLookup", { count: lookup }) : null,
-                ].filter(Boolean).join(" ")}
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
               </Typography>
             </Stack>
           )
@@ -100,9 +112,15 @@ export default function LinkAuthorsSection({ onUnauthorized }: Props) {
           </Alert>
         )}
         {run?.problems.map((problem) => (
-          <Alert key={problem} severity="warning">{t(`adminSettings.triggers.linkAuthorsProblems.${problem}`)}</Alert>
+          <Alert key={problem} severity="warning">
+            {t(`adminSettings.triggers.linkAuthorsProblems.${problem}`)}
+          </Alert>
         ))}
-        {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
+        {error && (
+          <Alert severity="error" onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
       </Stack>
     </Paper>
   );

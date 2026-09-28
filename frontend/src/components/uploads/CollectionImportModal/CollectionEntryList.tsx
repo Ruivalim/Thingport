@@ -21,7 +21,7 @@ export default function CollectionEntryList({ entries, selected, busy, noEntries
   const { t } = useTranslation("app");
   return (
     <Box sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1, maxHeight: 420, overflow: "auto" }}>
-      {entries.map(entry => (
+      {entries.map((entry) => (
         <FormControlLabel
           key={entry.design_id}
           sx={{
@@ -65,7 +65,12 @@ export default function CollectionEntryList({ entries, selected, busy, noEntries
                 {entry.title}
               </Typography>
               {entry.already_imported && (
-                <Chip label={t("collectionImport.alreadyImported")} size="small" variant="outlined" sx={{ flexShrink: 0 }} />
+                <Chip
+                  label={t("collectionImport.alreadyImported")}
+                  size="small"
+                  variant="outlined"
+                  sx={{ flexShrink: 0 }}
+                />
               )}
             </Stack>
           }

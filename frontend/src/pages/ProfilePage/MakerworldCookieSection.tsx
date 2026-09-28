@@ -29,10 +29,15 @@ export default function MakerworldCookieSection({ cookie, onUpdateMakerWorld, on
 
   React.useEffect(() => {
     let active = true;
-    settingsApi.getMakerworld()
-      .then(res => { if (active) setConfigured(res.configured); })
+    settingsApi
+      .getMakerworld()
+      .then((res) => {
+        if (active) setConfigured(res.configured);
+      })
       .catch(() => undefined);
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, []);
 
   const startEdit = () => {
@@ -104,7 +109,7 @@ export default function MakerworldCookieSection({ cookie, onUpdateMakerWorld, on
               multiline
               minRows={3}
               value={draft}
-              onChange={e => setDraft(e.target.value)}
+              onChange={(e) => setDraft(e.target.value)}
               placeholder={t("profile.makerworld.placeholder") ?? undefined}
               disabled={saving}
               // oxlint-disable-next-line jsx-a11y/no-autofocus
@@ -114,7 +119,9 @@ export default function MakerworldCookieSection({ cookie, onUpdateMakerWorld, on
               <Button size="small" variant="contained" onClick={handleSave} disabled={saving || !draft.trim()}>
                 {saving ? t("profile.saving") : t("common:save")}
               </Button>
-              <Button size="small" onClick={cancelEdit} disabled={saving}>{t("common:cancel")}</Button>
+              <Button size="small" onClick={cancelEdit} disabled={saving}>
+                {t("common:cancel")}
+              </Button>
             </Stack>
           </Stack>
         ) : (
@@ -136,7 +143,11 @@ export default function MakerworldCookieSection({ cookie, onUpdateMakerWorld, on
           </Stack>
         )}
 
-        {error && <Alert severity="error" sx={{ mt: 1.5 }} onClose={() => setError(null)}>{error}</Alert>}
+        {error && (
+          <Alert severity="error" sx={{ mt: 1.5 }} onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
       </Paper>
     </Box>
   );

@@ -20,7 +20,14 @@ type Props = {
   matchAnchorWidth?: boolean;
 };
 
-export default function SlicerFileMenu({ anchorEl, onClose, slicerLabel, targets, onOpen, matchAnchorWidth = false }: Props) {
+export default function SlicerFileMenu({
+  anchorEl,
+  onClose,
+  slicerLabel,
+  targets,
+  onOpen,
+  matchAnchorWidth = false,
+}: Props) {
   const { t } = useTranslation(["models"]);
   const paperSx = matchAnchorWidth && anchorEl ? { width: anchorEl.offsetWidth } : { maxWidth: 360 };
   return (
@@ -34,8 +41,10 @@ export default function SlicerFileMenu({ anchorEl, onClose, slicerLabel, targets
       })}
       slotProps={{ paper: { sx: paperSx } }}
     >
-      <ListSubheader sx={{ lineHeight: "32px" }}>{t("models:detail.openInSlicer", { slicer: slicerLabel })}</ListSubheader>
-      {targets.map(target => {
+      <ListSubheader sx={{ lineHeight: "32px" }}>
+        {t("models:detail.openInSlicer", { slicer: slicerLabel })}
+      </ListSubheader>
+      {targets.map((target) => {
         const text = target.plate
           ? fileRowText(t, target.filename, target.index)
           : { primary: t("models:detail.preparedPrintFile"), secondary: target.filename };

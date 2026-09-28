@@ -90,7 +90,9 @@ export default function GlobalSearch({ onUnauthorized }: Props) {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedQuery]);
 
@@ -160,7 +162,9 @@ export default function GlobalSearch({ onUnauthorized }: Props) {
           </Stack>
         )}
         {!loading && error && (
-          <Typography variant="body2" color="error" sx={{ p: 2 }}>{error}</Typography>
+          <Typography variant="body2" color="error" sx={{ p: 2 }}>
+            {error}
+          </Typography>
         )}
         {!loading && !error && result && !hasResults && (
           <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>
@@ -171,7 +175,11 @@ export default function GlobalSearch({ onUnauthorized }: Props) {
           <Stack divider={<Divider />}>
             {result.models.length > 0 && (
               <Box sx={{ py: 0.5 }}>
-                <Typography variant="caption" fontWeight={700} sx={{ display: "block", px: 2, pt: 1, pb: 0.5, color: "text.secondary" }}>
+                <Typography
+                  variant="caption"
+                  fontWeight={700}
+                  sx={{ display: "block", px: 2, pt: 1, pb: 0.5, color: "text.secondary" }}
+                >
                   {t("app:search.sectionModels")}
                 </Typography>
                 <List disablePadding>
@@ -199,7 +207,11 @@ export default function GlobalSearch({ onUnauthorized }: Props) {
             )}
             {result.collections.length > 0 && (
               <Box sx={{ py: 0.5 }}>
-                <Typography variant="caption" fontWeight={700} sx={{ display: "block", px: 2, pt: 1, pb: 0.5, color: "text.secondary" }}>
+                <Typography
+                  variant="caption"
+                  fontWeight={700}
+                  sx={{ display: "block", px: 2, pt: 1, pb: 0.5, color: "text.secondary" }}
+                >
                   {t("app:search.sectionCollections")}
                 </Typography>
                 <List disablePadding>
@@ -222,7 +234,11 @@ export default function GlobalSearch({ onUnauthorized }: Props) {
             )}
             {result.tags.length > 0 && (
               <Box sx={{ py: 0.5 }}>
-                <Typography variant="caption" fontWeight={700} sx={{ display: "block", px: 2, pt: 1, pb: 0.5, color: "text.secondary" }}>
+                <Typography
+                  variant="caption"
+                  fontWeight={700}
+                  sx={{ display: "block", px: 2, pt: 1, pb: 0.5, color: "text.secondary" }}
+                >
                   {t("app:search.sectionTags")}
                 </Typography>
                 <List disablePadding>

@@ -42,7 +42,9 @@ router.delete(
     // Two-phase renumber, as in plates.ts, to avoid (printId, position) collisions.
     await prisma.previewImage.delete({ where: { id: target.id } });
     await prisma.$transaction(
-      remaining.map((img, idx) => prisma.previewImage.update({ where: { id: img.id }, data: { position: -(idx + 1) } })),
+      remaining.map((img, idx) =>
+        prisma.previewImage.update({ where: { id: img.id }, data: { position: -(idx + 1) } }),
+      ),
     );
     await prisma.$transaction(
       remaining.map((img, idx) => prisma.previewImage.update({ where: { id: img.id }, data: { position: idx } })),

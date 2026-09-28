@@ -36,14 +36,20 @@ export default function CaptchaField({ onChange, disabled = false }: Props) {
     setFailed(false);
     onChangeRef.current(null);
     captchaApi.get().then(
-      (next) => { if (requestRef.current === request) setCaptcha(next); },
-      () => { if (requestRef.current === request) setFailed(true); },
+      (next) => {
+        if (requestRef.current === request) setCaptcha(next);
+      },
+      () => {
+        if (requestRef.current === request) setFailed(true);
+      },
     );
   }, []);
 
   React.useEffect(() => {
     load();
-    return () => { requestRef.current += 1; };
+    return () => {
+      requestRef.current += 1;
+    };
   }, [load]);
 
   const handleAnswer = (value: string) => {
@@ -69,9 +75,16 @@ export default function CaptchaField({ onChange, disabled = false }: Props) {
           }}
         >
           {captcha ? (
-            <Box component="img" src={captcha.image} alt={t("captcha.imageAlt")} sx={{ width: 160, height: 56, display: "block" }} />
+            <Box
+              component="img"
+              src={captcha.image}
+              alt={t("captcha.imageAlt")}
+              sx={{ width: 160, height: 56, display: "block" }}
+            />
           ) : failed ? (
-            <Typography variant="caption" color="error" sx={{ px: 1, textAlign: "center" }}>{t("captcha.loadFailed")}</Typography>
+            <Typography variant="caption" color="error" sx={{ px: 1, textAlign: "center" }}>
+              {t("captcha.loadFailed")}
+            </Typography>
           ) : (
             <Skeleton variant="rectangular" width={160} height={56} />
           )}

@@ -52,7 +52,11 @@ export default function UsersPage({ onUnauthorized }: Props) {
     <Stack spacing={3}>
       <RegistrationsPanel onUnauthorized={onUnauthorized} />
 
-      {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
+      {error && (
+        <Alert severity="error" onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
 
       {loading ? (
         <Stack alignItems="center" sx={{ py: 2 }}>
@@ -81,7 +85,9 @@ export default function UsersPage({ onUnauthorized }: Props) {
                     <TableCell>{u.display_name}</TableCell>
                     <TableCell>
                       <Chip
-                        label={u.role === "ADMIN" ? t("adminSettings.users.roleAdmin") : t("adminSettings.users.roleMember")}
+                        label={
+                          u.role === "ADMIN" ? t("adminSettings.users.roleAdmin") : t("adminSettings.users.roleMember")
+                        }
                         size="small"
                         color={u.role === "ADMIN" ? "primary" : "default"}
                         variant={u.role === "ADMIN" ? "filled" : "outlined"}
@@ -91,7 +97,11 @@ export default function UsersPage({ onUnauthorized }: Props) {
                     <TableCell align="right">{u.collection_count}</TableCell>
                     <TableCell>
                       <Chip
-                        label={u.makerworld_connected ? t("adminSettings.users.makerworldConnected") : t("adminSettings.users.makerworldNotConnected")}
+                        label={
+                          u.makerworld_connected
+                            ? t("adminSettings.users.makerworldConnected")
+                            : t("adminSettings.users.makerworldNotConnected")
+                        }
                         size="small"
                         color={u.makerworld_connected ? "success" : "default"}
                         variant={u.makerworld_connected ? "filled" : "outlined"}

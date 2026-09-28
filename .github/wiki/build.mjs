@@ -20,8 +20,7 @@ const pageName = (title) => title.replace(/[\s/]+/g, "-");
 const readme = read("README.md");
 const installStart = readme.indexOf("\n## Installation\n");
 const installEnd = readme.indexOf("\n## ", installStart + 1);
-if (installStart < 0 || installEnd < 0)
-  throw new Error("README.md has no '## Installation' section");
+if (installStart < 0 || installEnd < 0) throw new Error("README.md has no '## Installation' section");
 
 const pages = [
   {
@@ -59,13 +58,9 @@ function rewrite(attr, value, dir) {
   if (pageNames.has(target)) return value;
   const repoPath = path.posix.normalize(path.posix.join(dir, target));
   const anchor = hash ? `#${hash}` : "";
-  if (attr === "src")
-    return `https://raw.githubusercontent.com/${REPO}/${BRANCH}/${repoPath}`;
+  if (attr === "src") return `https://raw.githubusercontent.com/${REPO}/${BRANCH}/${repoPath}`;
   if (repoPath in pageBySource) return pageBySource[repoPath] + anchor;
-  const isFile =
-    fs
-      .statSync(path.join(ROOT, repoPath), { throwIfNoEntry: false })
-      ?.isFile() ?? true;
+  const isFile = fs.statSync(path.join(ROOT, repoPath), { throwIfNoEntry: false })?.isFile() ?? true;
   return `${REPO_URL}/${isFile ? "blob" : "tree"}/${BRANCH}/${repoPath}${anchor}`;
 }
 
@@ -80,13 +75,9 @@ function rewriteLinks(markdown, source) {
         : chunk
             .replace(
               /(!?)\[([^\]]*)\]\(([^)\s]+)\)/g,
-              (_, bang, text, url) =>
-                `${bang}[${text}](${rewrite(bang ? "src" : "href", url, dir)})`,
+              (_, bang, text, url) => `${bang}[${text}](${rewrite(bang ? "src" : "href", url, dir)})`,
             )
-            .replace(
-              /\b(href|src)="([^"]*)"/g,
-              (_, attr, url) => `${attr}="${rewrite(attr, url, dir)}"`,
-            ),
+            .replace(/\b(href|src)="([^"]*)"/g, (_, attr, url) => `${attr}="${rewrite(attr, url, dir)}"`),
     )
     .join("");
 }
@@ -96,10 +87,7 @@ fs.mkdirSync(outDir, { recursive: true });
 
 for (const page of pages) {
   const note = `<!-- Generated from ${page.source} by .github/wiki/build.mjs. Edit that file, not the wiki. -->\n\n`;
-  fs.writeFileSync(
-    path.join(outDir, `${page.name}.md`),
-    note + rewriteLinks(page.body, page.source),
-  );
+  fs.writeFileSync(path.join(outDir, `${page.name}.md`), note + rewriteLinks(page.body, page.source));
 }
 
 const groups = [...new Set(pages.filter((p) => p.group).map((p) => p.group))];

@@ -85,15 +85,15 @@ function AppShell({
   const [bookmarksVersion, setBookmarksVersion] = React.useState(0);
 
   const handleCategoriesChanged = React.useCallback(() => {
-    setCategoryVersion(v => v + 1);
+    setCategoryVersion((v) => v + 1);
   }, []);
 
   const handleBookmarksChanged = React.useCallback(() => {
-    setBookmarksVersion(v => v + 1);
+    setBookmarksVersion((v) => v + 1);
   }, []);
 
   const handlePrintsChanged = React.useCallback(() => {
-    setNonce(n => n + 1);
+    setNonce((n) => n + 1);
   }, []);
 
   return (
@@ -172,11 +172,26 @@ function AppShell({
         />
         <Route
           path="/models/:printId"
-          element={<ModelDetailPage theme={resolvedTheme} onSelectCategory={setCategoryId} onUnauthorized={onUnauthorized} viewer={user} />}
+          element={
+            <ModelDetailPage
+              theme={resolvedTheme}
+              onSelectCategory={setCategoryId}
+              onUnauthorized={onUnauthorized}
+              viewer={user}
+            />
+          }
         />
         <Route
           path="/authors/:authorId"
-          element={<AuthorPage theme={resolvedTheme} previewMode={previewMode} onUnauthorized={onUnauthorized} viewer={user} onUserUpdated={onUserUpdated} />}
+          element={
+            <AuthorPage
+              theme={resolvedTheme}
+              previewMode={previewMode}
+              onUnauthorized={onUnauthorized}
+              viewer={user}
+              onUserUpdated={onUserUpdated}
+            />
+          }
         />
         <Route
           path="/profile"
@@ -184,7 +199,9 @@ function AppShell({
             <ProfilePage
               user={user}
               makerworldCookie={settings.makerworld.cookie}
-              onUpdateMakerWorld={patch => setSettings(prev => ({ ...prev, makerworld: { ...prev.makerworld, ...patch } }))}
+              onUpdateMakerWorld={(patch) =>
+                setSettings((prev) => ({ ...prev, makerworld: { ...prev.makerworld, ...patch } }))
+              }
               onUnauthorized={onUnauthorized}
             />
           }
@@ -193,10 +210,7 @@ function AppShell({
           path="/profile/email"
           element={<ChangeEmailPage user={user} onUserUpdated={onUserUpdated} onUnauthorized={onUnauthorized} />}
         />
-        <Route
-          path="/profile/password"
-          element={<ChangePasswordPage onUnauthorized={onUnauthorized} />}
-        />
+        <Route path="/profile/password" element={<ChangePasswordPage onUnauthorized={onUnauthorized} />} />
         <Route path="/downloads" element={<DownloadPage />} />
         <Route
           path="/admin"
@@ -204,18 +218,16 @@ function AppShell({
         />
         <Route
           path="/admin-settings"
-          element={
-            isAdmin
-              ? <AdminSettingsPage onUnauthorized={onUnauthorized} />
-              : <Navigate to="/" replace />
-          }
+          element={isAdmin ? <AdminSettingsPage onUnauthorized={onUnauthorized} /> : <Navigate to="/" replace />}
         />
         <Route
           path="/admin-rendering"
           element={
-            isAdmin
-              ? <RenderingPage onUnauthorized={onUnauthorized} onPreviewModeChanged={setPreviewMode} />
-              : <Navigate to="/" replace />
+            isAdmin ? (
+              <RenderingPage onUnauthorized={onUnauthorized} onPreviewModeChanged={setPreviewMode} />
+            ) : (
+              <Navigate to="/" replace />
+            )
           }
         />
         <Route
@@ -260,14 +272,15 @@ export default function App() {
   const resolvedTheme = useResolvedTheme(themeSelection);
   const muiTheme = React.useMemo(() => buildTheme(resolvedTheme), [resolvedTheme]);
   const isAdmin = user?.role === "ADMIN";
-  React.useEffect(() => { (async ()=> setHealth(await healthApi.get()))(); }, []);
+  React.useEffect(() => {
+    (async () => setHealth(await healthApi.get()))();
+  }, []);
   React.useEffect(() => {
     if (!token) return;
     (async () => {
       try {
         setPreviewMode((await settingsApi.getPreviews()).mode);
-      } catch {
-      }
+      } catch {}
     })();
   }, [token]);
   React.useEffect(() => {
@@ -277,14 +290,12 @@ export default function App() {
         const { theme } = await settingsApi.getTheme();
         // Null means never set; keep the current theme.
         if (theme) setThemeSelection(theme);
-      } catch {
-      }
+      } catch {}
     })();
   }, [token]);
   const handleThemeChange = React.useCallback((selected: ThemeSelection) => {
     setThemeSelection(selected);
-    void settingsApi.updateTheme(selected).catch(() => {
-    });
+    void settingsApi.updateTheme(selected).catch(() => {});
   }, []);
   React.useEffect(() => {
     saveSettings(settings);
@@ -329,10 +340,7 @@ export default function App() {
   React.useEffect(() => {
     if (!token) return;
     const ttl = tokenTtl ?? DEFAULT_REFRESH_SECONDS;
-    const refreshMs = Math.max(
-      5 * 60 * 1000,
-      Math.min(ttl * 0.8 * 1000, ttl * 1000 - 5 * 60 * 1000)
-    );
+    const refreshMs = Math.max(5 * 60 * 1000, Math.min(ttl * 0.8 * 1000, ttl * 1000 - 5 * 60 * 1000));
     const timer = window.setTimeout(async () => {
       try {
         const res = await authApi.refresh();
@@ -363,9 +371,10 @@ export default function App() {
   if (authRequired && !token) {
     // Outside the router, so these pre-login links are matched against window.location.
     const isVerifyEmailPath = typeof window !== "undefined" && window.location.pathname === "/verify-email";
-    const inviteParams = typeof window !== "undefined" && window.location.pathname === "/register"
-      ? new URLSearchParams(window.location.search)
-      : null;
+    const inviteParams =
+      typeof window !== "undefined" && window.location.pathname === "/register"
+        ? new URLSearchParams(window.location.search)
+        : null;
     const invite = inviteParams?.get("invite")
       ? { token: inviteParams.get("invite")!, email: inviteParams.get("email") ?? "" }
       : null;

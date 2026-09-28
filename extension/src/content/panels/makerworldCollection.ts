@@ -83,7 +83,9 @@ export async function loadMakerworldGuidedCollection(): Promise<void> {
 
   const ids = extractModelIds();
   if (!ids.length) {
-    renderPanel(errorHtml(new Error("Couldn't find any models on this page -- MakerWorld may have changed its page layout.")));
+    renderPanel(
+      errorHtml(new Error("Couldn't find any models on this page -- MakerWorld may have changed its page layout.")),
+    );
     return;
   }
 
@@ -118,21 +120,35 @@ export async function loadMakerworldGuidedCollection(): Promise<void> {
   onPanelAction("start", () => void startGuidedImport(toImport, alreadyImported, collectionTitle));
 }
 
-async function startGuidedImport(toImport: ModelStatus[], alreadyImported: ModelStatus[], collectionTitle: string | null): Promise<void> {
+async function startGuidedImport(
+  toImport: ModelStatus[],
+  alreadyImported: ModelStatus[],
+  collectionTitle: string | null,
+): Promise<void> {
   const { url: originalUrl, instanceUrl } = ctx();
   renderPanel(statusHtml("Preparing your collection…"));
   const collectionId = await findOrCreateCollection(collectionTitle);
 
   // Already-imported models need no page visit, so they're filed here directly.
   if (alreadyImported.length && collectionId) {
-    renderPanel(statusHtml(`Adding ${alreadyImported.length} existing model${alreadyImported.length === 1 ? "" : "s"} to your collection…`));
+    renderPanel(
+      statusHtml(
+        `Adding ${alreadyImported.length} existing model${alreadyImported.length === 1 ? "" : "s"} to your collection…`,
+      ),
+    );
     for (const entry of alreadyImported) {
-      if (entry.print_id) await api("POST", `/collection/${collectionId}/items/${entry.print_id}`).catch(() => undefined);
+      if (entry.print_id)
+        await api("POST", `/collection/${collectionId}/items/${entry.print_id}`).catch(() => undefined);
     }
   }
 
   if (!toImport.length) {
-    renderPanel(successHtml(`${instanceUrl}/models`, "Nothing new to import -- already-imported models were added to your collection."));
+    renderPanel(
+      successHtml(
+        `${instanceUrl}/models`,
+        "Nothing new to import -- already-imported models were added to your collection.",
+      ),
+    );
     return;
   }
 

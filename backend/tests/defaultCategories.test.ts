@@ -4,10 +4,7 @@ import { DEFAULT_CATEGORIES, type DefaultCategoryNode } from "../src/seedData/de
 // Validates the static starter tree against the constraints enforced on real categories.
 
 function flatten(nodes: DefaultCategoryNode[], depth = 0): Array<{ node: DefaultCategoryNode; depth: number }> {
-  return nodes.flatMap((node) => [
-    { node, depth },
-    ...flatten(node.children ?? [], depth + 1),
-  ]);
+  return nodes.flatMap((node) => [{ node, depth }, ...flatten(node.children ?? [], depth + 1)]);
 }
 
 function duplicateSiblingNames(nodes: DefaultCategoryNode[]): string[] {

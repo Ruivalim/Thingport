@@ -44,18 +44,21 @@ export default function RegisterPanel({ onSuccess, invite = null }: Props) {
   React.useEffect(() => {
     if (!inviteToken) return;
     let active = true;
-    authApi.getInvitation(inviteToken)
-      .then(res => {
+    authApi
+      .getInvitation(inviteToken)
+      .then((res) => {
         if (!active) return;
         setEmail(res.email);
         setInviteState("valid");
       })
-      .catch(err => {
+      .catch((err) => {
         if (!active) return;
         setInviteError(err instanceof Error ? err.message : t("auth.register.inviteInvalid"));
         setInviteState("invalid");
       });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [inviteToken, t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -118,7 +121,7 @@ export default function RegisterPanel({ onSuccess, invite = null }: Props) {
         <TextField
           label={t("auth.register.displayNameLabel")}
           value={displayName}
-          onChange={e => setDisplayName(e.target.value)}
+          onChange={(e) => setDisplayName(e.target.value)}
           autoComplete="name"
           required
           fullWidth
@@ -128,7 +131,7 @@ export default function RegisterPanel({ onSuccess, invite = null }: Props) {
           type="email"
           label={t("auth.register.emailLabel")}
           value={email}
-          onChange={e => setEmail(e.target.value)}
+          onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
           required
           fullWidth
@@ -141,7 +144,7 @@ export default function RegisterPanel({ onSuccess, invite = null }: Props) {
             type="password"
             label={t("auth.register.passwordLabel")}
             value={password}
-            onChange={e => setPassword(e.target.value)}
+            onChange={(e) => setPassword(e.target.value)}
             autoComplete="new-password"
             required
             fullWidth
@@ -155,7 +158,7 @@ export default function RegisterPanel({ onSuccess, invite = null }: Props) {
           type="password"
           label={t("auth.register.confirmPasswordLabel")}
           value={confirmPassword}
-          onChange={e => setConfirmPassword(e.target.value)}
+          onChange={(e) => setConfirmPassword(e.target.value)}
           autoComplete="new-password"
           required
           fullWidth

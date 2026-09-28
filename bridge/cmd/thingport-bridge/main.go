@@ -371,16 +371,16 @@ func linuxCandidates() map[string][]string {
 		"orcaslicer":  {"orca-slicer", "OrcaSlicer"},
 		"prusaslicer": {"prusa-slicer", "PrusaSlicer"},
 		// PATH only: AppImage and Flatpak builds need a config.json entry (see bridge/README.md).
-		"cura": {"cura", "UltiMaker-Cura"},
+		"cura":               {"cura", "UltiMaker-Cura"},
 		"anycubicslicernext": {"AnycubicSlicerNext", "anycubicslicernext", "anycubic-slicer-next"},
 	}
 }
 
 func macCandidates() map[string][]string {
 	return map[string][]string{
-		"bambustudio": {"/Applications/BambuStudio.app"},
-		"orcaslicer":  {"/Applications/OrcaSlicer.app"},
-		"prusaslicer": {"/Applications/PrusaSlicer.app", "/Applications/Original Prusa Drivers/PrusaSlicer.app"},
+		"bambustudio":        {"/Applications/BambuStudio.app"},
+		"orcaslicer":         {"/Applications/OrcaSlicer.app"},
+		"prusaslicer":        {"/Applications/PrusaSlicer.app", "/Applications/Original Prusa Drivers/PrusaSlicer.app"},
 		"cura":               {"/Applications/UltiMaker Cura.app", "/Applications/Ultimaker Cura.app"},
 		"anycubicslicernext": {"/Applications/AnycubicSlicerNext.app", "/Applications/Anycubic Slicer Next.app"},
 	}

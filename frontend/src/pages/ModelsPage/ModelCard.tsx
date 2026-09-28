@@ -68,20 +68,27 @@ export default function ModelCard({
   const navigate = useNavigate();
   const muiTheme = useTheme();
   const overlayIconColor = muiTheme.thingport.headingText;
-  const { isFavorite, toggle: toggleFavorite, label: favoriteLabel } = useFavoriteToggle(item, {
+  const {
+    isFavorite,
+    toggle: toggleFavorite,
+    label: favoriteLabel,
+  } = useFavoriteToggle(item, {
     onUpdated: onFavoriteChange,
     onUnauthorized,
   });
   const author = item.author;
   const viewerAvatarUrl = useGravatarUrl(viewer?.email, 40);
   // Not clickable: there's no Author id behind this fallback.
-  const showViewerAsAuthor = !author?.name && !author?.handle && !item.creator && !item.source_provider && Boolean(viewer);
-  const authorName = author?.name || author?.handle || item.creator || (showViewerAsAuthor ? viewer!.display_name : null);
+  const showViewerAsAuthor =
+    !author?.name && !author?.handle && !item.creator && !item.source_provider && Boolean(viewer);
+  const authorName =
+    author?.name || author?.handle || item.creator || (showViewerAsAuthor ? viewer!.display_name : null);
   const authorAvatarUrl = author?.avatar_url || (showViewerAsAuthor ? viewerAvatarUrl : undefined);
   const providerInfo = printProviderInfo(item.source_provider);
   // Only mounted while hovered, so idle cards don't load images or tick.
   const [hovered, setHovered] = useState(false);
-  const slideshowImages = item.preview_images.length > 1 ? item.preview_images.map(img => printsApi.fileUrl(img.url)) : [];
+  const slideshowImages =
+    item.preview_images.length > 1 ? item.preview_images.map((img) => printsApi.fileUrl(img.url)) : [];
 
   return (
     <Paper
@@ -145,7 +152,7 @@ export default function ModelCard({
         className="model-card-actions"
         direction="row"
         spacing={0.5}
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
         sx={{
           position: "absolute",
           top: 8,
@@ -203,13 +210,16 @@ export default function ModelCard({
                 color: "#858585",
                 ...(author || showViewerAsAuthor ? { cursor: "pointer", "&:hover": { color: "#00b800" } } : undefined),
               }}
-              onClick={e => {
+              onClick={(e) => {
                 if (!author && !showViewerAsAuthor) return;
                 e.stopPropagation();
                 navigate(`/authors/${author ? author.id : SELF_AUTHOR_ID}`);
               }}
             >
-              <Avatar src={authorAvatarUrl || undefined} sx={{ width: 20, height: 20, fontSize: 11, color: "inherit !important" }}>
+              <Avatar
+                src={authorAvatarUrl || undefined}
+                sx={{ width: 20, height: 20, fontSize: 11, color: "inherit !important" }}
+              >
                 {(authorName || "?").slice(0, 1).toUpperCase()}
               </Avatar>
               <Typography variant="caption" noWrap sx={{ color: "inherit" }}>
@@ -224,7 +234,9 @@ export default function ModelCard({
             </Stack>
             <Stack direction="row" alignItems="center" spacing={0.4}>
               <PrintIcon sx={{ fontSize: 14 }} />
-              <Typography variant="caption"><RollingNumber value={item.print_count} /></Typography>
+              <Typography variant="caption">
+                <RollingNumber value={item.print_count} />
+              </Typography>
             </Stack>
           </Stack>
         </Stack>

@@ -34,7 +34,10 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
 }
 
 /** `urls` are the not-yet-imported designs. tabs.onUpdated drives every step after the first. */
-export async function startJob(tabId: number, { urls, collectionId, originalUrl }: { urls: string[]; collectionId: string | null; originalUrl: string }): Promise<null> {
+export async function startJob(
+  tabId: number,
+  { urls, collectionId, originalUrl }: { urls: string[]; collectionId: string | null; originalUrl: string },
+): Promise<null> {
   if (!urls.length) return null;
   await setJob({
     tabId,
@@ -60,7 +63,9 @@ export async function abortJob(tabId: number): Promise<null> {
 }
 
 /** A just-stopped job's error is read-and-clear, so it's shown exactly once. */
-export async function getJobForTab(tabId: number | undefined): Promise<{ job: MakerworldJob | null; error: MakerworldJobError | null }> {
+export async function getJobForTab(
+  tabId: number | undefined,
+): Promise<{ job: MakerworldJob | null; error: MakerworldJobError | null }> {
   const job = tabId != null ? await getJob() : null;
   if (job && job.tabId === tabId) return { job, error: null };
   const stored = await chrome.storage.local.get(JOB_ERROR_STORAGE_KEY);
@@ -108,8 +113,7 @@ export async function advanceJob(tabId: number): Promise<void> {
   try {
     const reply = await withTimeout(sendToTab(tabId, "RESOLVE_MAKERWORLD_DOWNLOAD_URL"), DOWNLOAD_RESOLVE_TIMEOUT_MS);
     if (reply && reply.ok) resolved = reply.data;
-  } catch {
-  }
+  } catch {}
 
   try {
     await importSingle({ url: currentUrl, collectionId: job.collectionId, resolved });
@@ -117,7 +121,11 @@ export async function advanceJob(tabId: number): Promise<void> {
     // A manual "Import next" may have moved past this step while the request was in flight.
     if (!(await isStillAtStep(tabId, stepIndex))) return;
     await setJob(null);
-    const error: MakerworldJobError = { message: err instanceof Error ? err.message : String(err), imported: job.imported, total: job.total };
+    const error: MakerworldJobError = {
+      message: err instanceof Error ? err.message : String(err),
+      imported: job.imported,
+      total: job.total,
+    };
     await chrome.storage.local.set({ [JOB_ERROR_STORAGE_KEY]: error });
     await chrome.tabs.update(tabId, { url: job.originalUrl });
     return;

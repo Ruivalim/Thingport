@@ -55,9 +55,21 @@ export function UserMenu({ user, theme, onThemeChange, onOpenProfile, onLogout }
 
   React.useEffect(() => {
     let active = true;
-    settingsApi.getMakerworld().then(res => { if (active) setMakerworldConfigured(res.configured); }).catch(() => undefined);
-    settingsApi.getThingiverse().then(res => { if (active) setThingiverseConfigured(res.configured); }).catch(() => undefined);
-    return () => { active = false; };
+    settingsApi
+      .getMakerworld()
+      .then((res) => {
+        if (active) setMakerworldConfigured(res.configured);
+      })
+      .catch(() => undefined);
+    settingsApi
+      .getThingiverse()
+      .then((res) => {
+        if (active) setThingiverseConfigured(res.configured);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
   }, []);
 
   const closeMenu = () => setAnchorEl(null);
@@ -88,7 +100,7 @@ export function UserMenu({ user, theme, onThemeChange, onOpenProfile, onLogout }
 
   return (
     <>
-      <IconButton onClick={e => setAnchorEl(e.currentTarget)} size="small">
+      <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} size="small">
         <Avatar
           alt={user?.display_name}
           src={avatarUrl}
@@ -106,41 +118,73 @@ export function UserMenu({ user, theme, onThemeChange, onOpenProfile, onLogout }
       >
         <Box sx={{ pl: 2, pr: 1, py: 1.25, minWidth: 220, display: "flex", alignItems: "center", gap: 1 }}>
           <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-            <Typography variant="body2" fontWeight={600} noWrap>{user?.display_name}</Typography>
-            <Typography variant="caption" color="text.secondary" noWrap>{user?.email}</Typography>
+            <Typography variant="body2" fontWeight={600} noWrap>
+              {user?.display_name}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" noWrap>
+              {user?.email}
+            </Typography>
           </Box>
           <Tooltip title={t("common:logOut")}>
-            <IconButton size="small" onClick={() => { closeMenu(); onLogout(); }}>
+            <IconButton
+              size="small"
+              onClick={() => {
+                closeMenu();
+                onLogout();
+              }}
+            >
               <LogoutIcon fontSize="small" />
             </IconButton>
           </Tooltip>
         </Box>
         <Divider />
-        <MenuItem onClick={() => { closeMenu(); navigate(`/authors/${SELF_AUTHOR_ID}`); }}>
-          <ListItemIcon><ViewInArIcon fontSize="small" /></ListItemIcon>
+        <MenuItem
+          onClick={() => {
+            closeMenu();
+            navigate(`/authors/${SELF_AUTHOR_ID}`);
+          }}
+        >
+          <ListItemIcon>
+            <ViewInArIcon fontSize="small" />
+          </ListItemIcon>
           <ListItemText>{t("userMenu.myModels")}</ListItemText>
         </MenuItem>
-        <MenuItem onClick={() => { closeMenu(); onOpenProfile(); }}>
-          <ListItemIcon><PersonIcon fontSize="small" /></ListItemIcon>
+        <MenuItem
+          onClick={() => {
+            closeMenu();
+            onOpenProfile();
+          }}
+        >
+          <ListItemIcon>
+            <PersonIcon fontSize="small" />
+          </ListItemIcon>
           <ListItemText>{t("profile.title")}</ListItemText>
         </MenuItem>
-        <MenuItem onClick={e => setThemeAnchorEl(e.currentTarget)}>
-          <ListItemIcon><PaletteIcon fontSize="small" /></ListItemIcon>
+        <MenuItem onClick={(e) => setThemeAnchorEl(e.currentTarget)}>
+          <ListItemIcon>
+            <PaletteIcon fontSize="small" />
+          </ListItemIcon>
           <ListItemText>{t("userMenu.theme")}</ListItemText>
         </MenuItem>
         <Divider />
         <Box sx={{ px: 2, py: 1.25, display: "flex", gap: 0.75 }}>
-          {services.map(svc => (
+          {services.map((svc) => (
             <Box
               key={svc.key}
               title={
                 svc.connected
                   ? t("userMenu.serviceConnected", { service: svc.label })
-                  : svc.disabledReason ?? t("userMenu.serviceNotConnected", { service: svc.label })
+                  : (svc.disabledReason ?? t("userMenu.serviceNotConnected", { service: svc.label }))
               }
               sx={{
-                px: 1, py: 0.375, borderRadius: 1, fontSize: 11, fontWeight: 600, lineHeight: 1.4,
-                whiteSpace: "nowrap", color: "#fff",
+                px: 1,
+                py: 0.375,
+                borderRadius: 1,
+                fontSize: 11,
+                fontWeight: 600,
+                lineHeight: 1.4,
+                whiteSpace: "nowrap",
+                color: "#fff",
                 // Grey rather than dimmed so the two states are unmistakable.
                 bgcolor: svc.connected ? svc.color : "grey.500",
                 opacity: svc.connected ? 1 : 0.5,
@@ -158,7 +202,7 @@ export function UserMenu({ user, theme, onThemeChange, onOpenProfile, onLogout }
         anchorOrigin={{ vertical: "top", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "left" }}
       >
-        {THEME_MODES.map(mode => (
+        {THEME_MODES.map((mode) => (
           <MenuItem key={mode} selected={theme === mode} onClick={() => handleThemeSelect(mode)}>
             <ListItemIcon>{theme === mode && <CheckIcon fontSize="small" />}</ListItemIcon>
             <ListItemText>{t(`userMenu.${mode}`)}</ListItemText>

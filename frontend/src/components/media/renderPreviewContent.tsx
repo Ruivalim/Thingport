@@ -15,7 +15,9 @@ export type PreviewVariant = "card" | "modal";
 function PreviewPlaceholder({ text }: { text: string }) {
   return (
     <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%" }}>
-      <Typography variant="body2" color="text.disabled">{text}</Typography>
+      <Typography variant="body2" color="text.disabled">
+        {text}
+      </Typography>
     </Box>
   );
 }
@@ -27,12 +29,13 @@ export function renderPreviewContent(
   theme: ResolvedTheme,
   t: TFunction,
   previewMode: PreviewMode = "automatic",
-  activePlate?: Plate
+  activePlate?: Plate,
 ) {
-  const plate = variant === "modal" ? (activePlate || print.plates[0]) : print.plates[0];
-  const imgSx = variant === "card"
-    ? { width: "100%", height: "100%", objectFit: "cover" as const }
-    : { width: "100%", height: "100%", objectFit: "contain" as const, bgcolor: "action.hover" };
+  const plate = variant === "modal" ? activePlate || print.plates[0] : print.plates[0];
+  const imgSx =
+    variant === "card"
+      ? { width: "100%", height: "100%", objectFit: "cover" as const }
+      : { width: "100%", height: "100%", objectFit: "contain" as const, bgcolor: "action.hover" };
 
   if (!plate) {
     return <PreviewPlaceholder text={t("library:modelViewer.noPreview")} />;
@@ -40,9 +43,14 @@ export function renderPreviewContent(
 
   const ext = extOf(plate.filename);
   const plateUrl = printsApi.fileUrl(plate.url);
-  const thumbUrl = variant === "card"
-    ? (print.thumb_url ? printsApi.fileUrl(print.thumb_url) : null)
-    : (plate.thumb_url ? printsApi.fileUrl(plate.thumb_url) : null);
+  const thumbUrl =
+    variant === "card"
+      ? print.thumb_url
+        ? printsApi.fileUrl(print.thumb_url)
+        : null
+      : plate.thumb_url
+        ? printsApi.fileUrl(plate.thumb_url)
+        : null;
   const is3d = MODEL_EXTS.has(ext);
   const isLightBurn = LIGHTBURN_EXTS.has(ext);
 
@@ -60,14 +68,7 @@ export function renderPreviewContent(
       return <ModelSnapshot url={plateUrl} ext={ext} plateId={plate.id} theme={theme} mode={previewMode} />;
     }
     if (isLightBurn) {
-      return (
-        <LightBurnPreview
-          url={plateUrl}
-          assetId={plate.id}
-          filename={plate.filename}
-          imgSx={imgSx}
-        />
-      );
+      return <LightBurnPreview url={plateUrl} assetId={plate.id} filename={plate.filename} imgSx={imgSx} />;
     }
     return <PreviewPlaceholder text={t("library:modelViewer.noPreview")} />;
   }
@@ -89,14 +90,7 @@ export function renderPreviewContent(
     return <Box component="img" src={src} alt={plate.filename} sx={imgSx} />;
   }
   if (isLightBurn) {
-    return (
-      <LightBurnPreview
-        url={plateUrl}
-        assetId={plate.id}
-        filename={plate.filename}
-        imgSx={imgSx}
-      />
-    );
+    return <LightBurnPreview url={plateUrl} assetId={plate.id} filename={plate.filename} imgSx={imgSx} />;
   }
   return <PreviewPlaceholder text={t("library:modelViewer.previewUnavailable")} />;
 }

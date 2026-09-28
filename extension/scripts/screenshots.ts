@@ -27,9 +27,24 @@ const POPUP_WIDTH = 320;
 
 type ProviderName = "makerworld" | "thingiverse" | "printables";
 const PROVIDERS: { name: ProviderName; label: string; home: string; modelLink: RegExp }[] = [
-  { name: "makerworld", label: "MakerWorld", home: "https://makerworld.com/en", modelLink: /^https:\/\/makerworld\.com\/[a-z-]+\/models\/\d+/ },
-  { name: "thingiverse", label: "Thingiverse", home: "https://www.thingiverse.com/", modelLink: /^https:\/\/www\.thingiverse\.com\/thing:\d+$/ },
-  { name: "printables", label: "Printables", home: "https://www.printables.com/", modelLink: /^https:\/\/www\.printables\.com\/model\/\d+-[^/?#]+$/ },
+  {
+    name: "makerworld",
+    label: "MakerWorld",
+    home: "https://makerworld.com/en",
+    modelLink: /^https:\/\/makerworld\.com\/[a-z-]+\/models\/\d+/,
+  },
+  {
+    name: "thingiverse",
+    label: "Thingiverse",
+    home: "https://www.thingiverse.com/",
+    modelLink: /^https:\/\/www\.thingiverse\.com\/thing:\d+$/,
+  },
+  {
+    name: "printables",
+    label: "Printables",
+    home: "https://www.printables.com/",
+    modelLink: /^https:\/\/www\.printables\.com\/model\/\d+-[^/?#]+$/,
+  },
 ];
 
 /** CORS is open, so the extension reaches it without a host permission. */
@@ -50,7 +65,8 @@ function startMockInstance(state: MockState): Promise<{ url: string; close: () =
       return;
     }
     const route = `${req.method} ${(req.url ?? "").split("?")[0]}`;
-    const json = (body: unknown, status = 200) => res.writeHead(status, { "Content-Type": "application/json" }).end(JSON.stringify(body));
+    const json = (body: unknown, status = 200) =>
+      res.writeHead(status, { "Content-Type": "application/json" }).end(JSON.stringify(body));
     switch (route) {
       case "POST /api/login":
         return json({ token: "screenshot-token", expires_in: 86400 });
@@ -101,7 +117,9 @@ async function launch(mockPort: number): Promise<{ context: BrowserContext; work
 }
 
 async function dismissBanners(page: Page): Promise<void> {
-  const button = page.getByRole("button", { name: /^(accept( all)?( cookies)?|allow all|agree|i agree|got it|ok)$/i }).first();
+  const button = page
+    .getByRole("button", { name: /^(accept( all)?( cookies)?|allow all|agree|i agree|got it|ok)$/i })
+    .first();
   if (await button.isVisible().catch(() => false)) await button.click({ timeout: 2000 }).catch(() => undefined);
 }
 
@@ -133,7 +151,10 @@ async function readModelInfo(page: Page): Promise<ModelInfo> {
     image:
       [...document.images]
         .filter((img) => img.currentSrc.startsWith("http") && img.getBoundingClientRect().width >= 200)
-        .map((img) => ({ src: img.currentSrc, area: img.getBoundingClientRect().width * img.getBoundingClientRect().height }))
+        .map((img) => ({
+          src: img.currentSrc,
+          area: img.getBoundingClientRect().width * img.getBoundingClientRect().height,
+        }))
         .toSorted((a, b) => b.area - a.area)[0]?.src ?? null,
   }));
   // MakerWorld has no <h1>, so strip the site's suffix from the tab title.
@@ -153,7 +174,12 @@ async function toDataUrl(imageUrl: string | null): Promise<string | null> {
   }
 }
 
-async function screenshotPopup(context: BrowserContext, extensionId: string, file: string, colorScheme: "light" | "dark"): Promise<void> {
+async function screenshotPopup(
+  context: BrowserContext,
+  extensionId: string,
+  file: string,
+  colorScheme: "light" | "dark",
+): Promise<void> {
   const page = await context.newPage();
   await page.emulateMedia({ colorScheme });
   await page.setViewportSize({ width: POPUP_WIDTH, height: 600 });
@@ -210,7 +236,8 @@ async function main(): Promise<void> {
       })),
     );
     await worker.evaluate(
-      (config) => chrome.storage.local.set({ ...config, email: "maker@example.com", password: "screenshots", disabled: false }),
+      (config) =>
+        chrome.storage.local.set({ ...config, email: "maker@example.com", password: "screenshots", disabled: false }),
       { instanceUrl, recentImports: recent },
     );
     await screenshotPopup(context, extensionId, "popup-connected.png", "light");

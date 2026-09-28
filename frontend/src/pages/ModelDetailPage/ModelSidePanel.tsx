@@ -42,8 +42,16 @@ export default function ModelSidePanel({ print, onSelectCategory, onUnauthorized
   const { t } = useTranslation(["models", "common"]);
   const navigate = useNavigate();
   const viewerAvatarUrl = useGravatarUrl(viewer?.email, 56);
-  const { pickerOpen, setPickerOpen, downloading, handleDownload, downloadPlate, downloadAllZip, sortedPlates, recordUse } =
-    useDownloadPrint(print, onUnauthorized, onUpdated);
+  const {
+    pickerOpen,
+    setPickerOpen,
+    downloading,
+    handleDownload,
+    downloadPlate,
+    downloadAllZip,
+    sortedPlates,
+    recordUse,
+  } = useDownloadPrint(print, onUnauthorized, onUpdated);
 
   const { slicerOption, targets: slicerTargets } = useOpenInSlicer(print);
   const [slicerMenuAnchor, setSlicerMenuAnchor] = useState<HTMLElement | null>(null);
@@ -115,7 +123,10 @@ export default function ModelSidePanel({ print, onSelectCategory, onUnauthorized
                 else if (showViewerAsAuthor) navigate(`/authors/${SELF_AUTHOR_ID}`);
               }}
             >
-              <Avatar src={authorAvatarUrl || undefined} sx={{ width: 28, height: 28, fontSize: 13, color: "inherit !important" }}>
+              <Avatar
+                src={authorAvatarUrl || undefined}
+                sx={{ width: 28, height: 28, fontSize: 13, color: "inherit !important" }}
+              >
                 {(authorName || "?").slice(0, 1).toUpperCase()}
               </Avatar>
               <Typography variant="body2" sx={{ color: "inherit" }}>
@@ -143,7 +154,9 @@ export default function ModelSidePanel({ print, onSelectCategory, onUnauthorized
               }}
             >
               <FolderIcon fontSize="small" />
-              <Typography variant="body2" fontWeight={600}>{print.category_name}</Typography>
+              <Typography variant="body2" fontWeight={600}>
+                {print.category_name}
+              </Typography>
             </ButtonBase>
           </Box>
         )}
@@ -161,7 +174,9 @@ export default function ModelSidePanel({ print, onSelectCategory, onUnauthorized
               sx={{ width: "fit-content", color: (muiTheme) => muiTheme.thingport.headingText }}
             >
               <StorageIcon fontSize="small" />
-              <Typography variant="body2" fontWeight={600}>{formatFileSize(print.total_size)}</Typography>
+              <Typography variant="body2" fontWeight={600}>
+                {formatFileSize(print.total_size)}
+              </Typography>
             </Stack>
           </Box>
         )}
@@ -170,7 +185,10 @@ export default function ModelSidePanel({ print, onSelectCategory, onUnauthorized
           <Button
             {...(slicerTargets.length === 1
               ? { component: "a" as const, href: slicerTargets[0].href, onClick: recordUse }
-              : { onClick: (e: React.MouseEvent<HTMLElement>) => setSlicerMenuAnchor(e.currentTarget), endIcon: <ArrowDropDownIcon /> })}
+              : {
+                  onClick: (e: React.MouseEvent<HTMLElement>) => setSlicerMenuAnchor(e.currentTarget),
+                  endIcon: <ArrowDropDownIcon />,
+                })}
             startIcon={<LaunchIcon fontSize="small" />}
             fullWidth
             sx={{
@@ -218,7 +236,9 @@ export default function ModelSidePanel({ print, onSelectCategory, onUnauthorized
             sx={{ flex: 1, py: 1, border: "1px solid", borderColor: "divider", borderRadius: 2 }}
           >
             <VisibilityIcon fontSize="small" sx={{ color: "text.secondary" }} />
-            <Typography variant="body2" fontWeight={600}>{print.view_count}</Typography>
+            <Typography variant="body2" fontWeight={600}>
+              {print.view_count}
+            </Typography>
           </Stack>
           <Stack
             direction="row"
@@ -228,7 +248,9 @@ export default function ModelSidePanel({ print, onSelectCategory, onUnauthorized
             sx={{ flex: 1, py: 1, border: "1px solid", borderColor: "divider", borderRadius: 2 }}
           >
             <PrintIcon fontSize="small" sx={{ color: "text.secondary" }} />
-            <Typography variant="body2" fontWeight={600}><RollingNumber value={print.print_count} /></Typography>
+            <Typography variant="body2" fontWeight={600}>
+              <RollingNumber value={print.print_count} />
+            </Typography>
           </Stack>
         </Stack>
 

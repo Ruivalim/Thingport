@@ -14,9 +14,7 @@ export default function ImportProgressBar() {
 
   const { total, processed, imported, already_in_library: alreadyInLibrary, failed_count: failedCount } = activeJob;
   const progressValue = total > 0 ? Math.min(100, (processed / total) * 100) : 0;
-  const label = total > 0
-    ? t("importProgress.label", { processed, total })
-    : t("importProgress.starting");
+  const label = total > 0 ? t("importProgress.label", { processed, total }) : t("importProgress.starting");
   const tooltip = t("importProgress.tooltip", { imported, alreadyInLibrary, failedCount });
 
   return (

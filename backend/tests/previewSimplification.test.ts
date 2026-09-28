@@ -19,13 +19,17 @@ const auth = (token: string) => ({ Authorization: `Bearer ${token}` });
 function gridMeshXml(n: number): string {
   const vertices: string[] = [];
   for (let i = 0; i < n; i++) {
-    for (let j = 0; j < n; j++) vertices.push(`<vertex x="${i}" y="${j}" z="${(Math.sin(i / 10) * Math.cos(j / 10)).toFixed(4)}"/>`);
+    for (let j = 0; j < n; j++)
+      vertices.push(`<vertex x="${i}" y="${j}" z="${(Math.sin(i / 10) * Math.cos(j / 10)).toFixed(4)}"/>`);
   }
   const triangles: string[] = [];
   for (let i = 0; i < n - 1; i++) {
     for (let j = 0; j < n - 1; j++) {
       const a = i * n + j;
-      triangles.push(`<triangle v1="${a}" v2="${a + 1}" v3="${a + n}"/>`, `<triangle v1="${a + 1}" v2="${a + n + 1}" v3="${a + n}"/>`);
+      triangles.push(
+        `<triangle v1="${a}" v2="${a + 1}" v3="${a + n}"/>`,
+        `<triangle v1="${a + 1}" v2="${a + n + 1}" v3="${a + n}"/>`,
+      );
     }
   }
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -42,7 +46,8 @@ function readGlbJson(file: string): any {
 
 function glbTriangles(gltf: any): number {
   let total = 0;
-  for (const mesh of gltf.meshes) for (const primitive of mesh.primitives) total += gltf.accessors[primitive.indices].count / 3;
+  for (const mesh of gltf.meshes)
+    for (const primitive of mesh.primitives) total += gltf.accessors[primitive.indices].count / 3;
   return total;
 }
 
@@ -66,7 +71,7 @@ describe("renderModelPreviewGlb with simplification", () => {
     expect(triangles).toBeLessThanOrEqual(5_000);
     expect(triangles).toBeGreaterThan(2_000);
     const positions = gltf.accessors[gltf.meshes[0].primitives[0].attributes.POSITION].count;
-    expect(positions).toBeLessThan(101 * 101 / 2);
+    expect(positions).toBeLessThan((101 * 101) / 2);
     const meta = JSON.parse(gltf.nodes.find((n: any) => n.extras?.thingportPreview).extras.thingportPreview);
     expect(meta.simplified).toEqual({ from: 20_000, to: triangles });
   });
@@ -88,7 +93,13 @@ async function writeFakeGlb(file: string, triangles: number, simplified: boolean
       asset: { version: "2.0" },
       accessors: [{ count: triangles * 3 }],
       meshes: [{ primitives: [{ indices: 0 }] }],
-      nodes: [{ extras: { thingportPreview: JSON.stringify(simplified ? { simplified: { from: triangles * 2, to: triangles } } : {}) } }],
+      nodes: [
+        {
+          extras: {
+            thingportPreview: JSON.stringify(simplified ? { simplified: { from: triangles * 2, to: triangles } } : {}),
+          },
+        },
+      ],
     }),
   );
   const padded = Buffer.concat([json, Buffer.alloc((4 - (json.length % 4)) % 4, 0x20)]);
@@ -150,10 +161,18 @@ describe("/settings/rendering", () => {
       .post("/api/register")
       .send({ displayName: "Rendering Admin", email: `rendering-admin-${stamp}@example.com`, password: "password123" });
     await prisma.user.update({ where: { id: admin.body.user.id }, data: { role: "ADMIN" } });
-    adminToken = (await request(app).post("/api/login").send({ email: `rendering-admin-${stamp}@example.com`, password: "password123" })).body.token;
+    adminToken = (
+      await request(app)
+        .post("/api/login")
+        .send({ email: `rendering-admin-${stamp}@example.com`, password: "password123" })
+    ).body.token;
     const member = await request(app)
       .post("/api/register")
-      .send({ displayName: "Rendering Member", email: `rendering-member-${stamp}@example.com`, password: "password123" });
+      .send({
+        displayName: "Rendering Member",
+        email: `rendering-member-${stamp}@example.com`,
+        password: "password123",
+      });
     memberToken = member.body.token;
   });
 
@@ -166,11 +185,17 @@ describe("/settings/rendering", () => {
     expect((await request(app).get("/api/settings/rendering").set(auth(memberToken))).status).toBe(403);
     const res = await request(app).get("/api/settings/rendering").set(auth(adminToken));
     expect(res.body).toEqual({ simplify_previews: false });
-    expect((await request(app).patch("/api/settings/rendering").set(auth(memberToken)).send({ simplify_previews: true })).status).toBe(403);
+    expect(
+      (await request(app).patch("/api/settings/rendering").set(auth(memberToken)).send({ simplify_previews: true }))
+        .status,
+    ).toBe(403);
   });
 
   it("saves the admin's choice", async () => {
-    const res = await request(app).patch("/api/settings/rendering").set(auth(adminToken)).send({ simplify_previews: true });
+    const res = await request(app)
+      .patch("/api/settings/rendering")
+      .set(auth(adminToken))
+      .send({ simplify_previews: true });
     expect(res.body).toEqual({ simplify_previews: true });
     expect(await getSimplifyPreviews()).toBe(true);
   });

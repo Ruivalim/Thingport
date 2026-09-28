@@ -65,7 +65,11 @@ export function makerworldHtmlHeaders(referer?: string | null, cookie?: string |
   return headers;
 }
 
-function makerworldApiHeaders(referer?: string | null, nonce?: string | null, cookie?: string | null): Record<string, string> {
+function makerworldApiHeaders(
+  referer?: string | null,
+  nonce?: string | null,
+  cookie?: string | null,
+): Record<string, string> {
   const headers: Record<string, string> = {
     "User-Agent": IMPORT_BROWSER_USER_AGENT,
     Accept: "application/json",
@@ -235,8 +239,7 @@ function collectPageLinks(html: string): string[] {
         if (value) links.push(value);
       }
     });
-  } catch {
-  }
+  } catch {}
   return links;
 }
 
@@ -411,9 +414,12 @@ export function makerworldMetaFromDesign(design: unknown): ImportedPageMetadata 
   const title = pickDesignString(design, ["title"]);
   meta.title = title ? decodeHtmlEntities(title) : null;
   meta.tags = Array.isArray(design.tags)
-    ? design.tags.filter((tag): tag is string => typeof tag === "string" && tag.trim().length > 0).map((tag) => tag.trim())
+    ? design.tags
+        .filter((tag): tag is string => typeof tag === "string" && tag.trim().length > 0)
+        .map((tag) => tag.trim())
     : [];
-  meta.description = typeof design.summary === "string" && design.summary.trim() ? htmlToPlainText(design.summary) : null;
+  meta.description =
+    typeof design.summary === "string" && design.summary.trim() ? htmlToPlainText(design.summary) : null;
   const designCreator = isRecord(design.designCreator) ? design.designCreator : null;
   meta.creator = designCreator ? pickDesignString(designCreator, ["nickName", "name", "handle"]) : null;
   meta.author = makerworldAuthorFromDesignCreator(designCreator);
@@ -461,9 +467,7 @@ export function decodeHtmlEntities(value: string): string {
 }
 
 export function htmlToPlainText(html: string): string | null {
-  const withBreaks = html
-    .replace(/<\s*(br|\/p|\/li|\/div|\/h[1-6])\s*\/?>/gi, "\n")
-    .replace(/<[^>]+>/g, "");
+  const withBreaks = html.replace(/<\s*(br|\/p|\/li|\/div|\/h[1-6])\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "");
   const text = decodeHtmlEntities(withBreaks)
     .replace(/\u00A0/g, " ")
     .replace(/[ \t]+/g, " ")
@@ -658,4 +662,3 @@ export async function resolveMakerworldDownloadUrl(
   }
   return null;
 }
-

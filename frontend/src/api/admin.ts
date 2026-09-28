@@ -44,7 +44,8 @@ export type StorageUsage = {
   model_count: number;
 };
 
-export type AuthorLookupProblem = "thingiverse_no_token" | "thingiverse_token_rejected" | "makerworld_captcha" | "makerworld_login_rejected";
+export type AuthorLookupProblem =
+  "thingiverse_no_token" | "thingiverse_token_rejected" | "makerworld_captcha" | "makerworld_login_rejected";
 
 export type AuthorLinkingRun = {
   running: boolean;

@@ -40,10 +40,10 @@ type Props = {
 function hasMeta(category: Category): boolean {
   return Boolean(
     category.meta_title ||
-      category.meta_description ||
-      category.makerworld_cat_ids ||
-      category.thingiverse_cat_ids ||
-      category.printables_cat_ids,
+    category.meta_description ||
+    category.makerworld_cat_ids ||
+    category.thingiverse_cat_ids ||
+    category.printables_cat_ids,
   );
 }
 
@@ -116,8 +116,8 @@ function CategoryRow({
             size="small"
             fullWidth
             value={value}
-            onChange={e => setValue(e.target.value)}
-            onKeyDown={e => {
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={(e) => {
               if (e.key === "Enter") commit();
               if (e.key === "Escape") cancelEdit();
             }}
@@ -141,21 +141,39 @@ function CategoryRow({
       sx={{ pl: indent, py: 0.5 }}
       secondaryAction={
         <Stack direction="row" spacing={0.25}>
-          <IconButton size="small" onClick={onMoveUp} disabled={busy || !canMoveUp} aria-label={t("common:moveUp") ?? undefined}>
+          <IconButton
+            size="small"
+            onClick={onMoveUp}
+            disabled={busy || !canMoveUp}
+            aria-label={t("common:moveUp") ?? undefined}
+          >
             <ArrowUpwardIcon fontSize="small" />
           </IconButton>
-          <IconButton size="small" onClick={onMoveDown} disabled={busy || !canMoveDown} aria-label={t("common:moveDown") ?? undefined}>
+          <IconButton
+            size="small"
+            onClick={onMoveDown}
+            disabled={busy || !canMoveDown}
+            aria-label={t("common:moveDown") ?? undefined}
+          >
             <ArrowDownwardIcon fontSize="small" />
           </IconButton>
           <Tooltip
             title={
               hasDetails ? (
                 <Stack spacing={0.25} sx={{ py: 0.25 }}>
-                  {metaTitle && <Typography variant="caption" fontWeight={700} sx={{ display: "block" }}>{metaTitle}</Typography>}
-                  {metaDescription && <Typography variant="caption" sx={{ display: "block" }}>{metaDescription}</Typography>}
+                  {metaTitle && (
+                    <Typography variant="caption" fontWeight={700} sx={{ display: "block" }}>
+                      {metaTitle}
+                    </Typography>
+                  )}
+                  {metaDescription && (
+                    <Typography variant="caption" sx={{ display: "block" }}>
+                      {metaDescription}
+                    </Typography>
+                  )}
                 </Stack>
               ) : (
-                t("models:categories.manager.addDetailsTooltip") ?? ""
+                (t("models:categories.manager.addDetailsTooltip") ?? "")
               )
             }
           >
@@ -196,7 +214,12 @@ function CategoryRow({
   );
 }
 
-function AddRow({ indent, placeholder, busy, onAdd }: {
+function AddRow({
+  indent,
+  placeholder,
+  busy,
+  onAdd,
+}: {
   indent: number;
   placeholder: string;
   busy: boolean;
@@ -219,7 +242,10 @@ function AddRow({ indent, placeholder, busy, onAdd }: {
       <Button
         size="small"
         startIcon={<AddIcon fontSize="small" />}
-        onClick={() => { setAdding(true); setTimeout(() => inputRef.current?.focus(), 0); }}
+        onClick={() => {
+          setAdding(true);
+          setTimeout(() => inputRef.current?.focus(), 0);
+        }}
         sx={{ ml: `${indent * 8}px` }}
       >
         {placeholder}
@@ -235,23 +261,41 @@ function AddRow({ indent, placeholder, busy, onAdd }: {
         fullWidth
         placeholder={placeholder}
         value={value}
-        onChange={e => setValue(e.target.value)}
-        onKeyDown={e => {
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
           if (e.key === "Enter") submit();
-          if (e.key === "Escape") { setAdding(false); setValue(""); }
+          if (e.key === "Escape") {
+            setAdding(false);
+            setValue("");
+          }
         }}
       />
       <IconButton size="small" onClick={submit} disabled={busy || !value.trim()}>
         {busy ? <CircularProgress size={16} /> : <CheckIcon fontSize="small" />}
       </IconButton>
-      <IconButton size="small" onClick={() => { setAdding(false); setValue(""); }} disabled={busy}>
+      <IconButton
+        size="small"
+        onClick={() => {
+          setAdding(false);
+          setValue("");
+        }}
+        disabled={busy}
+      >
         <CloseIcon fontSize="small" />
       </IconButton>
     </Stack>
   );
 }
 
-export default function CategoryManagerModal({ categories, onClose, onCreate, onRename, onDelete, onReorder, onUpdateMeta }: Props) {
+export default function CategoryManagerModal({
+  categories,
+  onClose,
+  onCreate,
+  onRename,
+  onDelete,
+  onReorder,
+  onUpdateMeta,
+}: Props) {
   const { t } = useTranslation(["models", "common"]);
   const confirmDialog = useConfirm();
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -260,7 +304,7 @@ export default function CategoryManagerModal({ categories, onClose, onCreate, on
   const { roots, childrenByParent } = useMemo(() => {
     const childrenMap: Record<string, Category[]> = {};
     const rootList: Category[] = [];
-    categories.forEach(f => {
+    categories.forEach((f) => {
       if (f.parent_id) {
         if (!childrenMap[f.parent_id]) childrenMap[f.parent_id] = [];
         childrenMap[f.parent_id].push(f);
@@ -269,7 +313,7 @@ export default function CategoryManagerModal({ categories, onClose, onCreate, on
       }
     });
     const byPosition = (a: Category, b: Category) => a.position - b.position || a.name.localeCompare(b.name);
-    Object.keys(childrenMap).forEach(key => {
+    Object.keys(childrenMap).forEach((key) => {
       childrenMap[key] = childrenMap[key].toSorted(byPosition);
     });
     return {
@@ -319,117 +363,127 @@ export default function CategoryManagerModal({ categories, onClose, onCreate, on
   };
 
   const moveRoot = (index: number, direction: -1 | 1) =>
-    swapAndReorder(roots.map(r => r.id), index, direction, roots[index].id);
+    swapAndReorder(
+      roots.map((r) => r.id),
+      index,
+      direction,
+      roots[index].id,
+    );
 
   const moveChild = (parentId: string, index: number, direction: -1 | 1) => {
     const children = childrenByParent[parentId] || [];
-    return swapAndReorder(children.map(c => c.id), index, direction, children[index].id);
+    return swapAndReorder(
+      children.map((c) => c.id),
+      index,
+      direction,
+      children[index].id,
+    );
   };
 
   return (
     <>
-    <Dialog open onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        {t("models:categories.manager.title")}
-        <IconButton size="small" onClick={onClose} aria-label={t("common:close") ?? undefined}>
-          <CloseIcon fontSize="small" />
-        </IconButton>
-      </DialogTitle>
-      <DialogContent dividers>
-        <List disablePadding>
-          {roots.map((root, rootIndex) => {
-            const children = childrenByParent[root.id] || [];
-            return (
-              <Box key={root.id} sx={{ mb: 1.5 }}>
-                <CategoryRow
-                  name={root.name || untitledLabel}
-                  indent={0}
-                  bold
-                  busy={busyId === root.id}
-                  canMoveUp={rootIndex > 0}
-                  canMoveDown={rootIndex < roots.length - 1}
-                  onMoveUp={() => moveRoot(rootIndex, -1)}
-                  onMoveDown={() => moveRoot(rootIndex, 1)}
-                  metaTitle={root.meta_title}
-                  metaDescription={root.meta_description}
-                  hasDetails={hasMeta(root)}
-                  onOpenMeta={() => setMetaCategory(root)}
-                  onRename={name => onRename(root.id, name)}
-                  onDelete={() => handleDeleteCategory(root)}
-                />
-                <List disablePadding>
-                  {children.map((child, childIndex) => (
-                    <CategoryRow
-                      key={child.id}
-                      name={child.name || untitledLabel}
-                      indent={3}
-                      busy={busyId === child.id}
-                      canMoveUp={childIndex > 0}
-                      canMoveDown={childIndex < children.length - 1}
-                      onMoveUp={() => moveChild(root.id, childIndex, -1)}
-                      onMoveDown={() => moveChild(root.id, childIndex, 1)}
-                      metaTitle={child.meta_title}
-                      metaDescription={child.meta_description}
-                      hasDetails={hasMeta(child)}
-                      onOpenMeta={() => setMetaCategory(child)}
-                      onRename={name => onRename(child.id, name)}
-                      onDelete={() => handleDeleteSubcategory(child)}
-                    />
-                  ))}
-                </List>
-                <Box sx={{ pl: 0.5 }}>
-                  <AddRow
-                    indent={3}
-                    placeholder={t("models:categories.manager.addSubcategory")}
-                    busy={busyId === `new-sub-${root.id}`}
-                    onAdd={async name => {
-                      setBusyId(`new-sub-${root.id}`);
-                      try {
-                        await onCreate(name, root.id);
-                      } finally {
-                        setBusyId(null);
-                      }
-                    }}
+      <Dialog open onClose={onClose} fullWidth maxWidth="sm">
+        <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          {t("models:categories.manager.title")}
+          <IconButton size="small" onClick={onClose} aria-label={t("common:close") ?? undefined}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <List disablePadding>
+            {roots.map((root, rootIndex) => {
+              const children = childrenByParent[root.id] || [];
+              return (
+                <Box key={root.id} sx={{ mb: 1.5 }}>
+                  <CategoryRow
+                    name={root.name || untitledLabel}
+                    indent={0}
+                    bold
+                    busy={busyId === root.id}
+                    canMoveUp={rootIndex > 0}
+                    canMoveDown={rootIndex < roots.length - 1}
+                    onMoveUp={() => moveRoot(rootIndex, -1)}
+                    onMoveDown={() => moveRoot(rootIndex, 1)}
+                    metaTitle={root.meta_title}
+                    metaDescription={root.meta_description}
+                    hasDetails={hasMeta(root)}
+                    onOpenMeta={() => setMetaCategory(root)}
+                    onRename={(name) => onRename(root.id, name)}
+                    onDelete={() => handleDeleteCategory(root)}
                   />
+                  <List disablePadding>
+                    {children.map((child, childIndex) => (
+                      <CategoryRow
+                        key={child.id}
+                        name={child.name || untitledLabel}
+                        indent={3}
+                        busy={busyId === child.id}
+                        canMoveUp={childIndex > 0}
+                        canMoveDown={childIndex < children.length - 1}
+                        onMoveUp={() => moveChild(root.id, childIndex, -1)}
+                        onMoveDown={() => moveChild(root.id, childIndex, 1)}
+                        metaTitle={child.meta_title}
+                        metaDescription={child.meta_description}
+                        hasDetails={hasMeta(child)}
+                        onOpenMeta={() => setMetaCategory(child)}
+                        onRename={(name) => onRename(child.id, name)}
+                        onDelete={() => handleDeleteSubcategory(child)}
+                      />
+                    ))}
+                  </List>
+                  <Box sx={{ pl: 0.5 }}>
+                    <AddRow
+                      indent={3}
+                      placeholder={t("models:categories.manager.addSubcategory")}
+                      busy={busyId === `new-sub-${root.id}`}
+                      onAdd={async (name) => {
+                        setBusyId(`new-sub-${root.id}`);
+                        try {
+                          await onCreate(name, root.id);
+                        } finally {
+                          setBusyId(null);
+                        }
+                      }}
+                    />
+                  </Box>
                 </Box>
-              </Box>
-            );
-          })}
+              );
+            })}
 
-          {!roots.length && (
-            <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
-              {t("models:categories.manager.noCategories")}
-            </Typography>
-          )}
-        </List>
+            {!roots.length && (
+              <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
+                {t("models:categories.manager.noCategories")}
+              </Typography>
+            )}
+          </List>
 
-        <Divider sx={{ my: 1.5 }} />
+          <Divider sx={{ my: 1.5 }} />
 
-        <AddRow
-          indent={0}
-          placeholder={t("models:categories.manager.addCategory")}
-          busy={busyId === "new-root"}
-          onAdd={async name => {
-            setBusyId("new-root");
-            try {
-              await onCreate(name, null);
-            } finally {
-              setBusyId(null);
-            }
-          }}
+          <AddRow
+            indent={0}
+            placeholder={t("models:categories.manager.addCategory")}
+            busy={busyId === "new-root"}
+            onAdd={async (name) => {
+              setBusyId("new-root");
+              try {
+                await onCreate(name, null);
+              } finally {
+                setBusyId(null);
+              }
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={onClose}>{t("common:close")}</Button>
+        </DialogActions>
+      </Dialog>
+      {metaCategory && (
+        <CategoryMetaDialog
+          category={metaCategory}
+          onClose={() => setMetaCategory(null)}
+          onSave={(meta) => onUpdateMeta(metaCategory.id, meta)}
         />
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>{t("common:close")}</Button>
-      </DialogActions>
-    </Dialog>
-    {metaCategory && (
-      <CategoryMetaDialog
-        category={metaCategory}
-        onClose={() => setMetaCategory(null)}
-        onSave={meta => onUpdateMeta(metaCategory.id, meta)}
-      />
-    )}
+      )}
     </>
   );
 }

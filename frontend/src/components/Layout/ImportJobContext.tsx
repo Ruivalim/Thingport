@@ -49,36 +49,44 @@ export function ImportJobProvider({
     }
   }, []);
 
-  const pollJob = useCallback(async (jobId: string) => {
-    try {
-      const job = await importsApi.getImportJob(jobId);
-      if (job.status === "RUNNING") {
-        setActiveJob(job);
-        return;
-      }
-      stopPolling();
-      setActiveJob(null);
-      onJobCompletedRef.current?.();
-      // One resulting print opens its details page; more go to the models grid; none stays put.
-      if (job.status === "DONE") {
-        if (job.result_print_id) {
-          navigate(`/models/${job.result_print_id}`);
-        } else if (job.imported + job.already_in_library > 1) {
-          // Dedup hits count as results too.
-          navigate("/models");
+  const pollJob = useCallback(
+    async (jobId: string) => {
+      try {
+        const job = await importsApi.getImportJob(jobId);
+        if (job.status === "RUNNING") {
+          setActiveJob(job);
+          return;
         }
+        stopPolling();
+        setActiveJob(null);
+        onJobCompletedRef.current?.();
+        // One resulting print opens its details page; more go to the models grid; none stays put.
+        if (job.status === "DONE") {
+          if (job.result_print_id) {
+            navigate(`/models/${job.result_print_id}`);
+          } else if (job.imported + job.already_in_library > 1) {
+            // Dedup hits count as results too.
+            navigate("/models");
+          }
+        }
+      } catch (err) {
+        stopPolling();
+        setActiveJob(null);
+        if (err instanceof UnauthorizedError) onUnauthorized?.();
       }
-    } catch (err) {
-      stopPolling();
-      setActiveJob(null);
-      if (err instanceof UnauthorizedError) onUnauthorized?.();
-    }
-  }, [onUnauthorized, stopPolling, navigate]);
+    },
+    [onUnauthorized, stopPolling, navigate],
+  );
 
-  const startPolling = useCallback((jobId: string) => {
-    stopPolling();
-    pollRef.current = window.setInterval(() => { void pollJob(jobId); }, POLL_INTERVAL_MS);
-  }, [pollJob, stopPolling]);
+  const startPolling = useCallback(
+    (jobId: string) => {
+      stopPolling();
+      pollRef.current = window.setInterval(() => {
+        void pollJob(jobId);
+      }, POLL_INTERVAL_MS);
+    },
+    [pollJob, stopPolling],
+  );
 
   useEffect(() => {
     (async () => {
@@ -96,47 +104,65 @@ export function ImportJobProvider({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const startCollectionImport = useCallback(async (payload: StartCollectionImportPayload) => {
-    const { job_id } = await importsApi.fromCollection(payload);
-    const job = await importsApi.getImportJob(job_id);
-    setActiveJob(job);
-    startPolling(job_id);
-  }, [startPolling]);
+  const startCollectionImport = useCallback(
+    async (payload: StartCollectionImportPayload) => {
+      const { job_id } = await importsApi.fromCollection(payload);
+      const job = await importsApi.getImportJob(job_id);
+      setActiveJob(job);
+      startPolling(job_id);
+    },
+    [startPolling],
+  );
 
-  const startZipImport = useCallback(async (payload: StartZipImportPayload) => {
-    const { job_id } = await importsApi.zipFromLink(payload);
-    const job = await importsApi.getImportJob(job_id);
-    setActiveJob(job);
-    startPolling(job_id);
-  }, [startPolling]);
+  const startZipImport = useCallback(
+    async (payload: StartZipImportPayload) => {
+      const { job_id } = await importsApi.zipFromLink(payload);
+      const job = await importsApi.getImportJob(job_id);
+      setActiveJob(job);
+      startPolling(job_id);
+    },
+    [startPolling],
+  );
 
-  const startThingiverseLikesImport = useCallback(async (payload: StartThingiverseLikesImportPayload) => {
-    const { job_id } = await importsApi.fromThingiverseLikes(payload);
-    const job = await importsApi.getImportJob(job_id);
-    setActiveJob(job);
-    startPolling(job_id);
-  }, [startPolling]);
+  const startThingiverseLikesImport = useCallback(
+    async (payload: StartThingiverseLikesImportPayload) => {
+      const { job_id } = await importsApi.fromThingiverseLikes(payload);
+      const job = await importsApi.getImportJob(job_id);
+      setActiveJob(job);
+      startPolling(job_id);
+    },
+    [startPolling],
+  );
 
-  const startThingiverseCollectionImport = useCallback(async (payload: StartThingiverseCollectionImportPayload) => {
-    const { job_id } = await importsApi.fromThingiverseCollection(payload);
-    const job = await importsApi.getImportJob(job_id);
-    setActiveJob(job);
-    startPolling(job_id);
-  }, [startPolling]);
+  const startThingiverseCollectionImport = useCallback(
+    async (payload: StartThingiverseCollectionImportPayload) => {
+      const { job_id } = await importsApi.fromThingiverseCollection(payload);
+      const job = await importsApi.getImportJob(job_id);
+      setActiveJob(job);
+      startPolling(job_id);
+    },
+    [startPolling],
+  );
 
-  const startPrintablesCollectionImport = useCallback(async (payload: StartPrintablesCollectionImportPayload) => {
-    const { job_id } = await importsApi.fromPrintablesCollection(payload);
-    const job = await importsApi.getImportJob(job_id);
-    setActiveJob(job);
-    startPolling(job_id);
-  }, [startPolling]);
+  const startPrintablesCollectionImport = useCallback(
+    async (payload: StartPrintablesCollectionImportPayload) => {
+      const { job_id } = await importsApi.fromPrintablesCollection(payload);
+      const job = await importsApi.getImportJob(job_id);
+      setActiveJob(job);
+      startPolling(job_id);
+    },
+    [startPolling],
+  );
 
-  const startMakerworldProfilesImport = useCallback(async (payload: StartMakerworldProfilesImportPayload) => {
-    const { job_id } = await importsApi.fromMakerworldProfiles(payload);
-    const job = await importsApi.getImportJob(job_id);
-    setActiveJob(job);
-    startPolling(job_id);
-  }, [startPolling]);
+  const startMakerworldProfilesImport = useCallback(
+    async (payload: StartMakerworldProfilesImportPayload) => {
+      const { job_id } = await importsApi.fromMakerworldProfiles(payload);
+      const job = await importsApi.getImportJob(job_id);
+      setActiveJob(job);
+      startPolling(job_id);
+    },
+    [startPolling],
+  );
 
   const value = useMemo(
     () => ({
@@ -160,11 +186,7 @@ export function ImportJobProvider({
     ],
   );
 
-  return (
-    <ImportJobContext.Provider value={value}>
-      {children}
-    </ImportJobContext.Provider>
-  );
+  return <ImportJobContext.Provider value={value}>{children}</ImportJobContext.Provider>;
 }
 
 export function useImportJob() {

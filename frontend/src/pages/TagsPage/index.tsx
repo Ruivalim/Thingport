@@ -29,7 +29,7 @@ export default function TagsPage({ onUnauthorized, onBookmarksChanged }: Props) 
   const [sortMode, setSortMode] = useState<TagSortMode>("popular");
   const [pendingTag, setPendingTag] = useState<string | null>(null);
   const [hideRarelyUsed, setHideRarelyUsed] = useState(true);
-  const visibleTags = hideRarelyUsed ? tags.filter(tag => tag.count >= 2) : tags;
+  const visibleTags = hideRarelyUsed ? tags.filter((tag) => tag.count >= 2) : tags;
 
   const handleError = (err: unknown, message?: string) => {
     if (err instanceof UnauthorizedError) {
@@ -54,7 +54,9 @@ export default function TagsPage({ onUnauthorized, onBookmarksChanged }: Props) 
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortMode]);
 
@@ -62,12 +64,12 @@ export default function TagsPage({ onUnauthorized, onBookmarksChanged }: Props) 
     if (pendingTag) return;
     setPendingTag(tag.name);
     const nextBookmarked = !tag.bookmarked;
-    setTags(prev => prev.map(t2 => (t2.name === tag.name ? { ...t2, bookmarked: nextBookmarked } : t2)));
+    setTags((prev) => prev.map((t2) => (t2.name === tag.name ? { ...t2, bookmarked: nextBookmarked } : t2)));
     try {
       await (nextBookmarked ? tagsApi.bookmark(tag.name) : tagsApi.unbookmark(tag.name));
       onBookmarksChanged?.();
     } catch (err) {
-      setTags(prev => prev.map(t2 => (t2.name === tag.name ? { ...t2, bookmarked: tag.bookmarked } : t2)));
+      setTags((prev) => prev.map((t2) => (t2.name === tag.name ? { ...t2, bookmarked: tag.bookmarked } : t2)));
       if (err instanceof UnauthorizedError) {
         onUnauthorized?.();
         return;
@@ -92,20 +94,20 @@ export default function TagsPage({ onUnauthorized, onBookmarksChanged }: Props) 
       <Stack direction="row" alignItems="center" justifyContent="space-between">
         <FormControlLabel
           control={
-            <Switch
-              size="small"
-              checked={hideRarelyUsed}
-              onChange={(e) => setHideRarelyUsed(e.target.checked)}
-            />
+            <Switch size="small" checked={hideRarelyUsed} onChange={(e) => setHideRarelyUsed(e.target.checked)} />
           }
-          label={<Typography variant="body2" color="text.secondary">{t("models:tags.hideRarelyUsed")}</Typography>}
+          label={
+            <Typography variant="body2" color="text.secondary">
+              {t("models:tags.hideRarelyUsed")}
+            </Typography>
+          }
         />
         <TagSortTabs value={sortMode} onChange={setSortMode} />
       </Stack>
 
       {visibleTags.length ? (
         <Stack direction="row" flexWrap="wrap" useFlexGap spacing={1}>
-          {visibleTags.map(tag => (
+          {visibleTags.map((tag) => (
             <Chip
               key={tag.name}
               size="small"
@@ -113,9 +115,15 @@ export default function TagsPage({ onUnauthorized, onBookmarksChanged }: Props) 
               variant="outlined"
               onClick={() => navigate(`/models/tags/${encodeURIComponent(tag.name)}`)}
               label={`${tag.name} (${tag.count})`}
-              deleteIcon={tag.bookmarked ? <BookmarkIcon fontSize="inherit" /> : <BookmarkBorderIcon fontSize="inherit" />}
+              deleteIcon={
+                tag.bookmarked ? <BookmarkIcon fontSize="inherit" /> : <BookmarkBorderIcon fontSize="inherit" />
+              }
               onDelete={() => void toggleBookmark(tag)}
-              aria-label={tag.bookmarked ? (t("models:tags.unbookmarkTag") ?? undefined) : (t("models:tags.bookmarkTag") ?? undefined)}
+              aria-label={
+                tag.bookmarked
+                  ? (t("models:tags.unbookmarkTag") ?? undefined)
+                  : (t("models:tags.bookmarkTag") ?? undefined)
+              }
               sx={{
                 p: 1,
                 color: (theme) => theme.thingport.navInactiveText,
@@ -131,9 +139,7 @@ export default function TagsPage({ onUnauthorized, onBookmarksChanged }: Props) 
         </Stack>
       ) : (
         <Stack alignItems="center" spacing={1} sx={{ py: 8, color: "text.secondary" }}>
-          <Typography variant="body2">
-            {tags.length ? t("models:tags.allHidden") : t("models:tags.empty")}
-          </Typography>
+          <Typography variant="body2">{tags.length ? t("models:tags.allHidden") : t("models:tags.empty")}</Typography>
         </Stack>
       )}
     </Stack>

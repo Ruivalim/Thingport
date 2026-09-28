@@ -59,7 +59,7 @@ export default function SignInPanel({ onSuccess }: Props) {
           type="email"
           label={t("auth.signIn.emailLabel")}
           value={email}
-          onChange={e => setEmail(e.target.value)}
+          onChange={(e) => setEmail(e.target.value)}
           autoComplete="username"
           required
           fullWidth
@@ -69,7 +69,7 @@ export default function SignInPanel({ onSuccess }: Props) {
           type="password"
           label={t("auth.signIn.passwordLabel")}
           value={password}
-          onChange={e => setPassword(e.target.value)}
+          onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"
           required
           fullWidth

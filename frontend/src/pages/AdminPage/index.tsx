@@ -55,14 +55,18 @@ export default function AdminPage({ onUnauthorized }: Props) {
   useEffect(() => {
     let cancelled = false;
     adminApi.getStorageUsage().then(
-      usage => { if (!cancelled) setStorage(usage); },
-      err => {
+      (usage) => {
+        if (!cancelled) setStorage(usage);
+      },
+      (err) => {
         if (cancelled) return;
         if (err instanceof UnauthorizedError) onUnauthorized?.();
         setStorage(null);
       },
     );
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [onUnauthorized]);
 
   return (
@@ -84,7 +88,10 @@ export default function AdminPage({ onUnauthorized }: Props) {
               sx={{ py: 1.5 }}
             >
               <ListItemIcon sx={{ minWidth: 36 }}>{section.icon}</ListItemIcon>
-              <ListItemText primary={t(section.labelKey)} primaryTypographyProps={{ variant: "body2", fontWeight: 600 }} />
+              <ListItemText
+                primary={t(section.labelKey)}
+                primaryTypographyProps={{ variant: "body2", fontWeight: 600 }}
+              />
               <ChevronRightIcon fontSize="small" sx={{ color: "text.disabled" }} />
             </ListItemButton>
           ))}

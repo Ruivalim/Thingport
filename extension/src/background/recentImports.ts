@@ -46,7 +46,17 @@ async function fetchThumbDataUrl(config: ConfiguredConfig, thumbPath: string): P
   const canvas = new OffscreenCanvas(RECENT_IMPORT_THUMB_PX, RECENT_IMPORT_THUMB_PX);
   canvas
     .getContext("2d")!
-    .drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, RECENT_IMPORT_THUMB_PX, RECENT_IMPORT_THUMB_PX);
+    .drawImage(
+      bitmap,
+      (bitmap.width - side) / 2,
+      (bitmap.height - side) / 2,
+      side,
+      side,
+      0,
+      0,
+      RECENT_IMPORT_THUMB_PX,
+      RECENT_IMPORT_THUMB_PX,
+    );
   bitmap.close();
   const jpeg = new Uint8Array(await (await canvas.convertToBlob({ type: "image/jpeg", quality: 0.8 })).arrayBuffer());
   let binary = "";

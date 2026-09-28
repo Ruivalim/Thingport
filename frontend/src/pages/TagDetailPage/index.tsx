@@ -44,10 +44,11 @@ export default function TagDetailPage({ theme, previewMode, onUnauthorized, onBo
   const [hasMore, setHasMore] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const sortModeParam = searchParams.get("orderBy");
-  const sortMode: PrintSortMode = sortModeParam === "popular" || sortModeParam === "downloads" ? sortModeParam : "newest";
+  const sortMode: PrintSortMode =
+    sortModeParam === "popular" || sortModeParam === "downloads" ? sortModeParam : "newest";
 
   const setSortMode = (mode: PrintSortMode) => {
-    setSearchParams(prev => {
+    setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       if (mode === "newest") next.delete("orderBy");
       else next.set("orderBy", mode);
@@ -99,7 +100,9 @@ export default function TagDetailPage({ theme, previewMode, onUnauthorized, onBo
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tag, sortMode]);
 
@@ -114,7 +117,9 @@ export default function TagDetailPage({ theme, previewMode, onUnauthorized, onBo
         if (!cancelled) handleError(err);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tag]);
 
@@ -127,13 +132,15 @@ export default function TagDetailPage({ theme, previewMode, onUnauthorized, onBo
         const all = await collectionsApi.list();
         if (cancelled) return;
         const tagLower = tag.toLowerCase();
-        setCollections(all.filter(c => c.tags.some(ct => ct.toLowerCase() === tagLower)));
+        setCollections(all.filter((c) => c.tags.some((ct) => ct.toLowerCase() === tagLower)));
       } catch (err) {
         if (cancelled) return;
         handleError(err, t("models:errors.loadFailed"));
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tag]);
 
@@ -142,7 +149,7 @@ export default function TagDetailPage({ theme, previewMode, onUnauthorized, onBo
     setLoadingMore(true);
     try {
       const result = await printsApi.list({ tags: [tag], order_by: sortMode, limit: PAGE_SIZE, offset });
-      setItems(prev => [...prev, ...result.items]);
+      setItems((prev) => [...prev, ...result.items]);
       setOffset(offset + result.items.length);
       setHasMore(result.hasMore);
     } catch (err) {
@@ -182,27 +189,27 @@ export default function TagDetailPage({ theme, previewMode, onUnauthorized, onBo
               "@media (max-width: 860px)": { gridTemplateColumns: "repeat(2, 1fr)" },
             }}
           >
-            {collections.map(collection => (
+            {collections.map((collection) => (
               <CollectionCard
                 key={collection.id}
                 collection={collection}
                 theme={theme}
                 previewMode={previewMode}
-                onUpdated={updated => setCollections(prev => prev.map(c => (c.id === updated.id ? updated : c)))}
-                onDeleted={deletedId => setCollections(prev => prev.filter(c => c.id !== deletedId))}
+                onUpdated={(updated) => setCollections((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))}
+                onDeleted={(deletedId) => setCollections((prev) => prev.filter((c) => c.id !== deletedId))}
                 onUnauthorized={onUnauthorized}
                 onBookmarksChanged={onBookmarksChanged}
               />
             ))}
-            {items.map(item => (
+            {items.map((item) => (
               <ModelCard
                 key={item.id}
                 item={item}
                 theme={theme}
                 previewMode={previewMode}
-                onDeleted={deletedId => setItems(prev => prev.filter(i => i.id !== deletedId))}
-                onFavoriteChange={updated => setItems(prev => prev.map(i => (i.id === updated.id ? updated : i)))}
-                onUpdated={updated => setItems(prev => prev.map(i => (i.id === updated.id ? updated : i)))}
+                onDeleted={(deletedId) => setItems((prev) => prev.filter((i) => i.id !== deletedId))}
+                onFavoriteChange={(updated) => setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)))}
+                onUpdated={(updated) => setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)))}
                 onUnauthorized={onUnauthorized}
                 viewer={viewer}
               />

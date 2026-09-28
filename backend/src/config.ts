@@ -20,8 +20,7 @@ function cgroupMemoryLimitBytes(): number | null {
     try {
       const value = Number(fs.readFileSync(file, "utf-8").trim());
       if (Number.isFinite(value) && value > 0 && value < os.totalmem()) return value;
-    } catch {
-    }
+    } catch {}
   }
   return null;
 }
@@ -53,8 +52,26 @@ export const IMPORT_ALLOWED_EXTS = new Set([".stl", ".3mf", ".step", ".stp", ".o
 export const RENDERABLE_MODEL_EXTS = new Set([".stl", ".3mf", ".step", ".stp", ".obj"]);
 export const IMPORT_EXT_PRIORITY = [".3mf", ".stl", ".step", ".stp", ".lbrn2", ".lbrn", ".zip"];
 export const IMPORT_BLOCKED_EXTS = new Set([
-  ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg", ".jfif", ".tif", ".tiff",
-  ".css", ".js", ".mjs", ".map", ".json", ".ico", ".woff", ".woff2", ".ttf", ".eot",
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".gif",
+  ".webp",
+  ".bmp",
+  ".svg",
+  ".jfif",
+  ".tif",
+  ".tiff",
+  ".css",
+  ".js",
+  ".mjs",
+  ".map",
+  ".json",
+  ".ico",
+  ".woff",
+  ".woff2",
+  ".ttf",
+  ".eot",
 ]);
 export const IMPORT_TIMEOUT_SECONDS = envInt("IMPORT_TIMEOUT_SECONDS", 30);
 export const IMPORT_MAX_MB = envInt("IMPORT_MAX_MB", 512);

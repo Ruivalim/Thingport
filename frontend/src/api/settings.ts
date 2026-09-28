@@ -59,8 +59,7 @@ export type VersionCheck = {
 
 // Inlined by Vite from the GIT_SHA build arg; null in dev, which the update checker treats as
 // "can't check".
-export const FRONTEND_GIT_SHA: string | null =
-  (import.meta.env.VITE_GIT_SHA as string | undefined) || null;
+export const FRONTEND_GIT_SHA: string | null = (import.meta.env.VITE_GIT_SHA as string | undefined) || null;
 
 export const settingsApi = {
   getVersionCheck: async (): Promise<VersionCheck> => {
@@ -75,10 +74,7 @@ export const settingsApi = {
     return res.json();
   },
 
-  updateStorage: async (payload: {
-    template: string;
-    apply_existing: boolean;
-  }): Promise<StorageSettings> => {
+  updateStorage: async (payload: { template: string; apply_existing: boolean }): Promise<StorageSettings> => {
     const res = await fetch(`${apiBase()}/settings/storage`, {
       method: "POST",
       headers: authHeaders({ "Content-Type": "application/json" }),

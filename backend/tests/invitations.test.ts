@@ -3,7 +3,9 @@ import request from "supertest";
 
 // The mailer is mocked; tests read the invitation link from its calls.
 vi.mock("../src/services/mailer", () => ({
-  sendVerificationEmail: vi.fn<(to: string, displayName: string, token: string) => Promise<void>>(async () => undefined),
+  sendVerificationEmail: vi.fn<(to: string, displayName: string, token: string) => Promise<void>>(
+    async () => undefined,
+  ),
   sendInvitationEmail: vi.fn<(to: string, inviterName: string, link: string, expiresInDays: number) => Promise<void>>(
     async () => undefined,
   ),
@@ -52,7 +54,11 @@ beforeAll(async () => {
     .post("/api/register")
     .send({ displayName: "Invite Admin", email: email("invite-admin"), password: "password123" });
   await prisma.user.update({ where: { id: adminRegister.body.user.id }, data: { role: "ADMIN" } });
-  adminToken = (await request(app).post("/api/login").send({ email: email("invite-admin"), password: "password123" })).body.token;
+  adminToken = (
+    await request(app)
+      .post("/api/login")
+      .send({ email: email("invite-admin"), password: "password123" })
+  ).body.token;
 
   const memberRegister = await request(app)
     .post("/api/register")
@@ -83,9 +89,15 @@ describe("closing registrations", () => {
   });
 
   it("only lets an admin change the setting", async () => {
-    const asMember = await request(app).post("/api/settings/registrations").set(auth(memberToken)).send({ allow_registrations: false });
+    const asMember = await request(app)
+      .post("/api/settings/registrations")
+      .set(auth(memberToken))
+      .send({ allow_registrations: false });
     expect(asMember.status).toBe(403);
-    const asAdmin = await request(app).post("/api/settings/registrations").set(auth(adminToken)).send({ allow_registrations: false });
+    const asAdmin = await request(app)
+      .post("/api/settings/registrations")
+      .set(auth(adminToken))
+      .send({ allow_registrations: false });
     expect(asAdmin.status).toBe(200);
     expect(await getAllowRegistrations(true)).toBe(false);
   });
@@ -94,28 +106,40 @@ describe("closing registrations", () => {
 describe("inviting", () => {
   it("is admin-only", async () => {
     await closeRegistrationsWithSmtp();
-    const res = await request(app).post("/api/admin/invitations").set(auth(memberToken)).send({ email: email("by-member") });
+    const res = await request(app)
+      .post("/api/admin/invitations")
+      .set(auth(memberToken))
+      .send({ email: email("by-member") });
     expect(res.status).toBe(403);
     expect(sendInvitation).not.toHaveBeenCalled();
   });
 
   it("refuses while registrations are open", async () => {
     await setSmtpSettings({ host: "smtp.example.test" });
-    const res = await request(app).post("/api/admin/invitations").set(auth(adminToken)).send({ email: email("open") });
+    const res = await request(app)
+      .post("/api/admin/invitations")
+      .set(auth(adminToken))
+      .send({ email: email("open") });
     expect(res.status).toBe(400);
     expect(sendInvitation).not.toHaveBeenCalled();
   });
 
   it("refuses without SMTP", async () => {
     await setAllowRegistrations(false);
-    const res = await request(app).post("/api/admin/invitations").set(auth(adminToken)).send({ email: email("no-smtp") });
+    const res = await request(app)
+      .post("/api/admin/invitations")
+      .set(auth(adminToken))
+      .send({ email: email("no-smtp") });
     expect(res.status).toBe(400);
     expect(sendInvitation).not.toHaveBeenCalled();
   });
 
   it("refuses an address that already has an account", async () => {
     await closeRegistrationsWithSmtp();
-    const res = await request(app).post("/api/admin/invitations").set(auth(adminToken)).send({ email: email("invite-member") });
+    const res = await request(app)
+      .post("/api/admin/invitations")
+      .set(auth(adminToken))
+      .send({ email: email("invite-member") });
     expect(res.status).toBe(409);
   });
 

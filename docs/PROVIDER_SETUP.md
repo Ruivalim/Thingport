@@ -15,7 +15,7 @@ Treat this token like a password: anyone who has it can use it to act as your Th
 
 ## MakerWorld cookie
 
-Per-user (Profile > MakerWorld) -- MakerWorld has no developer API, so importing from it runs as *your own* logged-in MakerWorld session, captured as a cookie value.
+Per-user (Profile > MakerWorld) -- MakerWorld has no developer API, so importing from it runs as _your own_ logged-in MakerWorld session, captured as a cookie value.
 
 ### Easiest: Thingport Grab
 

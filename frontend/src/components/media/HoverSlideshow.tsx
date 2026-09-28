@@ -20,7 +20,7 @@ export default function HoverSlideshow({ images, alt }: Props) {
   useEffect(() => {
     if (images.length === 0) return;
     let timer = window.setTimeout(function tick() {
-      setActive(current => (current === null ? 0 : (current + 1) % images.length));
+      setActive((current) => (current === null ? 0 : (current + 1) % images.length));
       timer = window.setTimeout(tick, SLIDE_INTERVAL_MS);
     }, FIRST_SLIDE_DELAY_MS);
     return () => window.clearTimeout(timer);
@@ -33,7 +33,7 @@ export default function HoverSlideshow({ images, alt }: Props) {
           key={src}
           component="img"
           src={src}
-          alt={idx === active ? alt ?? "" : ""}
+          alt={idx === active ? (alt ?? "") : ""}
           aria-hidden={idx !== active}
           // The outgoing slide stays opaque until the fade finishes, so the default never shows through.
           sx={{

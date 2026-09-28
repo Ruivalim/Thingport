@@ -29,7 +29,7 @@ export function normalizeZipPath(path: string): string | null {
   const cleaned = normalizePath(raw);
   if (!cleaned) return null;
   const parts = cleaned.split("/").filter(Boolean);
-  if (!parts.length || parts.some(part => part === "..")) return null;
+  if (!parts.length || parts.some((part) => part === "..")) return null;
   return parts.join("/");
 }
 
@@ -57,14 +57,14 @@ export async function readZipEntries(file: File): Promise<{ entries: ZipEntry[];
   }
   const entries = Object.keys(data)
     .toSorted((a, b) => a.localeCompare(b))
-    .map(path => ({ path, size: data[path].length }));
+    .map((path) => ({ path, size: data[path].length }));
   return { entries, data };
 }
 
 export function buildUploadEntriesFromZip(
   data: Record<string, Uint8Array>,
   selected: string[],
-  basePath = ""
+  basePath = "",
 ): UploadEntry[] {
   const entries: UploadEntry[] = [];
   const normalizedBase = normalizePath(basePath);

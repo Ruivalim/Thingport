@@ -249,7 +249,10 @@ export async function inspectPreparedPrint(filePath: string, filename?: string):
 export function preparedFilename(modelName: string, metadata: Pick<PreparedMetadata, "format"> | null): string {
   const fmt = metadata?.format;
   const suffix = fmt === "gcode_3mf" ? ".gcode.3mf" : fmt === "bgcode" ? ".bgcode" : ".gcode";
-  // oxlint-disable-next-line no-control-regex -- stripping control chars is the point here.
-  let safe = (modelName || "prepared-print").trim().replace(/[<>:"/\\|?*\x00-\x1f]/g, "_").replace(/[ .]+$/, "");
+  let safe = (modelName || "prepared-print")
+    .trim()
+    // oxlint-disable-next-line no-control-regex -- stripping control chars is the point here.
+    .replace(/[<>:"/\\|?*\x00-\x1f]/g, "_")
+    .replace(/[ .]+$/, "");
   return `${safe || "prepared-print"}${suffix}`;
 }

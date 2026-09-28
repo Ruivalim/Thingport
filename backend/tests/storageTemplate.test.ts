@@ -24,7 +24,10 @@ function tmpFile(name: string, contents: string): string {
 }
 
 async function upload(name: string): Promise<string> {
-  const res = await request(app).post("/api/upload").set(auth()).attach("files", tmpFile(`${name}.stl`, `solid ${name} endsolid`));
+  const res = await request(app)
+    .post("/api/upload")
+    .set(auth())
+    .attach("files", tmpFile(`${name}.stl`, `solid ${name} endsolid`));
   expect(res.status).toBe(200);
   return res.body.prints[0].id;
 }
@@ -47,7 +50,11 @@ beforeAll(async () => {
   await setStorageTemplate("{collection}/{creator}/{model}/{filename}");
   const res = await request(app)
     .post("/api/register")
-    .send({ displayName: `Storage Tester ${stamp}`, email: `storage-template-${stamp}@example.com`, password: "password123" });
+    .send({
+      displayName: `Storage Tester ${stamp}`,
+      email: `storage-template-${stamp}@example.com`,
+      password: "password123",
+    });
   token = res.body.token;
 });
 
@@ -79,7 +86,10 @@ describe("{collection} and {creator} folders", () => {
     await request(app).delete(`/api/collection/${second}/items/${printId}`).set(auth());
     expect(await platePath(printId)).toBe(`First ${stamp}/${author}/${model}/${model}.stl`);
 
-    await request(app).patch(`/api/collection/${first}`).set(auth()).send({ name: `Renamed ${stamp}` });
+    await request(app)
+      .patch(`/api/collection/${first}`)
+      .set(auth())
+      .send({ name: `Renamed ${stamp}` });
     expect(await platePath(printId)).toBe(`Renamed ${stamp}/${author}/${model}/${model}.stl`);
 
     await request(app).delete(`/api/collection/${first}`).set(auth());
@@ -90,9 +100,17 @@ describe("{collection} and {creator} folders", () => {
     const printId = await upload(`author-reset-${stamp}`);
     const model = `author-reset-${stamp}`;
     const authorId = `makerworld:storage-${stamp}`;
-    await prisma.author.create({ data: { id: authorId, provider: "makerworld", externalId: `storage-${stamp}`, name: "Imported Maker" } });
-    await prisma.print.update({ where: { id: printId }, data: { authorId, creator: "Imported Maker", sourceProvider: "makerworld" } });
-    await request(app).post(`/api/print/${printId}/tags`).set(auth()).send({ tags: ["x"] }); // any edit re-renders the path
+    await prisma.author.create({
+      data: { id: authorId, provider: "makerworld", externalId: `storage-${stamp}`, name: "Imported Maker" },
+    });
+    await prisma.print.update({
+      where: { id: printId },
+      data: { authorId, creator: "Imported Maker", sourceProvider: "makerworld" },
+    });
+    await request(app)
+      .post(`/api/print/${printId}/tags`)
+      .set(auth())
+      .send({ tags: ["x"] }); // any edit re-renders the path
     expect(await platePath(printId)).toBe(`Uncollected/Imported Maker/${model}/${model}.stl`);
 
     expect((await request(app).post(`/api/print/${printId}/author-reset`).set(auth())).status).toBe(200);

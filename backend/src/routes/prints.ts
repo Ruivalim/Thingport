@@ -126,7 +126,12 @@ router.post(
             { filename: safeName, mime, tempFilePath: file.path },
           ]);
           printsOut.push(toPrintOut(print, plates, [], null));
-          void createLog({ userId: req.userId!, action: "model_uploaded", targetId: print.id, details: { name: print.name } });
+          void createLog({
+            userId: req.userId!,
+            action: "model_uploaded",
+            targetId: print.id,
+            details: { name: print.name },
+          });
         }
       } else {
         // Non-renderable files become SUPPORTING files. If nothing is renderable, every file becomes a
@@ -147,7 +152,12 @@ router.post(
         }
 
         printsOut.push(await printOutById(req.userId!, print.id));
-        void createLog({ userId: req.userId!, action: "model_uploaded", targetId: print.id, details: { name: print.name } });
+        void createLog({
+          userId: req.userId!,
+          action: "model_uploaded",
+          targetId: print.id,
+          details: { name: print.name },
+        });
       }
       res.json({ prints: printsOut });
     } finally {
@@ -233,7 +243,7 @@ router.get(
 
     const out = paged.map((p) => {
       const printFiles = filesByPrint.get(p.id) ?? [];
-      const preparedFile = p.preparedFileId ? printFiles.find((f) => f.id === p.preparedFileId) ?? null : null;
+      const preparedFile = p.preparedFileId ? (printFiles.find((f) => f.id === p.preparedFileId) ?? null) : null;
       return toPrintOut(p, p.plates, printFiles, preparedFile, p.author, p.previewImages);
     });
     res.json(out);
@@ -429,7 +439,12 @@ router.post(
     const plates = await prisma.plate.findMany({ where: { printId: print.id }, orderBy: { position: "asc" } });
     await relocatePrint(updated, plates);
     res.json({ print: await printOutById(req.userId!, print.id) });
-    void createLog({ userId: req.userId!, action: "model_edited", targetId: print.id, details: { field: "tags", name: updated.name } });
+    void createLog({
+      userId: req.userId!,
+      action: "model_edited",
+      targetId: print.id,
+      details: { field: "tags", name: updated.name },
+    });
   }),
 );
 
@@ -463,7 +478,12 @@ router.post(
     const plates = await prisma.plate.findMany({ where: { printId: print.id }, orderBy: { position: "asc" } });
     await relocatePrint(updated, plates);
     res.json({ print: await printOutById(req.userId!, print.id) });
-    void createLog({ userId: req.userId!, action: "model_edited", targetId: print.id, details: { field: "meta", name: updated.name } });
+    void createLog({
+      userId: req.userId!,
+      action: "model_edited",
+      targetId: print.id,
+      details: { field: "meta", name: updated.name },
+    });
   }),
 );
 
@@ -489,7 +509,12 @@ router.post(
     const plates = await prisma.plate.findMany({ where: { printId: print.id }, orderBy: { position: "asc" } });
     await relocatePrint(updated, plates);
     res.json({ print: await printOutById(req.userId!, print.id) });
-    void createLog({ userId: req.userId!, action: "model_edited", targetId: print.id, details: { field: "category", name: updated.name } });
+    void createLog({
+      userId: req.userId!,
+      action: "model_edited",
+      targetId: print.id,
+      details: { field: "category", name: updated.name },
+    });
   }),
 );
 
@@ -507,7 +532,12 @@ router.post(
     if (print.authorId) await deleteAuthorIfOrphaned(print.authorId);
     await relocatePrintsForToken("creator", [print.id]);
     res.json({ print: await printOutById(req.userId!, print.id) });
-    void createLog({ userId: req.userId!, action: "model_edited", targetId: print.id, details: { field: "author_reset", name: print.name } });
+    void createLog({
+      userId: req.userId!,
+      action: "model_edited",
+      targetId: print.id,
+      details: { field: "author_reset", name: print.name },
+    });
   }),
 );
 
@@ -523,7 +553,12 @@ router.delete(
       await fs.promises.rm(plateThumbPath(plate.id), { force: true }).catch(() => undefined);
     }
     res.json({ ok: true });
-    void createLog({ userId: req.userId!, action: "model_deleted", targetId: req.params.id, details: { name: full.print.name } });
+    void createLog({
+      userId: req.userId!,
+      action: "model_deleted",
+      targetId: req.params.id,
+      details: { name: full.print.name },
+    });
   }),
 );
 

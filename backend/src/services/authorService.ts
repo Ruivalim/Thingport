@@ -44,7 +44,9 @@ export async function upsertAuthorFromImport(info: ImportedAuthorInfo | null): P
   } catch {
     return null;
   }
-  await linkUnattributedPrints(author.id).catch((err) => console.error("Couldn't link earlier imports to their author", err));
+  await linkUnattributedPrints(author.id).catch((err) =>
+    console.error("Couldn't link earlier imports to their author", err),
+  );
   return author;
 }
 
@@ -120,7 +122,9 @@ export async function linkAuthorToUser(userId: string, authorId: string): Promis
   const patch: { bio?: string; backgroundUrl?: string } = {};
   if (!currentUser.bio && bio) patch.bio = bio;
   if (!currentUser.backgroundUrl && author.backgroundUrl) patch.backgroundUrl = author.backgroundUrl;
-  const user = Object.keys(patch).length ? await prisma.user.update({ where: { id: userId }, data: patch }) : currentUser;
+  const user = Object.keys(patch).length
+    ? await prisma.user.update({ where: { id: userId }, data: patch })
+    : currentUser;
 
   return { author, user };
 }

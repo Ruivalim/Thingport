@@ -38,10 +38,7 @@ export async function validateRemoteHost(host: string): Promise<void> {
   let records: string[];
   try {
     const [v4, v6] = await Promise.allSettled([dns.resolve4(host), dns.resolve6(host)]);
-    records = [
-      ...(v4.status === "fulfilled" ? v4.value : []),
-      ...(v6.status === "fulfilled" ? v6.value : []),
-    ];
+    records = [...(v4.status === "fulfilled" ? v4.value : []), ...(v6.status === "fulfilled" ? v6.value : [])];
   } catch {
     throw new HttpError(400, "Unable to resolve host");
   }

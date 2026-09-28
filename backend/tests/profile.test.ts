@@ -13,9 +13,7 @@ function auth(t: string) {
 
 beforeAll(async () => {
   email = `profile-test-${Date.now()}@example.com`;
-  const registered = await request(app)
-    .post("/api/register")
-    .send({ displayName: "Profile Test", email, password });
+  const registered = await request(app).post("/api/register").send({ displayName: "Profile Test", email, password });
   if (registered.status !== 200) {
     throw new Error(`Failed to register during test setup: ${registered.status} ${JSON.stringify(registered.body)}`);
   }
@@ -25,7 +23,9 @@ beforeAll(async () => {
 
 describe("PATCH /profile", () => {
   it("rejects an unauthenticated request", async () => {
-    const res = await request(app).patch("/api/profile").send({ current_password: password, new_password: "newpassword123" });
+    const res = await request(app)
+      .patch("/api/profile")
+      .send({ current_password: password, new_password: "newpassword123" });
     expect(res.status).toBe(401);
   });
 

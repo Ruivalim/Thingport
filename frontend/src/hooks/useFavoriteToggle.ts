@@ -17,7 +17,9 @@ export function useFavoriteToggle(print: Print, { onUpdated, onUnauthorized }: O
   const [isFavorite, setIsFavorite] = useState(print.is_favorite);
   const pendingRef = useRef(false);
 
-  useEffect(() => { setIsFavorite(print.is_favorite); }, [print.is_favorite]);
+  useEffect(() => {
+    setIsFavorite(print.is_favorite);
+  }, [print.is_favorite]);
 
   const toggle = async () => {
     if (pendingRef.current) return;

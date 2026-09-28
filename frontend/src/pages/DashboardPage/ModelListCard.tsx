@@ -25,7 +25,13 @@ type Props = {
   fetchMore: () => Promise<DashboardModel[]>;
 };
 
-function ModelRow({ model, rank, valueOf, valueLabel, onClick }: {
+function ModelRow({
+  model,
+  rank,
+  valueOf,
+  valueLabel,
+  onClick,
+}: {
   model: DashboardModel;
   rank: number;
   valueOf: (model: DashboardModel) => number;
@@ -36,7 +42,11 @@ function ModelRow({ model, rank, valueOf, valueLabel, onClick }: {
     <ListItemButton onClick={onClick} sx={{ borderRadius: 1, px: 1 }}>
       <Typography sx={{ width: 24, flexShrink: 0, color: "text.secondary", fontWeight: 600 }}>{rank}</Typography>
       <ListItemAvatar sx={{ minWidth: 48 }}>
-        <Avatar src={model.thumb_url ? printsApi.fileUrl(model.thumb_url) : undefined} variant="rounded" sx={{ width: 40, height: 40 }}>
+        <Avatar
+          src={model.thumb_url ? printsApi.fileUrl(model.thumb_url) : undefined}
+          variant="rounded"
+          sx={{ width: 40, height: 40 }}
+        >
           <ViewInArIcon fontSize="small" />
         </Avatar>
       </ListItemAvatar>
@@ -48,22 +58,40 @@ function ModelRow({ model, rank, valueOf, valueLabel, onClick }: {
   );
 }
 
-export default function ModelListCard({ icon, title, models, valueOf, valueLabel, emptyText, seeMoreLabel, fetchMore }: Props) {
+export default function ModelListCard({
+  icon,
+  title,
+  models,
+  valueOf,
+  valueLabel,
+  emptyText,
+  seeMoreLabel,
+  fetchMore,
+}: Props) {
   const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = React.useState(false);
 
   return (
     <Paper
       variant="outlined"
-      sx={{ p: 2.5, display: "flex", flexDirection: "column", borderColor: (theme) => (theme.palette.mode === "dark" ? "transparent" : "divider") }}
+      sx={{
+        p: 2.5,
+        display: "flex",
+        flexDirection: "column",
+        borderColor: (theme) => (theme.palette.mode === "dark" ? "transparent" : "divider"),
+      }}
     >
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1, color: "primary.main" }}>
         {icon}
-        <Typography variant="h6" fontWeight={700} sx={{ color: (theme) => theme.thingport.headingText }}>{title}</Typography>
+        <Typography variant="h6" fontWeight={700} sx={{ color: (theme) => theme.thingport.headingText }}>
+          {title}
+        </Typography>
       </Box>
 
       {models.length === 0 ? (
-        <Typography color="text.secondary" sx={{ py: 2 }}>{emptyText}</Typography>
+        <Typography color="text.secondary" sx={{ py: 2 }}>
+          {emptyText}
+        </Typography>
       ) : (
         <List dense disablePadding>
           {models.map((model, idx) => (
@@ -79,7 +107,9 @@ export default function ModelListCard({ icon, title, models, valueOf, valueLabel
         </List>
       )}
 
-      <Button onClick={() => setDialogOpen(true)} sx={{ alignSelf: "flex-start", mt: 1 }}>{seeMoreLabel}</Button>
+      <Button onClick={() => setDialogOpen(true)} sx={{ alignSelf: "flex-start", mt: 1 }}>
+        {seeMoreLabel}
+      </Button>
 
       <SeeMoreDialog
         open={dialogOpen}
@@ -94,7 +124,10 @@ export default function ModelListCard({ icon, title, models, valueOf, valueLabel
             rank={idx + 1}
             valueOf={valueOf}
             valueLabel={valueLabel}
-            onClick={() => { setDialogOpen(false); navigate(`/models/${model.id}`); }}
+            onClick={() => {
+              setDialogOpen(false);
+              navigate(`/models/${model.id}`);
+            }}
           />
         )}
       />

@@ -38,7 +38,10 @@ const INVALID_SEGMENT_RE = /[<>:"|?*\x00-\x1f]/g;
 
 export function sanitizePathSegment(value: string | null | undefined, fallback: string): string {
   let cleaned = (value || "").trim().replace(INVALID_SEGMENT_RE, "_");
-  cleaned = cleaned.replace(/\//g, "_").replace(/\\/g, "_").replace(/^[ .]+|[ .]+$/g, "");
+  cleaned = cleaned
+    .replace(/\//g, "_")
+    .replace(/\\/g, "_")
+    .replace(/^[ .]+|[ .]+$/g, "");
   if (cleaned === "" || cleaned === "." || cleaned === "..") cleaned = fallback;
   return cleaned.slice(0, 120);
 }
@@ -48,7 +51,9 @@ export function validateStorageTemplate(template: string | null | undefined): st
     .trim()
     .replace(/\\/g, "/")
     .replace(/^\/+|\/+$/g, "")
-    .replace(TOKEN_RE, (match, token: string) => (token in LEGACY_TOKEN_ALIASES ? `{${LEGACY_TOKEN_ALIASES[token]}}` : match));
+    .replace(TOKEN_RE, (match, token: string) =>
+      token in LEGACY_TOKEN_ALIASES ? `{${LEGACY_TOKEN_ALIASES[token]}}` : match,
+    );
   if (!normalized) throw new HttpError(400, "Storage template cannot be empty");
   const tokens = [...normalized.matchAll(TOKEN_RE)].map((m) => m[1]);
   const unknown = tokens.filter((t) => !(STORAGE_TEMPLATE_TOKENS as readonly string[]).includes(t));
@@ -112,7 +117,10 @@ function templateUses(template: string, token: (typeof STORAGE_TEMPLATE_TOKENS)[
  *  source -- the owner. */
 async function creatorLabel(print: PrintLike): Promise<string | null> {
   if (print.authorId) {
-    const author = await prisma.author.findUnique({ where: { id: print.authorId }, select: { name: true, handle: true } });
+    const author = await prisma.author.findUnique({
+      where: { id: print.authorId },
+      select: { name: true, handle: true },
+    });
     if (author?.name || author?.handle) return author.name || author.handle;
   }
   if (print.creator) return print.creator;
@@ -138,10 +146,18 @@ type PrintTemplateValues = Record<string, string>;
 /** Every token's value for one print, other than the per-plate {filename}/{plate}. Tokens that
  *  need their own query are only looked up when the template uses them. */
 async function printTemplateValues(print: PrintLike, template: string): Promise<PrintTemplateValues> {
-  const tagLabel = (print.tags || []).map((t) => t.trim()).filter(Boolean).join(" + ") || "Untagged";
+  const tagLabel =
+    (print.tags || [])
+      .map((t) => t.trim())
+      .filter(Boolean)
+      .join(" + ") || "Untagged";
   return {
-    category: templateUses(template, "category") ? (await categorySegments(print.userId, print.categoryId)).join("/") : "",
-    collection: templateUses(template, "collection") ? sanitizePathSegment(await collectionLabel(print.id), NO_COLLECTION_FOLDER) : "",
+    category: templateUses(template, "category")
+      ? (await categorySegments(print.userId, print.categoryId)).join("/")
+      : "",
+    collection: templateUses(template, "collection")
+      ? sanitizePathSegment(await collectionLabel(print.id), NO_COLLECTION_FOLDER)
+      : "",
     tags: sanitizePathSegment(tagLabel, "Untagged"),
     creator: templateUses(template, "creator") ? sanitizePathSegment(await creatorLabel(print), "Unknown creator") : "",
     model: sanitizePathSegment(print.name, "Model"),
@@ -162,7 +178,10 @@ function renderPlatePath(
     plate: String(platePosition + 1),
   };
   const rendered = renderTemplate(template, values).replace(/\\/g, "/");
-  const parts = rendered.split("/").filter(Boolean).map((part) => sanitizePathSegment(part, "item"));
+  const parts = rendered
+    .split("/")
+    .filter(Boolean)
+    .map((part) => sanitizePathSegment(part, "item"));
   if (!parts.length) throw new HttpError(400, "Storage template produced an empty path");
   const userSegment = sanitizePathSegment(`u-${print.userId}`, "user");
   return assertWithinStorage(path.join(userSegment, ...parts));

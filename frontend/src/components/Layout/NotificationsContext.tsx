@@ -39,7 +39,7 @@ export function NotificationsProvider({
     try {
       await notificationsApi.markAllRead();
       setUnreadCount(0);
-      setItems(prev => prev.map(n => ({ ...n, read: true })));
+      setItems((prev) => prev.map((n) => ({ ...n, read: true })));
     } catch (err) {
       if (err instanceof UnauthorizedError) onUnauthorized?.();
     }
@@ -47,18 +47,19 @@ export function NotificationsProvider({
 
   useEffect(() => {
     void refresh();
-    const interval = window.setInterval(() => { void refresh(); }, POLL_INTERVAL_MS);
+    const interval = window.setInterval(() => {
+      void refresh();
+    }, POLL_INTERVAL_MS);
     return () => window.clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const value = useMemo(() => ({ items, unreadCount, refresh, markAllRead }), [items, unreadCount, refresh, markAllRead]);
-
-  return (
-    <NotificationsContext.Provider value={value}>
-      {children}
-    </NotificationsContext.Provider>
+  const value = useMemo(
+    () => ({ items, unreadCount, refresh, markAllRead }),
+    [items, unreadCount, refresh, markAllRead],
   );
+
+  return <NotificationsContext.Provider value={value}>{children}</NotificationsContext.Provider>;
 }
 
 export function useNotifications() {

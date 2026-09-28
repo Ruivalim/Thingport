@@ -15,7 +15,7 @@ export default function SortTabs({ value, onChange }: Props) {
   const { t } = useTranslation("models");
   return (
     <Stack direction="row" spacing={3}>
-      {SORT_MODES.map(mode => (
+      {SORT_MODES.map((mode) => (
         <Typography
           key={mode}
           variant="body2"

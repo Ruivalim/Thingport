@@ -160,7 +160,9 @@ export function modelPreviewState(plateId: string): ModelPreviewState {
   if (inFlight.has(plateId)) return "generating";
   if (recentlyFailed(plateId)) {
     try {
-      return fsSync.readFileSync(modelPreviewErrorPath(plateId), "utf-8") === UNSUPPORTED_MARKER ? "unsupported" : "failed";
+      return fsSync.readFileSync(modelPreviewErrorPath(plateId), "utf-8") === UNSUPPORTED_MARKER
+        ? "unsupported"
+        : "failed";
     } catch {
       return "failed";
     }
@@ -236,7 +238,8 @@ async function readGlbSummary(file: string): Promise<GlbSummary | null> {
         if (primitive.indices !== undefined) triangles += (gltf.accessors?.[primitive.indices]?.count ?? 0) / 3;
       }
     }
-    const meta = gltf.nodes?.find((node) => typeof node.extras?.thingportPreview === "string")?.extras?.thingportPreview;
+    const meta = gltf.nodes?.find((node) => typeof node.extras?.thingportPreview === "string")?.extras
+      ?.thingportPreview;
     const simplified = meta ? Boolean((JSON.parse(meta) as { simplified?: unknown }).simplified) : false;
     return { triangles, simplified };
   } finally {
@@ -260,7 +263,9 @@ export async function dropPreviewsAffectedBySimplification(simplify: boolean): P
     try {
       const summary = await readGlbSummary(file);
       if (!summary) continue;
-      const affected = simplify ? !summary.simplified && summary.triangles > SIMPLIFY_TARGET_TRIANGLES : summary.simplified;
+      const affected = simplify
+        ? !summary.simplified && summary.triangles > SIMPLIFY_TARGET_TRIANGLES
+        : summary.simplified;
       if (affected) {
         await fs.rm(file, { force: true });
         removed++;

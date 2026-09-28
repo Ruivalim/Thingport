@@ -41,11 +41,17 @@ export default function DashboardPage({ onUnauthorized }: Props) {
         else setError(t("dashboard.loadError"));
       }
     })();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [onUnauthorized, t]);
 
   if (error) {
-    return <Alert severity="error" sx={{ m: 3 }}>{error}</Alert>;
+    return (
+      <Alert severity="error" sx={{ m: 3 }}>
+        {error}
+      </Alert>
+    );
   }
 
   if (!summary) {

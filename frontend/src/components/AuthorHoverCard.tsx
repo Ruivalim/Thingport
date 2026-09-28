@@ -68,17 +68,23 @@ function AuthorPreviewCard({ authorId, viewer }: CardProps) {
   useEffect(() => {
     let cancelled = false;
     loadAuthorPreview(authorId).then(
-      result => { if (!cancelled) setPreview(result); },
-      () => { if (!cancelled) setFailed(true); },
+      (result) => {
+        if (!cancelled) setPreview(result);
+      },
+      () => {
+        if (!cancelled) setFailed(true);
+      },
     );
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [authorId]);
 
   const author = preview?.author ?? null;
   const providerInfo = author ? printProviderInfo(author.provider) : null;
   const name = isSelf ? viewer?.display_name : author?.name || author?.handle;
   const handle = isSelf ? null : author?.handle;
-  const avatarUrl = isSelf ? viewerAvatarUrl : author?.avatar_url ?? undefined;
+  const avatarUrl = isSelf ? viewerAvatarUrl : (author?.avatar_url ?? undefined);
   const coverUrl = isSelf ? viewer?.background_url : author?.background_url;
   const loading = !preview && !failed;
 
@@ -90,7 +96,7 @@ function AuthorPreviewCard({ authorId, viewer }: CardProps) {
 
   return (
     // Portal clicks still bubble through the React tree to the anchoring link/card.
-    <Box onClick={e => e.stopPropagation()} sx={{ width: CARD_WIDTH }}>
+    <Box onClick={(e) => e.stopPropagation()} sx={{ width: CARD_WIDTH }}>
       <Box
         sx={{
           position: "relative",
@@ -136,7 +142,7 @@ function AuthorPreviewCard({ authorId, viewer }: CardProps) {
                   variant="subtitle2"
                   fontWeight={700}
                   noWrap
-                  sx={{ color: theme => theme.thingport.headingText, transition: "color .15s ease" }}
+                  sx={{ color: (theme) => theme.thingport.headingText, transition: "color .15s ease" }}
                 >
                   {name || t("models:card.unknownAuthor")}
                 </Typography>
@@ -153,7 +159,9 @@ function AuthorPreviewCard({ authorId, viewer }: CardProps) {
 
       <Box sx={{ p: 1.5 }}>
         {failed ? (
-          <Typography variant="body2" color="text.secondary">{t("models:author.popup.loadFailed")}</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {t("models:author.popup.loadFailed")}
+          </Typography>
         ) : (
           <>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1.25 }}>
@@ -162,9 +170,13 @@ function AuthorPreviewCard({ authorId, viewer }: CardProps) {
             <Box sx={{ display: "grid", gridTemplateColumns: `repeat(${PREVIEW_MODEL_COUNT}, 1fr)`, gap: 0.75 }}>
               {loading
                 ? Array.from({ length: PREVIEW_MODEL_COUNT }, (_, idx) => (
-                    <Skeleton key={idx} variant="rounded" sx={{ width: "100%", height: "auto", aspectRatio: "1 / 1" }} />
+                    <Skeleton
+                      key={idx}
+                      variant="rounded"
+                      sx={{ width: "100%", height: "auto", aspectRatio: "1 / 1" }}
+                    />
                   ))
-                : preview!.models.map(model => {
+                : preview!.models.map((model) => {
                     const thumb = modelThumbUrl(model);
                     return (
                       <Tooltip key={model.id} title={model.title || model.name} disableInteractive>

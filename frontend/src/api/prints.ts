@@ -113,16 +113,18 @@ export const printsApi = {
     return appendTokenToUrl(`${apiBase()}${rel}`);
   },
 
-  list: async (params: {
-    q?: string;
-    tags?: string[];
-    category_id?: string | string[];
-    collection_id?: string;
-    author_id?: string;
-    order_by?: PrintSortMode;
-    limit?: number;
-    offset?: number;
-  } = {}): Promise<ListPrintsResult> => {
+  list: async (
+    params: {
+      q?: string;
+      tags?: string[];
+      category_id?: string | string[];
+      collection_id?: string;
+      author_id?: string;
+      order_by?: PrintSortMode;
+      limit?: number;
+      offset?: number;
+    } = {},
+  ): Promise<ListPrintsResult> => {
     const qs = new URLSearchParams();
     if (params.q) qs.set("q", params.q);
     if (params.tags && params.tags.length) qs.set("tags", params.tags.join(","));
@@ -154,11 +156,13 @@ export const printsApi = {
     return res.json();
   },
 
-  listTags: async (params: {
-    q?: string;
-    tags?: string[];
-    category_id?: string;
-  } = {}): Promise<string[]> => {
+  listTags: async (
+    params: {
+      q?: string;
+      tags?: string[];
+      category_id?: string;
+    } = {},
+  ): Promise<string[]> => {
     const qs = new URLSearchParams();
     if (params.q) qs.set("q", params.q);
     if (params.tags && params.tags.length) qs.set("tags", params.tags.join(","));
@@ -178,7 +182,7 @@ export const printsApi = {
       tags?: string[];
       category_id?: string;
       mode?: "separate" | "multiplate";
-    } = {}
+    } = {},
   ): Promise<UploadPrintsResult> => {
     const fd = new FormData();
     for (const file of files) {
@@ -331,12 +335,15 @@ export const printsApi = {
     return res.json();
   },
 
-  updateMeta: async (id: string, payload: {
-    name?: string | null;
-    title?: string | null;
-    notes?: string | null;
-    creator?: string | null;
-  }) => {
+  updateMeta: async (
+    id: string,
+    payload: {
+      name?: string | null;
+      title?: string | null;
+      notes?: string | null;
+      creator?: string | null;
+    },
+  ) => {
     const res = await fetch(`${apiBase()}/print/${id}/meta`, {
       method: "POST",
       headers: authHeaders({ "Content-Type": "application/json" }),

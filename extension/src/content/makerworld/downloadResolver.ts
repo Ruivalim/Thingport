@@ -92,7 +92,8 @@ export async function resolveMakerworldDownloadUrl(pageUrl: string): Promise<Res
   if (viaClick) {
     // The button downloads the page's selected profile, which follows the URL hash.
     const page = readMakerworldDesignForPage(pageUrl);
-    if (!page) return { downloadUrl: viaClick, instanceId: parseMakerworldModelUrl(pageUrl)?.requestedInstanceId ?? null };
+    if (!page)
+      return { downloadUrl: viaClick, instanceId: parseMakerworldModelUrl(pageUrl)?.requestedInstanceId ?? null };
     return {
       downloadUrl: viaClick,
       instanceId: pickMakerworldInstanceId(page.design, page.requestedInstanceId),
@@ -103,7 +104,10 @@ export async function resolveMakerworldDownloadUrl(pageUrl: string): Promise<Res
 }
 
 /** The Download button only gives the selected profile, so other profiles resolve via the API. */
-export async function resolveMakerworldProfileDownload(pageUrl: string, instanceId: string): Promise<ResolvedDownload | null> {
+export async function resolveMakerworldProfileDownload(
+  pageUrl: string,
+  instanceId: string,
+): Promise<ResolvedDownload | null> {
   const page = readMakerworldDesignForPage(pageUrl);
   if (!page) return null;
   const downloadUrl = await fetchInstanceDownloadUrl(instanceId, page.nonce).catch(() => null);

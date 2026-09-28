@@ -17,7 +17,10 @@ export async function listBookmarkedTagSet(userId: string): Promise<Set<string>>
 }
 
 export async function listBookmarkedCollectionIdSet(userId: string): Promise<Set<string>> {
-  const rows = await prisma.bookmark.findMany({ where: { userId, type: "COLLECTION" }, select: { collectionId: true } });
+  const rows = await prisma.bookmark.findMany({
+    where: { userId, type: "COLLECTION" },
+    select: { collectionId: true },
+  });
   return new Set(rows.map((r) => r.collectionId).filter((id): id is string => Boolean(id)));
 }
 
@@ -49,8 +52,7 @@ export async function removeCollectionBookmark(userId: string, collectionId: str
 }
 
 export type BookmarkEntryOut =
-  | { id: string; type: "tag"; tag: string }
-  | { id: string; type: "collection"; collection_id: string; name: string };
+  { id: string; type: "tag"; tag: string } | { id: string; type: "collection"; collection_id: string; name: string };
 
 /** A bookmark for a deleted collection is cascade-deleted; a tag bookmark can outlive the tag. */
 export async function listBookmarks(userId: string): Promise<BookmarkEntryOut[]> {

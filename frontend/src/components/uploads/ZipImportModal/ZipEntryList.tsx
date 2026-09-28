@@ -18,7 +18,7 @@ type Props = {
 export default function ZipEntryList({ entries, selected, busy, noFilesLabel, onToggleEntry }: Props) {
   return (
     <Box sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1, maxHeight: 360, overflow: "auto" }}>
-      {entries.map(entry => (
+      {entries.map((entry) => (
         <FormControlLabel
           key={entry.path}
           sx={{

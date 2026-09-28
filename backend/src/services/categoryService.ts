@@ -28,10 +28,7 @@ export async function validateParentCategory(
 }
 
 /** Takes a Prisma client so it can run in the user-creation transaction. */
-export async function seedDefaultCategories(
-  tx: Prisma.TransactionClient,
-  userId: string,
-): Promise<void> {
+export async function seedDefaultCategories(tx: Prisma.TransactionClient, userId: string): Promise<void> {
   async function createNode(node: DefaultCategoryNode, parentId: string | null, position: number): Promise<void> {
     const category = await tx.category.create({
       data: {

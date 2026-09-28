@@ -72,7 +72,11 @@ describe("importing several MakerWorld print profiles", () => {
   beforeAll(async () => {
     const res = await request(app)
       .post("/api/register")
-      .send({ displayName: "Profiles Import Test", email: `mw-profiles-${stamp}@example.com`, password: "password123" });
+      .send({
+        displayName: "Profiles Import Test",
+        email: `mw-profiles-${stamp}@example.com`,
+        password: "password123",
+      });
     token = res.body.token;
   });
 
@@ -87,13 +91,27 @@ describe("importing several MakerWorld print profiles", () => {
       fetched.push(url);
       if (url === `https://api.bambulab.com/v1/design-service/design/${designId}`) return json(design(designId));
       const profile = url.match(/^https:\/\/api\.bambulab\.com\/v1\/iot-service\/api\/user\/profile\/(\d+)/);
-      if (profile) return json({ message: "success", url: `https://s3.example.com/phoenix-${profile[1]}.stl`, filename: `phoenix-${profile[1]}.stl` });
-      const file = url.match(/^https:\/\/s3\.example\.com\/phoenix-(\d+)\.stl$/);
-      if (file) return new Response(`solid phoenix-${file[1]}\nendsolid\n`, { headers: { "content-type": "application/octet-stream" } });
-      if (url === "https://makerworld.bblmw.com/phoenix/cover.jpg") {
-        return new Response(Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64"), {
-          headers: { "content-type": "image/png" },
+      if (profile)
+        return json({
+          message: "success",
+          url: `https://s3.example.com/phoenix-${profile[1]}.stl`,
+          filename: `phoenix-${profile[1]}.stl`,
         });
+      const file = url.match(/^https:\/\/s3\.example\.com\/phoenix-(\d+)\.stl$/);
+      if (file)
+        return new Response(`solid phoenix-${file[1]}\nendsolid\n`, {
+          headers: { "content-type": "application/octet-stream" },
+        });
+      if (url === "https://makerworld.bblmw.com/phoenix/cover.jpg") {
+        return new Response(
+          Buffer.from(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+            "base64",
+          ),
+          {
+            headers: { "content-type": "image/png" },
+          },
+        );
       }
       return new Response("not found", { status: 404 }); // e.g. the author profile, behind Cloudflare
     }) as unknown as typeof fetch;
@@ -104,7 +122,11 @@ describe("importing several MakerWorld print profiles", () => {
     const start = await request(app)
       .post("/api/import/makerworld-profiles")
       .set(auth())
-      .send({ url: `https://makerworld.com/en/models/${designId}-articulated-phoenix`, scope, makerworld_cookie: "token=test-bearer" });
+      .send({
+        url: `https://makerworld.com/en/models/${designId}-articulated-phoenix`,
+        scope,
+        makerworld_cookie: "token=test-bearer",
+      });
     expect(start.status).toBe(202);
     let job = (await request(app).get(`/api/import/jobs/${start.body.job_id}`).set(auth())).body;
     for (let i = 0; i < 100 && job.status === "RUNNING"; i++) {
@@ -118,9 +140,19 @@ describe("importing several MakerWorld print profiles", () => {
     const designId = String(stamp % 1_000_000_000);
     mockMakerworld(designId);
     const job = await runJob(designId, "designer");
-    expect(job).toMatchObject({ status: "DONE", type: "PROFILES", total: 2, imported: 2, failed_count: 0, source_label: "Articulated Phoenix" });
+    expect(job).toMatchObject({
+      status: "DONE",
+      type: "PROFILES",
+      total: 2,
+      imported: 2,
+      failed_count: 0,
+      source_label: "Articulated Phoenix",
+    });
 
-    const print = await prisma.print.findUniqueOrThrow({ where: { id: job.result_print_id }, include: { plates: { orderBy: { position: "asc" } } } });
+    const print = await prisma.print.findUniqueOrThrow({
+      where: { id: job.result_print_id },
+      include: { plates: { orderBy: { position: "asc" } } },
+    });
     // The default profile created the model, then the designer's other one.
     expect(print.plates.map((p) => [p.sourceInstanceId, p.filename])).toEqual([
       ["2", "phoenix-102.stl"],
@@ -138,7 +170,10 @@ describe("importing several MakerWorld print profiles", () => {
   });
 
   it("refuses a link that isn't a MakerWorld model", async () => {
-    const res = await request(app).post("/api/import/makerworld-profiles").set(auth()).send({ url: "https://www.printables.com/model/1-x", scope: "all" });
+    const res = await request(app)
+      .post("/api/import/makerworld-profiles")
+      .set(auth())
+      .send({ url: "https://www.printables.com/model/1-x", scope: "all" });
     expect(res.status).toBe(400);
   });
 });
@@ -155,10 +190,15 @@ describe("adding a profile the extension already resolved", () => {
       const url = String(input);
       fetched.push(url);
       if (url.startsWith(`https://makerworld.com/en/models/${designId}`)) {
-        return new Response("<html><head><title>Phoenix</title></head><body></body></html>", { headers: { "content-type": "text/html" } });
+        return new Response("<html><head><title>Phoenix</title></head><body></body></html>", {
+          headers: { "content-type": "text/html" },
+        });
       }
       const file = url.match(/^https:\/\/s3\.example\.com\/ext-(\d+)\.stl$/);
-      if (file) return new Response(`solid ext-${file[1]}\nendsolid\n`, { headers: { "content-type": "application/octet-stream" } });
+      if (file)
+        return new Response(`solid ext-${file[1]}\nendsolid\n`, {
+          headers: { "content-type": "application/octet-stream" },
+        });
       return new Response("not found", { status: 404 });
     }) as unknown as typeof fetch;
 

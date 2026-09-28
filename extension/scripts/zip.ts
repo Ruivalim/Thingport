@@ -16,7 +16,16 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = path.join(ROOT, "dist", "zips");
 // Fixed timestamp for byte-identical zips.
 const MTIME = new Date("2020-01-01T00:00:00Z");
-const SOURCE_ENTRIES = ["package.json", "package-lock.json", "tsconfig.json", ".oxlintrc.json", "README.md", "scripts", "src", "public"];
+const SOURCE_ENTRIES = [
+  "package.json",
+  "package-lock.json",
+  "tsconfig.json",
+  ".oxlintrc.json",
+  "README.md",
+  "scripts",
+  "src",
+  "public",
+];
 const IGNORED = new Set([".DS_Store", "Thumbs.db"]);
 
 async function collect(dir: string, base: string, files: Zippable): Promise<void> {
@@ -33,12 +42,15 @@ async function writeZip(name: string, files: Zippable): Promise<void> {
   await mkdir(OUT, { recursive: true });
   const out = path.join(OUT, name);
   await writeFile(out, zipSync(files, { level: 9 }));
-  console.log(`${path.relative(ROOT, out)}  ${((await stat(out)).size / 1024).toFixed(1)} KB, ${Object.keys(files).length} files`);
+  console.log(
+    `${path.relative(ROOT, out)}  ${((await stat(out)).size / 1024).toFixed(1)} KB, ${Object.keys(files).length} files`,
+  );
 }
 
 async function zipTarget(target: string): Promise<void> {
   const dir = path.join(ROOT, "dist", target);
-  if (!existsSync(path.join(dir, "manifest.json"))) throw new Error(`dist/${target} isn't built -- run \`npm run build:${target}\` first`);
+  if (!existsSync(path.join(dir, "manifest.json")))
+    throw new Error(`dist/${target} isn't built -- run \`npm run build:${target}\` first`);
   const files: Zippable = {};
   await collect(dir, "", files);
   await writeZip(`thingport-grab-${target}.zip`, files);

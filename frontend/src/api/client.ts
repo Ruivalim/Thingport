@@ -47,7 +47,6 @@ export async function readErrorMessage(res: Response, fallback: string) {
     if (typeof data?.detail === "string" && data.detail.trim()) {
       return data.detail.trim();
     }
-  } catch {
-  }
+  } catch {}
   return trimmed;
 }

@@ -43,7 +43,10 @@ export type FlaresolverrResult = {
 };
 
 /** GET only: FlareSolverr's POST submits a browser form, not a raw body. */
-export async function fetchViaFlaresolverr(url: string, cookieHeader?: string | null): Promise<FlaresolverrResult | null> {
+export async function fetchViaFlaresolverr(
+  url: string,
+  cookieHeader?: string | null,
+): Promise<FlaresolverrResult | null> {
   if (!FLARESOLVERR_URL) return null;
   let hostname: string;
   try {
@@ -91,8 +94,7 @@ export function extractJsonFromBrowserBody(body: string): unknown | null {
   const trimmed = body.trim();
   try {
     return JSON.parse(trimmed);
-  } catch {
-  }
+  } catch {}
   const match = trimmed.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
   if (!match) return null;
   const unescaped = match[1]

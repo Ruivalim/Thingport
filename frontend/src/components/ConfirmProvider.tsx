@@ -25,7 +25,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   const [pending, setPending] = React.useState<PendingConfirm | null>(null);
 
   const confirm = React.useCallback((options: ConfirmOptions) => {
-    return new Promise<boolean>(resolve => {
+    return new Promise<boolean>((resolve) => {
       setPending({ ...options, resolve });
     });
   }, []);
@@ -45,11 +45,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => settle(false)}>{pending?.cancelLabel || t("cancel")}</Button>
-          <Button
-            variant="contained"
-            color={pending?.destructive ? "error" : "primary"}
-            onClick={() => settle(true)}
-          >
+          <Button variant="contained" color={pending?.destructive ? "error" : "primary"} onClick={() => settle(true)}>
             {pending?.confirmLabel || (pending?.destructive ? t("delete") : t("confirm"))}
           </Button>
         </DialogActions>

@@ -174,7 +174,10 @@ export async function extractZipEntriesToPrints(
       ]);
       tempPath = null;
       await attachImportedPreviewImages(print.id, plates[0]?.id, options.previewImageUrl, options.galleryImages ?? []);
-      const previewImages = await prisma.previewImage.findMany({ where: { printId: print.id }, orderBy: { position: "asc" } });
+      const previewImages = await prisma.previewImage.findMany({
+        where: { printId: print.id },
+        orderBy: { position: "asc" },
+      });
       prints.push({ ...print, plates, previewImages });
     } catch {
       if (tempPath) await fs.rm(tempPath, { force: true }).catch(() => undefined);

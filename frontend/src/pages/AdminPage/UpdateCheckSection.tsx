@@ -50,7 +50,9 @@ export default function UpdateCheckSection({ onUnauthorized }: Props) {
         else setStatus({ kind: "error" });
       }
     })();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [onUnauthorized]);
 
   return (
@@ -88,10 +90,14 @@ export default function UpdateCheckSection({ onUnauthorized }: Props) {
             <AlertTitle>{t("adminSettings.updateCheck.availableTitle")}</AlertTitle>
             <Box component="ul" sx={{ mt: 0.5, mb: 1, pl: 2.5 }}>
               {status.backend && (
-                <li><Typography variant="body2">{t("adminSettings.updateCheck.backendOutdated")}</Typography></li>
+                <li>
+                  <Typography variant="body2">{t("adminSettings.updateCheck.backendOutdated")}</Typography>
+                </li>
               )}
               {status.frontend && (
-                <li><Typography variant="body2">{t("adminSettings.updateCheck.frontendOutdated")}</Typography></li>
+                <li>
+                  <Typography variant="body2">{t("adminSettings.updateCheck.frontendOutdated")}</Typography>
+                </li>
               )}
             </Box>
             <Typography variant="body2">{t("adminSettings.updateCheck.howTo")}</Typography>

@@ -42,7 +42,14 @@ const jsonLd = [
       <h1>{title}</h1>
       <p class="meta muted">
         <time datetime={pubDate.toISOString()}>{formatDate(pubDate)}</time> · {author}
-        {updatedDate && <> · Updated <time datetime={updatedDate.toISOString()}>{formatDate(updatedDate)}</time></>}
+        {
+          updatedDate && (
+            <>
+              {" "}
+              · Updated <time datetime={updatedDate.toISOString()}>{formatDate(updatedDate)}</time>
+            </>
+          )
+        }
       </p>
     </header>
     <div class="prose">

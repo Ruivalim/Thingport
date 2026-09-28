@@ -23,7 +23,15 @@ export async function getState(): Promise<ExtensionState> {
 }
 
 // The popup requests the host permission itself: it needs the submit's user gesture.
-export async function saveConfig({ instanceUrl, email, password }: { instanceUrl: string; email: string; password: string }): Promise<null> {
+export async function saveConfig({
+  instanceUrl,
+  email,
+  password,
+}: {
+  instanceUrl: string;
+  email: string;
+  password: string;
+}): Promise<null> {
   const normalized = normalizeInstanceUrl(instanceUrl);
   // Validate before persisting.
   await loginAndStoreToken({ instanceUrl: normalized, email, password });

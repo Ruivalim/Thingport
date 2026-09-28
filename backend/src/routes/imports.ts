@@ -8,7 +8,13 @@ import { normalizeImportUrl } from "../utils/urlUtils";
 import { parseBody } from "../utils/validate";
 import { asyncHandler } from "../utils/asyncHandler";
 import { requireCaptcha } from "../services/captchaService";
-import { checkImportStatus, downloadImportToTemp, findImportedExternalIds, importPrintFromUrl, inspectImportLink } from "../services/importService";
+import {
+  checkImportStatus,
+  downloadImportToTemp,
+  findImportedExternalIds,
+  importPrintFromUrl,
+  inspectImportLink,
+} from "../services/importService";
 import { resolveMakerworldCookie } from "../services/importResolvers";
 import {
   extractMakerworldBearerToken,
@@ -16,7 +22,11 @@ import {
   MakerworldCaptchaError,
   parseMakerworldModelUrl,
 } from "../services/makerworldCloudApi";
-import { fetchMakerworldCollectionEntries, fetchMakerworldCollectionTitle, parseMakerworldCollectionUrl } from "../services/makerworldCollections";
+import {
+  fetchMakerworldCollectionEntries,
+  fetchMakerworldCollectionTitle,
+  parseMakerworldCollectionUrl,
+} from "../services/makerworldCollections";
 import { IMPORT_MAKERWORLD_CALL_DELAY_MS } from "../config";
 import {
   fetchThingiverseCollectionThings,
@@ -60,7 +70,10 @@ const importRequestSchema = z.object({
 });
 
 // Falls back to the cookie saved in Settings when the request doesn't carry one.
-async function withStoredMakerworldCookie<T extends { makerworld_cookie?: string | null }>(userId: string, body: T): Promise<T> {
+async function withStoredMakerworldCookie<T extends { makerworld_cookie?: string | null }>(
+  userId: string,
+  body: T,
+): Promise<T> {
   if (body.makerworld_cookie && body.makerworld_cookie.trim()) return body;
   const stored = await getUserMakerworldCookie(userId);
   return stored ? { ...body, makerworld_cookie: stored } : body;
@@ -74,9 +87,18 @@ router.post(
     const url = await normalizeImportUrl(body.url);
     const result = await importPrintFromUrl(req.userId!, url, body);
     const { print, plates, author, previewImages } = result;
-    const importOutcome = result.alreadyImported ? "already_imported" : result.profileAdded ? "profile_added" : "created";
+    const importOutcome = result.alreadyImported
+      ? "already_imported"
+      : result.profileAdded
+        ? "profile_added"
+        : "created";
     res.json({ ...toPrintOut(print, plates, [], null, author, previewImages), import_outcome: importOutcome });
-    void createLog({ userId: req.userId!, action: "model_imported", targetId: print.id, details: { name: print.name, url } });
+    void createLog({
+      userId: req.userId!,
+      action: "model_imported",
+      targetId: print.id,
+      details: { name: print.name, url },
+    });
   }),
 );
 
@@ -131,7 +153,12 @@ router.post(
     let listing: Awaited<ReturnType<typeof fetchMakerworldCollectionEntries>>;
     try {
       title = await fetchMakerworldCollectionTitle(parsed.collectionId, bearerToken);
-      listing = await fetchMakerworldCollectionEntries(parsed.collectionId, bearerToken, undefined, IMPORT_MAKERWORLD_CALL_DELAY_MS);
+      listing = await fetchMakerworldCollectionEntries(
+        parsed.collectionId,
+        bearerToken,
+        undefined,
+        IMPORT_MAKERWORLD_CALL_DELAY_MS,
+      );
     } catch (err) {
       if (err instanceof MakerworldCaptchaError) throw new HttpError(429, err.message);
       // 400, not 401: the frontend treats any 401 as an expired Thingport session.
@@ -175,7 +202,8 @@ router.post(
     }
 
     const listing = await fetchThingiverseUserLikes(parsed.username, accessToken);
-    if (!listing.entries.length) throw new HttpError(400, "Could not load this user's likes -- check the username and try again");
+    if (!listing.entries.length)
+      throw new HttpError(400, "Could not load this user's likes -- check the username and try again");
 
     const alreadyImported = await findImportedExternalIds(
       req.userId!,
@@ -280,7 +308,10 @@ router.post(
   "/import/makerworld-profiles",
   requireCaptcha("import"),
   asyncHandler(async (req, res) => {
-    const body = await withStoredMakerworldCookie(req.userId!, parseBody(makerworldProfilesImportRequestSchema, req.body));
+    const body = await withStoredMakerworldCookie(
+      req.userId!,
+      parseBody(makerworldProfilesImportRequestSchema, req.body),
+    );
     await assertNoActiveJob(req.userId!);
     const url = await normalizeImportUrl(body.url);
     if (!parseMakerworldModelUrl(url)) throw new HttpError(400, "Not a MakerWorld model link");

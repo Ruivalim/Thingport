@@ -59,7 +59,9 @@ export default function DownloadZipConfirmDialog({ open, onClose, filter, filena
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
     // The caller passes fresh object literals each render; only `open` should refetch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -110,7 +112,9 @@ export default function DownloadZipConfirmDialog({ open, onClose, filter, filena
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={busy}>{t("common:cancel")}</Button>
+        <Button onClick={onClose} disabled={busy}>
+          {t("common:cancel")}
+        </Button>
         <Button
           variant="contained"
           onClick={handleDownload}

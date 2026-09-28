@@ -12,7 +12,10 @@ export type FullPrint = {
 };
 
 export async function loadFullPrint(userId: string, printId: string): Promise<FullPrint> {
-  const print = await prisma.print.findFirst({ where: { id: printId, userId }, include: { author: true, category: true } });
+  const print = await prisma.print.findFirst({
+    where: { id: printId, userId },
+    include: { author: true, category: true },
+  });
   if (!print) throw new HttpError(404, "Print not found");
   const [plates, files, previewImages] = await Promise.all([
     prisma.plate.findMany({ where: { printId }, orderBy: { position: "asc" } }),
@@ -27,7 +30,15 @@ export async function loadFullPrint(userId: string, printId: string): Promise<Fu
 
 export async function printOutById(userId: string, printId: string): Promise<PrintOut> {
   const full = await loadFullPrint(userId, printId);
-  return toPrintOut(full.print, full.plates, full.files, full.preparedFile, full.print.author, full.previewImages, full.print.category);
+  return toPrintOut(
+    full.print,
+    full.plates,
+    full.files,
+    full.preparedFile,
+    full.print.author,
+    full.previewImages,
+    full.print.category,
+  );
 }
 
 function groupByPrintId<T extends { printId: string }>(rows: T[]): Map<string, T[]> {
@@ -55,12 +66,17 @@ export async function printOutsByIds(userId: string, printIds: string[]): Promis
   const previewsByPrint = groupByPrintId(previewImages);
   for (const print of prints) {
     const printFiles = filesByPrint.get(print.id) || [];
-    const preparedFile = print.preparedFileId
-      ? printFiles.find((f) => f.id === print.preparedFileId) ?? null
-      : null;
+    const preparedFile = print.preparedFileId ? (printFiles.find((f) => f.id === print.preparedFileId) ?? null) : null;
     out.set(
       print.id,
-      toPrintOut(print, platesByPrint.get(print.id) || [], printFiles, preparedFile, print.author, previewsByPrint.get(print.id) || []),
+      toPrintOut(
+        print,
+        platesByPrint.get(print.id) || [],
+        printFiles,
+        preparedFile,
+        print.author,
+        previewsByPrint.get(print.id) || [],
+      ),
     );
   }
   return out;

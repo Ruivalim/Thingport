@@ -15,7 +15,11 @@ import {
   normalizeCollectionName,
   systemCollectionKeyForId,
 } from "../services/collectionService";
-import { addCollectionBookmark, listBookmarkedCollectionIdSet, removeCollectionBookmark } from "../services/bookmarkService";
+import {
+  addCollectionBookmark,
+  listBookmarkedCollectionIdSet,
+  removeCollectionBookmark,
+} from "../services/bookmarkService";
 import { printOutsByIds } from "../services/printLoader";
 import { relocatePrintsForToken } from "../services/printService";
 import { createLog } from "../services/auditLog";
@@ -106,7 +110,9 @@ router.get(
     });
     if (!collection) throw new HttpError(404, "Collection not found");
     const bookmarked = Boolean(
-      await prisma.bookmark.findFirst({ where: { userId: req.userId, type: "COLLECTION", collectionId: collection.id } }),
+      await prisma.bookmark.findFirst({
+        where: { userId: req.userId, type: "COLLECTION", collectionId: collection.id },
+      }),
     );
     res.json(toCollectionOut(collection, collection._count.items, [], bookmarked));
   }),

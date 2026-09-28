@@ -37,6 +37,5 @@ export function saveSettings(settings: AppSettings) {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-  } catch {
-  }
+  } catch {}
 }

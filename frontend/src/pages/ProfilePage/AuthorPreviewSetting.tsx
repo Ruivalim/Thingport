@@ -24,13 +24,20 @@ export default function AuthorPreviewSetting({ onUnauthorized }: Props) {
 
   React.useEffect(() => {
     let active = true;
-    settingsApi.getAuthorPreview()
-      .then(res => { if (active) setEnabled(res.enabled); })
-      .catch(err => {
+    settingsApi
+      .getAuthorPreview()
+      .then((res) => {
+        if (active) setEnabled(res.enabled);
+      })
+      .catch((err) => {
         if (active && err instanceof UnauthorizedError) onUnauthorized?.();
       })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [onUnauthorized]);
 
   const handleChange = async (next: boolean) => {
@@ -72,14 +79,18 @@ export default function AuthorPreviewSetting({ onUnauthorized }: Props) {
               <Switch
                 checked={enabled}
                 disabled={loading || saving}
-                onChange={e => void handleChange(e.target.checked)}
+                onChange={(e) => void handleChange(e.target.checked)}
               />
             }
             label={t("profile.authorPreview.label")}
           />
           {saving && <CircularProgress size={16} />}
         </Stack>
-        {status && <Typography variant="caption" color="error" sx={{ display: "block", mt: 1 }}>{status}</Typography>}
+        {status && (
+          <Typography variant="caption" color="error" sx={{ display: "block", mt: 1 }}>
+            {status}
+          </Typography>
+        )}
       </Paper>
     </Box>
   );

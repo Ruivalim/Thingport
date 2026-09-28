@@ -20,7 +20,7 @@ export default function TagInput({ value, onChange, placeholder }: TagInputProps
   const addTag = (raw: string) => {
     const tag = normalized(raw);
     if (!tag) return;
-    if (value.some(v => v.toLowerCase() === tag.toLowerCase())) {
+    if (value.some((v) => v.toLowerCase() === tag.toLowerCase())) {
       setDraft("");
       return;
     }
@@ -70,7 +70,7 @@ export default function TagInput({ value, onChange, placeholder }: TagInputProps
       <InputBase
         inputRef={inputRef}
         value={draft}
-        onChange={e => setDraft(e.target.value)}
+        onChange={(e) => setDraft(e.target.value)}
         onKeyDown={handleKeyDown}
         onBlur={handleBlur}
         placeholder={value.length === 0 ? placeholder : ""}

@@ -31,14 +31,14 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error("Snapshot generation timed out")), ms);
     promise.then(
-      value => {
+      (value) => {
         clearTimeout(timer);
         resolve(value);
       },
-      err => {
+      (err) => {
         clearTimeout(timer);
         reject(err);
-      }
+      },
     );
   });
 }
@@ -80,7 +80,7 @@ export function ModelSnapshot({ url, ext, plateId, mode = "automatic", compact =
         setState("idle");
         if (plateId) {
           try {
-            const imageBlob = await fetch(image).then(response => response.blob());
+            const imageBlob = await fetch(image).then((response) => response.blob());
             await printsApi.uploadGeneratedThumbnail(plateId, imageBlob);
           } catch (err) {
             console.warn("Generated preview could not be persisted:", err);
@@ -95,14 +95,19 @@ export function ModelSnapshot({ url, ext, plateId, mode = "automatic", compact =
     };
     if (!requested) {
       setState("idle");
-      return () => { disposed = true; };
+      return () => {
+        disposed = true;
+      };
     }
     if (mode === "automatic" && typeof IntersectionObserver !== "undefined") {
-      observer = new IntersectionObserver(entries => {
-        if (!entries.some(entry => entry.isIntersecting)) return;
-        observer?.disconnect();
-        void load();
-      }, { rootMargin: "240px" });
+      observer = new IntersectionObserver(
+        (entries) => {
+          if (!entries.some((entry) => entry.isIntersecting)) return;
+          observer?.disconnect();
+          void load();
+        },
+        { rootMargin: "240px" },
+      );
       if (containerRef.current) observer.observe(containerRef.current);
     } else {
       void load();
@@ -150,10 +155,10 @@ export function ModelSnapshot({ url, ext, plateId, mode = "automatic", compact =
             type="button"
             size="small"
             variant="outlined"
-            onClick={event => {
+            onClick={(event) => {
               event.stopPropagation();
               setState("idle");
-              setRetryToken(v => v + 1);
+              setRetryToken((v) => v + 1);
             }}
           >
             {t("common:retry")}
@@ -164,7 +169,10 @@ export function ModelSnapshot({ url, ext, plateId, mode = "automatic", compact =
           type="button"
           size="small"
           variant="outlined"
-          onClick={event => { event.stopPropagation(); setRequested(true); }}
+          onClick={(event) => {
+            event.stopPropagation();
+            setRequested(true);
+          }}
         >
           {t("library:modelViewer.generatePreview")}
         </Button>

@@ -32,7 +32,11 @@ import edgeLogo from "../../assets/logos/browsers/edge.svg";
 import firefoxLogo from "../../assets/logos/browsers/firefox.svg";
 
 const OS_ICON = { windows: LaptopWindowsIcon, macos: AppleIcon, linux: TerminalIcon };
-const BROWSER_LOGO: Record<ExtensionDownload["browser"], string> = { chrome: chromeLogo, edge: edgeLogo, firefox: firefoxLogo };
+const BROWSER_LOGO: Record<ExtensionDownload["browser"], string> = {
+  chrome: chromeLogo,
+  edge: edgeLogo,
+  firefox: firefoxLogo,
+};
 
 type InstallStep = { text: string; code?: string };
 
@@ -80,7 +84,11 @@ function InstallSteps({ steps }: { steps: InstallStep[] }) {
           </Box>
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography variant="body2">{step.text}</Typography>
-            {step.code && <Box sx={{ mt: 1 }}><CodeBlock>{step.code}</CodeBlock></Box>}
+            {step.code && (
+              <Box sx={{ mt: 1 }}>
+                <CodeBlock>{step.code}</CodeBlock>
+              </Box>
+            )}
           </Box>
         </Stack>
       ))}
@@ -132,15 +140,21 @@ export default function DownloadPage() {
         <Typography variant="h6" fontWeight={600} sx={{ color: (muiTheme) => muiTheme.thingport.headingText }}>
           {t("download.pageTitle")}
         </Typography>
-        <Typography variant="body2" color="text.secondary">{t("download.intro")}</Typography>
+        <Typography variant="body2" color="text.secondary">
+          {t("download.intro")}
+        </Typography>
       </Box>
 
       <Stack spacing={2}>
         <Stack direction="row" spacing={1.5} alignItems="flex-start">
           <Box component="img" src={extensionIcon} alt="" sx={{ width: 24, height: 24, mt: 0.5 }} />
           <Box>
-            <Typography variant="subtitle1" fontWeight={600}>{t("download.extension.heading")}</Typography>
-            <Typography variant="body2" color="text.secondary">{t("download.extension.intro")}</Typography>
+            <Typography variant="subtitle1" fontWeight={600}>
+              {t("download.extension.heading")}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {t("download.extension.intro")}
+            </Typography>
           </Box>
         </Stack>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
@@ -149,7 +163,12 @@ export default function DownloadPage() {
               <Stack spacing={1.5} alignItems="flex-start">
                 <Stack direction="row" spacing={1} alignItems="center">
                   <Box component="img" src={extensionIcon} alt="" sx={{ width: 40, height: 40 }} />
-                  <Box component="img" src={BROWSER_LOGO[item.browser]} alt={item.label} sx={{ width: 32, height: 32 }} />
+                  <Box
+                    component="img"
+                    src={BROWSER_LOGO[item.browser]}
+                    alt={item.label}
+                    sx={{ width: 32, height: 32 }}
+                  />
                 </Stack>
                 <Typography variant="subtitle2" fontWeight={600}>
                   {t("download.extension.name")} ({item.label})
@@ -190,8 +209,12 @@ export default function DownloadPage() {
         <Stack direction="row" spacing={1.5} alignItems="flex-start">
           <CableIcon color="primary" sx={{ mt: 0.5 }} />
           <Box>
-            <Typography variant="subtitle1" fontWeight={600}>{t("download.bridge.heading")}</Typography>
-            <Typography variant="body2" color="text.secondary">{t("download.bridge.intro")}</Typography>
+            <Typography variant="subtitle1" fontWeight={600}>
+              {t("download.bridge.heading")}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {t("download.bridge.intro")}
+            </Typography>
           </Box>
         </Stack>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
@@ -201,7 +224,9 @@ export default function DownloadPage() {
               <Paper key={os} variant="outlined" sx={{ p: 2.5, flex: 1 }}>
                 <Stack spacing={1.5} alignItems="flex-start">
                   <Icon fontSize="large" />
-                  <Typography variant="subtitle2" fontWeight={600}>{label}</Typography>
+                  <Typography variant="subtitle2" fontWeight={600}>
+                    {label}
+                  </Typography>
                   <Button
                     component="a"
                     href={bridgeDownloadUrl(asset)}

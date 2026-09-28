@@ -80,20 +80,29 @@ export async function loadMakerworldDesignForPage(pageUrl: string): Promise<Make
 /** The requested profile (if the design has it), then the default, then the first. */
 export function pickMakerworldInstanceId(design: MakerworldDesign, requestedInstanceId: string | null): string | null {
   const instances = Array.isArray(design.instances) ? design.instances.filter((inst) => inst && inst.id) : [];
-  if (requestedInstanceId && instances.some((inst) => String(inst.id) === requestedInstanceId)) return requestedInstanceId;
+  if (requestedInstanceId && instances.some((inst) => String(inst.id) === requestedInstanceId))
+    return requestedInstanceId;
   if (design.defaultInstanceId) return String(design.defaultInstanceId);
   return instances.length ? String(instances[0].id) : null;
 }
 
 /** Mirrors the backend's selectMakerworldProfiles. */
-export function makerworldProfileIds(design: MakerworldDesign, scope: MakerworldProfileScope, requestedInstanceId: string | null): string[] {
+export function makerworldProfileIds(
+  design: MakerworldDesign,
+  scope: MakerworldProfileScope,
+  requestedInstanceId: string | null,
+): string[] {
   const primary = pickMakerworldInstanceId(design, requestedInstanceId);
   if (!primary) return [];
   if (scope === "url") return [primary];
   const designerUid = design.designCreator?.uid != null ? String(design.designCreator.uid) : null;
   const instances = Array.isArray(design.instances) ? design.instances.filter((inst) => inst && inst.id != null) : [];
   const wanted = instances
-    .filter((inst) => scope === "all" || (designerUid !== null && inst.instanceCreator?.uid != null && String(inst.instanceCreator.uid) === designerUid))
+    .filter(
+      (inst) =>
+        scope === "all" ||
+        (designerUid !== null && inst.instanceCreator?.uid != null && String(inst.instanceCreator.uid) === designerUid),
+    )
     .map((inst) => String(inst.id));
   return [primary, ...wanted.filter((id) => id !== primary)];
 }
@@ -105,7 +114,16 @@ const MAX_IMPORT_DESIGN_CHARS = 64 * 1024;
 export function makerworldDesignForImport(design: MakerworldDesign): Record<string, unknown> | null {
   const source = design as Record<string, unknown>;
   const out: Record<string, unknown> = {};
-  for (const key of ["id", "title", "tags", "summary", "coverUrl", "coverPortrait", "coverLandscape", "designCreator"]) {
+  for (const key of [
+    "id",
+    "title",
+    "tags",
+    "summary",
+    "coverUrl",
+    "coverPortrait",
+    "coverLandscape",
+    "designCreator",
+  ]) {
     if (source[key] !== undefined) out[key] = source[key];
   }
   const pictures = getPath(source, "designExtension", "design_pictures");
@@ -114,7 +132,8 @@ export function makerworldDesignForImport(design: MakerworldDesign): Record<stri
       design_pictures: pictures.map((picture) => ({ name: getPath(picture, "name"), url: getPath(picture, "url") })),
     };
   }
-  if (Array.isArray(source.categories)) out.categories = source.categories.map((category) => ({ id: getPath(category, "id") }));
+  if (Array.isArray(source.categories))
+    out.categories = source.categories.map((category) => ({ id: getPath(category, "id") }));
   return JSON.stringify(out).length <= MAX_IMPORT_DESIGN_CHARS ? out : null;
 }
 

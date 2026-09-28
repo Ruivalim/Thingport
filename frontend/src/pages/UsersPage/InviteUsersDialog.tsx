@@ -55,13 +55,17 @@ export default function InviteUsersDialog({ open, onClose }: Props) {
         <DialogContent>
           <Stack spacing={2}>
             <DialogContentText>{t("adminSettings.registrations.invite.description")}</DialogContentText>
-            {sent && <Alert severity="success">{t("adminSettings.registrations.invite.sent", { email: sent.email, count: sent.days })}</Alert>}
+            {sent && (
+              <Alert severity="success">
+                {t("adminSettings.registrations.invite.sent", { email: sent.email, count: sent.days })}
+              </Alert>
+            )}
             {error && <Alert severity="error">{error}</Alert>}
             <TextField
               type="email"
               label={t("adminSettings.registrations.invite.emailLabel")}
               value={email}
-              onChange={e => setEmail(e.target.value)}
+              onChange={(e) => setEmail(e.target.value)}
               required
               fullWidth
               size="small"
@@ -70,7 +74,9 @@ export default function InviteUsersDialog({ open, onClose }: Props) {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={onClose} disabled={sending}>{t("adminSettings.registrations.invite.close")}</Button>
+          <Button onClick={onClose} disabled={sending}>
+            {t("adminSettings.registrations.invite.close")}
+          </Button>
           <Button type="submit" variant="contained" disabled={sending || !email.trim()}>
             {sending ? t("adminSettings.registrations.invite.sending") : t("adminSettings.registrations.invite.send")}
           </Button>

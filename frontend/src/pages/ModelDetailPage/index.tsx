@@ -50,12 +50,18 @@ export default function ModelDetailPage({ theme, onSelectCategory, onUnauthorize
   const goBack = useSmartBack();
 
   usePageHeader({
-    title: print ? (print.title || print.name) : undefined,
+    title: print ? print.title || print.name : undefined,
     subtitle: print ? t("models:detail.subtitle") : undefined,
     actions: print ? (
       <Stack direction="row" alignItems="center" spacing={0.5}>
         <FavoriteButton print={print} onUpdated={setPrint} onUnauthorized={onUnauthorized} />
-        <ModelActionsMenu print={print} onUnauthorized={onUnauthorized} onDeleted={goBack} onUpdated={setPrint} viewer={viewer} />
+        <ModelActionsMenu
+          print={print}
+          onUnauthorized={onUnauthorized}
+          onDeleted={goBack}
+          onUpdated={setPrint}
+          viewer={viewer}
+        />
       </Stack>
     ) : undefined,
   });
@@ -83,7 +89,9 @@ export default function ModelDetailPage({ theme, onSelectCategory, onUnauthorize
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [printId, onUnauthorized]);
 
   if (loading) {
@@ -110,8 +118,8 @@ export default function ModelDetailPage({ theme, onSelectCategory, onUnauthorize
   // With no preview image yet, show the live 3D view and generate a snapshot in the background.
   const needsGeneratedPreview = !hasImages && Boolean(firstPlate) && MODEL_EXTS.has(extOf(firstPlate?.filename || ""));
 
-  const goPrevImage = () => setActiveImageIndex(i => (i - 1 + images.length) % images.length);
-  const goNextImage = () => setActiveImageIndex(i => (i + 1) % images.length);
+  const goPrevImage = () => setActiveImageIndex((i) => (i - 1 + images.length) % images.length);
+  const goNextImage = () => setActiveImageIndex((i) => (i + 1) % images.length);
 
   return (
     <Box sx={{ maxWidth: "1390px", mx: "auto" }}>
@@ -128,7 +136,16 @@ export default function ModelDetailPage({ theme, onSelectCategory, onUnauthorize
             share (and skew the whole two-column layout) even though the image itself is capped
             below. */}
         <Box sx={{ minWidth: 0 }}>
-          <Box sx={{ position: "relative", width: "100%", aspectRatio: "16 / 10", borderRadius: "12px", overflow: "hidden", bgcolor: "background.paper" }}>
+          <Box
+            sx={{
+              position: "relative",
+              width: "100%",
+              aspectRatio: "16 / 10",
+              borderRadius: "12px",
+              overflow: "hidden",
+              bgcolor: "background.paper",
+            }}
+          >
             {hasImages ? (
               <>
                 {/* A blurred, edge-to-edge crop of the same image behind the sharp contained one --
@@ -156,7 +173,14 @@ export default function ModelDetailPage({ theme, onSelectCategory, onUnauthorize
                   component="img"
                   src={printsApi.fileUrl(activeImage.url)}
                   alt={print.title || print.name}
-                  sx={{ position: "absolute", inset: 0, width: "100%", height: "100%", maxWidth: "100%", objectFit: "contain" }}
+                  sx={{
+                    position: "absolute",
+                    inset: 0,
+                    width: "100%",
+                    height: "100%",
+                    maxWidth: "100%",
+                    objectFit: "contain",
+                  }}
                 />
               </>
             ) : (
@@ -273,7 +297,10 @@ export default function ModelDetailPage({ theme, onSelectCategory, onUnauthorize
             >
               {t("models:detail.description")}
             </Typography>
-            <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", color: print.notes ? "text.primary" : "text.disabled" }}>
+            <Typography
+              variant="body2"
+              sx={{ whiteSpace: "pre-wrap", color: print.notes ? "text.primary" : "text.disabled" }}
+            >
               {print.notes || t("models:detail.noDescription")}
             </Typography>
 
@@ -286,7 +313,7 @@ export default function ModelDetailPage({ theme, onSelectCategory, onUnauthorize
             </Typography>
             {print.tags.length ? (
               <Stack direction="row" flexWrap="wrap" useFlexGap spacing={1}>
-                {print.tags.map(tag => (
+                {print.tags.map((tag) => (
                   <Chip
                     key={tag}
                     label={tag}
@@ -306,7 +333,9 @@ export default function ModelDetailPage({ theme, onSelectCategory, onUnauthorize
                 ))}
               </Stack>
             ) : (
-              <Typography variant="body2" color="text.disabled">{t("models:detail.noTags")}</Typography>
+              <Typography variant="body2" color="text.disabled">
+                {t("models:detail.noTags")}
+              </Typography>
             )}
           </Paper>
         </Box>

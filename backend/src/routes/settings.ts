@@ -211,7 +211,14 @@ router.post(
 );
 
 function smtpSettingsOut(smtp: SmtpSettings) {
-  return { host: smtp.host, port: smtp.port, secure: smtp.secure, user: smtp.user, from: smtp.from, configured: Boolean(smtp.host) };
+  return {
+    host: smtp.host,
+    port: smtp.port,
+    secure: smtp.secure,
+    user: smtp.user,
+    from: smtp.from,
+    configured: Boolean(smtp.host),
+  };
 }
 
 router.get(
@@ -295,7 +302,8 @@ const MAKERWORLD_UNVERIFIABLE_MESSAGES: Record<
     "Couldn't check this cookie: MakerWorld's Cloudflare protection blocked the request and FlareSolverr isn't configured. Set FLARESOLVERR_URL and try again.",
   flaresolverr_failed:
     "Couldn't check this cookie: MakerWorld's Cloudflare protection blocked the request and FlareSolverr didn't get past it. Make sure FlareSolverr is running and reachable at FLARESOLVERR_URL, then try again.",
-  network: "Couldn't check this cookie: MakerWorld didn't respond. Check this server's internet connection and try again.",
+  network:
+    "Couldn't check this cookie: MakerWorld didn't respond. Check this server's internet connection and try again.",
 };
 
 const makerworldSettingsSchema = z.object({ cookie: z.string().nullable(), verify: z.boolean().optional() });

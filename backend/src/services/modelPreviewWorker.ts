@@ -5,10 +5,7 @@ import { renderModelPreviewGlb, type RenderOptions } from "./modelPreviewRender"
 
 export type ModelPreviewWorkerInput = { srcPath: string; destPath: string; options: RenderOptions };
 export type ModelPreviewWorkerResult =
-  | { status: "ok" }
-  | { status: "too-complex" }
-  | { status: "unsupported" }
-  | { status: "error"; error: string };
+  { status: "ok" } | { status: "too-complex" } | { status: "unsupported" } | { status: "error"; error: string };
 
 async function run(): Promise<void> {
   const { srcPath, destPath, options } = workerData as ModelPreviewWorkerInput;
@@ -16,7 +13,7 @@ async function run(): Promise<void> {
   try {
     result = { status: await renderModelPreviewGlb(srcPath, destPath, options) };
   } catch (err) {
-    result = { status: "error", error: err instanceof Error ? err.stack ?? err.message : String(err) };
+    result = { status: "error", error: err instanceof Error ? (err.stack ?? err.message) : String(err) };
   }
   // oxlint-disable-next-line unicorn/require-post-message-target-origin -- a worker_threads port, not window.postMessage.
   parentPort?.postMessage(result);

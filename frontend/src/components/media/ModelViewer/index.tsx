@@ -14,7 +14,12 @@ import {
   loadObjectFromAsset,
   paletteForTheme,
 } from "../../../utils/modelLoaders";
-import { buildBambuModelGroup, loadCachedBambuGlb, type Parsed3MFData, type PlateSummary } from "../../../utils/bambuThreeMf";
+import {
+  buildBambuModelGroup,
+  loadCachedBambuGlb,
+  type Parsed3MFData,
+  type PlateSummary,
+} from "../../../utils/bambuThreeMf";
 import { createOrientationGizmo } from "./orientationGizmo";
 import BrandMark from "../../BrandMark";
 
@@ -89,7 +94,7 @@ function fitCameraToBox(
   direction: THREE.Vector3 = BAMBU_VIEW_DIRECTION,
   padding = 1.15,
   /** Scenery size (the bed diagonal) the far plane must not clip. */
-  sceneryExtent = 0
+  sceneryExtent = 0,
 ): void {
   const size = box.getSize(new THREE.Vector3());
   const center = box.getCenter(new THREE.Vector3());
@@ -121,7 +126,7 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
     buildPlateForMeshes = false,
     initialCameraView,
   },
-  ref
+  ref,
 ) {
   const { t } = useTranslation(["library"]);
   const mountRef = useRef<HTMLDivElement | null>(null);
@@ -219,7 +224,12 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
     scene.add(gridHelper);
     const plateMesh = new THREE.Mesh(
       new THREE.PlaneGeometry(buildVolume.x, buildVolume.y),
-      new THREE.MeshBasicMaterial({ color: BAMBU_PLATE_COLOR, transparent: true, opacity: 0.15, side: THREE.DoubleSide })
+      new THREE.MeshBasicMaterial({
+        color: BAMBU_PLATE_COLOR,
+        transparent: true,
+        opacity: 0.15,
+        side: THREE.DoubleSide,
+      }),
     );
     plateMesh.rotation.x = -Math.PI / 2;
     plateMesh.position.y = -0.5;
@@ -227,7 +237,7 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
     scene.add(plateMesh);
     const shadowCatcher = new THREE.Mesh(
       new THREE.PlaneGeometry(buildVolume.x, buildVolume.y),
-      new THREE.ShadowMaterial({ opacity: 0.22 })
+      new THREE.ShadowMaterial({ opacity: 0.22 }),
     );
     shadowCatcher.rotation.x = -Math.PI / 2;
     shadowCatcher.position.y = -0.49;
@@ -273,11 +283,11 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
       if (!obj) return;
       const { colorOverride: color, renderStyle: style } = appearanceRef.current;
       const xray = style === "xray";
-      obj.traverse(child => {
+      obj.traverse((child) => {
         if (!(child instanceof THREE.Mesh)) return;
         child.castShadow = style === "solid";
         const materials = Array.isArray(child.material) ? child.material : [child.material];
-        materials.forEach(mat => {
+        materials.forEach((mat) => {
           const typed = mat as THREE.MeshStandardMaterial;
           if (color) typed.color?.set(color);
           if (typed.userData.baseSide === undefined) typed.userData.baseSide = typed.side;
@@ -305,7 +315,7 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
     const visibleBox = (root: THREE.Object3D): THREE.Box3 => {
       root.updateMatrixWorld(true);
       const box = new THREE.Box3();
-      root.traverseVisible(child => {
+      root.traverseVisible((child) => {
         if (!(child instanceof THREE.Mesh)) return;
         if (!child.geometry.boundingBox) child.geometry.computeBoundingBox();
         box.union(child.geometry.boundingBox!.clone().applyMatrix4(child.matrixWorld));
@@ -323,7 +333,7 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
       group: THREE.Object3D,
       centerOnBuildPlate: boolean,
       refitCamera = false,
-      defaultDirection = BAMBU_VIEW_DIRECTION
+      defaultDirection = BAMBU_VIEW_DIRECTION,
     ) => {
       const box = visibleBox(group);
       if (box.isEmpty()) {
@@ -364,12 +374,15 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
       if (!cachedGlbRoot) return;
       const targetName = plateId != null ? `plate-${plateId}` : null;
       let matched = false;
-      cachedGlbRoot.children.forEach(child => {
+      cachedGlbRoot.children.forEach((child) => {
         const visible = !targetName || child.name === targetName;
         child.visible = visible;
         if (visible) matched = true;
       });
-      if (!matched) cachedGlbRoot.children.forEach(child => { child.visible = true; });
+      if (!matched)
+        cachedGlbRoot.children.forEach((child) => {
+          child.visible = true;
+        });
       finalizeGroupPlacement(cachedGlbRoot, centerOnBuildPlate, refitCamera);
     };
 
@@ -526,7 +539,7 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
           applyAppearance(activeObject);
           syncBuildPlateVisibility();
         },
-        setCameraView: view => {
+        setCameraView: (view) => {
           presetDirection = CAMERA_VIEW_DIRECTIONS[view];
           if (lastFitBox && controls) {
             fitCameraToBox(camera, controls, lastFitBox, CAMERA_VIEW_DIRECTIONS[view], undefined, bedExtent());
@@ -534,7 +547,7 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
         },
       };
 
-      rebuildBambuPlateRef.current = plateId => {
+      rebuildBambuPlateRef.current = (plateId) => {
         if (plateId === currentPlateId) return;
         currentPlateId = plateId;
         if (cachedGlbRoot) showCachedGlbPlate(plateId, true, true);
@@ -542,35 +555,35 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
       };
     })();
 
-  return () => {
-    disposed = true;
-    try {
-      teardown?.();
-      mount.removeChild(renderer.domElement);
-    } catch {}
-    if (activeObject) {
-      disposeObject3D(activeObject);
-    }
-    try {
-      controls?.removeEventListener("end", saveView);
-      controls?.dispose();
-    } catch {}
-    try {
-      environment.texture.dispose();
-      pmrem.dispose();
-    } catch {}
-    try {
-      renderer.forceContextLoss?.();
-    } catch {}
-    renderer.dispose();
-    rebuildBambuPlateRef.current = null;
-    sceneApiRef.current = null;
-  };
-  // Only the initial plate/camera view are read here; later changes go through the lighter effects
-  // below so they don't re-parse the model (onPlatesDetected is also an unmemoized prop).
-  // oxlint-disable-next-line react/exhaustive-effect-dependencies
-  // oxlint-disable-next-line react-hooks/exhaustive-deps
-}, [url, ext, viewKey, theme, previewGlbUrl]);
+    return () => {
+      disposed = true;
+      try {
+        teardown?.();
+        mount.removeChild(renderer.domElement);
+      } catch {}
+      if (activeObject) {
+        disposeObject3D(activeObject);
+      }
+      try {
+        controls?.removeEventListener("end", saveView);
+        controls?.dispose();
+      } catch {}
+      try {
+        environment.texture.dispose();
+        pmrem.dispose();
+      } catch {}
+      try {
+        renderer.forceContextLoss?.();
+      } catch {}
+      renderer.dispose();
+      rebuildBambuPlateRef.current = null;
+      sceneApiRef.current = null;
+    };
+    // Only the initial plate/camera view are read here; later changes go through the lighter effects
+    // below so they don't re-parse the model (onPlatesDetected is also an unmemoized prop).
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [url, ext, viewKey, theme, previewGlbUrl]);
 
   useEffect(() => {
     rebuildBambuPlateRef.current?.(selectedPlateId ?? null);
@@ -580,9 +593,13 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
     sceneApiRef.current?.applyAppearance();
   }, [colorOverride, renderStyle, showBuildPlate, autoRotate]);
 
-  useImperativeHandle(ref, () => ({
-    setCameraView: view => sceneApiRef.current?.setCameraView(view),
-  }), []);
+  useImperativeHandle(
+    ref,
+    () => ({
+      setCameraView: (view) => sceneApiRef.current?.setCameraView(view),
+    }),
+    [],
+  );
 
   return (
     <Box

@@ -16,7 +16,7 @@ fail() {
 }
 
 random_hex() {
-  if command -v openssl >/dev/null 2>&1; then
+  if command -v openssl > /dev/null 2>&1; then
     openssl rand -hex "$1"
   else
     od -An -tx1 -N"$1" /dev/urandom | tr -d ' \n'
@@ -27,10 +27,10 @@ main() {
   [ "$#" -le 1 ] || fail "Usage: sh install.sh [directory]"
 
   for dependency in curl docker; do
-    command -v "$dependency" >/dev/null 2>&1 || fail "Install $dependency before running this script."
+    command -v "$dependency" > /dev/null 2>&1 || fail "Install $dependency before running this script."
   done
-  docker compose version >/dev/null 2>&1 || fail "Install the Docker Compose plugin before running this script."
-  docker info >/dev/null 2>&1 || fail "Docker is not reachable. Start Docker and check that your user can access it."
+  docker compose version > /dev/null 2>&1 || fail "Install the Docker Compose plugin before running this script."
+  docker info > /dev/null 2>&1 || fail "Docker is not reachable. Start Docker and check that your user can access it."
 
   install_dir=${1:-./thingport}
   mkdir -p -- "$install_dir"
@@ -48,13 +48,13 @@ main() {
 
   printf '%s\n' "Downloading Thingport compose file..."
   curl -fsSL "$RAW_URL/docker-compose.deploy.yml" -o "$compose_tmp"
-  curl -fsSL "$RAW_URL/.env.example" |
-    awk -v secret="$(random_hex 32)" -v password="$(random_hex 24)" -v port="${WEB_PORT:-}" '
+  curl -fsSL "$RAW_URL/.env.example" \
+    | awk -v secret="$(random_hex 32)" -v password="$(random_hex 24)" -v port="${WEB_PORT:-}" '
       /^AUTH_SECRET=/ { print "AUTH_SECRET=" secret; next }
       /^POSTGRES_PASSWORD=/ { print "POSTGRES_PASSWORD=" password; next }
       /^WEB_PORT=/ && port != "" { print "WEB_PORT=" port; next }
       { print }
-    ' >"$env_tmp"
+    ' > "$env_tmp"
   chmod 644 "$compose_tmp"
   chmod 600 "$env_tmp"
   docker compose -f "$compose_tmp" --env-file "$env_tmp" config --quiet

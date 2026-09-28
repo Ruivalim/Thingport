@@ -32,10 +32,10 @@ export function paletteForTheme(theme: ResolvedTheme): ModelPalette {
 }
 
 export function applyThemeToObject(obj: THREE.Object3D, palette: ModelPalette) {
-  obj.traverse(child => {
+  obj.traverse((child) => {
     if (!(child instanceof THREE.Mesh)) return;
     const materials = Array.isArray(child.material) ? child.material : [child.material];
-    materials.forEach(mat => {
+    materials.forEach((mat) => {
       const typed = mat as THREE.MeshStandardMaterial;
       if (typed.color) typed.color.copy(palette.color);
       if (typed.emissive) {
@@ -71,7 +71,7 @@ async function loadRawObjectFromAsset(ext: string, url: string): Promise<THREE.O
     geometry.translate(-center.x, -center.y, -center.z);
     const mesh = new THREE.Mesh(
       geometry,
-      new THREE.MeshStandardMaterial({ metalness: 0.2, roughness: 0.8, color: 0xdddddd })
+      new THREE.MeshStandardMaterial({ metalness: 0.2, roughness: 0.8, color: 0xdddddd }),
     );
     return mesh;
   }
@@ -91,11 +91,11 @@ async function loadRawObjectFromAsset(ext: string, url: string): Promise<THREE.O
 }
 
 export function disposeObject3D(obj: THREE.Object3D) {
-  obj.traverse(child => {
+  obj.traverse((child) => {
     if (child instanceof THREE.Mesh) {
       child.geometry?.dispose();
       if (Array.isArray(child.material)) {
-        child.material.forEach(mat => mat.dispose());
+        child.material.forEach((mat) => mat.dispose());
       } else {
         child.material?.dispose();
       }
@@ -161,7 +161,7 @@ async function loadSimple3MFGroup(url: string): Promise<THREE.Group> {
   try {
     const { unzipSync } = await import("fflate");
     const zipEntries = unzipSync(raw);
-    const modelEntries = Object.keys(zipEntries).filter(key => /\.model$/i.test(key));
+    const modelEntries = Object.keys(zipEntries).filter((key) => /\.model$/i.test(key));
     if (modelEntries.length) {
       archiveParsed = true;
       for (const entry of modelEntries) {
@@ -191,11 +191,7 @@ function buildSceneFromDocuments(documents: Map<string, Simple3MFDocument>): THR
   const root = new THREE.Group();
   const cache = new Map<string, THREE.Object3D>();
 
-  const instantiateFromDoc = (
-    docPath: string,
-    objectId: string,
-    stack: Set<string>
-  ): THREE.Object3D | null => {
+  const instantiateFromDoc = (docPath: string, objectId: string, stack: Set<string>): THREE.Object3D | null => {
     const normalizedPath = normalizeModelPath(docPath);
     const cacheKey = `${normalizedPath}::${objectId}`;
     const cached = cache.get(cacheKey);
@@ -223,11 +219,7 @@ function buildSceneFromDocuments(documents: Map<string, Simple3MFDocument>): THR
     } else if (data.components?.length) {
       const group = new THREE.Group();
       for (const component of data.components) {
-        const child = instantiateFromDoc(
-          component.sourcePath ?? doc.path,
-          component.objectId,
-          stack
-        );
+        const child = instantiateFromDoc(component.sourcePath ?? doc.path, component.objectId, stack);
         if (!child) continue;
         if (component.transform) {
           child.applyMatrix4(component.transform.clone());
@@ -247,11 +239,7 @@ function buildSceneFromDocuments(documents: Map<string, Simple3MFDocument>): THR
     if (!doc.buildItems.length) continue;
     const docGroup = new THREE.Group();
     for (const item of doc.buildItems) {
-      const built = instantiateFromDoc(
-        item.sourcePath ?? doc.path,
-        item.objectId,
-        new Set<string>()
-      );
+      const built = instantiateFromDoc(item.sourcePath ?? doc.path, item.objectId, new Set<string>());
       if (!built) continue;
       if (item.transform) {
         built.applyMatrix4(item.transform.clone());
@@ -303,10 +291,7 @@ function meshToThreeObject(mesh: Simple3MFMesh): THREE.Mesh {
   geometry.setIndex(new THREE.BufferAttribute(mesh.indices, 1));
   geometry.computeVertexNormals();
   geometry.computeBoundingSphere();
-  return new THREE.Mesh(
-    geometry,
-    new THREE.MeshStandardMaterial({ color: 0xf1f5f9, metalness: 0.2, roughness: 0.8 })
-  );
+  return new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: 0xf1f5f9, metalness: 0.2, roughness: 0.8 }));
 }
 
 function parseSimple3MFMesh(meshNode: Element): Simple3MFMesh | null {
@@ -367,8 +352,8 @@ function parse3MFMatrix(transform: string): THREE.Matrix4 | null {
   const parts = transform
     .trim()
     .split(/\s+/)
-    .map(v => parseFloat(v))
-    .filter(v => !Number.isNaN(v));
+    .map((v) => parseFloat(v))
+    .filter((v) => !Number.isNaN(v));
   if (parts.length !== 12) return null;
   const matrix = new THREE.Matrix4();
   matrix.set(
@@ -387,7 +372,7 @@ function parse3MFMatrix(transform: string): THREE.Matrix4 | null {
     0,
     0,
     0,
-    1
+    1,
   );
   return matrix;
 }
@@ -482,9 +467,7 @@ async function loadStepGroup(url: string) {
 
     const indices = m.index?.array;
     if (indices && indices.length) {
-      geom.setIndex(
-        Array.isArray(indices) ? indices : Array.from(indices as ArrayLike<number>)
-      );
+      geom.setIndex(Array.isArray(indices) ? indices : Array.from(indices as ArrayLike<number>));
     } else {
       geom.computeVertexNormals();
     }
@@ -493,10 +476,7 @@ async function loadStepGroup(url: string) {
     const color = m.color
       ? new THREE.Color(m.color[0] / 255, m.color[1] / 255, m.color[2] / 255)
       : new THREE.Color(0xf1f5f9);
-    const mesh = new THREE.Mesh(
-      geom,
-      new THREE.MeshStandardMaterial({ color, metalness: 0.2, roughness: 0.8 })
-    );
+    const mesh = new THREE.Mesh(geom, new THREE.MeshStandardMaterial({ color, metalness: 0.2, roughness: 0.8 }));
     group.add(mesh);
   }
 

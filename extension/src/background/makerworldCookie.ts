@@ -21,6 +21,5 @@ export async function maybeSyncMakerworldCookie(config: ConfiguredConfig, cookie
   try {
     await apiCall("PATCH", "/settings/makerworld", { cookie: cookieValue });
     await chrome.storage.local.set({ lastSyncedMakerworldCookie: cookieValue });
-  } catch {
-  }
+  } catch {}
 }
