@@ -61,6 +61,9 @@ const importRequestSchema = z.object({
   // CAPTCHA and its 2-hour blanket cooloff (see makerworldCaptcha.ts).
   resolved_download_url: z.string().nullable().optional(),
   resolved_instance_id: z.string().nullable().optional(),
+  // Sent with resolved_download_url: the page's own design data, so the backend needn't fetch
+  // the model page for the model's details -- see importService.ts's makerworldMetaFromExtension.
+  makerworld_design: z.record(z.unknown()).nullable().optional(),
 });
 
 // The frontend normally sends the browser's own locally-stored MakerWorld cookie on every

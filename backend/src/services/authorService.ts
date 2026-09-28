@@ -35,15 +35,17 @@ export async function upsertAuthorFromImport(info: ImportedAuthorInfo | null): P
       // A field the new import didn't get is left as it was rather than erased: a MakerWorld
       // import often only has the design's short creator summary (the fuller profile endpoint
       // being behind Cloudflare), and shouldn't wipe a bio/links/cover an earlier import fetched.
-      update: {
-        name: info.name ?? undefined,
-        handle: info.handle ?? undefined,
-        bio: info.bio ?? undefined,
-        bioTranslated: info.bioTranslated ?? undefined,
-        links: info.links.length ? info.links : undefined,
-        avatarUrl: info.avatarUrl ?? undefined,
-        backgroundUrl: info.backgroundUrl ?? undefined,
-      },
+      update: info.unverified
+        ? {}
+        : {
+            name: info.name ?? undefined,
+            handle: info.handle ?? undefined,
+            bio: info.bio ?? undefined,
+            bioTranslated: info.bioTranslated ?? undefined,
+            links: info.links.length ? info.links : undefined,
+            avatarUrl: info.avatarUrl ?? undefined,
+            backgroundUrl: info.backgroundUrl ?? undefined,
+          },
     });
   } catch {
     return null;

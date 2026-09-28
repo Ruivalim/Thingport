@@ -21,6 +21,7 @@ import {
   extractPageMetadata,
   findDownloadUrl,
   makerworldHtmlHeaders,
+  makerworldMetaFromDesign,
   resolveMakerworldCookie,
   resolveMakerworldDownloadUrl,
   type ImportCookies,
@@ -78,6 +79,12 @@ export type ImportRequestBody = ImportCookies & {
   /** Sent alongside resolved_download_url: the MakerWorld profile that URL downloads -- see
    *  ImportedPageMetadata.makerworldProfile. Null when the extension couldn't tell. */
   resolved_instance_id?: string | null;
+  /** Sent alongside resolved_download_url: the MakerWorld design as the live page embeds it
+   *  (its __NEXT_DATA__ design, trimmed to what an import uses), so the model's details come
+   *  from the page the user is on rather than from the backend fetching that page again -- a
+   *  request Cloudflare often blocks. Client-supplied, so see makerworldMetaFromExtension for
+   *  how far it's trusted. */
+  makerworld_design?: Record<string, unknown> | null;
   /** Internal only -- never comes from the request body/schema. Set by runCollectionImportJob
    *  on each per-design body it builds for a MakerWorld collection batch import, and read
    *  wherever a MakerWorld-bound call happens along this whole chain (tryMakerworldCloudApi,
@@ -229,6 +236,44 @@ export async function fetchMakerworldPageAuthor(
   return completeMakerworldAuthor(extractPageMetadata(buffer.toString("utf-8"), "makerworld.com").author, paceMs);
 }
 
+/** Whether `url` is on MakerWorld's image CDN -- where every cover, gallery picture and avatar
+ * in a design lives. */
+function isMakerworldCdnUrl(url: string | null | undefined): url is string {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" && parsed.hostname.endsWith(".bblmw.com");
+  } catch {
+    return false;
+  }
+}
+
+/** The import's metadata from the design the Thingport Grab extension read off the live model
+ * page (body.makerworld_design) -- null when there's none, or it's for another model, so the
+ * backend reads the page itself instead. It comes from the client, so the image URLs the backend
+ * will fetch are limited to MakerWorld's own CDN, and the author it names can create an author
+ * record but not overwrite one (see ImportedAuthorInfo.unverified). */
+async function makerworldMetaFromExtension(url: string, body: ImportRequestBody): Promise<ImportedPageMetadata | null> {
+  const design = body.makerworld_design;
+  const parsed = parseMakerworldModelUrl(url);
+  if (!design || !parsed || design.id == null || String(design.id) !== parsed.designId) return null;
+  const meta = makerworldMetaFromDesign(design);
+  meta.previewImageUrl = isMakerworldCdnUrl(meta.previewImageUrl) ? meta.previewImageUrl : null;
+  meta.galleryImages = meta.galleryImages.filter((image) => isMakerworldCdnUrl(image.url));
+  const basicAuthor = meta.author && {
+    ...meta.author,
+    avatarUrl: isMakerworldCdnUrl(meta.author.avatarUrl) ? meta.author.avatarUrl : null,
+    unverified: true,
+  };
+  const author = await completeMakerworldAuthor(basicAuthor, body.makerworldPaceMs);
+  return {
+    ...meta,
+    author,
+    creator: author?.name ?? meta.creator,
+    makerworldProfile: { instanceId: body.resolved_instance_id ?? null },
+  };
+}
+
 type MakerworldCloudShortcut = { downloadUrl: string; meta: ImportedPageMetadata };
 
 /** Attempts the api.bambulab.com resolution path for a MakerWorld model URL. Returns null
@@ -291,6 +336,14 @@ export async function openImportResponse(
     const cloudResolved = await tryMakerworldCloudApi(validatedUrl, body);
     if (cloudResolved) {
       return openImportResponse(cloudResolved.downloadUrl, body, validatedUrl, depth + 1, cloudResolved.meta);
+    }
+  }
+  // The extension resolved the download *and* sent the page's own design data: nothing left to
+  // ask MakerWorld, so the model page isn't fetched at all.
+  if (depth === 0 && host.endsWith("makerworld.com") && body.resolved_download_url) {
+    const fromExtension = await makerworldMetaFromExtension(validatedUrl, body);
+    if (fromExtension) {
+      return openImportResponse(body.resolved_download_url, body, validatedUrl, depth + 1, fromExtension);
     }
   }
 

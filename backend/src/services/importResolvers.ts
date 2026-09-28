@@ -561,6 +561,10 @@ export type ImportedAuthorInfo = {
   links: string[];
   avatarUrl: string | null;
   backgroundUrl: string | null;
+  /** Set when this came from the client (the extension's copy of the page -- see
+   *  importService.ts's makerworldMetaFromExtension) rather than from the site itself: it may
+   *  create the author's record, but never overwrites one. */
+  unverified?: boolean;
 };
 
 export function emptyImportedPageMetadata(): ImportedPageMetadata {

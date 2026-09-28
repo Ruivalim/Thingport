@@ -310,6 +310,22 @@ describe("importing from MakerWorld", () => {
     return `<html><head><title>Classic Benchy</title></head><body><script id="__NEXT_DATA__" type="application/json">${JSON.stringify(nextData)}</script></body></html>`;
   }
 
+  /** The design as the Thingport Grab extension sends it with an import -- the page's own
+   *  __NEXT_DATA__ design, trimmed (see the extension's makerworldDesignForImport). */
+  function extensionDesign(designId: string): Record<string, unknown> {
+    return {
+      id: Number(designId),
+      title: "Classic Benchy",
+      summary: "<p>The <b>classic</b> calibration boat.</p>",
+      tags: ["benchy", "calibration"],
+      coverUrl: "https://makerworld.bblmw.com/makerworld/model/benchy/cover.jpg",
+      designCreator: creator,
+      designExtension: {
+        design_pictures: [{ name: "side.jpg", url: "https://makerworld.bblmw.com/makerworld/model/benchy/side.jpg" }],
+      },
+    };
+  }
+
   const expected = (overrides: Partial<Expected> = {}): Expected => ({
     title: "Classic Benchy",
     descriptionIncludes: "classic calibration boat",
@@ -341,7 +357,7 @@ describe("importing from MakerWorld", () => {
     await expectFullyImported(res.body.id, expected());
   });
 
-  it("from the Thingport Grab extension (download link resolved in the browser): still links the author", async () => {
+  it("from an older Thingport Grab extension (download link resolved in the browser, no page data): reads the page", async () => {
     const designId = String((stamp % 1_000_000_000) + 10);
     const instanceId = String((stamp % 1_000_000_000) + 11);
     mockFetch({
@@ -363,6 +379,58 @@ describe("importing from MakerWorld", () => {
       });
     expect(res.status).toBe(200);
     await expectFullyImported(res.body.id, expected());
+  });
+
+  it("from the Thingport Grab extension with the page's data: doesn't fetch the model page at all", async () => {
+    const designId = String((stamp % 1_000_000_000) + 40);
+    const instanceId = String((stamp % 1_000_000_000) + 41);
+    // No route for the model page: fetching it (often Cloudflare-blocked for a server) fails the test.
+    mockFetch({
+      "https://makerworld.com/api/v1/design-user-service/user/profile/": cloudflareChallenge,
+      "https://makerworld.bblmw.com/makerworld/model/benchy/benchy.3mf": threeMf,
+      "https://makerworld.bblmw.com/makerworld/model/benchy/cover.jpg": png,
+      "https://makerworld.bblmw.com/makerworld/model/benchy/side.jpg": png,
+    });
+
+    const res = await request(app)
+      .post("/api/import")
+      .set({ ...auth(), "X-Thingport-Client": "grab" })
+      .send({
+        url: `https://makerworld.com/en/models/${designId}-classic-benchy`,
+        resolved_download_url: "https://makerworld.bblmw.com/makerworld/model/benchy/benchy.3mf",
+        resolved_instance_id: instanceId,
+        makerworld_design: extensionDesign(designId),
+      });
+    expect(res.status).toBe(200);
+    await expectFullyImported(res.body.id, expected());
+  });
+
+  it("from the Thingport Grab extension with the page's data: trusts it no further than MakerWorld's own", async () => {
+    const designId = String((stamp % 1_000_000_000) + 50);
+    const instanceId = String((stamp % 1_000_000_000) + 51);
+    mockFetch({
+      "https://makerworld.com/api/v1/design-user-service/user/profile/": cloudflareChallenge,
+      "https://makerworld.bblmw.com/makerworld/model/benchy/benchy.3mf": threeMf,
+      "https://makerworld.bblmw.com/makerworld/model/benchy/cover.jpg": png,
+      // Anything off MakerWorld's CDN would fail the test here if the backend fetched it.
+    });
+
+    const design = extensionDesign(designId);
+    design.designCreator = { ...creator, name: "Impostor", avatar: "https://evil.example.com/avatar.png" };
+    design.designExtension = { design_pictures: [{ name: "x.jpg", url: "http://169.254.169.254/latest/meta-data" }] };
+    const res = await request(app)
+      .post("/api/import")
+      .set({ ...auth(), "X-Thingport-Client": "grab" })
+      .send({
+        url: `https://makerworld.com/en/models/${designId}-classic-benchy`,
+        resolved_download_url: "https://makerworld.bblmw.com/makerworld/model/benchy/benchy.3mf",
+        resolved_instance_id: instanceId,
+        makerworld_design: design,
+      });
+    expect(res.status).toBe(200);
+    // Linked to the (already known) author, whose record the client's version didn't overwrite;
+    // only the cover was fetched.
+    await expectFullyImported(res.body.id, expected({ previewImages: 1 }));
   });
 
   /** A web-app import with a MakerWorld login, which goes through MakerWorld's own API. */
