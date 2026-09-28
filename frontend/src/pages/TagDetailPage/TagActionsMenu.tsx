@@ -14,11 +14,6 @@ type Props = {
   onUnauthorized?: () => void;
 };
 
-/** The tag detail page's title-row "..." menu -- just "Download all Tag models as zip" for now
- *  (every print carrying this tag, across every category; see DownloadZipConfirmDialog), same
- *  shape as CollectionActionsMenu's own download item. A single-item menu still earns its own
- *  dropdown rather than a bare icon button: it reads as the same affordance as every other
- *  detail page's "..." menu, and leaves room to grow without another layout change later. */
 export default function TagActionsMenu({ tag, onUnauthorized }: Props) {
   const { t } = useTranslation(["models", "common"]);
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);

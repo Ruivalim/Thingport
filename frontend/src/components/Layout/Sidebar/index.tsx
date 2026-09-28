@@ -31,10 +31,6 @@ const SIDEBAR_WIDTH = 240;
 const SIDEBAR_COLLAPSED_WIDTH = 72;
 const SIDEBAR_COLLAPSED_STORAGE_KEY = "thingport_sidebar_collapsed";
 
-/** Shared color/background logic for every nav row (both the expanded ListItemButton and the
- *  collapsed icon-only variant below) -- selected rows get the theme's nav-selected background
- *  (a flat tint in light mode, a left-to-right gradient in dark) and text/icon color, unselected
- *  ones get the theme's dedicated (narrower-than-text.secondary) inactive nav color. */
 function navRowSx(selected: boolean) {
   const color = (theme: Theme) => (selected ? theme.thingport.selectedNavText : theme.thingport.navInactiveText);
   return {
@@ -48,9 +44,7 @@ function navRowSx(selected: boolean) {
           },
         }
       : {
-          // Dark mode only: hovering an inactive row shouldn't tint its background (unlike
-          // MUI's own default hover overlay, which light mode still gets, unchanged) -- just
-          // brighten the label/icon to white. Returning {} for light leaves that default alone.
+          // Dark mode: brighten the label instead of tinting the background on hover.
           "&:hover": (theme: Theme) =>
             theme.palette.mode === "dark"
               ? { backgroundColor: "transparent", color: "#fff", "& .MuiListItemIcon-root": { color: "#fff" } }
@@ -59,8 +53,6 @@ function navRowSx(selected: boolean) {
   };
 }
 
-/** Icon-only rail row used for every nav item once the sidebar is collapsed -- a tooltip stands
- *  in for the label. */
 function CollapsedNavIcon({ icon, label, selected, onClick }: {
   icon: React.ReactNode;
   label: string;
@@ -85,27 +77,16 @@ function CollapsedNavIcon({ icon, label, selected, onClick }: {
 type Props = {
   isAdmin: boolean;
   onSelectCategory: (id: string | null) => void;
-  /** Bumped whenever a tag or collection is bookmarked/unbookmarked elsewhere (the Tags/
-   *  Collections list pages, or a tag/collection detail page's title-row toggle) so the
-   *  quick-access list below refetches without needing a full remount -- same shape as
-   *  ModelsPage's categoriesVersion/onCategoriesChanged. */
+  /** Bumped when a bookmark changes elsewhere, to refetch the list. */
   bookmarksVersion?: number;
 };
 
-/** Where a bookmark entry navigates to, and its display label -- tags and collections share one
- *  ordered list (see BookmarkEntry) but differ in both. */
 function bookmarkTarget(entry: BookmarkEntry): { href: string; label: string } {
   return entry.type === "tag"
     ? { href: `/models/tags/${encodeURIComponent(entry.tag)}`, label: entry.tag }
     : { href: `/models/collections/${entry.collection_id}`, label: entry.name };
 }
 
-/** The persistent app-wide navigation rail: Dashboard, Models, Collections, Tags, Downloads, then
- *  (once any tag or collection is bookmarked) a divider, a "Bookmarks" heading, and one row per
- *  bookmark -- tags and collections interleaved, in the user's own manual order (drag a row up or
- *  down to reorder; see handleDrop) -- and finally (for admins) a single "Administration" row --
- *  it's just a link to the /admin hub page now, not an expandable list of every admin sub-page
- *  (see AdminPage). Category browsing lives inside the Models page itself, not here. */
 export default function Sidebar({ isAdmin, onSelectCategory, bookmarksVersion }: Props) {
   const { t } = useTranslation(["app", "common"]);
   const location = useLocation();
@@ -115,13 +96,8 @@ export default function Sidebar({ isAdmin, onSelectCategory, bookmarksVersion }:
     return window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === "true";
   });
   const [bookmarks, setBookmarks] = useState<BookmarkEntry[]>([]);
-  // The bookmark id currently being dragged, if any -- set on that row's dragstart, read by every
-  // other row's drop handler, cleared once the gesture ends (drop, or a drag that's cancelled).
   const [draggingId, setDraggingId] = useState<string | null>(null);
-  // Whichever row the pointer is currently over mid-drag -- purely visual (a highlighted drop
-  // target), so it's obvious where a drop will land instead of just a generic cursor. Updated on
-  // every dragover rather than dragenter/dragleave, which fire unreliably as the pointer crosses
-  // a row's own child elements (icon/text) due to event bubbling.
+  // Tracked on dragover: dragenter/dragleave fire unreliably across child elements.
   const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -130,14 +106,10 @@ export default function Sidebar({ isAdmin, onSelectCategory, bookmarksVersion }:
       .then(entries => { if (!cancelled) setBookmarks(entries); })
       .catch(() => { /* non-critical nav aid -- swallow and leave the list as-is */ });
     return () => { cancelled = true; };
-    // bookmarksVersion is a deliberate refetch trigger, not read inside the effect itself.
     // oxlint-disable-next-line react/exhaustive-effect-dependencies
   }, [bookmarksVersion]);
 
-  // Drops `draggedId` immediately before/after `targetId` (wherever it lands in the array once
-  // moved next to it) -- applied optimistically so the row jumps right away, then persisted via
-  // POST /bookmarks/reorder; a failed save just refetches the server's own order rather than
-  // trying to roll back the local splice by hand.
+  // Optimistic reorder; a failed save refetches the server's order.
   const handleDrop = (draggedId: string, targetId: string) => {
     if (draggedId === targetId) return;
     setBookmarks(prev => {
@@ -154,14 +126,8 @@ export default function Sidebar({ isAdmin, onSelectCategory, bookmarksVersion }:
     });
   };
 
-  // Native HTML5 drag defaults to snapshotting the *entire* dragged element as the ghost image --
-  // here that's a full sidebar-width row (padding included, for a comfortable click target), not
-  // just the short label it visibly shows. Left alone, the ghost reads as much wider than "the
-  // item" the label suggests, and can visually overlap neighboring rows enough that it feels like
-  // they're being dragged too. Supplying a small custom drag image (just the label, sized to fit)
-  // keeps the ghost honest about what's actually moving. The temporary node is built off-screen
-  // and removed on the next frame -- setDragImage snapshots it synchronously when called, so it
-  // only needs to exist for that one instant.
+  // The default drag image is the whole full-width row, which looks like neighbours are moving
+  // too, so use a small off-screen label instead. setDragImage snapshots it synchronously.
   const handleDragStart = (e: React.DragEvent<HTMLElement>, id: string, label: string) => {
     setDraggingId(id);
     const preview = document.createElement("div");
@@ -190,9 +156,6 @@ export default function Sidebar({ isAdmin, onSelectCategory, bookmarksVersion }:
   const onTags = location.pathname.startsWith("/models/tags");
   const onModels = (location.pathname.startsWith("/models") && !onCollections && !onTags) || location.pathname.startsWith("/authors");
   const onDownload = location.pathname.startsWith("/downloads");
-  // Covers both the hub itself (/admin) and every sub-page (/admin-settings, /admin-users, ...)
-  // as a plain string-prefix match -- they're only ever reached from that hub now, not listed
-  // individually here any more, so one flag is all this row needs.
   const onAdmin = location.pathname.startsWith("/admin");
 
   const toggleCollapsed = () => {
@@ -201,7 +164,6 @@ export default function Sidebar({ isAdmin, onSelectCategory, bookmarksVersion }:
       try {
         window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(next));
       } catch {
-        // ignore storage errors
       }
       return next;
     });
@@ -209,8 +171,7 @@ export default function Sidebar({ isAdmin, onSelectCategory, bookmarksVersion }:
 
   const currentWidth = collapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH;
 
-  // Always lands on the unfiltered grid, even if a category was selected the last time Models
-  // was open -- unlike the in-page back button, which keeps the filter (see useRouteChrome).
+  // Always lands on the unfiltered grid, unlike the in-page back button.
   const goToModelsRoot = () => {
     onSelectCategory(null);
     navigate("/models");
@@ -410,10 +371,6 @@ export default function Sidebar({ isAdmin, onSelectCategory, bookmarksVersion }:
                       borderRadius: 1,
                       mb: 0.5,
                       cursor: "grab",
-                      // The row being lifted fades a bit (its "real" position, distinct from the
-                      // small custom ghost following the cursor -- see handleDragStart) and the
-                      // row currently under the cursor gets an inset outline, so it's unambiguous
-                      // which row a drop will land on instead of just a generic cursor change.
                       opacity: draggingId === entry.id ? 0.4 : 1,
                       ...(dragOverId === entry.id && draggingId !== entry.id
                         ? { outline: "2px solid", outlineColor: "primary.main", outlineOffset: "-2px" }

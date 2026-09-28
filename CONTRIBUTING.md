@@ -89,5 +89,6 @@ If you couldn't verify something end to end, say so. That's useful information, 
 
 ## Licence
 
-Thingport is MIT licensed. By contributing, you agree that your contributions are licensed under
+Thingport is copyright (C) 2026 Tautvydas Deržinskas and licensed under the GNU Affero General Public
+License v3.0 (AGPL-3.0-only). By contributing, you agree that your contributions are licensed under
 the same terms.

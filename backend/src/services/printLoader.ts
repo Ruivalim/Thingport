@@ -40,9 +40,7 @@ function groupByPrintId<T extends { printId: string }>(rows: T[]): Map<string, T
   return map;
 }
 
-/** Batch-loads full PrintOuts for a set of print ids (e.g. a collection's cover thumbnails) in a
- * handful of `IN`-scoped queries rather than one loadFullPrint call per id. Ids that don't belong
- * to `userId` are silently omitted from the returned map. */
+/** A few `IN` queries instead of one load per id. Ids not owned by `userId` are omitted. */
 export async function printOutsByIds(userId: string, printIds: string[]): Promise<Map<string, PrintOut>> {
   const out = new Map<string, PrintOut>();
   if (!printIds.length) return out;

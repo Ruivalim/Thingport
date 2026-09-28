@@ -3,10 +3,7 @@ import request from "supertest";
 import { createApp } from "../src/app";
 import { prisma } from "../src/db";
 
-// PATCH /category/:id/meta's makerworld_cat_ids/thingiverse_cat_ids/printables_cat_ids fields:
-// free-text "800;71;1001"-style input, parsed and validated by routes/categories.ts's
-// parseCatIdsInput into the real Category.*CatIds int array that importService.ts's
-// resolveCategoryIdByCategory matches against (see thingiverseImport.test.ts for that side of it).
+// Free-text "800;71;1001" input for the *_cat_ids fields.
 
 const app = createApp();
 let token: string;

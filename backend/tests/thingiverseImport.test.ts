@@ -5,12 +5,7 @@ import { importPrintFromUrl } from "../src/services/importService";
 import { setThingiverseAccessToken } from "../src/services/settingsService";
 import { prisma } from "../src/db";
 
-// Exercises importPrintFromUrl's Thingiverse path end to end against the real shapes confirmed
-// live against api.thingiverse.com (the official Developer API -- see thingiverseApi.ts): a
-// `things/{id}` response with zip_data.files/images, creator, tags, description, and a separate
-// `things/{id}/categories` call. Every actual HTTP fetch is intercepted; no DNS/network needed
-// (unlike the old cookie-based www.thingiverse.com flow this replaced -- this API needs no SSRF
-// host validation since it's a fixed, admin-configured trusted host, not a user-supplied URL).
+// Thingiverse import end to end against the official API's response shapes, with fetch mocked.
 
 const THING_ID = "9990001";
 const THING_URL = `https://www.thingiverse.com/thing:${THING_ID}`;
@@ -120,11 +115,7 @@ describe("importPrintFromUrl -- Thingiverse", () => {
 
   it("imports a Thing's model files as plates, matches category, and attaches metadata + images", async () => {
     await setThingiverseAccessToken(ACCESS_TOKEN);
-    // A category configured with several category ids, only one of which (129, "3D Printing
-    // Tests") actually matches this Thing -- proves both that category matching works against
-    // the official API's separate categories_url (previously believed infeasible against the
-    // internal v2 API), and that a category listing multiple ids matches on ANY overlap, not just
-    // an exact single-id equality.
+    // Several category ids, only one matching: any overlap should match.
     const category = await prisma.category.create({
       data: { userId, name: "Thingiverse Tests", tags: [], thingiverseCatIds: [999001, CATEGORY_ID, 999002] },
     });
@@ -139,13 +130,11 @@ describe("importPrintFromUrl -- Thingiverse", () => {
     expect(result.print.sourceProvider).toBe("thingiverse");
     expect(result.print.sourceExternalId).toBe(THING_ID);
     expect(result.print.notes).toContain("test");
-    // Tags are stored in canonical casing (see utils/tagNormalization.ts): only the first
-    // character stays uppercase, so "Test Fixture" becomes "Test fixture".
+    // Canonical tag casing: only the first character stays uppercase.
     expect(result.print.tags.toSorted()).toEqual(["Test fixture", "Widget"]);
     expect(result.print.categoryId).toBe(category.id);
 
-    // instructions.pdf is not a recognized plate format -- only the two .stl files should have
-    // become plates.
+    // The PDF isn't a plate format.
     expect(result.plates.map((p) => p.filename).toSorted()).toEqual(["body.stl", "wheels.stl"]);
 
     expect(result.author).toBeTruthy();
@@ -153,7 +142,6 @@ describe("importPrintFromUrl -- Thingiverse", () => {
     expect(result.author?.provider).toBe("thingiverse");
     expect(result.author?.externalId).toBe("424242");
 
-    // Cover (preview.jpg) plus the one bundled render -- both real, sharp-decodable PNGs.
     expect(result.previewImages.length).toBeGreaterThanOrEqual(2);
   });
 

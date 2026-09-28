@@ -10,8 +10,7 @@ function cloudflareChallengeResponse(): Response {
   });
 }
 
-/** Mimics FlareSolverr's real reply shape: its headless Chrome renders a JSON API response as
- * its own JSON-viewer DOM (a <pre> tag), not raw JSON text -- see extractJsonFromBrowserBody. */
+/** FlareSolverr's Chrome renders JSON inside its JSON-viewer <pre>. */
 function flaresolverrEnvelope(thingJson: unknown): Response {
   const rendered = `<html><head></head><body><pre>${JSON.stringify(thingJson)}</pre></body></html>`;
   return new Response(JSON.stringify({ status: "ok", solution: { status: 200, response: rendered } }), {
@@ -33,9 +32,7 @@ describe("fetchThingiverseApiJson FlareSolverr fallback", () => {
   });
 
   it("solves a Cloudflare challenge via FlareSolverr, then reuses the proxy for later calls to the same host", async () => {
-    // config.ts reads FLARESOLVERR_URL from process.env once, at first import -- must be set
-    // before (re-)importing thingiverseApi.ts's dependency chain, hence the dynamic import below
-    // instead of a static one (which ES import hoisting would run before this assignment).
+    // config.ts reads this on first import, hence the dynamic import below.
     process.env.FLARESOLVERR_URL = FLARESOLVERR_URL;
     vi.resetModules();
     const { resolveThingiverseThing } = await import("../src/services/thingiverseApi");
@@ -60,8 +57,7 @@ describe("fetchThingiverseApiJson FlareSolverr fallback", () => {
     expect(directCalls).toBe(1);
     expect(flaresolverrCalls).toBe(1);
 
-    // The host was just seen returning a Cloudflare challenge -- shouldProxyHost's TTL should
-    // route this next call straight through FlareSolverr without wasting a direct request first.
+    // The host just challenged us, so this call should go straight through FlareSolverr.
     const second = await resolveThingiverseThing("1000", ACCESS_TOKEN);
     expect(second?.meta.title).toBe("Rate Limited Thing");
     expect(directCalls).toBe(1);

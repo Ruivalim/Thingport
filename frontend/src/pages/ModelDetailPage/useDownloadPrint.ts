@@ -4,12 +4,8 @@ import { UnauthorizedError } from "../../api/client";
 import { type Plate, type Print, printsApi } from "../../api/prints";
 import { saveResponseToDisk } from "../../utils/downloadResponse";
 
-/** Shared download logic for a Print: a single-plate model downloads its one file directly; a
- *  multi-plate one opens a picker (download-all-as-zip, or pick one plate) -- see
- *  DownloadPickerDialog. Used by both ModelActionsMenu's "Download" menu item and the model
- *  detail page's own big "Download model files" button, so the two behaviors can't drift apart.
- *  `recordUse` bumps the print count for the other ways of using a model (Open in {Slicer});
- *  every bump hands the updated print to `onRecorded` so the new count shows up immediately. */
+/** A single-plate model downloads directly; multi-plate opens a picker. `recordUse` bumps the print
+ *  count for Open in {Slicer}. */
 export function useDownloadPrint(print: Print, onUnauthorized?: () => void, onRecorded?: (print: Print) => void) {
   const { t } = useTranslation(["models"]);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -24,10 +20,7 @@ export function useDownloadPrint(print: Print, onUnauthorized?: () => void, onRe
     alert(t("models:detail.downloadFailed"));
   };
 
-  // Fire-and-forget: a failure to count a use must never look like the download/launch failed.
-  // Only a real print is passed on: the frontend and backend images are published separately, and
-  // a backend older than this endpoint's print response still answers `{ ok: true }` -- which,
-  // handed to onRecorded as-is, would replace the whole print in the caller's state.
+  // Fire-and-forget. Only a real print is passed on: an older backend answers `{ ok: true }`.
   const recordUse = () => {
     printsApi
       .recordDownload(print.id)

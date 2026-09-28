@@ -11,10 +11,7 @@ import {
   modelPreviewState,
 } from "../src/services/modelPreviewCache";
 
-// A hand-built 2-object/2-extruder/2-plate Bambu-style .3mf, small enough to commit as test
-// data inline rather than shipping a binary fixture file. Exercises the same fast regex-based
-// mesh extraction, extruder/plate resolution, and affine-transform + Z-up->Y-up rotation math the real
-// (huge) repro file that motivated this feature goes through.
+// A small 2-object/2-extruder/2-plate Bambu-style .3mf.
 const MODEL_XML = `<?xml version="1.0" encoding="UTF-8"?>
 <model xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02" unit="millimeter">
  <resources>
@@ -93,11 +90,8 @@ async function buildFixture3mf(destPath: string): Promise<void> {
   ]);
 }
 
-// Reproduces the real-world Bambu Studio pattern that broke both the original frontend parser
-// and this file's first version: a "wrapper" object whose <components> references another
-// same-document object (objectid, no p:path) rather than embedding its own <mesh>. Object 2 here
-// has no mesh of its own -- all its geometry comes from resolving the internal reference to
-// object 1, translated by the component's own transform.
+// A wrapper object whose component references another object in the same document instead of
+// having its own mesh.
 const WRAPPER_MODEL_XML = `<?xml version="1.0" encoding="UTF-8"?>
 <model xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02" unit="millimeter">
  <resources>
@@ -154,8 +148,7 @@ async function buildWrapperFixture3mf(destPath: string): Promise<void> {
   ]);
 }
 
-// Vertex positions as plain numbers. `+ 0` turns the -0 the Z-up -> Y-up rotation produces for
-// every vertex at 3MF y=0 (z = -y) into 0, which toEqual would otherwise treat as different.
+// `+ 0` turns -0 into 0, which toEqual would treat as different.
 function positionsOf(mesh: any): number[] {
   return Array.from(mesh.geometry.attributes.position.array as ArrayLike<number>, v => v + 0);
 }
@@ -165,9 +158,7 @@ describe("modelPreviewCache", () => {
   const plateId = `test-fixture-${Date.now()}`;
 
   beforeAll(async () => {
-    // This test deliberately doesn't touch the database (unlike the other test files) -- it
-    // only needs the model-previews cache directory, which the running app normally gets via
-    // src/db.ts's startup side effect. Recreate that here so the test stays DB-independent.
+    // This test needs no database, only the cache directory db.ts normally creates.
     await fs.mkdir(path.dirname(modelPreviewGlbPath("x")), { recursive: true });
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), "thingport-3mf-out-"));
     fixturePath = path.join(dir, "fixture.3mf");
@@ -218,10 +209,8 @@ describe("modelPreviewCache", () => {
     expect(meshes["extruder-0"].color.toLowerCase()).toBe("#00b800");
     expect(meshes["extruder-1"].color.toLowerCase()).toBe("#ff0000");
 
-    // Object 1: identity transform, then the Z-up -> Y-up rotation (3MF x,y,z -> three.js x,z,-y).
-    // A plain swap (x,z,y) would mirror the model and flip its triangle winding.
+    // Z-up -> Y-up rotation (x,y,z -> x,z,-y). A plain swap would mirror the model.
     expect(meshes["extruder-0"].positions).toEqual([0, 0, 0, 10, 0, 0, 0, 0, -10]);
-    // Object 2: +50 X translation applied in 3MF space before the same rotation.
     expect(meshes["extruder-1"].positions).toEqual([50, 0, 0, 70, 0, 0, 50, 0, -20]);
 
     void THREE; // imported only to force-load three before GLTFLoader in some module graphs
@@ -268,8 +257,6 @@ describe("modelPreviewCache -- internal <component> references", () => {
     });
     expect(root).toBeTruthy();
     const meta = JSON.parse(root.userData.thingportPreview);
-    // The wrapper object (id 2) has no <mesh> of its own -- its single mesh only exists because
-    // the component reference to object 1 was resolved and merged in.
     expect(meta.plates).toEqual([{ index: 1, name: "Only plate", objectCount: 1 }]);
 
     const meshes: Record<string, { positions: number[] }> = {};
@@ -280,8 +267,7 @@ describe("modelPreviewCache -- internal <component> references", () => {
     });
 
     expect(Object.keys(meshes)).toEqual(["extruder-0"]);
-    // Object 1's vertices, translated by the component's own +5 X transform (build item itself
-    // is identity), then the Z-up -> Y-up rotation.
+    // Translated by the component's +5 X, then rotated.
     expect(meshes["extruder-0"].positions).toEqual([5, 0, 0, 15, 0, 0, 5, 0, -10]);
   });
 });
@@ -304,7 +290,6 @@ function singleItemModelXml(objects: string, buildItemObjectId: string): string 
 `;
 }
 
-/** A <components> block referencing `refId` 20 times. */
 function fanOut(refId: string): string {
   return `<components>${Array.from({ length: 20 }, () => `<component objectid="${refId}" />`).join("")}</components>`;
 }
@@ -332,8 +317,7 @@ describe("modelPreviewCache -- memory safety", () => {
   });
 
   it("refuses a file whose rendered triangle count explodes through nested component references", async () => {
-    // One triangle, referenced 20x per level, six levels deep: 64M rendered triangles from a
-    // few-KB file. Must bail on the count, not by materializing the geometry.
+    // 64M rendered triangles from a few-KB file: must bail on the count, not by building geometry.
     let objects = `<object id="1" type="model">${ONE_TRIANGLE_MESH}</object>`;
     for (let id = 2; id <= 7; id++) objects += `<object id="${id}" type="model">${fanOut(String(id - 1))}</object>`;
     const fixture = path.join(outDir, "fanout.3mf");
@@ -397,7 +381,6 @@ function cacheDir(): string {
   return path.dirname(modelPreviewGlbPath("x"));
 }
 
-/** A triangle at x offset `x`, so each part's geometry is recognizable in the output. */
 function triangleAt(x: number): string {
   return `<mesh><vertices><vertex x="${x}" y="0" z="0" /><vertex x="${x + 10}" y="0" z="0" /><vertex x="${x}" y="10" z="0" /></vertices><triangles><triangle v1="0" v2="1" v3="2" /></triangles></mesh>`;
 }
@@ -425,8 +408,7 @@ describe("modelPreviewCache -- multi-part objects sharing one part file", () => 
     }
   });
 
-  // How Bambu Studio stores a multi-part (often multi-colour) object: every part in one
-  // 3D/Objects file, each referenced by its own component with a different objectid.
+  // Bambu Studio stores every part of a multi-part object in one file, referenced by objectid.
   it("takes only the referenced object from the file for each component, in its own colour", async () => {
     await fs.mkdir(cacheDir(), { recursive: true });
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), "thingport-3mf-parts-"));
@@ -474,7 +456,6 @@ describe("modelPreviewCache -- multi-part objects sharing one part file", () => 
 
     const meshes = await loadGlbMeshes(plateId);
     const byName = Object.fromEntries(meshes.map((m) => [m.name, positionsOf(m)]));
-    // One triangle per part -- not both parts under each extruder, as before.
     expect(byName).toEqual({
       "extruder-0": [0, 0, 0, 10, 0, 0, 0, 0, -10],
       "extruder-1": [100, 0, 0, 110, 0, 0, 100, 0, -10],
@@ -511,8 +492,7 @@ describe("modelPreviewState", () => {
     const modelPath = path.join(dir, "model.model");
     await fs.writeFile(modelPath, singleItemModelXml(`<object id="1" type="model">${ONE_TRIANGLE_MESH}</object>`, "1"));
     const fixture = path.join(dir, "elsewhere.3mf");
-    // Valid per the 3MF spec (the real main-model path comes from _rels/.rels), but not where
-    // this parser looks.
+    // Valid 3MF (the path comes from _rels/.rels), but not where this parser looks.
     await writeZip(fixture, [{ arcname: "3D/model.model", filePath: modelPath }]);
     const plateId = newPlateId("unsupported");
     await generateModelPreviewGlb(plateId, fixture);

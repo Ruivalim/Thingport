@@ -270,5 +270,16 @@ If Thingport is useful to you, consider supporting its development:
 
 ## License
 
-Thingport is licensed under the [MIT License](LICENSE).
+Copyright (C) 2026 Tautvydas Deržinskas
+
+Thingport is free software: you can redistribute it and/or modify it under the terms of the
+[GNU Affero General Public License, version 3](LICENSE) (AGPL-3.0-only), as published by the Free
+Software Foundation.
+
+Thingport is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even
+the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero
+General Public License for more details.
+
+If you run a modified version of Thingport as a network service, the AGPL requires you to offer its
+users the corresponding source code.
 

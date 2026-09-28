@@ -48,8 +48,6 @@ function ModelRow({ model, rank, valueOf, valueLabel, onClick }: {
   );
 }
 
-/** Top Viewed / Top Printed models -- 3-row preview with a See more dialog (fetchMore) showing
- *  an expanded list. Every row navigates to the model's detail page. */
 export default function ModelListCard({ icon, title, models, valueOf, valueLabel, emptyText, seeMoreLabel, fetchMore }: Props) {
   const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = React.useState(false);

@@ -1,6 +1,5 @@
-// Single-model flow. Thingiverse Things and Printables Models go straight to import; a MakerWorld
-// model link (and any other generic single link) goes through /import/inspect first -- mirroring
-// the web app's useUploadImport.tsx branching.
+// Thingiverse and Printables import directly; other links go through /import/inspect first, like
+// the web app's useUploadImport.tsx.
 
 import type { InspectResult, ZipEntriesResult } from "../../shared/api";
 import { request } from "../../shared/messages";
@@ -17,11 +16,8 @@ import { onPanelAction, panelQuery, panelQueryAll, renderPanel } from "../shell"
 import { collectionPickerHtml, selectedCollectionId } from "./collectionPicker";
 import { errorHtml, statusHtml, successHtml } from "./results";
 
-/** Best-effort model name for the heading, read from the page -- only for pages that skip
- *  /import/inspect (and so never get its resolved `title`). The page's own <h1> first: both sites
- *  are SPAs, and Thingiverse never updates og:title on client-side navigation (it stays the site's
- *  generic "Thingiverse - The community for Open Hardware"), while Printables' carries a
- *  "| Download free STL model | Printables.com" suffix. */
+/** Model name for pages that skip /import/inspect. The <h1> first: Thingiverse's og:title goes
+ *  stale on SPA navigation and Printables' has a suffix. */
 function guessPageTitle(): string | null {
   const h1 = document.querySelector("h1")?.textContent?.trim();
   if (h1) return h1;
@@ -29,14 +25,10 @@ function guessPageTitle(): string | null {
   return og || document.title.trim() || null;
 }
 
-// Between importing one print profile and the next: the resolution requests come from the page
-// itself, but several in a quick burst still read as automated to MakerWorld.
+// Several profile resolutions in a quick burst still look automated to MakerWorld.
 const PROFILE_GAP_MS = 2000;
 
-/** The "Print profiles" choice, on a MakerWorld model page with more than one profile: the one
- *  selected on the page (the default -- the web app calls it "Print profile from the link"),
- *  then whichever of "all the designer's" and "the designer's and the community's" would import
- *  more than that -- the latter only when there are community ones. */
+/** The page's selected profile first, then "designer's" and "all" where they'd import more. */
 async function profilesPickerHtml(): Promise<string> {
   const { url, classification } = ctx();
   if (classification.provider !== "makerworld" || classification.type !== "model") return "";
@@ -59,7 +51,6 @@ function selectedProfileScope(): MakerworldProfileScope {
   return value === "designer" || value === "all" ? value : "url";
 }
 
-/** `url` pointing at one particular print profile. */
 function profileUrl(url: string, instanceId: string): string {
   return `${url.split("#")[0]}#profileId-${instanceId}`;
 }
@@ -70,8 +61,7 @@ function importHeading(): string {
 }
 
 export async function loadSingleItem(): Promise<void> {
-  // Nothing inspect would tell us matters for an add-profile (a MakerWorld profile is always a
-  // single 3MF), and inspecting would make the backend resolve the download just to show the panel.
+  // A MakerWorld profile is always one 3MF, so inspecting would only cost a download resolution.
   if (ctx().library) {
     renderPanel(addProfileHtml(await profilesPickerHtml()));
     onPanelAction("import", () => void runDirectImport());
@@ -79,9 +69,6 @@ export async function loadSingleItem(): Promise<void> {
   }
   renderPanel(statusHtml("Checking link…"));
   const { provider, type } = ctx().classification;
-  // Printables' generic page-fetch flow is Cloudflare-gated and a Thingiverse Thing always resolves
-  // through its own API path -- see useUploadImport.tsx's identical special-case. Neither needs (or
-  // can safely use) /import/inspect.
   const skipInspect = (provider === "thingiverse" && type === "thing") || (provider === "printables" && type === "model");
 
   let zipFilename: string | null = null;
@@ -120,9 +107,7 @@ export async function loadSingleItem(): Promise<void> {
   onPanelAction("choose-files", () => void loadZipEntries());
 }
 
-/** The model's already in the library, but this page's print profile isn't known to be -- each
- *  MakerWorld profile has its own 3MF, stored as its own file on the one model. No collection
- *  picker: the model's collections are already whatever they are. */
+/** The model's in the library but this profile may not be. */
 function addProfileHtml(profilesPicker: string): string {
   const { library, url, instanceUrl } = ctx();
   const profileName = currentMakerworldProfileTitle(url);
@@ -173,8 +158,7 @@ async function loadZipEntries(): Promise<void> {
 }
 
 async function runDirectImport(opts?: { entries?: string[] }): Promise<void> {
-  // Captured up front: if the page navigates (an SPA route change) while the import is in flight,
-  // the context is cleared from under this still-running function (see unmount in index.ts).
+  // Captured up front: SPA navigation clears the context mid-import.
   const collectionId = selectedCollectionId();
   const scope = selectedProfileScope();
   if (scope !== "url") {
@@ -183,15 +167,12 @@ async function runDirectImport(opts?: { entries?: string[] }): Promise<void> {
   }
   const { url, instanceUrl, classification, title } = ctx();
   renderPanel(statusHtml("Importing…"));
-  // Only meaningful for a MakerWorld model page -- see downloadResolver.ts for why resolving it
-  // here beats leaving it to the backend.
   const resolved =
     classification.provider === "makerworld" && classification.type === "model"
       ? await resolveMakerworldDownloadUrl(url).catch(() => null)
       : null;
   try {
-    // One message, not two: the import and (per collectionId) filing it into a collection both
-    // run to completion in the background even if this page is gone by the time it finishes.
+    // One message so import and collection filing finish even if the page is gone.
     const print = await request("IMPORT_SINGLE", { url, entries: opts?.entries, collectionId, resolved, title });
     const link = print ? `${instanceUrl}/models/${print.id}` : `${instanceUrl}/models`;
     if (print?.import_outcome === "profile_added") {
@@ -206,10 +187,8 @@ async function runDirectImport(opts?: { entries?: string[] }): Promise<void> {
   }
 }
 
-/** Imports several print profiles of the MakerWorld model on this page, one after another: the
- *  first creates the model (or finds it in the library), each later one is added to it as another
- *  file -- the backend skips any it already has. Each profile's file is resolved in the page, as
- *  for a single import. Stops early on a MakerWorld CAPTCHA, which would fail every later one. */
+/** The first profile creates (or finds) the model; later ones are added as files. Stops on a
+ *  CAPTCHA, which would fail every later one. */
 async function runProfilesImport(scope: MakerworldProfileScope, collectionId: string | null): Promise<void> {
   const { url, instanceUrl, title } = ctx();
   const page = await loadMakerworldDesignForPage(url);
@@ -227,7 +206,7 @@ async function runProfilesImport(scope: MakerworldProfileScope, collectionId: st
   for (const [index, instanceId] of ids.entries()) {
     renderPanel(statusHtml(`Importing print profile ${index + 1} of ${ids.length}…`));
     if (index > 0) await new Promise((resolve) => setTimeout(resolve, PROFILE_GAP_MS));
-    // The first is the link's own profile: the page's real Download button gives exactly that one.
+    // The page's Download button gives exactly the link's profile.
     const resolved =
       index === 0
         ? await resolveMakerworldDownloadUrl(url).catch(() => null)

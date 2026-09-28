@@ -44,22 +44,14 @@ type Props = {
   onUnauthorized?: () => void;
 };
 
-/** The top bar's "+ Add" button -- Upload opens the file picker directly, Import opens a
- *  small paste-a-link dialog. Both share the upload/import plumbing (and the zip / multi-plate
- *  / collection follow-up prompts it can trigger) via useUploadImport. The import dialog shows
- *  every supported provider as a muted chip; whichever one the pasted link resolves to
- *  (detectImportProvider) lights up in that provider's own color. Clicking any chip (matched or
- *  not) toggles a small example-links panel for that provider, since these are the only two link
- *  shapes each site's own model/collection pages take. A MakerWorld *collection* link (as opposed
- *  to a single model) is flagged with a warning and blocks the Import button entirely -- those
- *  can only be bulk-imported via the Thingport Grab browser extension now, not this dialog. */
+/** The top bar's "+ Add" button. MakerWorld collection links are blocked here; they can only be
+ *  imported via the browser extension. */
 export default function AddMenu({ categoryId, makerworldCookie, onUploaded, onUnauthorized }: Props) {
   const { t } = useTranslation(["app", "common"]);
   const [anchorEl, setAnchorEl] = React.useState<HTMLElement | null>(null);
   const [importOpen, setImportOpen] = React.useState(false);
   const [linkValue, setLinkValue] = React.useState("");
   const [exampleProvider, setExampleProvider] = React.useState<ImportProviderKey | null>(null);
-  // Only offered for a MakerWorld model link; everything else imports its one thing.
   const [profileScope, setProfileScope] = React.useState<MakerworldProfileScope>("url");
   const { isImporting } = useImportJob();
   const upload = useUploadImport({ categoryId, makerworldCookie, onUploaded, onUnauthorized });
@@ -94,7 +86,7 @@ export default function AddMenu({ categoryId, makerworldCookie, onUploaded, onUn
   const submitImport = async () => {
     if (!linkValue.trim() || isBlockedCollection) return;
     if (needsCaptcha && !captcha?.captcha_answer.trim()) return;
-    // The dialog closes either way; reopening it shows a fresh captcha (each one works once).
+    // Each captcha works once; reopening shows a fresh one.
     await upload.submitImport(linkValue, needsCaptcha ? captcha : null, isMakerworldModel ? profileScope : "url");
     setImportOpen(false);
   };

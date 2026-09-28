@@ -4,16 +4,9 @@ import path from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 
-// End-to-end coverage of the core feature: importing a model from each supported site through
-// POST /api/import, exactly as the web app (and, for MakerWorld, the Thingport Grab extension)
-// sends it -- then checking everything the library shows for the result: title, description,
-// tags, a linked author with an avatar, preview images, the model file itself, its thumbnail and
-// its server-built 3D preview. Each site's HTTP API is replaced by a fetch mock answering with
-// the real response shapes (see each provider's service for where those were confirmed), and DNS
-// by a stub, so these run offline and deterministically -- in CI too (see backend-image.yml).
+// End-to-end: imports a model from each supported site through POST /api/import and checks
+// everything the library shows for it. HTTP and DNS are mocked, so these run offline.
 
-// Host validation (utils/urlUtils.ts) resolves every user-supplied host; answer with a public
-// address instead of touching the network.
 vi.mock("node:dns/promises", () => ({
   default: {
     resolve4: async () => ["93.184.216.34"],
@@ -41,7 +34,6 @@ const ONE_PIXEL_PNG = Buffer.from(
 );
 let threeMfBytes: Buffer;
 
-/** A small but real Bambu-style .3mf: one object, and an embedded plate thumbnail. */
 async function buildThreeMf(): Promise<Buffer> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "thingport-provider-3mf-"));
   const modelPath = path.join(dir, "3dmodel.model");
@@ -75,7 +67,6 @@ function png(): Response {
 function threeMf(): Response {
   return new Response(threeMfBytes, { headers: { "content-type": "application/octet-stream" } });
 }
-/** What MakerWorld's author-profile endpoint really answers a server with today. */
 function cloudflareChallenge(): Response {
   return new Response("<!DOCTYPE html><title>Just a moment...</title>", {
     status: 403,
@@ -86,7 +77,7 @@ function cloudflareChallenge(): Response {
 type Routes = Record<string, (init?: RequestInit) => Response>;
 const originalFetch = global.fetch;
 
-/** Answers exactly the listed URLs (by prefix); anything else fails the test loudly. */
+/** Answers exactly the listed URLs (by prefix); anything else fails the test. */
 function mockFetch(routes: Routes) {
   global.fetch = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(async (input, init) => {
     const url = String(input);
@@ -98,7 +89,6 @@ function mockFetch(routes: Routes) {
   }) as unknown as typeof fetch;
 }
 
-/** Everything the library shows for an imported model -- checked the same way per provider. */
 type Expected = {
   title: string;
   descriptionIncludes: string;
@@ -113,14 +103,12 @@ async function expectFullyImported(printId: string, expected: Expected) {
   expect(res.status).toBe(200);
   const print = res.body;
 
-  // `title` is the source's own title; the model's `name` may carry a " (2)" if the library
-  // already has a model called that.
+  // `name` may carry a " (2)" suffix; `title` is the source's own.
   expect(print.title).toBe(expected.title);
   expect(print.notes).toContain(expected.descriptionIncludes);
   expect(print.tags.toSorted()).toEqual(expected.tags.toSorted());
 
-  // The author is a real, linked record -- what makes it clickable, hoverable and shown with an
-  // avatar -- not just the plain-text name.
+  // A linked record, not just the plain-text name.
   expect(print.author).toMatchObject({ id: expected.author.id, name: expected.author.name, avatar_url: expected.author.avatarUrl });
   const authorPage = await request(app).get(`/api/author/${encodeURIComponent(expected.author.id)}`).set(auth());
   expect(authorPage.status).toBe(200);
@@ -144,11 +132,9 @@ async function expectFullyImported(printId: string, expected: Expected) {
   expect(download.status).toBe(200);
   expect(Buffer.compare(download.body as Buffer, threeMfBytes)).toBe(0);
 
-  // Card thumbnail, from the 3MF's embedded plate image.
   expect(plate.thumb_url).toBeTruthy();
   expect((await request(app).get(`/api${plate.thumb_url.split("?")[0]}`).set(auth())).status).toBe(200);
 
-  // Interactive 3D preview: built by the server in the background after import.
   expect(plate.preview_glb_url).toBeTruthy();
   const glbPath = `/api${plate.preview_glb_url.split("?")[0]}`;
   let glb = await request(app).get(glbPath).set(auth());
@@ -219,7 +205,7 @@ describe("importing from Thingiverse", () => {
     await expectFullyImported(res.body.id, {
       title: "Articulated Test Dragon",
       descriptionIncludes: "dragon, printed in place",
-      tags: ["Dragon", "Print in place"], // tags come out normalized (see utils/tagNormalization.ts)
+      tags: ["Dragon", "Print in place"], // normalized casing
       author: { id: "thingiverse:5150", name: "DragonMaker", avatarUrl: "https://cdn.thingiverse.com/renders/dragonmaker/avatar.jpg" },
       previewImages: 2,
       filename: "dragon.3mf",
@@ -286,7 +272,6 @@ describe("importing from MakerWorld", () => {
     avatar: "https://public-cdn.bblmw.com/avatar/benchyfan.png",
   };
 
-  /** The model page, as MakerWorld serves it: everything in Next.js's __NEXT_DATA__. */
   function modelPage(designId: string, instanceId: string): string {
     const nextData = {
       props: {
@@ -310,8 +295,6 @@ describe("importing from MakerWorld", () => {
     return `<html><head><title>Classic Benchy</title></head><body><script id="__NEXT_DATA__" type="application/json">${JSON.stringify(nextData)}</script></body></html>`;
   }
 
-  /** The design as the Thingport Grab extension sends it with an import -- the page's own
-   *  __NEXT_DATA__ design, trimmed (see the extension's makerworldDesignForImport). */
   function extensionDesign(designId: string): Record<string, unknown> {
     return {
       id: Number(designId),
@@ -342,8 +325,7 @@ describe("importing from MakerWorld", () => {
     mockFetch({
       [`https://makerworld.com/en/models/${designId}`]: () =>
         new Response(modelPage(designId, instanceId), { headers: { "content-type": "text/html; charset=utf-8" } }),
-      // The fuller author profile is behind Cloudflare's challenge for a server -- the author
-      // must come through anyway, from the page's own creator summary.
+      // Behind Cloudflare for a server; the author must come from the creator summary anyway.
       "https://makerworld.com/api/v1/design-user-service/user/profile/": cloudflareChallenge,
       [`https://makerworld.com/api/v1/design-service/instance/${instanceId}/f3mf`]: () =>
         json({ name: "benchy.3mf", url: "https://makerworld.bblmw.com/makerworld/model/benchy/benchy.3mf" }),
@@ -384,7 +366,7 @@ describe("importing from MakerWorld", () => {
   it("from the Thingport Grab extension with the page's data: doesn't fetch the model page at all", async () => {
     const designId = String((stamp % 1_000_000_000) + 40);
     const instanceId = String((stamp % 1_000_000_000) + 41);
-    // No route for the model page: fetching it (often Cloudflare-blocked for a server) fails the test.
+    // No route for the model page: fetching it fails the test.
     mockFetch({
       "https://makerworld.com/api/v1/design-user-service/user/profile/": cloudflareChallenge,
       "https://makerworld.bblmw.com/makerworld/model/benchy/benchy.3mf": threeMf,
@@ -412,7 +394,6 @@ describe("importing from MakerWorld", () => {
       "https://makerworld.com/api/v1/design-user-service/user/profile/": cloudflareChallenge,
       "https://makerworld.bblmw.com/makerworld/model/benchy/benchy.3mf": threeMf,
       "https://makerworld.bblmw.com/makerworld/model/benchy/cover.jpg": png,
-      // Anything off MakerWorld's CDN would fail the test here if the backend fetched it.
     });
 
     const design = extensionDesign(designId);
@@ -428,12 +409,10 @@ describe("importing from MakerWorld", () => {
         makerworld_design: design,
       });
     expect(res.status).toBe(200);
-    // Linked to the (already known) author, whose record the client's version didn't overwrite;
-    // only the cover was fetched.
+    // The known author's record isn't overwritten by the client's version.
     await expectFullyImported(res.body.id, expected({ previewImages: 1 }));
   });
 
-  /** A web-app import with a MakerWorld login, which goes through MakerWorld's own API. */
   async function importWithLogin(designId: string, profileReachable: boolean) {
     const profileId = String(Number(designId) + 1);
     mockFetch({
@@ -488,7 +467,7 @@ describe("importing from MakerWorld", () => {
 
   it("from the web app with a MakerWorld login, profile blocked: still links the author, keeping known details", async () => {
     await importWithLogin(String((stamp % 1_000_000_000) + 30), false);
-    // The earlier import's fuller profile isn't wiped by this one's shorter creator summary.
+    // A shorter creator summary doesn't wipe the earlier fuller profile.
     const author = await prisma.author.findUniqueOrThrow({ where: { id: `makerworld:${creator.uid}` } });
     expect(author).toMatchObject({ bio: "I print boats.", links: ["https://example.com/benchyfan"] });
   });

@@ -1,7 +1,5 @@
-// Pure/async 3D-asset loading logic used by the media components' ModelViewer and ModelSnapshot
-// components -- plain three.js scene-graph construction plus fetch/WASM work (STL/3MF/STEP/OBJ
-// parsing). paletteForTheme()/applyThemeToObject() (material coloring) also live here since both
-// ModelViewer's live scene and generateModelSnapshot() (in modelSnapshotCache.ts) need them.
+// 3D-asset loading (STL/3MF/STEP/OBJ) and theme-based material colouring, shared by ModelViewer
+// and the off-tree snapshot generator.
 import * as THREE from "three";
 import occtWasmUrl from "occt-import-js/dist/occt-import-js.wasm?url";
 import occtWorkerUrl from "occt-import-js/dist/occt-import-js-worker.js?url";
@@ -17,12 +15,7 @@ export type ModelPalette = {
   roughness: number;
 };
 
-// paletteForTheme is a plain module-level function (called both from ModelViewer's mount effect
-// and from generateModelSnapshot(), which runs off the React tree entirely) so it reads its
-// colors straight from theme.ts's buildTheme() rather than via useTheme() -- there's no guarantee
-// a component-level ThemeProvider is mounted above every caller, and threading the resolved
-// theme.thingport values through as extra params would ripple through every call site for no
-// benefit since ResolvedTheme -> Theme is already a pure, cheap lookup.
+// paletteForTheme reads theme.ts directly since snapshot generation runs outside React.
 function toFloat32(data: ArrayLike<number>): Float32Array {
   return Float32Array.from(data);
 }
@@ -58,11 +51,9 @@ export function applyThemeToObject(obj: THREE.Object3D, palette: ModelPalette) {
 
 export async function loadObjectFromAsset(ext: string, url: string): Promise<THREE.Object3D | null> {
   const obj = await loadRawObjectFromAsset(ext, url);
-  // 3MF already comes out Y-up from bambuThreeMf.ts's own (unrelated) coordinate swap -- see the
-  // comment at the top of that file for why it must not also get this rotation.
+  // 3MF is already Y-up from bambuThreeMf.ts.
   if (obj && ext.toLowerCase() !== "3mf") {
-    // Print files (STL/OBJ/STEP) are authored Z-up (Z = the model's height off the bed), but
-    // three.js's world/camera "up" is Y. Without this, a tall model ends up lying on its side.
+    // Print files are Z-up; three.js is Y-up.
     obj.rotateX(-Math.PI / 2);
   }
   return obj;
@@ -522,9 +513,7 @@ async function load3MFObject(url: string) {
     const buffer = await res.arrayBuffer();
     const { parsed, filamentColors } = await parseBambuThreeMF(buffer);
     if (parsed.objects.size > 0) {
-      // No plate selected: renders every plate's build items together. Good enough for the
-      // generic/single-object case (and for ModelSnapshot's card thumbnails); the interactive
-      // ModelViewer uses loadBambuThreeMFForViewer directly so it can offer a plate picker.
+      // Every plate together; the interactive viewer uses loadBambuThreeMFForViewer instead.
       const group = buildBambuModelGroup(parsed, null, filamentColors);
       if (group.children.length > 0) return group;
     }
@@ -540,11 +529,8 @@ async function load3MFObject(url: string) {
   }
 }
 
-/** Richer 3MF load for the interactive viewer: keeps the parsed data around so switching the
- *  selected plate rebuilds the THREE.Group locally (no refetch), and exposes the detected plate
- *  list + filament palette + a thumbnail lookup for a plate-picker UI. Returns null for anything
- *  that isn't a 3MF the Bambu-aware parser can make sense of (caller falls back to
- *  loadObjectFromAsset). */
+/** Keeps the parsed data so plate switches rebuild locally. Null for anything the Bambu-aware parser
+ *  can't handle (the caller falls back to loadObjectFromAsset). */
 export async function loadBambuThreeMFForViewer(url: string): Promise<{
   parsedData: Parsed3MFData;
   plates: PlateSummary[];

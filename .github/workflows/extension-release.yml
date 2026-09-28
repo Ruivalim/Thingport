@@ -1,16 +1,9 @@
 name: Extension release
 
-# Only runs when extension/ (the Thingport Grab browser extension) or this workflow changes.
-# Builds on every merge: checks, the extension-latest release's zips and the self-signed Firefox
-# .xpi. Versioned releases and publishing to the stores are extension-store-release.yml (weekly,
-# or on demand).
-# Unlike bridge-release.yml, this does NOT mark its release "latest" -- GitHub's "latest release"
-# is one repo-wide slot, and Bridge's workflow already claims it (make_latest: true) for its own
-# releases. Publishing here to a second, independently-tagged "latest" would clobber whichever one
-# ran most recently, breaking the OTHER track's /releases/latest/download/<asset> links. Instead
-# this always publishes to the same fixed tag, "extension-latest" -- deleting and recreating it
-# each run -- and the Downloads page links to the tag-scoped path
-# (.../releases/download/extension-latest/<asset>), never the /latest/ alias.
+# Builds Thingport Grab on every change to extension/: checks, the extension-latest release's zips
+# and the self-signed Firefox .xpi. Store releases are extension-store-release.yml.
+# Publishes to the fixed "extension-latest" tag rather than GitHub's single repo-wide "latest"
+# release, which Bridge's download links rely on.
 on:
   push:
     branches: [main]
@@ -46,8 +39,6 @@ jobs:
         run: npm run typecheck
       - name: Lint
         run: npm run lint
-      # Chrome and Edge get their own zips (identical code, see scripts/manifest.ts), each attached
-      # to the release -- the in-app Download page links each browser to its own.
       - name: Build and package
         run: npm run zip:chrome && npm run zip:edge
       - uses: actions/upload-artifact@v4
@@ -78,14 +69,8 @@ jobs:
         run: npm run zip:firefox
       - name: Lint (validates the built manifest for both PRs and pushes, no AMO credentials needed)
         run: npx web-ext lint --source-dir dist/firefox
-      # Signing only happens on a push to main (it needs the AMO_JWT_* secrets, which forked PRs
-      # don't get, and there's nothing useful to attach to a PR run anyway).
-      #
-      # AMO rejects re-uploading a version number it has already seen for this add-on ID, even on
-      # the unlisted channel -- and package.json's version isn't bumped on every commit. So this
-      # signs the build with the run number appended as an extra version segment (e.g.
-      # 1.1.0.456), guaranteeing a unique version on every run without touching the checked-in
-      # version the Chrome build (or the repo) uses.
+      # Only on pushes to main (forked PRs lack the AMO_JWT_* secrets). AMO rejects any version it has
+      # seen before, so the run number is appended as an extra version segment (e.g. 1.1.0.456).
       - name: Patch a build-local version for signing
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |

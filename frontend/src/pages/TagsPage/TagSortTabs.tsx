@@ -10,8 +10,6 @@ type Props = {
   onChange: (mode: TagSortMode) => void;
 };
 
-/** "Popular / Name" sort row for the Tags list page -- same look and alignment as
- *  ModelsPage/SortTabs, just a different (tag-specific) pair of modes. */
 export default function TagSortTabs({ value, onChange }: Props) {
   const { t } = useTranslation("models");
   return (

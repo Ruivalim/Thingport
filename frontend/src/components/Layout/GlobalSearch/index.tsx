@@ -32,11 +32,7 @@ type Props = {
   onUnauthorized?: () => void;
 };
 
-/** The global search box: models (primary), collections, and tags matching name/description --
- *  see backend's searchService.ts, which does the actual ranking (Postgres full-text search, name
- *  matches outrank description matches). Debounced-as-you-type, results in a dropdown below the
- *  box; picking one navigates straight there. Lives centered in TopBar, always mounted regardless
- *  of route (like AddMenu/NotificationBell/UserMenu next to it). */
+/** Ranking happens server-side (searchService.ts). */
 export default function GlobalSearch({ onUnauthorized }: Props) {
   const { t } = useTranslation(["app", "common"]);
   const navigate = useNavigate();
@@ -47,11 +43,7 @@ export default function GlobalSearch({ onUnauthorized }: Props) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SearchResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // The dropdown's width is pinned to this (not a fixed constant) so it always exactly matches
-  // the search box, not just approximates it -- the box itself is fluid (TopBar's center grid
-  // column is `minmax(0, 480px)`, so its real width varies with the window). Tracked live via
-  // ResizeObserver rather than read once, so resizing the window (or collapsing the sidebar,
-  // which changes how much room the center column has) keeps them in sync.
+  // Tracked with ResizeObserver so the dropdown matches the fluid search box's width.
   const [anchorWidth, setAnchorWidth] = useState<number>();
   const debouncedQuery = useDebouncedValue(query.trim(), DEBOUNCE_MS);
 
@@ -65,16 +57,10 @@ export default function GlobalSearch({ onUnauthorized }: Props) {
     return () => observer.disconnect();
   }, []);
 
-  // Clears any typed-but-not-acted-on query the moment the route actually changes -- `goTo`
-  // below already clears it for the "picked a result" path, but this covers every other way of
-  // leaving the page (a sidebar link, browser back/forward, a different page's own navigation)
-  // so a stale search never lingers into the next page. Keyed on pathname specifically, not the
-  // full location, so same-page changes (a sort tab, a search-param tweak) don't wipe it --
-  // only an actual change of route counts as "leaving".
+  // Clear the query on route change, but not on same-page changes like search params.
   useEffect(() => {
     setQuery("");
     setFocused(false);
-    // Only the pathname itself should trigger this -- see the comment above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 

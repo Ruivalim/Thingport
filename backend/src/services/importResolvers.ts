@@ -81,13 +81,6 @@ function makerworldApiHeaders(referer?: string | null, nonce?: string | null, co
   return headers;
 }
 
-// Neither Thingiverse nor Printables import goes through this page-scraping resolver at all --
-// see thingiverseApi.ts / printablesApi.ts, which talk to their own official/public JSON APIs
-// instead (a plain unauthenticated fetch of either site's own HTML pages is Cloudflare-gated).
-
-// -- Small bounded fetch helpers (used only for resolver-side HTML/JSON probes; the actual
-// model-file download streams straight to disk in importService.ts, not through here). ------
-
 async function rawFetchBuffer(
   url: string,
   headers: Record<string, string>,
@@ -113,10 +106,8 @@ async function rawFetchBuffer(
   }
 }
 
-/** Loads `url` through FlareSolverr's real browser (GET only - its POST command submits a
- * browser form, not a raw JSON body, so callers with a POST init fall back to a direct
- * request instead). Unwraps the JSON it renders back into the same {status, headers, buffer,
- * url} shape rawFetchBuffer returns, so callers don't need to know which path served them. */
+/** GET-only: FlareSolverr's POST submits a browser form, not a raw body. Returns the same shape
+ * as rawFetchBuffer. */
 async function proxiedBuffer(
   url: string,
   cookieHeader?: string | null,
@@ -186,8 +177,6 @@ async function fetchJsonFromUrl(
   }
 }
 
-// -- Generic download-link sniffing (non-site-specific) --------------------------------------
-
 function scoreDownloadUrl(url: string): number {
   const lower = url.toLowerCase();
   let score = 0;
@@ -232,8 +221,7 @@ function isAllowedDownloadCandidate(url: string): boolean {
   return lower.includes("download");
 }
 
-/** Collects href/src/data-* link-ish attributes from every element in the page (a faithful
- * DOM-based port of MakersVault's LinkCollector, using cheerio instead of HTMLParser). */
+/** Collects href/src/data-* link-ish attributes from every element in the page. */
 function collectPageLinks(html: string): string[] {
   const links: string[] = [];
   const attrNames = ["href", "src", "data-download", "data-download-url", "data-url", "data-file", "data-href"];
@@ -248,7 +236,6 @@ function collectPageLinks(html: string): string[] {
       }
     });
   } catch {
-    // ignore malformed HTML, fall through with whatever we collected
   }
   return links;
 }
@@ -347,8 +334,6 @@ function extractDownloadUrlFromResponse(data: unknown, baseUrl: string): string 
   return findDownloadUrlInJson(data, baseUrl);
 }
 
-// -- MakerWorld --------------------------------------------------------------------------------
-
 export function extractNextDataJson(html: string): unknown | null {
   const match = html.match(/<script[^>]+id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i);
   if (!match) return null;
@@ -387,10 +372,7 @@ function pickDesignString(source: Record<string, unknown>, keys: string[]): stri
   return null;
 }
 
-/** The model page's photo gallery -- design.designExtension.design_pictures -- distinct from
- * coverUrl/coverPortrait/coverLandscape, which are just crops of the same single cover image
- * for different UI contexts. Confirmed live: a model can have several of these (renders and/or
- * isRealLifePhoto: 1 real-world photos of the print). */
+/** The design's photo gallery; the cover* fields are just crops of the single cover image. */
 function makerworldGalleryImages(design: Record<string, unknown>): { url: string; filename: string }[] {
   const extension = design.designExtension;
   if (!isRecord(extension)) return [];
@@ -407,11 +389,7 @@ function makerworldGalleryImages(design: Record<string, unknown>): { url: string
   return images;
 }
 
-/** design.categories -- a flat array of `{id, name, ...}` objects, most-specific first (e.g.
- * "Cosplay Weapons" then its parent "Props & Cosplays"). Used to auto-land the import into a
- * Category whose makerworldCatIds overlaps one of these (see importService.ts's
- * resolveCategoryIdByCategory); every id is kept, not just the first, so a category configured for
- * either the specific or the parent category still matches. */
+/** Most-specific first. All ids are kept so a category configured for a parent still matches. */
 function makerworldCategoryIds(design: Record<string, unknown>): number[] {
   const categories = design.categories;
   if (!Array.isArray(categories)) return [];
@@ -425,11 +403,8 @@ function makerworldCategoryIds(design: Record<string, unknown>): number[] {
   return ids;
 }
 
-/** Everything a MakerWorld design object says about the model -- the same shape whichever way
- * it was got: the api.bambulab.com design API, the model page's __NEXT_DATA__ (fetched by the
- * backend), or that same page data sent by the Thingport Grab extension. The author is only the
- * design's short creator summary (see makerworldAuthorFromDesignCreator); the download-specific
- * fields (filename, makerworldProfile) are left for the caller. */
+/** Same shape from the design API, the page's __NEXT_DATA__, or the extension. Download-specific
+ * fields are left to the caller. */
 export function makerworldMetaFromDesign(design: unknown): ImportedPageMetadata {
   const meta = emptyImportedPageMetadata();
   if (!isRecord(design)) return meta;
@@ -449,13 +424,8 @@ export function makerworldMetaFromDesign(design: unknown): ImportedPageMetadata 
   return meta;
 }
 
-/** An author record from MakerWorld's own summary of a design's creator (design.designCreator --
- * the same shape in the model page's __NEXT_DATA__ and in the api.bambulab.com design API). It
- * has what an author needs to show up linked, with an avatar -- id, name, handle, avatar -- so an
- * import no longer depends on MakerWorld's separate author-profile endpoint, which now sits
- * behind Cloudflare's challenge and fails for a plain server request. That fuller profile (bio,
- * links, cover image) is still merged in when it can be fetched (see makerworldCloudApi.ts's
- * completeMakerworldAuthor). */
+/** Enough for a linked author with an avatar, without the Cloudflare-gated author-profile
+ * endpoint. */
 export function makerworldAuthorFromDesignCreator(creator: unknown): ImportedAuthorInfo | null {
   if (!creator || typeof creator !== "object") return null;
   const record = creator as Record<string, unknown>;
@@ -490,9 +460,6 @@ export function decodeHtmlEntities(value: string): string {
     .replace(/&amp;/g, "&");
 }
 
-/** MakerWorld's design summary is a small HTML fragment (paragraphs, links, embedded figures).
- * Converts it to plain text for Print.notes: turns block-level closing tags into line breaks,
- * strips every remaining tag, decodes entities, and collapses the resulting whitespace. */
 export function htmlToPlainText(html: string): string | null {
   const withBreaks = html
     .replace(/<\s*(br|\/p|\/li|\/div|\/h[1-6])\s*\/?>/gi, "\n")
@@ -524,31 +491,19 @@ export type ImportedPageMetadata = {
   description: string | null;
   creator: string | null;
   previewImageUrl: string | null;
-  /** A known-clean filename for the resolved download, when the resolver already has one
-   * (e.g. from the MakerWorld cloud API's own response) rather than needing to guess one from
-   * the download URL's path or a Content-Disposition header. */
+  /** A known-clean filename, when the resolver has one. */
   filename: string | null;
-  /** The page's photo gallery, if any -- distinct from previewImageUrl (the single cover
-   * image used as the plate thumbnail). Everything here is meant to be attached as supporting
-   * files instead. */
+  /** Photo gallery, attached as supporting files; previewImageUrl is the cover. */
   galleryImages: { url: string; filename: string }[];
-  /** The richer, structured creator record (for the Author table) -- distinct from `creator`,
-   * which stays a plain display string for backward compatibility and non-provider sources. */
+  /** Structured creator record; `creator` stays a plain display string. */
   author: ImportedAuthorInfo | null;
-  /** The source site's own category ids for this model (e.g. MakerWorld's `design.categories`),
-   * paired with which site they belong to -- each site has its own independent id namespace, so
-   * both are needed to match against the right Category.*CatId column (see importService.ts's
-   * resolveCategoryIdByCategory). Empty/null when the resolver doesn't expose categories. */
+  /** The site's own category ids; each site has its own id namespace. */
   siteCategoryIds: number[];
   categorySite: "makerworld" | "thingiverse" | "printables" | null;
-  /** Which MakerWorld print profile the resolved download belongs to, when known -- lets
-   *  importPrintFromUrl add a second profile of an already-imported design as its own plate
-   *  instead of treating it as a duplicate. Unset for every other provider. */
+  /** Lets a second profile of an imported design be added as its own plate. MakerWorld only. */
   makerworldProfile?: MakerworldProfileRef;
 };
 
-/** `instanceId` is the profile the downloaded file came from; null when the resolver couldn't
- *  tell. */
 export type MakerworldProfileRef = { instanceId: string | null };
 
 export type ImportedAuthorInfo = {
@@ -561,9 +516,7 @@ export type ImportedAuthorInfo = {
   links: string[];
   avatarUrl: string | null;
   backgroundUrl: string | null;
-  /** Set when this came from the client (the extension's copy of the page -- see
-   *  importService.ts's makerworldMetaFromExtension) rather than from the site itself: it may
-   *  create the author's record, but never overwrites one. */
+  /** Came from the client: may create the author's record but never overwrites one. */
   unverified?: boolean;
 };
 
@@ -582,11 +535,7 @@ export function emptyImportedPageMetadata(): ImportedPageMetadata {
   };
 }
 
-/** Best-effort metadata for a landing page, used to fill in the Print when the caller didn't
- * supply a field explicitly. MakerWorld exposes title/tags/summary/creator/cover image/gallery
- * directly on the design object in its NEXT_DATA blob (see makerworldMetaFromDesign); everywhere else only title is filled in, via the
- * page's og:title/<title> (still far more useful than the internal filename of whatever the
- * page links to). */
+/** Best-effort metadata for a landing page. Only MakerWorld has more than a title. */
 export function extractPageMetadata(html: string, pageHost: string): ImportedPageMetadata {
   const meta = emptyImportedPageMetadata();
   if (pageHost.endsWith("makerworld.com")) {
@@ -598,8 +547,7 @@ export function extractPageMetadata(html: string, pageHost: string): ImportedPag
   return meta;
 }
 
-/** Same precedence as makerworldCloudApi.ts's resolveMakerworldViaCloudApi: the profile named
- *  in the URL hash (only if this design actually has it), then the default, then the first. */
+/** The profile named in the URL hash (if the design has it), then the default, then the first. */
 function makerworldInstanceIdFromNextData(data: unknown, requestedInstanceId: string | null): string | null {
   const design = getPath(data, "props", "pageProps", "design") as Record<string, unknown> | undefined;
   if (!design) return null;
@@ -660,10 +608,8 @@ async function fetchMakerworldModelDownloadUrl(
   return data ? extractDownloadUrlFromResponse(data, apiUrl) : null;
 }
 
-/** `requestedInstanceId` is the print profile from the page URL's #profileId-… hash, passed in
- *  separately because `pageUrl` here is the fetch response's URL, which never carries a hash.
- *  Every fallback past the instance-scoped endpoint is model-level, i.e. the default profile's
- *  file, so the returned profile says so. */
+/** `requestedInstanceId` is passed separately because `pageUrl` never carries the hash. Every
+ *  fallback past the instance-scoped endpoint is the default profile's file. */
 export async function resolveMakerworldDownloadUrl(
   html: string,
   pageUrl: string,
@@ -679,8 +625,7 @@ export async function resolveMakerworldDownloadUrl(
   if (nextData) {
     instanceId = makerworldInstanceIdFromNextData(nextData, requestedInstanceId);
     defaultInstanceId = makerworldInstanceIdFromNextData(nextData, null);
-    // A generic URL found in the page data belongs to whichever profile the page embedded (the
-    // default), so it's only trusted when no other profile was asked for.
+    // A generic URL in the page data belongs to the default profile.
     if (!requestedInstanceId || instanceId !== requestedInstanceId) {
       const url = findDownloadUrlInJson(nextData, pageUrl);
       if (url) return asDefault(url);
@@ -714,5 +659,3 @@ export async function resolveMakerworldDownloadUrl(
   return null;
 }
 
-// Printables import also no longer goes through this generic resolver -- see printablesApi.ts,
-// which talks to the public api.printables.com GraphQL endpoint directly.

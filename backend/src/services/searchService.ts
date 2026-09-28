@@ -2,17 +2,8 @@ import { prisma } from "../db";
 import { printOutsByIds } from "./printLoader";
 import type { PrintOut } from "../dto";
 
-// ---- Global search (models primary, collections + tags secondary) ----------------------------
-//
-// Backed by Print.searchVector / Collection.searchVector -- generated tsvector columns with
-// name/title weighted 'A', tags 'B', description/notes 'C', creator 'D' (see the migration that
-// creates them, 20260919164610_add_search_vectors, and their own comments in schema.prisma).
-// ts_rank naturally scores a name match above a description match because of that weighting, so
-// there's no scoring formula to hand-roll here for prints/collections -- Postgres does it.
-// "Tag" results have no vector of their own (a tag is just a string inside Print.tags, not a row
-// -- see routes/tags.ts's own comment on this), so those are matched with a plain ILIKE over the
-// distinct tag values instead, ranked exact-match-first, then prefix-match, then by how many
-// models carry it.
+// Models and collections rank via weighted generated tsvector columns (see schema.prisma). Tags are
+// plain strings, so they're matched with ILIKE: exact, then prefix, then by model count.
 
 const MODEL_RESULT_LIMIT = 6;
 const COLLECTION_RESULT_LIMIT = 4;
@@ -26,27 +17,19 @@ export type SearchResult = {
 
 const EMPTY_RESULT: SearchResult = { models: [], collections: [], tags: [] };
 
-/** Turns free-typed search text into a tsquery string every token of which is a *prefix* match
- *  ("prin:* & yod:*") -- plain `websearch_to_tsquery` treats its input as a natural-language
- *  phrase and only ever matches whole tokens, which reads as broken in a type-ahead box (nothing
- *  matches until you finish typing a whole word). Each raw token is stripped down to letters/
- *  digits before being embedded in the query string -- to_tsquery's own syntax (`:`, `&`, `'`,
- *  parens, ...) would otherwise throw on stray punctuation instead of just ignoring it. Returns
- *  null for input with no usable tokens (blank, or punctuation-only) so callers can short-circuit
- *  without ever touching the database. */
+/** Every token becomes a prefix match ("prin:* & yod:*") so type-ahead works. Tokens are reduced
+ *  to letters/digits since to_tsquery throws on stray syntax. Null when nothing usable is left. */
 function buildPrefixTsQuery(raw: string): string | null {
   const tokens = raw
     .split(/\s+/)
     .map((token) => token.replace(/[^\p{L}\p{N}]+/gu, ""))
     .filter(Boolean)
-    .slice(0, 8); // defensive cap -- nothing legitimate needs more than a handful of words
+    .slice(0, 8); // defensive cap
   if (!tokens.length) return null;
   return tokens.map((token) => `${token}:*`).join(" & ");
 }
 
-/** Escapes %, _, and \ so a raw search term used inside ILIKE '%...%' is matched literally --
- *  otherwise a term containing e.g. "50%" would have that '%' act as an ILIKE wildcard instead of
- *  a literal character. Paired with `ILIKE ... ESCAPE '\'` at the call site. */
+/** Paired with `ILIKE ... ESCAPE '\'`. */
 function escapeLikeTerm(raw: string): string {
   return raw.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
 }
@@ -96,11 +79,6 @@ async function searchTags(userId: string, rawQuery: string, limit: number): Prom
   return rows.map((r) => ({ tag: r.tag, count: Number(r.count) }));
 }
 
-/** The global search box's one query: models (primary -- full PrintOut, same shape ModelCard
- *  already renders elsewhere, via printOutsByIds), plus collections and tags carrying a lighter
- *  {id/name/count} shape of their own (no cover photos -- this is a compact dropdown, not a
- *  grid). All three run in parallel; each is independently capped and pre-sorted, so the caller
- *  can render them as-is. */
 export async function search(userId: string, rawQuery: string): Promise<SearchResult> {
   const tsQuery = buildPrefixTsQuery(rawQuery);
   if (!tsQuery) return EMPTY_RESULT;
@@ -112,9 +90,7 @@ export async function search(userId: string, rawQuery: string): Promise<SearchRe
   ]);
 
   const printOuts = await printOutsByIds(userId, modelIds);
-  // printOutsByIds returns a Map keyed by id with no guaranteed order -- re-apply the rank order
-  // searchPrintIds already computed, dropping any id it couldn't resolve to a full PrintOut
-  // (shouldn't normally happen; printOutsByIds only omits ids it can't find at all).
+  // Re-apply rank order; printOutsByIds returns an unordered Map.
   const models = modelIds.map((id) => printOuts.get(id)).filter((p): p is PrintOut => Boolean(p));
 
   return { models, collections, tags };

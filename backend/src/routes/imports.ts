@@ -52,24 +52,14 @@ const importRequestSchema = z.object({
   category_id: z.string().nullable().optional(),
   filename: z.string().nullable().optional(),
   makerworld_cookie: z.string().nullable().optional(),
-  // Set by the Thingport Grab browser extension for MakerWorld imports: it reads __NEXT_DATA__
-  // off the live model page and resolves this itself via a fetch() made from that page's own
-  // context (real cookies attached automatically, looks like organic browsing) -- see
-  // openImportResponse's use of it in importService.ts. When present, the backend skips both of
-  // its own resolution paths (the api.bambulab.com cloud API and the api/v1 HTML-scrape
-  // fallback) entirely, since those are the only two call sites that can trip MakerWorld's
-  // CAPTCHA and its 2-hour blanket cooloff (see makerworldCaptcha.ts).
+  // Resolved by the extension in the page itself. Skips the backend's own resolution, which is
+  // what trips MakerWorld's CAPTCHA.
   resolved_download_url: z.string().nullable().optional(),
   resolved_instance_id: z.string().nullable().optional(),
-  // Sent with resolved_download_url: the page's own design data, so the backend needn't fetch
-  // the model page for the model's details -- see importService.ts's makerworldMetaFromExtension.
   makerworld_design: z.record(z.unknown()).nullable().optional(),
 });
 
-// The frontend normally sends the browser's own locally-stored MakerWorld cookie on every
-// import request (see utils/settings.ts) -- this only kicks in when that's missing (a different
-// browser/device, or the request just didn't include one), falling back to whatever the user
-// last saved via Settings > Imports (see routes/settings.ts's PATCH /settings/makerworld).
+// Falls back to the cookie saved in Settings when the request doesn't carry one.
 async function withStoredMakerworldCookie<T extends { makerworld_cookie?: string | null }>(userId: string, body: T): Promise<T> {
   if (body.makerworld_cookie && body.makerworld_cookie.trim()) return body;
   const stored = await getUserMakerworldCookie(userId);
@@ -84,8 +74,6 @@ router.post(
     const url = await normalizeImportUrl(body.url);
     const result = await importPrintFromUrl(req.userId!, url, body);
     const { print, plates, author, previewImages } = result;
-    // Lets a client tell "added this MakerWorld profile to a model you already had" apart from
-    // a fresh import and from a no-op (see importService.ts's addMakerworldProfileToPrint).
     const importOutcome = result.alreadyImported ? "already_imported" : result.profileAdded ? "profile_added" : "created";
     res.json({ ...toPrintOut(print, plates, [], null, author, previewImages), import_outcome: importOutcome });
     void createLog({ userId: req.userId!, action: "model_imported", targetId: print.id, details: { name: print.name, url } });
@@ -102,12 +90,7 @@ router.post(
   }),
 );
 
-// Deliberately GET + a plain query param, and skips normalizeImportUrl's DNS-resolution SSRF
-// check (see urlUtils.ts) -- unlike every other import route, this never fetches the URL itself,
-// so there's nothing to protect against and no reason to pay that latency. Called on every page
-// load by the Thingport Grab browser extension to decide whether to show its floating icon on a
-// single-model page (see checkImportStatus's own doc comment for why a listing page always comes
-// back not-already-imported).
+// Never fetches the URL, so it skips the SSRF check. Called by the extension on every page load.
 router.get(
   "/import/status",
   asyncHandler(async (req, res) => {
@@ -143,10 +126,7 @@ router.post(
     if (!parsed) throw new HttpError(400, "Not a MakerWorld collection URL");
     const bearerToken = extractMakerworldBearerToken(resolveMakerworldCookie(body));
 
-    // Sequential, not Promise.all: firing the title fetch and the (paginated, up to 15-page)
-    // entries listing at once was its own unpaced burst -- see IMPORT_MAKERWORLD_CALL_DELAY_MS's
-    // comment in config.ts. The entries call paces its own pages via that same constant, which
-    // also covers the gap after this title call since it's always the first request in the pair.
+    // Sequential: fetching both at once is an unpaced burst.
     let title: string | null;
     let listing: Awaited<ReturnType<typeof fetchMakerworldCollectionEntries>>;
     try {
@@ -154,10 +134,7 @@ router.post(
       listing = await fetchMakerworldCollectionEntries(parsed.collectionId, bearerToken, undefined, IMPORT_MAKERWORLD_CALL_DELAY_MS);
     } catch (err) {
       if (err instanceof MakerworldCaptchaError) throw new HttpError(429, err.message);
-      // 400, not 401: this is MakerWorld's own session rejecting our request, not the caller's
-      // Thingport session -- the frontend's generic API client treats any 401 as "your
-      // Thingport session expired" and force-logs-out, which would be exactly wrong here. See
-      // the same reasoning at importService.ts's tryMakerworldCloudApi/importThingiverseThing.
+      // 400, not 401: the frontend treats any 401 as an expired Thingport session.
       if (err instanceof MakerworldAuthError) throw new HttpError(400, err.message);
       throw err;
     }
@@ -289,23 +266,14 @@ router.post(
   }),
 );
 
-// ---- Background batch imports (MakerWorld/Thingiverse collections, Thingiverse Likes, zip) ----
-//
-// All three of these can involve downloading dozens to hundreds of files, which used to happen
-// synchronously inside the request -- long enough to run past reverse-proxy read timeouts with
-// no feedback. They now just register an ImportJob and return immediately; the actual work runs
-// in the background (importJobRunner.ts) and is polled via GET /import/jobs/:id. At most one
-// job may be RUNNING per user at a time -- that's both the "already in progress" guard and what
-// lets the frontend restore its progress bar after a page refresh via GET /import/jobs/active.
+// Batch imports run in the background and are polled via GET /import/jobs/:id. One RUNNING job
+// per user doubles as the "already in progress" lock.
 
 async function assertNoActiveJob(userId: string): Promise<void> {
   const active = await getActiveJob(userId);
   if (active) throw new HttpError(409, "An import is already in progress");
 }
 
-// Several print profiles of one MakerWorld model -- all its designer's, or all of them (see
-// importJobRunner.ts's runMakerworldProfilesImportJob). The import dialog's "Print profiles"
-// choice; "just the link's profile" is a plain POST /import.
 const makerworldProfilesImportRequestSchema = importRequestSchema.extend({ scope: z.enum(["designer", "all"]) });
 
 router.post(

@@ -15,8 +15,6 @@ type Props = {
   onUnauthorized?: () => void;
 };
 
-/** Profile switch for the author preview card shown on hovering an author link (see
- *  components/AuthorHoverCard.tsx). Stored server-side so it follows the account. */
 export default function AuthorPreviewSetting({ onUnauthorized }: Props) {
   const { t } = useTranslation(["app"]);
   const [enabled, setEnabled] = React.useState(true);

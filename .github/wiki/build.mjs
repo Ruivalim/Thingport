@@ -1,12 +1,10 @@
-// Builds the GitHub wiki from the Markdown already in the repo, so the wiki is never edited by hand
-// and can't drift from the docs. Run by .github/workflows/wiki.yml; locally:
+// Builds the GitHub wiki from the repo's Markdown so it can't drift from the docs. Run by
+// .github/workflows/wiki.yml; locally:
 //
 //   node .github/wiki/build.mjs <out-dir>
 //
-// Pages: Home is the README (minus its install section), Installation is that section, and every
-// doc in web/src/lib/site.mjs's DOCS with a `source` gets its own page -- the same list the
-// website renders. Links between those files become wiki links, other repo paths go to GitHub,
-// and images load from raw.githubusercontent.com.
+// Home is the README minus its install section, Installation is that section, and every doc in
+// site.mjs's DOCS with a `source` gets a page.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -43,14 +41,12 @@ const pages = [
   ...DOCS.filter((d) => d.source).map((d) => ({
     name: pageName(d.title),
     nav: d.nav,
-    // Unlisted docs still get a page (links to them keep working), just no sidebar entry.
     group: d.unlisted ? undefined : d.group,
     source: d.source,
     body: read(d.source),
   })),
 ];
 
-// The README's own install section stands in for the site's Astro-only "install" page.
 const pageBySource = {
   "README.md": "Home",
   ...Object.fromEntries(pages.slice(2).map((p) => [p.source, p.name])),

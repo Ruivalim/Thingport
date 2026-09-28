@@ -10,10 +10,7 @@ type Props = {
   onChange: (mode: PrintSortMode) => void;
 };
 
-/** The row of "Newest / Popular / Downloads" sort links shown above every models grid (Models
- *  page, and a collection's model list) -- mirrors MakerWorld's model-browsing sort row, kept to
- *  three fixed metrics (no per-column ascending/descending toggle). "Popular" sorts by view
- *  count, "Downloads" by print count -- see the `orderBy` handling in GET /prints. */
+/** "Popular" sorts by views, "Downloads" by print count. */
 export default function SortTabs({ value, onChange }: Props) {
   const { t } = useTranslation("models");
   return (

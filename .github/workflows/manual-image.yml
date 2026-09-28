@@ -1,9 +1,6 @@
 name: Manual image publish
 
-# One place to build+push either (or both) images on demand, regardless of what actually
-# changed — e.g. to re-publish after a registry hiccup, or force a rebuild after a base-image
-# security update. The automatic, path-filtered publishes still live in backend-image.yml and
-# frontend-image.yml.
+# Builds and pushes either or both images on demand, e.g. after a base-image security update.
 on:
   workflow_dispatch:
     inputs:

@@ -1,8 +1,5 @@
-// Every fetch() to the user's Thingport instance goes through here. Content scripts and the popup
-// never fetch directly -- they send API_CALL (or a higher-level message) to the background and get
-// plain JSON back -- so auth (login + silent re-login on expiry/401) and the instance URL live in
-// exactly one place. The host permission for the saved instance origin (requested at setup, see
-// popup/index.ts) is what lets this reach a self-hosted instance regardless of its CORS config.
+// Every fetch to the Thingport instance goes through here, so auth (including silent re-login) and
+// the instance URL live in one place. The host permission granted at setup bypasses CORS.
 
 import type { LoginResult } from "../shared/api";
 import { apiUrl } from "../shared/storage";
@@ -12,9 +9,7 @@ import { getLiveMakerworldCookie, maybeSyncMakerworldCookie } from "./makerworld
 
 const TOKEN_REFRESH_MARGIN_MS = 5 * 60 * 1000;
 
-// Identifies these requests as Thingport Grab's, which the instance never asks for a captcha
-// (Administration > Captcha): the extension signs in and imports in the background, with nowhere
-// to show one. See the backend's services/captchaService.ts isExtensionRequest.
+// The instance never asks the extension for a captcha (see captchaService.ts).
 const CLIENT_HEADERS = { "X-Thingport-Client": "grab" };
 
 type Credentials = Pick<ConfiguredConfig, "instanceUrl" | "email" | "password">;
@@ -24,14 +19,11 @@ async function errorDetail(res: Response, fallback: string): Promise<string> {
     const body = (await res.json()) as { detail?: string } | null;
     if (body && body.detail) return body.detail;
   } catch {
-    // ignore -- keep the generic message
   }
   return fallback;
 }
 
-/** (Re-)authenticates against the given instance/credentials and persists the resulting token.
- *  Called by ensureToken on first use / near expiry, and again once on a 401 (a password change
- *  or server-side session revocation shouldn't require reopening the popup to recover from). */
+/** Also called once on a 401, so a password change doesn't require reopening the popup. */
 export async function loginAndStoreToken(credentials: Credentials): Promise<string> {
   const res = await fetch(apiUrl(credentials.instanceUrl, "/login"), {
     method: "POST",
@@ -59,12 +51,8 @@ export async function requireConfig(): Promise<ConfiguredConfig> {
   return config;
 }
 
-/** Generic authenticated call to the stored instance -- every content-script/popup action goes
- *  through this rather than a bespoke message per endpoint. `path` is the API path after `/api`
- *  (e.g. "/collections"). Any `/import*` call whose body targets a MakerWorld URL gets the live
- *  browser cookie attached automatically (see makerworldCookie.ts) unless the caller already set
- *  one -- this is what lets a user who has never touched Profile > MakerWorld still import from
- *  MakerWorld via the extension. */
+/** `path` is after `/api`. MakerWorld `/import*` calls get the live browser cookie attached unless
+ *  the caller set one. */
 export async function apiCall<T = unknown>(method: string, path: string, body?: unknown): Promise<T> {
   const config = await requireConfig();
 
@@ -95,7 +83,6 @@ export async function apiCall<T = unknown>(method: string, path: string, body?: 
   return (await res.json()) as T;
 }
 
-/** Authenticated GET of a binary resource on the instance (e.g. a thumbnail). */
 export async function apiFetchBlob(config: ConfiguredConfig, path: string): Promise<Blob | null> {
   const res = await fetch(apiUrl(config.instanceUrl, path), {
     headers: { ...CLIENT_HEADERS, Authorization: `Bearer ${await ensureToken(config)}` },

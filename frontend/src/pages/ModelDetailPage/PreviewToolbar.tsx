@@ -40,8 +40,7 @@ type Props = {
 
 const sectionDivider = <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />;
 
-/** Bottom overlay of the 3D preview modal: camera presets, render style, model color, and the
- *  grid/spin toggles. Stateless -- the modal owns every value and passes it to ModelViewer. */
+/** Stateless: the modal owns every value. */
 export default function PreviewToolbar({
   cameraView,
   onCameraView,

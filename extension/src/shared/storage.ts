@@ -1,5 +1,4 @@
-// chrome.storage.local keys and the shape stored under them. Everything the extension persists
-// lives in extension-local storage -- nothing is synced across browsers.
+// chrome.storage.local keys and their shapes. Nothing is synced across browsers.
 
 export const STORAGE_KEYS = {
   instanceUrl: "instanceUrl",
@@ -8,9 +7,7 @@ export const STORAGE_KEYS = {
   disabled: "disabled",
   token: "token",
   tokenExpiresAt: "tokenExpiresAt",
-  // The last MakerWorld `token` cookie value pushed to this account's Thingport-stored
-  // makerworld_cookie -- lets the cookie sync skip a redundant PATCH when the live browser cookie
-  // hasn't changed since. See background/makerworldCookie.ts.
+  // Lets the cookie sync skip a redundant PATCH.
   lastSyncedMakerworldCookie: "lastSyncedMakerworldCookie",
 } as const;
 
@@ -24,8 +21,6 @@ export type StoredConfig = {
   lastSyncedMakerworldCookie?: string;
 };
 
-/** Keys whose change means "re-evaluate whether/how this page shows the icon" -- see
- *  content/index.ts's storage listener. */
 export const CONFIG_CHANGE_KEYS: readonly string[] = [
   STORAGE_KEYS.instanceUrl,
   STORAGE_KEYS.email,
@@ -33,8 +28,6 @@ export const CONFIG_CHANGE_KEYS: readonly string[] = [
   STORAGE_KEYS.disabled,
 ];
 
-/** Strips a trailing slash so `${instanceUrl}/api/...` never ends up with a doubled slash,
- *  regardless of whether the user typed one when saving the URL in the popup. */
 export function normalizeInstanceUrl(raw: string | undefined | null): string {
   return (raw || "").trim().replace(/\/+$/, "");
 }

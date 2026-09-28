@@ -9,12 +9,8 @@ type Options = {
   onUnauthorized?: () => void;
 };
 
-/** Shared favourite toggle for every StarToggle that adds/removes a print from the built-in
- *  "Favourites" pseudo-collection (model grid cards, the model detail page header), so they all
- *  confirm with the same toast. Flips immediately on click (optimistic, rolled back on failure)
- *  instead of waiting on the request behind a spinner -- StarToggle's burst animation only plays
- *  on an actual false->true prop transition while mounted, so swapping it for a spinner
- *  mid-request (then remounting it already-flipped once the response lands) skipped it. */
+/** Optimistic, rolled back on failure: StarToggle's burst only plays on a false->true prop change
+ *  while mounted, so a spinner in between would skip it. */
 export function useFavoriteToggle(print: Print, { onUpdated, onUnauthorized }: Options = {}) {
   const { t } = useTranslation(["models"]);
   const showToast = useToast();

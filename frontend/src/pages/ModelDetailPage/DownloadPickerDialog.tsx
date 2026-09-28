@@ -25,9 +25,6 @@ type Props = {
   downloadPlate: (plate: Plate) => void;
 };
 
-/** The "which file?" picker shown when a multi-file model's download is triggered -- see
- *  useDownloadPrint. Shared by ModelActionsMenu's "Download" menu item and the detail page's
- *  "Download model files" button. */
 export default function DownloadPickerDialog({ open, onClose, downloading, sortedPlates, downloadAllZip, downloadPlate }: Props) {
   const { t } = useTranslation(["models", "common"]);
   return (

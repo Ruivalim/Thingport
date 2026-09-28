@@ -2,11 +2,8 @@ import path from "node:path";
 import mimeTypes from "mime-types";
 import { IMPORT_ALLOWED_EXTS } from "../config";
 
-// The whole C0 and C1 range, not just NUL. C1 (U+0080-U+009F) is what a mis-decoded header
-// leaves behind, and a control character in a filename survives the local filesystem happily but
-// is rejected further downstream -- OneDrive answers 400 Bad Request for the subset undefined in
-// Windows-1252 (0x81 0x8D 0x8F 0x90 0x9D) and accepts the rest, so a backup silently keeps some
-// names and drops others.
+// The whole C0 and C1 range: C1 is what a mis-decoded header leaves behind, and downstream systems
+// (e.g. OneDrive backups) reject some of those characters.
 // oxlint-disable-next-line no-control-regex -- stripping control chars is the point here.
 const CONTROL_CHARS_RE = /[\u0000-\u001f\u007f-\u009f]/g;
 
@@ -18,18 +15,12 @@ export function sanitizeFilename(name: string | null | undefined): string {
 }
 
 /**
- * HTTP header values are ISO-8859-1 (RFC 7230 section 3.2.4), so a server that puts raw UTF-8
- * bytes in the plain `filename=` parameter -- rather than the `filename*=UTF-8''...` form that
- * exists for exactly this -- hands us one character per byte. MakerWorld's CDN does this, which
- * turned `哨子.3mf` into `å<93>¨å­<90>.3mf` on disk.
- *
- * Re-read those bytes as UTF-8, but only when they round-trip exactly. Invalid UTF-8 decodes to
- * U+FFFD and therefore re-encodes to different bytes, so a genuinely Latin-1 `café.stl` is left
- * alone instead of being mangled by the fix.
+ * Header values are ISO-8859-1, so a server putting raw UTF-8 in `filename=` (MakerWorld's CDN
+ * does) yields one character per byte. Re-read them as UTF-8 only when they round-trip exactly, so
+ * a genuinely Latin-1 name is left alone.
  */
 function decodeLatin1AsUtf8(value: string): string {
-  // Only a pure byte string can be one; anything above U+00FF was already decoded properly, and
-  // Buffer.from(..., "latin1") would silently truncate it.
+  // Anything above U+00FF was decoded properly, and latin1 encoding would truncate it.
   if (!/[\u0080-\u00ff]/.test(value) || /[\u0100-\uffff]/.test(value)) return value;
   const bytes = Buffer.from(value, "latin1");
   const decoded = bytes.toString("utf8");
@@ -38,7 +29,6 @@ function decodeLatin1AsUtf8(value: string): string {
 
 export function parseContentDisposition(cd: string | null | undefined): string | null {
   if (!cd) return null;
-  // `filename*=` is already percent-encoded with its charset named, so it needs no repair.
   const starMatch = cd.match(/filename\*=([^']*)''([^;]+)/i);
   if (starMatch) return decodeURIComponent(starMatch[2]);
   const plainMatch = cd.match(/filename="?([^";]+)"?/i);
@@ -47,9 +37,7 @@ export function parseContentDisposition(cd: string | null | undefined): string |
 
 export class HttpError extends Error {
   status: number;
-  // Machine-readable discriminator for the rare case a frontend needs to branch on *why* a
-  // request failed rather than just show `message` -- e.g. EMAIL_NOT_VERIFIED, which needs a
-  // "resend verification email" affordance instead of a plain error toast.
+  // For the rare case the frontend must branch on why a request failed, e.g. EMAIL_NOT_VERIFIED.
   code?: string;
   constructor(status: number, message: string, code?: string) {
     super(message);

@@ -1,14 +1,9 @@
-// Card-thumbnail snapshot generation for 3D models: a serialized job queue (only one WebGL
-// snapshot renderer is ever live at a time, since spinning up many WebGL contexts concurrently is
-// what caused the original flakiness this queue was written to avoid), a data-URL cache keyed by
-// plate id (falling back to the asset URL), and the actual "render one frame of the model to a
-// PNG" routine. Used by ModelSnapshot (components/media/ModelViewer).
+// Card-thumbnail snapshots. Jobs run one at a time because many concurrent WebGL contexts are flaky.
 import * as THREE from "three";
 import type { ResolvedTheme } from "../constants/settingsOptions";
 import { applyThemeToObject, disposeObject3D, loadObjectFromAsset, paletteForTheme } from "./modelLoaders";
 
-// Same "three-quarter" viewing angle ModelViewer's fitCameraToBox uses for non-Bambu formats, so
-// the static thumbnail matches the angle a user sees first when they open the live viewer.
+// Matches the angle the live viewer opens at.
 const SNAPSHOT_VIEW_DIRECTION = new THREE.Vector3(0.9, 0.7, 2.1).normalize();
 
 export const snapshotCache = new Map<string, string>();
@@ -17,7 +12,6 @@ let snapshotRenderer: THREE.WebGLRenderer | null = null;
 let snapshotLock: Promise<void> = Promise.resolve();
 let snapshotJobQueue: Promise<void> = Promise.resolve();
 
-/** Serializes snapshot jobs one-at-a-time across every ModelSnapshot instance on the page. */
 export function queueSnapshotJob<T>(job: () => Promise<T>): Promise<T> {
   const result = snapshotJobQueue.then(job, job);
   snapshotJobQueue = result.then(() => undefined, () => undefined);
@@ -68,9 +62,7 @@ export async function generateModelSnapshot(
   const scene = new THREE.Scene();
   scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.2));
   scene.add(new THREE.AmbientLight(0xffffff, 0.8));
-  // near/far start as placeholders -- both get set below from the model's actual bounding radius,
-  // since a fixed 0.1/1000 clips the geometry entirely for models far outside that range (this was
-  // the root cause of blank/background-only thumbnails: the renderer had nothing in view).
+  // Placeholder near/far, set below from the model's size; fixed values clip very large or small models.
   const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
   const { renderer, release } = await acquireSnapshotRenderer();
   renderer.setSize(width, height, false);
@@ -78,9 +70,7 @@ export async function generateModelSnapshot(
 
   const box = new THREE.Box3().setFromObject(object);
   if (!box.isEmpty()) {
-    // Same distance-solving as ModelViewer's fitCameraToBox: fit to the box's circumscribed
-    // sphere against both vertical and (aspect-derived) horizontal FOV, so the model is framed
-    // fully regardless of its real-world scale or the thumbnail's aspect ratio.
+    // Same framing as ModelViewer's fitCameraToBox.
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
     const radius = Math.max(size.length() / 2, 0.001);

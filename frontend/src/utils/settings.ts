@@ -2,12 +2,8 @@ export type MakerWorldSettings = {
   cookie: string;
 };
 
-// Theme used to live here too, mirrored to localStorage -- it's now server-persisted instead
-// (see App.tsx's themeSelection state and api/settings.ts's getTheme/updateTheme) so it follows
-// the account across devices rather than being stuck in one browser. MakerWorld's cookie stays
-// local-mirrored: unlike theme it's write-only server-side (see makerworldCookieService.ts), so
-// there's no value to fetch back -- this is just what the current browser last sent, used as the
-// live cookie for this browser's own outgoing import requests.
+// The MakerWorld cookie is mirrored locally because it's write-only server-side; it's what this
+// browser sends with its import requests.
 export type AppSettings = {
   makerworld: MakerWorldSettings;
 };
@@ -42,6 +38,5 @@ export function saveSettings(settings: AppSettings) {
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
   } catch {
-    // ignore storage errors
   }
 }

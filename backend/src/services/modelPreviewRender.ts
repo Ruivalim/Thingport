@@ -2,29 +2,13 @@ import fs from "node:fs/promises";
 import * as cheerio from "cheerio";
 import { listZipEntries, readZipEntry, walkZipEntries } from "../utils/zipReader";
 
-// Generates the cached GLB the interactive 3D preview loads instead of re-parsing a raw .3mf
-// on every open (see frontend/src/utils/bambuThreeMf.ts, whose *rules* this file mirrors -- same
-// extruder-resolution priority, same plate-assignment fallbacks, same component p:path handling
-// -- but not its parsing mechanism. That file walks the DOM node-by-node; a Bambu-sliced 3MF for
-// a genuinely large model can have millions of <vertex>/<triangle> elements, and DOM attribute
-// access at that scale is what causes Thingport's "3D Preview" to hang indefinitely (root-caused
-// against a real 224MB/2.66M-triangle repro). This file never builds a DOM for the bulk mesh data
-// -- it scans the raw XML text with a handful of fixed-shape regexes straight into typed arrays,
-// which is the actual fix. It only runs once per plate (in the background, off the request path)
-// rather than on every viewer open.
+// Builds the cached GLB the 3D preview loads instead of parsing a raw .3mf in the browser. It
+// follows the same rules as frontend/src/utils/bambuThreeMf.ts but scans the XML with regexes
+// into typed arrays instead of a DOM, which hangs on models with millions of triangles.
 //
-// Everything here runs inside a worker thread (modelPreviewWorker.ts), never on the server's own
-// event loop -- modelPreviewCache.ts owns the cache files and puts memory/time limits on that
-// thread. Keep this module free of config/db imports so the worker stays lightweight.
+// Runs in a worker thread (modelPreviewWorker.ts); keep it free of config/db imports.
 
-// ---- FileReader polyfill --------------------------------------------------------------------
-//
-// Node has no FileReader; three.js's GLTFExporter (examples/jsm/exporters/GLTFExporter.js) needs
-// one for its binary (GLB) export path even though nothing here uses images/textures. Confirmed
-// working against a real export+reload round-trip (including custom userData surviving through
-// glTF `extras`) before this file was written. Node's built-in Blob already provides
-// `.arrayBuffer()`, so the polyfill only needs to bridge that to the old onload/onloadend
-// callback shape the exporter expects.
+// Node has no FileReader, but GLTFExporter needs one for its GLB export path.
 class NodeFileReader {
   onload?: (e: { target: NodeFileReader }) => void;
   onloadend?: (e: { target: NodeFileReader }) => void;
@@ -66,15 +50,12 @@ if (typeof (globalThis as { FileReader?: unknown }).FileReader === "undefined") 
   (globalThis as unknown as { FileReader: unknown }).FileReader = NodeFileReader;
 }
 
-// ---- Small XML helpers (operate on a tag's raw attribute string, not a DOM node) --------------
-
 function getAttr(attrs: string, name: string): string | null {
   const m = attrs.match(new RegExp(`(?:^|\\s)${name}="([^"]*)"`));
   return m ? m[1] : null;
 }
 
-/** Mirrors bambuThreeMf.ts's parsePlateIdFromAttributes: accepts plate_id/plater_id (any casing,
- * optionally namespace-prefixed) since different Bambu Studio versions have used both spellings. */
+/** Different Bambu Studio versions spell it plate_id or plater_id. */
 function findPlateIdAttr(attrs: string): number | null {
   const m = attrs.match(/(?:^|\s)(?:[\w-]+:)?(?:plate_id|plater_id|plateid|platerid)="([^"]*)"/i);
   if (!m) return null;
@@ -82,10 +63,7 @@ function findPlateIdAttr(attrs: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-/** 3MF's 3x4 affine transform, in the string's own order: [m00 m01 m02 m10 m11 m12 m20 m21 m22
- * tx ty tz]. Applied directly against plain vertex triples below (no THREE.Matrix4 needed) --
- * the mapping is derived from, and produces identical results to, bambuThreeMf.ts's
- * `matrix.set(...)` + `v.applyMatrix4(matrix)`. */
+/** 3MF's 3x4 affine transform: [m00 m01 m02 m10 m11 m12 m20 m21 m22 tx ty tz]. */
 function parseTransform3MF(str: string | null): number[] | null {
   if (!str) return null;
   const v = str.trim().split(/\s+/).map(Number);
@@ -106,18 +84,13 @@ function applyAffineToVertices(vertices: Float32Array, t: number[]): Float32Arra
   return out;
 }
 
-// ---- Mesh extraction (the hot path) ------------------------------------------------------------
-
 type FastMesh = { vertices: Float32Array; triangles: Uint32Array; extruder: number };
 
 const MESH_RE = /<mesh\b[^>]*>([\s\S]*?)<\/mesh>/g;
 const VERTEX_RE = /<vertex\s+x="([^"]*)"\s+y="([^"]*)"\s+z="([^"]*)"/g;
 const TRIANGLE_RE = /<triangle\s+v1="(\d+)"\s+v2="(\d+)"\s+v3="(\d+)"/g;
 
-/** Finds every <mesh> block in `xml` and extracts its vertices/triangles directly via regex --
- * no DOM, no per-node attribute lookups. This is the piece that actually fixes the hang: a
- * 2.66M-triangle file that would grind the DOM-based parser to a halt runs through here in a
- * couple of seconds. */
+/** Extracts every <mesh>'s vertices/triangles via regex, without building a DOM. */
 function extractMeshesFast(xml: string, extruder: number): FastMesh[] {
   const meshes: FastMesh[] = [];
   MESH_RE.lastIndex = 0;
@@ -143,8 +116,6 @@ function extractMeshesFast(xml: string, extruder: number): FastMesh[] {
   return meshes;
 }
 
-// ---- Structural parsing (small documents -- cheerio/JSON are fine here) -----------------------
-
 type ObjectData = { id: string; meshes: FastMesh[]; plateId: number | null };
 type BuildItem = { objectId: string; transform: number[] | null; plateId: number | null };
 export type PlateSummary = { index: number; name: string | null; objectCount: number };
@@ -158,8 +129,6 @@ type StructuralData = {
   plateOffsets: Map<number, { offsetX: number; offsetY: number }>;
 };
 
-/** Mirrors bambuThreeMf.ts's model_settings.config handling -- small document (a few hundred
- * nodes at most), so a real XML parser (cheerio, already a backend dependency) is fine here. */
 function parseModelSettingsConfig(xml: string): StructuralData {
   const data: StructuralData = {
     extruderMapById: new Map(),
@@ -233,8 +202,6 @@ function parseModelSettingsConfig(xml: string): StructuralData {
   return data;
 }
 
-/** project_settings.config is already JSON (unlike the other Metadata/*.config files) -- direct
- * port of bambuThreeMf.ts's parseProjectSettings, nothing DOM-related to replace here. */
 function parseProjectSettingsJson(text: string): { filamentColors: string[]; buildVolume: { x: number; y: number } | null } {
   try {
     const json = JSON.parse(text) as Record<string, unknown>;
@@ -253,8 +220,6 @@ function parseProjectSettingsJson(text: string): { filamentColors: string[]; bui
   }
 }
 
-// ---- Main model parsing (the hot path, orchestrated) -------------------------------------------
-
 const OBJECT_RE = /<object\b([^>]*)>([\s\S]*?)<\/object>/g;
 const COMPONENT_RE = /<component\b([^>]*)\/?>/g;
 const ITEM_RE = /<item\b([^>]*)\/?>/g;
@@ -263,37 +228,27 @@ type InternalComponentRef = { refId: string; transform: number[] | null; extrude
 
 const MAX_COMPONENT_DEPTH = 8;
 
-/** Counts <triangle .../> tags without the per-match array a `match(/.../g)` would allocate
- * (millions of strings for a big model). "<triangles>" (the container) is skipped. */
+/** Counts <triangle .../> tags without allocating a match array. */
 function countTriangleTags(xml: string): number {
   let count = 0;
   let i = xml.indexOf("<triangle");
   while (i !== -1) {
     const next = xml.charCodeAt(i + 9);
-    // whitespace, "/" or ">" -- anything else is "<triangles" or some other tag
     if (next === 32 || next === 9 || next === 10 || next === 13 || next === 47 || next === 62) count++;
     i = xml.indexOf("<triangle", i + 9);
   }
   return count;
 }
 
-// ---- Part files (3D/Objects/*.model) ----------------------------------------------------------
-
-/** The part-file objects a component takes: the one its objectid names, or every object in the
- *  file when it names none (or one the file doesn't have). */
+/** The object a component's objectid names, or every object when it names none (or a missing one). */
 function partFileTargetIds(objects: Map<string, string>, objectId: string | null): string[] {
   return objectId && objects.has(objectId) ? [objectId] : [...objects.keys()];
 }
 
-/** Loads a component's geometry out of a part file. A part file can hold several <object>s:
- * Bambu Studio keeps every part of a multi-part object in one file and references each part
- * separately (same p:path, a different objectid). So a component takes only the object its
- * objectid names -- taking the whole file for each reference built every part once per sibling
- * (k parts -> k times the geometry, each part also drawn in its siblings' colours). A component
- * with no objectid, or one naming an object the file doesn't have, still takes the whole file.
+/** Bambu Studio keeps every part of a multi-part object in one file and references each part by
+ * objectid, so a component takes only the object it names.
  *
- * Its own regex instances throughout: callers are mid-way through a global OBJECT_RE/COMPONENT_RE
- * scan of the main model when they call in here. */
+ * Uses its own regex instances: callers are mid-way through a global OBJECT_RE/COMPONENT_RE scan. */
 function createPartFileResolver(loadExternalModel: (path: string) => Promise<string | null>) {
   const objectsByPath = new Map<string, Map<string, string> | null>();
   const meshCache = new Map<string, FastMesh[]>();
@@ -316,7 +271,6 @@ function createPartFileResolver(loadExternalModel: (path: string) => Promise<str
     return objects;
   };
 
-  /** Same-file component references inside a part-file object ({ refId, transform }). */
   const innerRefs = (inner: string, objects: Map<string, string>) => {
     const refs: { refId: string; transform: number[] | null }[] = [];
     const componentRe = new RegExp(COMPONENT_RE.source, "g");
@@ -329,8 +283,7 @@ function createPartFileResolver(loadExternalModel: (path: string) => Promise<str
     return refs;
   };
 
-  /** Geometry of one object in a part file (untransformed, extruder unset), parsed once however
-   *  many times it's placed. */
+  /** Parsed once however many times it's placed. */
   const objectMeshes = async (path: string, objects: Map<string, string>, id: string, depth: number): Promise<FastMesh[]> => {
     const key = `${path}#${id}`;
     const cached = meshCache.get(key);
@@ -362,7 +315,6 @@ function createPartFileResolver(loadExternalModel: (path: string) => Promise<str
   };
 
   return {
-    /** The component's meshes, in its part file's own coordinates. */
     async meshes(path: string, objectId: string | null): Promise<FastMesh[]> {
       const objects = await objectsIn(path);
       if (!objects) return [];
@@ -370,7 +322,6 @@ function createPartFileResolver(loadExternalModel: (path: string) => Promise<str
       for (const id of partFileTargetIds(objects, objectId)) out.push(...(await objectMeshes(path, objects, id, 0)));
       return out;
     },
-    /** How many triangles the component brings in, without parsing any geometry. */
     async triangles(path: string, objectId: string | null): Promise<number> {
       const objects = await objectsIn(path);
       if (!objects) return 0;
@@ -381,11 +332,8 @@ function createPartFileResolver(loadExternalModel: (path: string) => Promise<str
 
 type PartFileResolver = ReturnType<typeof createPartFileResolver>;
 
-/** Triangles the preview would actually materialize: every build item's object, including
- * geometry pulled in through p:path components (where Bambu files keep all their meshes) and
- * same-document component references, counted once per placement -- the same expansion
- * parseMainModel + buildGlbGroup perform, but on tag counts instead of real arrays. Checked
- * before any mesh is parsed so an over-budget file never allocates its geometry. */
+/** Triangles the preview would materialize after expanding components and placements, counted
+ * from tags so an over-budget file never allocates its geometry. */
 async function countRenderedTriangles(xml: string, partFiles: PartFileResolver): Promise<number> {
   const ownCount = new Map<string, number>();
   const internalRefs = new Map<string, string[]>();
@@ -414,7 +362,7 @@ async function countRenderedTriangles(xml: string, partFiles: PartFileResolver):
     if (refs.length > 0) internalRefs.set(objectId, refs);
   }
 
-  // Memoized by (object, depth) so a pathological fan-out can't make the count itself explode.
+  // Memoized so a pathological fan-out can't make the count itself explode.
   const memo = new Map<string, number>();
   const totalFor = (objectId: string, depth: number): number => {
     const key = `${objectId}:${depth}`;
@@ -448,11 +396,8 @@ async function parseMainModel(
   partFiles: PartFileResolver,
 ): Promise<{ objects: Map<string, ObjectData>; buildItems: BuildItem[] }> {
   const objects = new Map<string, ObjectData>();
-  // <component objectid="X" .../> with no p:path references another <object> in this SAME
-  // document rather than an external file -- common wrapper pattern (an outer "part" object
-  // whose only content is a transformed reference to an inner object that holds the actual
-  // mesh). Order in the file isn't guaranteed, so these are resolved in a second pass once
-  // every object's own direct meshes are known, not inline during the main loop.
+  // A <component> without p:path references another <object> in this document. Order isn't
+  // guaranteed, so these are resolved in a second pass.
   const internalRefsByObjectId = new Map<string, InternalComponentRef[]>();
 
   OBJECT_RE.lastIndex = 0;
@@ -496,18 +441,13 @@ async function parseMainModel(
       }
     }
 
-    // Always keep the entry once an object has *something* (direct meshes or a pending internal
-    // reference) -- a pure wrapper object has zero direct meshes at this point but still needs
-    // an entry for the resolution pass below to attach the referenced geometry to.
+    // Keep pure wrapper objects too: they need an entry for the resolution pass.
     if (meshes.length > 0 || internalRefsByObjectId.has(objectId)) {
       objects.set(objectId, { id: objectId, meshes, plateId: objectPlateId });
     }
   }
 
-  // Resolve internal component references now that every object's own direct meshes are known.
-  // A bounded depth guard (rather than a visited-set) is enough protection against a malformed/
-  // cyclic file without needing per-object cycle bookkeeping -- real Bambu wrapper chains are
-  // one level deep.
+  // A depth guard is enough against cyclic files; real wrapper chains are one level deep.
   const resolveInternalRefs = (objectId: string, depth: number): FastMesh[] => {
     const refs = internalRefsByObjectId.get(objectId);
     if (!refs || depth >= MAX_COMPONENT_DEPTH) return [];
@@ -526,9 +466,7 @@ async function parseMainModel(
     }
     return resolved;
   };
-  // Resolve everything first, append after: appending as we go would put an inner object's
-  // already-resolved meshes into target.meshes, and an outer object referencing it would then
-  // pick them up twice (once from target.meshes, once from recursing) -- doubling per level.
+  // Resolve everything before appending, or nested references get counted twice per level.
   const resolvedByObjectId = new Map<string, FastMesh[]>();
   for (const objectId of internalRefsByObjectId.keys()) {
     resolvedByObjectId.set(objectId, resolveInternalRefs(objectId, 0));
@@ -559,8 +497,6 @@ async function parseMainModel(
   return { objects, buildItems };
 }
 
-// ---- Top-level orchestration --------------------------------------------------------------------
-
 type ParsedModel = {
   objects: Map<string, ObjectData>;
   buildItems: BuildItem[];
@@ -572,22 +508,16 @@ type ParsedModel = {
 };
 
 const MAIN_MODEL_PATH = "3D/3dmodel.model";
-// Rendered triangles, i.e. after expanding external/internal components and every build-item
-// placement (see countRenderedTriangles) -- not just tags in the main model, which for a Bambu
-// file (meshes live in 3D/Objects/*.model) is close to zero no matter how heavy the model is.
+// Counted after expanding components and placements: a Bambu file's main model has almost none.
 const MAX_TRIANGLES = 8_000_000;
-// Model XML is read whole into strings; V8 can't hold a single string past ~512MB anyway, and the
-// sum bounds how much the parse holds at once. Checked from the zip's central directory before
-// anything is decompressed.
+// V8 can't hold a string past ~512MB. Checked from the zip's central directory before inflating.
 const MAX_MODEL_ENTRY_BYTES = 500 * 1024 * 1024;
 const MAX_MODEL_TOTAL_BYTES = 1024 * 1024 * 1024;
 
-/** Why a file gets no server preview: "too-complex" is over a size budget (the browser mustn't
- * try it either), "unsupported" is a layout this parser doesn't handle (no main model at the
- * usual path, no objects) -- the browser's own, more general 3MF loaders may still manage. */
+/** "too-complex" is over budget (the browser mustn't try either); "unsupported" is a layout this
+ * parser doesn't handle, which the browser's loaders may still manage. */
 export type PreviewRefusal = "too-complex" | "unsupported";
 
-/** Reads and fast-parses a Bambu Studio project .3mf. */
 async function parseThreeMfFast(srcPath: string): Promise<ParsedModel | PreviewRefusal> {
   const modelEntries = (await listZipEntries(srcPath)).filter(
     (entry) => !entry.isDirectory && entry.name.toLowerCase().endsWith(".model"),
@@ -626,8 +556,7 @@ async function parseThreeMfFast(srcPath: string): Promise<ParsedModel | PreviewR
         const thumbMatch = entry.name.match(/^Metadata\/(?:plate|top)_(\d+)\.png$/);
         if (thumbMatch) {
           const idx = Number.parseInt(thumbMatch[1], 10);
-          // "plate_N" (rendered on the bed) takes priority over "top_N" (plain top-down render);
-          // whichever is found first for a given index wins, matching a simple "don't overwrite".
+          // "plate_N" takes priority over "top_N".
           if (!plateThumbBytes.has(idx)) plateThumbBytes.set(idx, buf);
         }
       }
@@ -642,8 +571,7 @@ async function parseThreeMfFast(srcPath: string): Promise<ParsedModel | PreviewR
     ? parseProjectSettingsJson(projectSettingsText)
     : { filamentColors: [], buildVolume: null };
 
-  // plate_*.json fallback for source-only (unsliced-by-MakerWorld) files: bbox_objects names,
-  // keyed by object *name* rather than id -- mirrors bambuThreeMf.ts's same fallback.
+  // Fallback for files MakerWorld didn't slice: plate_N.json keyed by object name.
   const plateAssignmentsByName = new Map<string, number>();
   for (const { plateIndex, text } of plateJsonEntries) {
     try {
@@ -652,7 +580,6 @@ async function parseThreeMfFast(srcPath: string): Promise<ParsedModel | PreviewR
         if (entry?.name) plateAssignmentsByName.set(entry.name, plateIndex);
       }
     } catch {
-      // Ignore malformed plate_N.json.
     }
   }
 
@@ -666,8 +593,7 @@ async function parseThreeMfFast(srcPath: string): Promise<ParsedModel | PreviewR
     return text;
   };
 
-  // Complexity check before any geometry is allocated, so an over-budget file fails after a few
-  // string scans instead of after exhausting the host's memory.
+  // Before any geometry is allocated, so an over-budget file fails cheaply.
   const partFiles = createPartFileResolver(loadExternalModel);
   if ((await countRenderedTriangles(mainModelXml, partFiles)) > MAX_TRIANGLES) return "too-complex";
 
@@ -690,12 +616,7 @@ async function parseThreeMfFast(srcPath: string): Promise<ParsedModel | PreviewR
   };
 }
 
-// ---- GLB construction ----------------------------------------------------------------------
-
-/** Builds the same per-(plate, extruder) merged-mesh grouping bambuThreeMf.ts's
- * buildBambuModelGroup computes on every render, just once, here. The resulting THREE.Group is
- * exported straight to GLB -- the viewer loads the merged meshes directly with no client-side
- * geometry work beyond toggling which plate's sub-group is visible. */
+/** Merges meshes per (plate, extruder), so the viewer only toggles plate visibility. */
 async function buildGlbGroup(parsed: ParsedModel): Promise<import("three").Group> {
   const THREE = await import("three");
   const { mergeGeometries } = await import("three/examples/jsm/utils/BufferGeometryUtils.js");
@@ -707,8 +628,7 @@ async function buildGlbGroup(parsed: ParsedModel): Promise<import("three").Group
   }
   const plateIndexes = Array.from(objectCountByPlate.keys()).toSorted((a, b) => a - b);
   const hasPlateAssignments = plateIndexes.length > 0;
-  // No real plate assignments at all (e.g. a single-object 3MF with no Bambu plate metadata) --
-  // put everything under one synthetic "plate 0" bucket instead of dropping it.
+  // No plate metadata: put everything under a synthetic plate 0.
   const effectivePlateIndexes = hasPlateAssignments ? plateIndexes : [0];
 
   const root = new THREE.Group();
@@ -726,8 +646,7 @@ async function buildGlbGroup(parsed: ParsedModel): Promise<import("three").Group
       if (!objectData) continue;
       for (const mesh of objectData.meshes) {
         const positioned = item.transform ? applyAffineToVertices(mesh.vertices, item.transform) : mesh.vertices;
-        // 3MF Z-up -> three.js Y-up as a rotation, (x, y, z) -> (x, z, -y) -- kept identical to
-        // bambuThreeMf.ts's createGeometryFromMesh (see there for why it can't be a plain swap).
+        // 3MF Z-up -> three.js Y-up, matching bambuThreeMf.ts's createGeometryFromMesh.
         // Changing this changes every cached GLB: bump PREVIEW_FORMAT_VERSION.
         const swapped = new Float32Array(positioned.length);
         for (let i = 0; i < positioned.length; i += 3) {
@@ -746,17 +665,12 @@ async function buildGlbGroup(parsed: ParsedModel): Promise<import("three").Group
 
     const plateGroup = new THREE.Group();
     plateGroup.name = `plate-${plateIndex}`;
-    // Deliberately left visible=true (the default) for every plate here: GLTFExporter's default
-    // onlyVisible option drops invisible nodes from the export entirely, which would silently
-    // delete every plate but the first. Which plate is *shown* is a client-side concern (see
-    // ModelViewer/index.tsx), applied after loading -- not baked into the cached file.
+    // Every plate stays visible: GLTFExporter drops invisible nodes by default.
     let objectCount = 0;
     const fallbackColor = new THREE.Color(0xdddddd);
     for (const [extruder, geometries] of geometriesByExtruder) {
       if (geometries.length === 0) continue;
-      // Cast: mergeGeometries' bundled .d.ts expects a narrower BufferGeometry generic than the
-      // one `await import("three")` infers here -- a type-only mismatch (both are the real
-      // three.js BufferGeometry class at runtime), not a real incompatibility.
+      // Type-only mismatch between mergeGeometries' .d.ts and the dynamically imported three.
       const merged =
         geometries.length === 1
           ? geometries[0]
@@ -788,14 +702,9 @@ async function buildGlbGroup(parsed: ParsedModel): Promise<import("three").Group
   return root;
 }
 
-// ---- Simplification (Administration > Rendering, off by default) --------------------------------
-
-// The triangle budget itself comes in through RenderOptions (modelPreviewCache.ts's
-// SIMPLIFY_TARGET_TRIANGLES), shared between a model's merged meshes in proportion to their size.
-// Meshes this small are left alone -- nothing to gain, and a small part would lose its shape.
+// Meshes this small aren't worth simplifying and would lose their shape.
 const SIMPLIFY_MIN_MESH_TRIANGLES = 2_000;
-// The simplifier stops short of its target rather than change the shape by more than this
-// fraction of the mesh's size (1%).
+// Maximum shape deviation as a fraction of the mesh's size.
 const SIMPLIFY_MAX_ERROR = 0.01;
 const UNUSED_VERTEX = 0xffffffff;
 
@@ -805,10 +714,8 @@ function meshTriangleCount(mesh: import("three").Mesh): number {
   return (mesh.geometry.index?.count ?? 0) / 3;
 }
 
-/** Simplifies every merged mesh under `root` (in place) when their total exceeds `budget`
- *  triangles, with meshoptimizer's edge-collapse simplifier; returns the before/after triangle
- *  counts, or null when the model was already within budget. Normals are recomputed from the
- *  simplified surface. */
+/** Simplifies merged meshes in place when their total exceeds `budget` triangles; null when
+ *  already within budget. */
 async function simplifyGroupMeshes(
   root: import("three").Group,
   budget: number,
@@ -821,8 +728,7 @@ async function simplifyGroupMeshes(
   const total = meshes.reduce((sum, mesh) => sum + meshTriangleCount(mesh), 0);
   if (total <= budget) return null;
 
-  // ESM-only; this CommonJS build turns the import() into require(), which loads ES modules from
-  // Node 20.19 on (hence package.json's engines).
+  // ESM-only; the CommonJS build's require() loads ES modules from Node 20.19 (see engines).
   const { MeshoptSimplifier } = await import("meshoptimizer");
   await MeshoptSimplifier.ready;
 
@@ -838,8 +744,7 @@ async function simplifyGroupMeshes(
     const positions = mesh.geometry.getAttribute("position").array as Float32Array;
     const indices = index.array instanceof Uint32Array ? index.array : Uint32Array.from(index.array);
     const [simplified] = MeshoptSimplifier.simplify(indices, positions, 3, target * 3, SIMPLIFY_MAX_ERROR, ["LockBorder"]);
-    // Drop the vertices no triangle uses any more, so the GLB really gets smaller: compactMesh
-    // renumbers `simplified` in place and says where each old vertex went.
+    // Drop unused vertices so the GLB actually gets smaller.
     const [remap, uniqueVertices] = MeshoptSimplifier.compactMesh(simplified);
     const compacted = new Float32Array(uniqueVertices * 3);
     for (let oldIndex = 0; oldIndex < remap.length; oldIndex++) {
@@ -860,16 +765,11 @@ async function simplifyGroupMeshes(
   return { from: total, to: after };
 }
 
-// ---- Entry point (called from the worker) ----------------------------------------------------
-
 export type RenderOptions = {
-  /** Simplify a model over this many triangles down to about that many (see
-   *  simplifyGroupMeshes); null keeps its exact geometry. */
+  /** Null keeps the exact geometry. */
   simplifyTo: number | null;
 };
 
-/** Parses `srcPath` and writes the preview GLB to `destPath`, or says why it didn't (see
- * PreviewRefusal) -- decided before any geometry is built. */
 export async function renderModelPreviewGlb(
   srcPath: string,
   destPath: string,
@@ -880,9 +780,7 @@ export async function renderModelPreviewGlb(
   const group = await buildGlbGroup(parsed);
   if (options.simplifyTo) {
     const simplified = await simplifyGroupMeshes(group, options.simplifyTo);
-    // Recorded in the preview itself, so a later change of the setting can tell which cached
-    // previews it affects without re-rendering them (modelPreviewCache.ts's
-    // dropPreviewsAffectedBySimplification).
+    // Lets a later settings change find affected previews without re-rendering them.
     if (simplified) {
       const meta = JSON.parse(group.userData.thingportPreview as string) as Record<string, unknown>;
       group.userData.thingportPreview = JSON.stringify({ ...meta, simplified });

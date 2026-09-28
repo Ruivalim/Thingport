@@ -14,7 +14,7 @@ const groups = [...new Set(NAV_DOCS.map((d) => d.group))].map((group) => ({
 const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 const editUrl = doc.source ? `${LINKS.github}/edit/${BRANCH}/${doc.source}` : `${LINKS.github}/tree/${BRANCH}/web`;
 
-// An unlisted page isn't part of the reading order, so it gets no previous/next links.
+// Unlisted pages get no previous/next links.
 const index = NAV_DOCS.indexOf(doc);
 const prev = index >= 0 ? NAV_DOCS[index - 1] : undefined;
 const next = index >= 0 ? NAV_DOCS[index + 1] : undefined;

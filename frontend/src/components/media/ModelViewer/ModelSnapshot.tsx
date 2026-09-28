@@ -16,20 +16,15 @@ type ModelSnapshotProps = {
   plateId?: string;
   theme: ResolvedTheme;
   mode?: "automatic" | "on-demand";
-  /** For tiny slots (e.g. a plate list's 32px thumbnail): no status text or buttons, just the
-   *  image once ready (a small spinner while generating). Also renders at a fixed card-sized
-   *  resolution instead of the slot's own size -- the result is persisted as the plate's
-   *  thumbnail (see uploadGeneratedThumbnail) and reused by full-size grid cards. */
+  /** For tiny slots: just the image. Renders at card size since the result becomes the plate's
+   *  thumbnail. */
   compact?: boolean;
 };
 
-// Render size for compact snapshots: the same 4:3 as a grid card, large enough to stay sharp there.
 const COMPACT_RENDER_WIDTH = 480;
 const COMPACT_RENDER_HEIGHT = 360;
 
-// Every ModelSnapshot on the page shares one job queue (see queueSnapshotJob), so a single model
-// that hangs mid-load (bad network response, pathological geometry) would otherwise wedge every
-// other card's preview behind it forever. This bounds each job so the queue always keeps moving.
+// All snapshots share one queue, so a hung job would block every other card.
 const SNAPSHOT_TIMEOUT_MS = 20000;
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
@@ -116,8 +111,6 @@ export function ModelSnapshot({ url, ext, plateId, mode = "automatic", compact =
       disposed = true;
       observer?.disconnect();
     };
-    // retryToken isn't read in the effect body -- it's a bump counter whose only job is to
-    // force this effect to re-run when the user clicks Retry.
     // oxlint-disable-next-line react/exhaustive-effect-dependencies
   }, [url, ext, plateId, mode, requested, retryToken, compact]);
 

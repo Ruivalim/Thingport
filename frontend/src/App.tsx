@@ -57,8 +57,7 @@ type AppShellProps = {
   onUserUpdated: (user: AuthUser) => void;
 };
 
-/** Everything that needs router context (route-derived chrome, category selection that also
- *  navigates). Split out from App so App itself can stay outside <BrowserRouter>. */
+/** Split out so App can stay outside <BrowserRouter>. */
 function AppShell({
   isAdmin,
   user,
@@ -76,20 +75,13 @@ function AppShell({
   onUserUpdated,
 }: AppShellProps) {
   const navigate = useNavigate();
-  // Lazily seeded from the current URL (not just null) so a direct load/refresh of
-  // /models?category=<id> already has the right categoryId on its very first render, instead of
-  // starting unfiltered and correcting a moment later once ModelsPage's own URL-sync effect
-  // catches up -- that gap was a real, visible flash of "All" before the filtered view. Only
-  // matters at mount: normal in-app navigation keeps this in sync via onSelectCategory as usual.
+  // Seeded from the URL so a direct load of /models?category=<id> doesn't flash "All" first.
   const [categoryId, setCategoryId] = React.useState<string | null>(() => {
     if (typeof window === "undefined" || !window.location.pathname.startsWith("/models")) return null;
     return new URLSearchParams(window.location.search).get("category");
   });
   const [nonce, setNonce] = React.useState(0);
   const [categoryVersion, setCategoryVersion] = React.useState(0);
-  // Bumped whenever a tag or collection is bookmarked/unbookmarked anywhere (Tags list/detail,
-  // Collections grid/detail) so the sidebar's quick-access list refetches -- see Sidebar's own
-  // bookmarksVersion prop.
   const [bookmarksVersion, setBookmarksVersion] = React.useState(0);
 
   const handleCategoriesChanged = React.useCallback(() => {
@@ -259,16 +251,11 @@ export default function App() {
   const [health, setHealth] = React.useState<HealthInfo | null>(null);
   const [tokenTtl, setTokenTtl] = React.useState<number | null>(null);
   const [showExpiredToast, setShowExpiredToast] = React.useState(false);
-  // A ref (not state) so concurrent 401s from several in-flight requests all see the guard
-  // synchronously -- state's setSessionExpired(true) wouldn't be visible to the others until
-  // the next render, letting each of them past the check and onto its own alert().
+  // A ref so concurrent 401s see the guard synchronously and only one alert shows.
   const sessionExpiredRef = React.useRef(false);
   const [settings, setSettings] = React.useState<AppSettings>(() => loadSettings());
   const [previewMode, setPreviewMode] = React.useState<PreviewMode>("automatic");
-  // Server-persisted (see settings/theme, services/themePreferenceService.ts), not localStorage
-  // -- unlike the old per-browser mirror, this follows the account across devices. "light" until
-  // the fetch below resolves is the same fallback the old localStorage default used, so a
-  // logged-in-elsewhere-first visit still starts on a sane theme rather than an empty one.
+  // Server-persisted so it follows the account across devices.
   const [themeSelection, setThemeSelection] = React.useState<ThemeSelection>("light");
   const resolvedTheme = useResolvedTheme(themeSelection);
   const muiTheme = React.useMemo(() => buildTheme(resolvedTheme), [resolvedTheme]);
@@ -280,7 +267,6 @@ export default function App() {
       try {
         setPreviewMode((await settingsApi.getPreviews()).mode);
       } catch {
-        // Keep the "automatic" default -- previews just aren't the reason to block the app.
       }
     })();
   }, [token]);
@@ -289,20 +275,15 @@ export default function App() {
     (async () => {
       try {
         const { theme } = await settingsApi.getTheme();
-        // Null means this account has never set one (e.g. its very first login) -- keep
-        // whatever's already showing rather than overwriting it with nothing.
+        // Null means never set; keep the current theme.
         if (theme) setThemeSelection(theme);
       } catch {
-        // Keep the current theme -- this just means it won't have synced from another device
-        // yet, not a reason to block the app.
       }
     })();
   }, [token]);
   const handleThemeChange = React.useCallback((selected: ThemeSelection) => {
     setThemeSelection(selected);
     void settingsApi.updateTheme(selected).catch(() => {
-      // Best-effort, like the extension's own cookie sync -- the UI already reflects the
-      // change locally; a failed sync just means it won't follow to another device yet.
     });
   }, []);
   React.useEffect(() => {
@@ -330,8 +311,7 @@ export default function App() {
   }, []);
 
   const handleLogout = () => {
-    // Fire-and-forget: the audit-log entry is recorded server-side before the token that
-    // identifies it is gone, but local logout must proceed immediately either way.
+    // Fire-and-forget: local logout proceeds immediately.
     void authApi.logout();
     clearToken();
     clearUser();
@@ -340,8 +320,7 @@ export default function App() {
     setTokenTtl(null);
   };
 
-  // PATCH /profile doesn't reissue a token (unlike login/verify-email), so this just refreshes
-  // the locally-held user object -- e.g. after a display-name-unaffecting email/password change.
+  // PATCH /profile doesn't reissue a token, so only the local user object changes.
   const handleUserUpdated = (updatedUser: AuthUser) => {
     storeUser(updatedUser);
     setUser(updatedUser);
@@ -367,8 +346,7 @@ export default function App() {
     return () => window.clearTimeout(timer);
   }, [token, tokenTtl, handleUnauthorized]);
 
-  // Shared between both branches below so the toast survives the AppShell -> AuthPage swap that
-  // handleUnauthorized triggers (clearing the token unmounts AppShell and mounts this instead).
+  // Shared by both branches so the toast survives the swap to AuthPage.
   const sessionExpiredToast = (
     <Snackbar
       open={showExpiredToast}
@@ -383,13 +361,8 @@ export default function App() {
   );
 
   if (authRequired && !token) {
-    // No BrowserRouter wraps this branch (see AppShell's comment), so /verify-email -- reached
-    // pre-login from the link in the verification email -- is checked directly against
-    // window.location rather than via a route.
+    // Outside the router, so these pre-login links are matched against window.location.
     const isVerifyEmailPath = typeof window !== "undefined" && window.location.pathname === "/verify-email";
-    // Same for /register?email=...&invite=... -- the link in an invitation email (see the backend's
-    // services/invitationService.ts), which opens the register form for that one address even
-    // while registrations are closed.
     const inviteParams = typeof window !== "undefined" && window.location.pathname === "/register"
       ? new URLSearchParams(window.location.search)
       : null;

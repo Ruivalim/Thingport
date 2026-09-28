@@ -21,8 +21,6 @@ type Props = {
   onUnauthorized?: () => void;
 };
 
-/** Stored server-side, not just locally -- used by the model menu's "Open in {Slicer}" action,
- *  which launches that slicer's own registered URL protocol (e.g. bambustudio://). */
 export default function SlicerPicker({ onUnauthorized }: Props) {
   const { t } = useTranslation(["app", "common"]);
   const [value, setValue] = React.useState("");

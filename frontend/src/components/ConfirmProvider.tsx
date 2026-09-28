@@ -12,7 +12,6 @@ export type ConfirmOptions = {
   message: React.ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
-  /** Red confirm button, for actions that delete or otherwise can't be undone. */
   destructive?: boolean;
 };
 
@@ -20,9 +19,7 @@ type PendingConfirm = ConfirmOptions & { resolve: (result: boolean) => void };
 
 const ConfirmContext = React.createContext<((options: ConfirmOptions) => Promise<boolean>) | null>(null);
 
-/** App-wide replacement for `window.confirm` -- a single MUI Dialog instance shared by every
- *  caller, so a destructive action anywhere just does `await confirm({ message, destructive: true })`
- *  instead of wiring up its own modal. Mounted once in AppLayout. */
+/** Replaces `window.confirm` with one shared dialog. Mounted once in AppLayout. */
 export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation("common");
   const [pending, setPending] = React.useState<PendingConfirm | null>(null);
@@ -61,9 +58,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Returns a function that opens the shared confirm dialog and resolves true/false with the
- *  user's choice -- `if (!(await confirm({ message: "..." }))) return;` in place of
- *  `if (!confirm("...")) return;`. */
+/** Resolves true/false with the user's choice. */
 export function useConfirm() {
   const confirm = React.useContext(ConfirmContext);
   if (!confirm) throw new Error("useConfirm must be used within a ConfirmProvider");

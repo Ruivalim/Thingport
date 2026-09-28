@@ -15,10 +15,7 @@ type Props = {
   onUnauthorized?: () => void;
 };
 
-/** Instance-wide, not per-user: a Thingiverse Developer API Access Token shared by every user's
- *  Thingiverse imports (see backend's thingiverseApi.ts) -- admin-configured like Storage
- *  Structure and Model Previews. Write-only like any other API secret: the current token is
- *  never sent back from the server, only whether one is configured. */
+/** Instance-wide and write-only: the server only reports whether a token is set. */
 export default function ThingiverseSection({ onUnauthorized }: Props) {
   const { t } = useTranslation("app");
   const [configured, setConfigured] = React.useState(false);

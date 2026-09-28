@@ -9,9 +9,7 @@ export type Category = {
   position: number;
   meta_title: string | null;
   meta_description: string | null;
-  // Semicolon-separated, e.g. "800;71;1001" -- a category can match more than one upstream
-  // category id per site (see backend's routes/categories.ts parseCatIdsInput). Empty string
-  // when none are set.
+  // Semicolon-separated, e.g. "800;71;1001"; empty when none.
   makerworld_cat_ids: string;
   thingiverse_cat_ids: string;
   printables_cat_ids: string;
@@ -72,15 +70,13 @@ export const categoriesApi = {
     });
     if (res.status === 401) throw new UnauthorizedError();
     if (!res.ok) {
-      // A bad category-id string (e.g. a typo) gets a specific message from the backend --
-      // assertOk's fixed fallback text would swallow that, leaving the user without a reason.
+      // Keep the backend's specific message (e.g. naming a typo).
       throw new Error(await readErrorMessage(res, "Update category details failed"));
     }
     return res.json();
   },
 
-  /** Persists a new sibling order: `categoryIds` must be exactly one category's current children
-   *  (or exactly the current root categories), reordered. */
+  /** `categoryIds` must be exactly one parent's current children (or the roots), reordered. */
   reorder: async (categoryIds: string[]) => {
     const res = await fetch(`${apiBase()}/categories/reorder`, {
       method: "POST",

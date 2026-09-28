@@ -4,11 +4,7 @@ import { createApp } from "../src/app";
 import { importPrintFromUrl } from "../src/services/importService";
 import { prisma } from "../src/db";
 
-// Exercises importPrintFromUrl's Printables path end to end against the real shapes confirmed
-// live against api.printables.com's public GraphQL endpoint (see printablesApi.ts): one query
-// for the model's metadata + file list, one mutation to resolve each file's real download link.
-// Every actual HTTP fetch is intercepted; no DNS/network needed. No auth/cookie involved --
-// Printables' GraphQL API is public for public models, unlike MakerWorld/Thingiverse.
+// Printables import end to end against the public GraphQL API's shapes, with fetch mocked.
 
 const MODEL_ID = "1786545";
 const MODEL_URL = `https://www.printables.com/model/${MODEL_ID}-strong-garden-hose-holder`;
@@ -116,7 +112,6 @@ describe("importPrintFromUrl -- Printables", () => {
     expect(result.print.sourceProvider).toBe("printables");
     expect(result.print.sourceExternalId).toBe(MODEL_ID);
     expect(result.print.notes).toContain("Mounting");
-    // Tags are stored in canonical casing (see utils/tagNormalization.ts).
     expect(result.print.tags.toSorted()).toEqual(["Garden", "Hose"]);
     expect(result.print.categoryId).toBe(category.id);
 
@@ -127,7 +122,6 @@ describe("importPrintFromUrl -- Printables", () => {
     expect(result.author?.provider).toBe("printables");
     expect(result.author?.externalId).toBe("4584310");
 
-    // Cover plus the one other gallery image -- both real, decodable PNGs.
     expect(result.previewImages.length).toBeGreaterThanOrEqual(2);
   });
 

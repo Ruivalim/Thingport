@@ -3,19 +3,8 @@ import os from "node:os";
 import path from "node:path";
 import dotenv from "dotenv";
 
-// Every value below reads straight from process.env at module-evaluation time (a one-shot
-// `export const`, not a function called later) -- so .env has to be loaded before any of them,
-// not just before the app "starts" in some general sense. There was no explicit .env loading
-// anywhere in this codebase; local dev only worked at all because requiring @prisma/client has
-// the side effect of loading .env too, and most existing config reads happened to be evaluated
-// after something had already pulled in db.ts/@prisma/client first -- an accident of import
-// order, not a guarantee. A newly added config.ts export (this file is always the first module
-// in the graph to read env vars) can land ahead of that side effect and silently read an empty
-// string forever, which is exactly what happened to FLARESOLVERR_URL. Loading .env explicitly,
-// right here, removes the dependency on that accident entirely. (Docker Compose deployments are
-// unaffected either way -- environment: entries are already real process env vars before the
-// Node process even starts, so there's nothing for dotenv to add there; this only matters for
-// `tsx watch src/server.ts`-style local dev reading a .env file.)
+// Load .env before any export below reads process.env. Without this, values only worked when
+// @prisma/client happened to load .env first.
 dotenv.config();
 
 function envInt(name: string, fallback: number): number {
@@ -25,25 +14,19 @@ function envInt(name: string, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-/** The container's memory limit in bytes (cgroup v2, then v1), or null when there's none. An
- *  unlimited cgroup reports "max" (v2) or a near-2^63 sentinel (v1); anything at or above the
- *  machine's RAM is treated the same way. */
+/** cgroup v2, then v1. Unlimited ("max", a near-2^63 sentinel, or >= machine RAM) returns null. */
 function cgroupMemoryLimitBytes(): number | null {
   for (const file of ["/sys/fs/cgroup/memory.max", "/sys/fs/cgroup/memory/memory.limit_in_bytes"]) {
     try {
       const value = Number(fs.readFileSync(file, "utf-8").trim());
       if (Number.isFinite(value) && value > 0 && value < os.totalmem()) return value;
     } catch {
-      // Not this cgroup version, or not Linux.
     }
   }
   return null;
 }
 
-/** Default preview-render memory budget: half the memory this process can really use -- the
- *  container's limit if it has one, else the machine's RAM -- capped at 2 GB, floored at 256 MB.
- *  A fixed 2 GB let a render on a small NAS or a 2 GB container run the whole host out of memory
- *  before the watchdog stepped in. */
+/** Half the usable memory (container limit, else RAM), clamped to 256 MB-2 GB. */
 function defaultPreviewMemoryMb(): number {
   const available = cgroupMemoryLimitBytes() ?? os.totalmem();
   return Math.min(2048, Math.max(256, Math.floor(available / 2 / (1024 * 1024))));
@@ -53,33 +36,20 @@ export const STORAGE = path.resolve(process.env.FILE_STORAGE || "./storage");
 export const THUMBS = path.join(STORAGE, "thumbs");
 export const BUNDLES = path.join(STORAGE, "bundles");
 export const PREVIEWS = path.join(STORAGE, "previews");
-// Pre-rendered GLB caches for the interactive 3D preview (see services/modelPreviewCache.ts) --
-// generated once per .3mf Plate so the viewer never has to re-parse a huge raw 3MF on every open.
 export const MODEL_PREVIEWS = path.join(STORAGE, "model-previews");
-// Limits on the worker thread that renders one of those GLBs: past either, the thread is killed
-// and that plate gets no 3D preview. Memory is how much the whole process may grow while a render
-// runs (and the worker's heap cap) -- a watchdog check, so a fast allocation burst can overshoot
-// it briefly. Unset, it's half the memory actually available (see defaultPreviewMemoryMb).
+// Past either limit the render worker is killed and the plate gets no 3D preview. Memory is a
+// watchdog check, so a fast burst can overshoot it briefly.
 export const MODEL_PREVIEW_MAX_MEMORY_MB = envInt("MODEL_PREVIEW_MAX_MEMORY_MB", defaultPreviewMemoryMb());
 export const MODEL_PREVIEW_TIMEOUT_SECONDS = envInt("MODEL_PREVIEW_TIMEOUT_SECONDS", 180);
 
-// Base URL this instance is publicly reachable at -- needed to build absolute links in outgoing
-// emails (e.g. the email-verification link), which unlike API responses can't rely on the
-// request's own Origin. Left blank in single-machine/local setups where no email is ever sent.
+// For absolute links in emails.
 export const PUBLIC_URL = (process.env.PUBLIC_URL || "").trim().replace(/\/+$/, "");
 
 export const AUTH_SECRET = process.env.AUTH_SECRET || "changeme-secret";
 export const AUTH_ALGO = "HS256" as const;
-// The AUTH_TOKEN_TTL env var itself is read in services/settingsService.ts (getAuthTokenTtl),
-// not here -- it's only ever consulted as the seed value for a fresh instance's first read, same
-// as SMTP_HOST/SMTP_PORT/etc. are read directly in that file rather than exported from this one.
-// Once an admin saves a session length via the Admin Settings page, the DB row wins from then on.
 
 export const IMPORT_ALLOWED_EXTS = new Set([".stl", ".3mf", ".step", ".stp", ".obj", ".lbrn", ".lbrn2", ".zip"]);
-// Extensions the 3D viewer can actually render as a Plate -- mirrors frontend's MODEL_EXTS
-// (constants/fileTypes.ts). A multiplate upload splits on this: only these become Plates, and
-// anything else (e.g. a bundled .f3d source file) is attached as a SUPPORTING PrintFile instead
-// of being force-rendered as an unviewable "plate".
+// Mirrors frontend's MODEL_EXTS. Other files in a multi-file upload become SUPPORTING files.
 export const RENDERABLE_MODEL_EXTS = new Set([".stl", ".3mf", ".step", ".stp", ".obj"]);
 export const IMPORT_EXT_PRIORITY = [".3mf", ".stl", ".step", ".stp", ".lbrn2", ".lbrn", ".zip"];
 export const IMPORT_BLOCKED_EXTS = new Set([
@@ -91,30 +61,12 @@ export const IMPORT_MAX_MB = envInt("IMPORT_MAX_MB", 512);
 export const IMPORT_MAX_BYTES = Math.max(1, IMPORT_MAX_MB) * 1024 * 1024;
 export const IMPORT_HTML_MAX_KB = envInt("IMPORT_HTML_MAX_KB", 4096);
 export const IMPORT_HTML_MAX_BYTES = Math.max(64, IMPORT_HTML_MAX_KB) * 1024;
-// Pacing gap between items in a batch import (see importJobRunner.ts) -- exists to avoid the
-// burst request pattern most likely to trip a source site's anti-abuse defenses. Overridable
-// mainly so tests don't have to actually wait it out. Thingiverse hasn't shown MakerWorld's
-// sensitivity to request volume, so it keeps this lighter, per-item-only pace.
+// Gap between items in a batch import, to avoid anti-abuse bursts.
 export const IMPORT_COLLECTION_DELAY_MS = envInt("IMPORT_COLLECTION_DELAY_MS", 1000);
-// MakerWorld's anti-abuse CAPTCHA (see makerworldCaptcha.ts's isCaptchaChallenge) has proven far
-// more sensitive than a simple gap between models accounted for: a 146-item collection tripped
-// it almost immediately once we traced the actual call sequence -- the collection-listing step
-// alone (title + paginated entries) fires a dozen-plus unpaced requests before a single model
-// import even starts, and each model's own resolution is itself another handful of calls
-// (design, profile/download-link, author, file, up to ~20 preview images) with no gap between
-// them. So this one pace applies to *every single outbound MakerWorld-related request* in a
-// collection batch -- listing pages, each step of each model's resolution, and each preview
-// image -- not just the boundary between models. Deliberately slow (5s * dozens of calls per
-// model adds up) in exchange for actually working instead of tripping on request #1. Left unset
-// (no delay) for single-model imports, which have not needed it.
+// MakerWorld's CAPTCHA trips on bursts, so in collection imports this delay precedes every
+// MakerWorld request (listing pages, each resolution step, each image), not just each model.
 export const IMPORT_MAKERWORLD_CALL_DELAY_MS = envInt("IMPORT_MAKERWORLD_CALL_DELAY_MS", 5000);
-// Pacing gap between a single model's own preview-image fetches (attachImportedPreviewImages in
-// importService.ts) when *not* part of a MakerWorld collection batch (which uses
-// IMPORT_MAKERWORLD_CALL_DELAY_MS instead) -- up to ~20 of these fire back to back for one
-// model (cover + gallery photos), which is its own small burst even for a single-model import.
-// Kept far shorter than the MakerWorld batch pace: these are plain image/CDN fetches, not
-// confirmed to share the same anti-abuse bucket as MakerWorld's design/download-resolution API
-// -- this is a cheap precaution, not a proven-necessary one.
+// Gap between a single import's preview-image fetches (up to ~20 per model).
 export const IMPORT_PREVIEW_IMAGE_DELAY_MS = envInt("IMPORT_PREVIEW_IMAGE_DELAY_MS", 250);
 export const IMPORT_USER_AGENT = "Thingport/1.0";
 export const IMPORT_BROWSER_USER_AGENT =

@@ -48,9 +48,7 @@ export type Author = {
   links: string[];
   avatar_url: string | null;
   background_url: string | null;
-  // Whether ANY Thingport account has claimed this author as themselves -- see authorsApi.link.
-  // Only computed by GET /author/:id and the /me/author-links endpoints; an Author embedded in a
-  // Print DTO always has this false regardless of the real state (see backend dto.ts's comment).
+  // Always false on an Author embedded in a Print; only the author endpoints compute it.
   is_linked: boolean;
 };
 
@@ -63,7 +61,6 @@ export type Print = {
   author?: Author | null;
   tags: string[];
   category_id?: string | null;
-  // Only populated by GET /print/:id (the detail page) -- list endpoints don't join it.
   category_name?: string | null;
   created_at: string;
   storage_path?: string | null;
@@ -71,8 +68,7 @@ export type Print = {
   preview_images: PreviewImage[]; // ordered by position; [0] is the default/main gallery image
   thumb_url?: string | null; // denormalized = plates[0].thumb_url
   supporting_file_count: number;
-  // Bytes across all plates + supporting/prepared files (not gallery images). Optional: an older
-  // backend image (published separately from this frontend) doesn't send it.
+  // Optional: an older backend (published separately) doesn't send it.
   total_size?: number;
   prepared_print?: PreparedPrint | null;
   slicer_url?: string | null;
@@ -80,8 +76,6 @@ export type Print = {
   view_count: number;
   print_count: number;
   is_favorite: boolean;
-  // Null for uploads, zip/category-scan imports, and anything not resolvable to a known provider.
-  // source_url is the reconstructed original model page, for an "Open in {Provider}" link.
   source_provider?: string | null;
   source_url?: string | null;
 };
@@ -90,7 +84,7 @@ export type ListPrintsResult = {
   items: Print[];
   hasMore: boolean;
   nextOffset?: number;
-  /** Total matches across all pages -- only sent when `limit` is. */
+  /** Only sent when `limit` is. */
   total?: number;
 };
 
@@ -100,9 +94,7 @@ export type UploadPrintsResult = {
 
 export type PrintSortMode = "newest" | "popular" | "downloads";
 
-/** Selects which prints a zip download covers -- combined with AND when more than one is set.
- *  See backend's downloadZip.ts (DownloadZipFilter/resolvePrintsForDownload), which both
- *  POST /download/zip and POST /download/zip/summary resolve this the same way. */
+/** Filters combine with AND. */
 export type DownloadZipFilter = {
   print_ids?: string[];
   tag?: string;
@@ -116,7 +108,6 @@ export type DownloadZipSummary = {
 };
 
 export const printsApi = {
-  // API returns relative URLs. Join with API base.
   fileUrl: (rel: string) => {
     if (!rel) return rel;
     return appendTokenToUrl(`${apiBase()}${rel}`);
@@ -377,8 +368,6 @@ export const printsApi = {
     return res.json();
   },
 
-  /** Clears the imported author/creator and import-source linkage -- afterward the print reads
-   *  exactly like one this user uploaded themselves. Used by the Edit modal's "reset author". */
   resetAuthor: async (id: string): Promise<{ print: Print }> => {
     const res = await fetch(`${apiBase()}/print/${id}/author-reset`, { method: "POST", headers: authHeaders() });
     if (res.status === 401) throw new UnauthorizedError();
@@ -430,9 +419,7 @@ export const printsApi = {
     return res;
   },
 
-  /** How many models `filter` resolves to, and an upper-bound size estimate (bytes) for their
-   *  combined model files -- straight from stored file sizes, no zip actually built. Backs
-   *  DownloadZipConfirmDialog's "are you sure?" step before the real download above. */
+  /** An upper-bound size estimate, computed without building the zip. */
   downloadZipSummary: async (filter: DownloadZipFilter): Promise<DownloadZipSummary> => {
     const res = await fetch(`${apiBase()}/download/zip/summary`, {
       method: "POST",
@@ -443,9 +430,7 @@ export const printsApi = {
     return res.json();
   },
 
-  /** Records one use of this print -- bumps its print count -- once per explicit download action
-   *  (single-file, per-plate, or "download all as zip") or "Open in {Slicer}". Returns the updated
-   *  print so the caller can show the new count straight away. */
+  /** Bumps the print count; returns the updated print. */
   recordDownload: async (id: string): Promise<Print> => {
     const res = await fetch(`${apiBase()}/print/${id}/download`, {
       method: "POST",
@@ -455,8 +440,6 @@ export const printsApi = {
     return res.json();
   },
 
-  /** Adds/removes this print from the built-in "Favourites" pseudo-collection -- toggled from
-   *  the model detail page's header. */
   favorite: async (id: string): Promise<Print> => {
     const res = await fetch(`${apiBase()}/print/${id}/favorite`, { method: "POST", headers: authHeaders() });
     if (res.status === 401) throw new UnauthorizedError();

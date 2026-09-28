@@ -1,8 +1,7 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 
-// Pacing between MakerWorld requests (5s in production) and DNS: neither wanted here. config.ts
-// reads the pace when it loads, so before any import.
+// No pacing or DNS here. config.ts reads the pace on load, so it's hoisted.
 vi.hoisted(() => {
   process.env.IMPORT_MAKERWORLD_CALL_DELAY_MS = "0";
 });
@@ -19,9 +18,6 @@ import { createApp } from "../src/app";
 import { prisma } from "../src/db";
 import { selectMakerworldProfiles } from "../src/services/makerworldCloudApi";
 
-// "Print profiles" in the import dialog / the extension panel: the link's profile (a plain
-// import), every profile the designer uploaded, or every profile including community ones.
-
 const app = createApp();
 const stamp = Date.now();
 let token: string;
@@ -33,7 +29,7 @@ function json(body: unknown): Response {
 }
 
 const DESIGNER = { uid: 1692606088, name: "Deus Cat" };
-/** Like MakerWorld's "Articulated Phoenix": two profiles by its designer, two by the community. */
+/** Two designer profiles and two community ones. */
 function design(designId: string) {
   return {
     id: Number(designId),
@@ -63,7 +59,7 @@ describe("selectMakerworldProfiles", () => {
 
   it("takes the designer's own profiles, the link's (or default) one first", () => {
     expect(selectMakerworldProfiles(d, "designer", null)).toEqual(["2", "1"]);
-    // A community profile in the link still comes first -- it's what the user was looking at.
+    // The link's profile comes first even when it's a community one.
     expect(selectMakerworldProfiles(d, "designer", "4")).toEqual(["4", "1", "2"]);
   });
 
@@ -84,7 +80,6 @@ describe("importing several MakerWorld print profiles", () => {
     global.fetch = originalFetch;
   });
 
-  /** MakerWorld's API as a logged-in import sees it; each profile's file has its own contents. */
   function mockMakerworld(designId: string) {
     const fetched: string[] = [];
     global.fetch = vi.fn<(input: RequestInfo | URL) => Promise<Response>>(async (input) => {
@@ -126,7 +121,7 @@ describe("importing several MakerWorld print profiles", () => {
     expect(job).toMatchObject({ status: "DONE", type: "PROFILES", total: 2, imported: 2, failed_count: 0, source_label: "Articulated Phoenix" });
 
     const print = await prisma.print.findUniqueOrThrow({ where: { id: job.result_print_id }, include: { plates: { orderBy: { position: "asc" } } } });
-    // The default profile first (it created the model), then the designer's other one.
+    // The default profile created the model, then the designer's other one.
     expect(print.plates.map((p) => [p.sourceInstanceId, p.filename])).toEqual([
       ["2", "phoenix-102.stl"],
       ["1", "phoenix-101.stl"],

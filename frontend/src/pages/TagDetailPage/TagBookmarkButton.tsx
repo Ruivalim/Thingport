@@ -11,14 +11,11 @@ type Props = {
   tag: string;
   bookmarked: boolean;
   onUnauthorized?: () => void;
-  /** Called after a successful toggle so the sidebar's own bookmarked-tags list can refetch. */
   onBookmarksChanged?: () => void;
 };
 
-/** The tag detail page's title-row bookmark toggle -- adds/removes this tag from the sidebar's
- *  quick-access list. Same optimistic-flip shape as FavoriteButton, but derives its displayed
- *  state from `bookmarked` during render (an `overrideRef` from the last optimistic flip/rollback
- *  wins when set) instead of mirroring the prop into local state via an effect. */
+/** Derives its state from `bookmarked` during render, with an `overrideRef` from the last
+ *  optimistic flip taking precedence. */
 export default function TagBookmarkButton({ tag, bookmarked, onUnauthorized, onBookmarksChanged }: Props) {
   const { t } = useTranslation(["models", "common"]);
   const [override, setOverride] = useState<boolean | null>(null);

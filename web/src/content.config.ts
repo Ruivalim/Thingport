@@ -16,7 +16,6 @@ const blog = defineCollection({
   }),
 });
 
-// Rendered straight from the repo's own Markdown (see DOCS in lib/site.mjs), keyed by site slug.
 const sourced = DOCS.filter((d): d is (typeof DOCS)[number] & { source: string } => Boolean(d.source));
 const docs = defineCollection({
   loader: glob({

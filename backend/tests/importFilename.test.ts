@@ -4,10 +4,8 @@ import { describe, expect, it } from "vitest";
 import { modelUpload } from "../src/uploadMiddleware";
 import { buildImportFilename, parseContentDisposition, sanitizeFilename } from "../src/utils/fileUtils";
 
-// HTTP header values are ISO-8859-1 (RFC 7230 section 3.2.4). A server that puts raw UTF-8 bytes
-// in the plain `filename=` parameter therefore arrives as one character per byte, and MakerWorld's
-// CDN does exactly that -- which wrote `å<93>¨å­<90>.3mf` to disk for a model called `哨子`.
-// The repair has to be conditional, because a genuinely Latin-1 filename must survive untouched.
+// MakerWorld's CDN puts raw UTF-8 in the ISO-8859-1 `filename=` parameter; the repair must leave a
+// genuine Latin-1 name untouched.
 
 const headers = (cd: string) => new Headers({ "content-disposition": cd });
 
@@ -18,7 +16,6 @@ describe("parseContentDisposition", () => {
   });
 
   it("leaves a genuinely Latin-1 filename alone", () => {
-    // `café.stl` in Latin-1 is not valid UTF-8, so it must not be re-decoded.
     expect(parseContentDisposition('attachment; filename="café.stl"')).toBe("café.stl");
   });
 
@@ -37,8 +34,7 @@ describe("parseContentDisposition", () => {
 
 describe("sanitizeFilename", () => {
   it("strips C1 control characters, not just NUL", () => {
-    // U+0080-U+009F are what a mis-decoded header leaves behind; they reach the filesystem
-    // happily and are then rejected by cloud storage.
+    // Mis-decoded C1 characters get rejected by cloud storage.
     expect(sanitizeFilename("we\u0080ird\u009dname.stl")).toBe("weirdname.stl");
     expect(sanitizeFilename("tab\tseparated.stl")).toBe("tabseparated.stl");
   });
@@ -65,7 +61,7 @@ describe("buildImportFilename", () => {
 
 describe("parseContentDisposition with already-decoded input", () => {
   it("leaves a string with characters above U+00FF alone", () => {
-    // Not a byte string, so there is nothing to re-decode -- and latin1 would truncate `哨`.
+    // Not a byte string, and latin1 would truncate `哨`.
     expect(parseContentDisposition('attachment; filename="café哨.stl"')).toBe("café哨.stl");
   });
 });

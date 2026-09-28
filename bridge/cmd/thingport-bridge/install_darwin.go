@@ -22,10 +22,8 @@ const (
 //go:embed thingport.icns
 var bundleIcon []byte
 
-// macOS has no per-invocation registry entry like Windows/Linux -- a custom URL scheme is only
-// honored for an actual .app bundle, discovered by LaunchServices from its Info.plist. So install
-// here means: copy this binary into a real app bundle under ~/Applications, write the
-// CFBundleURLTypes declaring the thingport scheme, and re-register that bundle.
+// macOS only honors URL schemes declared by an .app bundle's Info.plist, so install builds a
+// bundle under ~/Applications and registers it.
 func installSelf() (string, error) {
 	exePath, err := os.Executable()
 	if err != nil {
@@ -59,10 +57,7 @@ func installSelf() (string, error) {
 		return "", fmt.Errorf("write Info.plist: %w", err)
 	}
 
-	// Without this the bundle shows the generic system app icon -- LSUIElement apps don't fall
-	// back to anything derived from the executable, only CFBundleIconFile + this file actually
-	// present in Resources/. Embedded (rather than a sibling asset) so the single downloaded
-	// binary is still all that's needed to install.
+	// LSUIElement apps need CFBundleIconFile. Embedded so the single binary is enough to install.
 	if err := os.MkdirAll(resourcesDir, 0755); err != nil {
 		return "", fmt.Errorf("create Resources dir: %w", err)
 	}
@@ -70,9 +65,7 @@ func installSelf() (string, error) {
 		return "", fmt.Errorf("write app icon: %w", err)
 	}
 
-	// Tell LaunchServices about the (re)written bundle so `thingport://` resolves to it right
-	// away, without waiting for the periodic system rescan. Best-effort: a launch still works
-	// later even if this fails (e.g. lsregister moved in a future macOS release).
+	// Best-effort: registration also happens on the periodic system rescan.
 	if _, err := os.Stat(lsregisterBin); err == nil {
 		_ = exec.Command(lsregisterBin, "-f", appDir).Run()
 	}
@@ -121,11 +114,8 @@ func infoPlist() string {
 `
 }
 
-// runDefaultLaunch always means "LaunchServices opened the installed app bundle from a
-// thingport:// click" on macOS -- the URL itself arrives later as an Apple Event, never as
-// argv, so there's nothing here to distinguish from any other bare launch. This blocks forever
-// servicing those events. Installing (or reinstalling, e.g. after an update) is instead always
-// explicit here: `thingport-bridge --install` from Terminal.
+// On macOS a bare launch is always LaunchServices opening the bundle; URLs arrive as Apple Events.
+// Blocks forever servicing them. Installing requires --install.
 func runDefaultLaunch() {
 	cfg, cfgDir := loadConfig()
 	setupLogging(cfg, cfgDir)

@@ -1,7 +1,6 @@
 import { request } from "../shared/messages";
 
-/** Authenticated call to the user's Thingport instance, proxied through the background (which owns
- *  the credentials and host permission) -- resolves with the parsed JSON or throws its error. */
+/** Proxied through the background, which owns the credentials and host permission. */
 export function api<T>(method: string, path: string, body?: unknown): Promise<T> {
   return request("API_CALL", { method, path, body }) as Promise<T>;
 }

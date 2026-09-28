@@ -6,23 +6,13 @@ export type VersionCheckResult = {
   latest_frontend_sha: string | null;
 };
 
-// Baked into the image at build time (see backend/Dockerfile's GIT_SHA build arg, set by
-// .github/workflows/build-image.yml) -- null for a local `npm run dev` / hand-built image with
-// no --build-arg, which the admin settings UI treats as "can't check" rather than as outdated.
+// Set by the Dockerfile's GIT_SHA build arg; null in dev, which the UI treats as "can't check".
 export function getBackendGitSha(): string | null {
   return process.env.GIT_SHA && process.env.GIT_SHA !== "unknown" ? process.env.GIT_SHA : null;
 }
 
-// The commit that actually produced the currently published `:latest` image -- i.e. the head_sha
-// of the most recent successful, push-triggered run of that project's own image workflow. This
-// asks CI directly what it last published rather than guessing from a path filter: backend-
-// image.yml also republishes on a change to the *shared* build-image.yml (its own `paths:` list
-// includes that file), so a commit that only touches CI config or the other project can still be
-// the one baked into a freshly-published image, without ever having touched backend/ or
-// frontend/ itself -- a path-filtered "latest commit touching backend/" query would miss exactly
-// that commit and report a stale, unrelated SHA as "latest" (a real false positive this project
-// hit: see commit 33e6114, which only touched build-image.yml and frontend/package.json but
-// still triggered a fresh backend image publish).
+// The head_sha of the latest successful image workflow run. A path filter would miss commits that
+// republish the image via the shared build-image.yml without touching the project itself.
 async function latestPublishedSha(workflowFile: string): Promise<string | null> {
   try {
     const res = await fetch(

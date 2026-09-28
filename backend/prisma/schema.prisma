@@ -18,36 +18,19 @@ model User {
   passwordHash             String
   displayName              String
   role                     Role           @default(MEMBER)
-  // Defaults to true so the migration doesn't retroactively lock out every existing account --
-  // new registrations explicitly set this false when SMTP is configured (see routes/auth.ts's
-  // isSmtpConfigured branch), true (no verification needed) otherwise.
+  // Defaults true so existing accounts aren't locked out; registration sets false when SMTP is on.
   emailVerified            Boolean        @default(true)
   emailVerificationToken   String?        @unique
   emailVerificationExpires DateTime?
-  // Set while an email change (Profile > Change email) is awaiting confirmation -- swapped into
-  // `email` by POST /verify-email once the link is clicked. Null the rest of the time.
+  // Awaiting confirmation of an email change.
   pendingEmail             String?
-  // Each user's own MakerWorld session cookie, used when *they* import from MakerWorld -- unlike
-  // the Thingiverse Access Token (instance-wide, see Setting), MakerWorld imports run as this
-  // user's own logged-in session. See services/makerworldCookieService.ts.
+  // Per-user, unlike the instance-wide Thingiverse token.
   makerworldCookie         String?
-  // The user's preferred slicer, for a future "open this model in {slicer}" launch via that
-  // slicer's own registered URL protocol (e.g. bambustudio://) -- see
-  // services/slicerPreferenceService.ts. Not yet acted on anywhere; just stored for now.
   slicer                   String?
-  // "light" | "dark" | "system" -- the user's chosen theme (see services/themePreferenceService.ts).
-  // Null means never set, so a new/never-visited-Profile browser falls back to the frontend's own
-  // default rather than to a stored value. Server-persisted (not just localStorage) so it follows
-  // the account across devices/browsers, same reasoning as slicer/makerworldCookie above.
+  // "light" | "dark" | "system"; null means never set.
   themePreference          String?
-  // Whether hovering an author link opens the author preview card (frontend's AuthorHoverCard).
-  // On by default -- see services/authorPreviewPreferenceService.ts.
   authorPreviewEnabled     Boolean        @default(true)
-  // Populated by linking an imported Author to this account (the Author page's "It's me!"
-  // button -- see AuthorLink below) rather than edited directly: the first link with bio/cover
-  // data fills these in if they're still empty, later links never overwrite them. Shown on this
-  // user's own "My models" author page (AuthorPage's self mode) in place of the empty state a
-  // plain upload-only account would otherwise show.
+  // Filled from the first linked Author with this data; later links never overwrite it.
   bio                      String?
   backgroundUrl            String?
   categories               Category[]
@@ -63,11 +46,7 @@ model User {
   updatedAt                DateTime       @updatedAt
 }
 
-// A pending invitation to register while new registrations are turned off (Administration >
-// Users). The emailed link carries `token`; registering with it is the only way in for
-// that email, and it's deleted the moment the account is created. One per email -- inviting the
-// same address again replaces the token, so only the newest link works. See
-// services/invitationService.ts.
+// Lets one email register while registrations are closed. Re-inviting replaces the token.
 model Invitation {
   id          String   @id @default(cuid())
   email       String   @unique
@@ -88,21 +67,12 @@ model Category {
   parentId          String?
   parent            Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
   children          Category[] @relation("CategoryTree")
-  // Manual sort order within a sibling group (same userId + parentId), set by the "move up/down"
-  // controls in the category manager. Not DB-uniqueness-constrained (parentId is nullable, and
-  // Postgres treats NULLs as distinct, so a unique index wouldn't actually cover the root-level
-  // sibling group) -- ordering is only ever applied via the reorder endpoint, which always
-  // rewrites every sibling's position together.
+  // Order among siblings. No unique index: Postgres treats NULL parentIds as distinct.
   position          Int        @default(0)
   metaTitle         String?
   metaDescription   String?
-  // When set, an import from that site whose own category id matches ANY of these auto-lands
-  // in this category (see importService.ts's resolveCategoryIdByCategory -- a Prisma `hasSome`
-  // overlap check), unless the caller already picked a category explicitly. Each site's category
-  // ids are independent integer namespaces. A category can list several ids (e.g. a parent
-  // category and a couple of its subcategories) since one category may reasonably want to catch
-  // more than one upstream category -- entered/edited as a "800;71;1001"-style semicolon-
-  // separated string (see routes/categories.ts's parseCatIdsInput), stored as a real int array.
+  // Imports whose site category id matches any of these land in this category. Each site has its
+  // own id namespace.
   makerworldCatIds  Int[]      @default([])
   thingiverseCatIds Int[]      @default([])
   printablesCatIds  Int[]      @default([])
@@ -129,16 +99,10 @@ model Print {
   tags             String[]                 @default([])
   viewCount        Int                      @default(0)
   printCount       Int                      @default(0)
-  // Backs the two built-in "Favourites"/"Browsing History" pseudo-collections (see
-  // routes/collections.ts's SYSTEM_COLLECTIONS) -- not a real Collection/CollectionItem row.
-  // lastViewedAt is stamped on every GET /print/:id alongside viewCount, so "Browsing History"
-  // falls out of `orderBy: lastViewedAt desc` with no separate event log.
+  // Back the Favourites and Browsing History pseudo-collections.
   favoritedAt      DateTime?
   lastViewedAt     DateTime?
-  // Identifies the source design this print was imported from (MakerWorld today), so a
-  // re-import of the same design -- whether via a plain link paste or as part of a different
-  // collection's batch import -- reuses this row instead of re-downloading a duplicate. Null
-  // for uploads, zip/folder-scan imports, and anything not resolvable to a stable provider id.
+  // Dedupes re-imports of the same design. Null for uploads and unidentifiable sources.
   sourceProvider   String?
   sourceExternalId String?
   categoryId       String?
@@ -155,12 +119,8 @@ model Print {
   collectionItems  CollectionItem[]
   createdAt        DateTime                 @default(now())
   updatedAt        DateTime                 @updatedAt
-  // Generated column (name/title weight A, tags weight B, notes weight C, creator weight D) that
-  // backs the global search box -- see services/searchService.ts and the hand-written migration
-  // that actually creates it (`GENERATED ALWAYS AS (...) STORED`, plus its own GIN index).
-  // `Unsupported` because Prisma's schema DSL can't express a generated tsvector column; that
-  // also means `prisma migrate dev` won't try to diff/manage this field or its index itself, so
-  // there's deliberately no `@@index` line for it here -- both live only in that migration.
+  // Generated column (name A, tags B, notes C, creator D) created with its GIN index in a
+  // hand-written migration, since Prisma can't express a generated tsvector.
   searchVector     Unsupported("tsvector")?
 
   @@unique([userId, categoryId, nameNormalized])
@@ -172,11 +132,7 @@ model Print {
   @@index([userId, lastViewedAt])
 }
 
-/// A user-curated, named group of models -- acts like a "playlist" for prints. Populated
-/// manually (via the create/edit modal) or automatically when importing a MakerWorld
-/// collection by URL (see collectionService.findOrCreateCollectionByName), which matches
-/// on nameNormalized so re-importing the same MakerWorld collection reuses the same row
-/// instead of creating a duplicate.
+/// A user-curated group of models. Collection imports reuse a row by nameNormalized.
 model Collection {
   id             String                   @id @default(cuid())
   userId         String
@@ -189,8 +145,7 @@ model Collection {
   bookmarks      Bookmark[]
   createdAt      DateTime                 @default(now())
   updatedAt      DateTime                 @updatedAt
-  // Same generated-tsvector search column as Print.searchVector above (name weight A, tags
-  // weight B, description weight C) -- see that field's comment and services/searchService.ts.
+  // Generated column (name A, tags B, description C); see Print.searchVector.
   searchVector   Unsupported("tsvector")?
 
   @@unique([userId, nameNormalized])
@@ -202,20 +157,10 @@ enum BookmarkType {
   COLLECTION
 }
 
-/// A tag or collection a user has pinned to the sidebar's quick-access "Bookmarks" section (see
-/// Sidebar/index.tsx and services/bookmarkService.ts). Tags and collections share one row shape
-/// and one `order` sequence so the sidebar can show both kinds interleaved, sorted by that single
-/// field: a new bookmark gets the current max `order` + 1 (so it lands at the bottom), and
-/// dragging a row in the sidebar renumbers every one of this user's bookmarks 0..n-1 to match the
-/// dropped order (POST /bookmarks/reorder) -- there's no separate "added at" fallback because
-/// `order` is always fully populated.
+/// A tag or collection pinned to the sidebar. Both kinds share one `order` sequence.
 ///
-/// Exactly one of `tag` (TAG rows) / `collectionId` (COLLECTION rows) is set, matching `type` --
-/// a tag is just a string (no Tag row anywhere else to reference, same as User.bookmarkedTags
-/// used to be), while a collection is a real row this cascades from. The two @@unique
-/// constraints below only bind the non-null side for each type: Postgres never treats two NULLs
-/// as equal, so e.g. every COLLECTION row's null `tag` is invisible to the (userId, type, tag)
-/// index, and only TAG rows' actual tag values are deduped by it (and vice versa).
+/// Exactly one of `tag` / `collectionId` is set, matching `type`. Postgres treats NULLs as
+/// distinct, so each @@unique only dedupes its own type's rows.
 model Bookmark {
   id           String       @id @default(cuid())
   userId       String
@@ -232,8 +177,6 @@ model Bookmark {
   @@index([userId, order])
 }
 
-/// Join row between Collection and Print (many-to-many), with a position for cover/display
-/// ordering.
 model CollectionItem {
   id           String     @id @default(cuid())
   collectionId String
@@ -260,12 +203,7 @@ enum ImportJobStatus {
   ERROR
 }
 
-/// Tracks one background batch import (a MakerWorld collection, or a remote zip's selected
-/// entries) so the triggering request can return immediately instead of blocking on however
-/// long the whole batch takes -- see services/importJobRunner.ts. At most one RUNNING job per
-/// user is ever allowed (enforced in routes/imports.ts); that single row doubles as the "an
-/// import is already in progress" lock, and survives a page refresh since the frontend can just
-/// ask for the user's active job again.
+/// A background batch import. At most one RUNNING job per user (enforced in routes/imports.ts).
 model ImportJob {
   id                 String          @id @default(cuid())
   userId             String
@@ -282,12 +220,7 @@ model ImportJob {
   failedCount        Int             @default(0)
   errorMessage       String?
   resultCollectionId String?
-  // Set whenever this job finished having created exactly one Print, whatever its type -- a ZIP
-  // job (a single link that needed the zip-entry picker), or a COLLECTION job (MakerWorld/
-  // Thingiverse/Printables) that happened to succeed on just one item despite being a batch import.
-  // See importJobRunner.ts's various runners. ImportJobContext uses it to redirect straight into
-  // that one print's details page; a job with more than one result instead sends the viewer to the
-  // models grid, and a COLLECTION job's own resultCollectionId grouping still applies either way.
+  // Set when the job created exactly one Print, so the frontend can open it directly.
   resultPrintId      String?
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
@@ -295,9 +228,6 @@ model ImportJob {
   @@index([userId, status])
 }
 
-/// A generic per-user notification -- today only ever created by importJobRunner.ts when a
-/// batch import finishes, but the shape (title/body + an optional in-app and/or external link)
-/// is deliberately not import-specific so a future notification source can reuse it.
 model Notification {
   id           String    @id @default(cuid())
   userId       String
@@ -313,11 +243,8 @@ model Notification {
   @@index([userId, createdAt])
 }
 
-/// A creator/designer on some source platform (MakerWorld today; Printables/Thingiverse etc.
-/// later). `id` is provider-prefixed ("makerworld:3582000380") rather than a generated cuid so
-/// re-importing a model from the same author upserts the same row instead of creating a
-/// duplicate. Print.creator stays as the plain display string for backward compatibility and
-/// non-provider sources; this table is the richer record clickable author pages will use.
+/// A creator on a source platform. `id` is provider-prefixed ("makerworld:3582000380") so
+/// re-imports upsert the same row.
 model Author {
   id            String      @id
   provider      String
@@ -330,7 +257,6 @@ model Author {
   avatarUrl     String?
   backgroundUrl String?
   prints        Print[]
-  // At most one Thingport account can claim to be this real-world creator -- see AuthorLink.
   link          AuthorLink?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -338,21 +264,15 @@ model Author {
   @@unique([provider, externalId])
 }
 
-/// Claims an imported Author row as "this is me" for one Thingport account (the Author page's
-/// "It's me!" button). Two constraints model the real-world rule: `authorId` is unique because a
-/// given external creator account can only ever be one Thingport user; `[userId, provider]` is
-/// unique because a user can only have one linked identity per provider (you can't be two
-/// different Thingiverse creators). Linking merges the author's bio/backgroundUrl onto User (see
-/// its own doc comment) and lets that user's "My models" page also list this author's prints,
-/// alongside their own plain uploads (see routes/prints.ts's SELF_AUTHOR_ID handling).
+/// Claims an Author as "this is me". An Author maps to at most one user, and a user has at most
+/// one linked identity per provider.
 model AuthorLink {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   authorId  String   @unique
   author    Author   @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  // Denormalized from Author.provider purely so the [userId, provider] unique index below doesn't
-  // need a join to enforce "one linked identity per provider per user".
+  // Denormalized so the [userId, provider] unique index needs no join.
   provider  String
   createdAt DateTime @default(now())
 
@@ -369,14 +289,10 @@ model Plate {
   size             Int      @default(0)
   storagePath      String   @unique
   sourcePath       String?
-  // The MakerWorld print profile ("instance") this file was imported from -- one Print per
-  // MakerWorld design, one Plate per imported profile, since each profile's 3MF carries its own
-  // print settings and can't be merged. Null for everything else, and for plates imported before
-  // this was tracked (see importService.ts's addMakerworldProfileToPrint for how those get adopted).
+  // The MakerWorld profile ("instance") this file came from. Each profile's 3MF has its own print
+  // settings, so each gets its own Plate.
   sourceInstanceId String?
-  // SHA-256 (hex) of the file, computed lazily and only when needed: matching a freshly
-  // downloaded MakerWorld profile against untagged plates (addMakerworldProfileToPrint). Plate
-  // files are never rewritten in place, so once set it stays valid.
+  // Computed lazily; plate files are never rewritten in place.
   contentSha256    String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -386,10 +302,8 @@ model Plate {
   @@index([printId])
 }
 
-/// A photo of the finished model, shown as the model detail page's main image gallery -- distinct
-/// from Plate (a printable 3D file) and PrintFile (a supporting document/prepared print). Always
-/// stored as a normalized JPEG under config.PREVIEWS, keyed by id, so there's no filename/mime/
-/// size to track the way Plate and PrintFile need. Position 0 is the default/main image.
+/// A photo of the finished model, stored as a normalized JPEG keyed by id. Position 0 is the
+/// main image.
 model PreviewImage {
   id        String   @id @default(cuid())
   printId   String
@@ -427,10 +341,7 @@ model Setting {
   value Json
 }
 
-/// An admin-facing audit trail entry -- logins/logouts and every mutation an admin should be
-/// able to trace back to a user (uploads, imports, model edits/deletes, collection
-/// creates/edits/deletes). Written fire-and-forget via services/auditLog.ts's createLog() so a
-/// logging failure never breaks the user-facing action it's recording. Read by GET /admin/logs.
+/// Admin audit trail. Written fire-and-forget so logging never breaks the action.
 model Log {
   id        String   @id @default(cuid())
   userId    String

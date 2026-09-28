@@ -24,8 +24,6 @@ import { getPreviewMode } from "../services/settingsService";
 const router = Router();
 router.use(requireAuth);
 
-// ---- POST /print/:id/plates (append) --------------------------------------------------------
-
 router.post(
   "/print/:id/plates",
   modelUpload.array("files"),
@@ -50,8 +48,6 @@ router.post(
   }),
 );
 
-// ---- DELETE /print/:id/plates/:plateId --------------------------------------------------------
-
 router.delete(
   "/print/:id/plates/:plateId",
   asyncHandler(async (req, res) => {
@@ -65,9 +61,7 @@ router.delete(
     }
 
     const remaining = plates.filter((p) => p.id !== target.id);
-    // Delete the target first to free its position slot, then renumber densely via the same
-    // two-phase (negative temp position) trick as reorder, to avoid transient collisions with
-    // the (printId, position) unique index regardless of update ordering.
+    // Renumber in two phases (negative temp positions) to avoid (printId, position) collisions.
     await prisma.plate.delete({ where: { id: target.id } });
     await prisma.$transaction(
       remaining.map((p, idx) => prisma.plate.update({ where: { id: p.id }, data: { position: -(idx + 1) } })),
@@ -85,8 +79,6 @@ router.delete(
   }),
 );
 
-// ---- POST /print/:id/plates/reorder ------------------------------------------------------------
-
 const reorderSchema = z.object({ plate_ids: z.array(z.string()).min(1) });
 router.post(
   "/print/:id/plates/reorder",
@@ -101,7 +93,6 @@ router.post(
     }
     const previousFirst = plates.toSorted((a, b) => a.position - b.position)[0]?.id;
 
-    // Two-phase update avoids transient collisions with the (printId, position) unique index.
     await prisma.$transaction(
       body.plate_ids.map((id, idx) => prisma.plate.update({ where: { id }, data: { position: -(idx + 1) } })),
     );
@@ -115,8 +106,6 @@ router.post(
     res.json({ print: await printOutById(req.userId!, print.id) });
   }),
 );
-
-// ---- POST /print/:id/plate/:plateId/rename -----------------------------------------------------
 
 const renameSchema = z.object({ filename: z.string().min(1) });
 router.post(
@@ -141,8 +130,6 @@ router.post(
   }),
 );
 
-// ---- Plate thumbnails --------------------------------------------------------------------------
-
 router.get(
   "/plate/:plateId/thumb.jpg",
   asyncHandler(async (req, res) => {
@@ -158,8 +145,6 @@ router.get(
   }),
 );
 
-// ---- Cached 3D preview (GLB) -------------------------------------------------------------------
-
 router.get(
   "/plate/:plateId/preview.glb",
   asyncHandler(async (req, res) => {
@@ -169,12 +154,9 @@ router.get(
     if (!plate) throw new HttpError(404, "Not found");
     const glbPath = modelPreviewGlbPath(plate.id);
     if (!fs.existsSync(glbPath)) {
-      // The 404's code tells the viewer what to do instead. PREVIEW_DISABLED: parse the file in
-      // the browser, the admin's choice. Otherwise generation is kicked off here if it hasn't been
-      // (self-heal for a plate that predates the cache; generateModelPreviewGlb no-ops if it's
-      // already running or exists), and the viewer waits (PREVIEW_GENERATING) or gives up
-      // (PREVIEW_FAILED) -- never parsing in the browser a file the server is still working on or
-      // found too heavy, which is what used to exhaust the browser's memory on big models.
+      // The 404's code tells the viewer what to do: PREVIEW_DISABLED means parse in the browser;
+      // otherwise generation is kicked off here and the viewer waits (PREVIEW_GENERATING) or gives up
+      // (PREVIEW_FAILED), never parsing a file the server found too heavy.
       if (!plate.filename.toLowerCase().endsWith(".3mf")) throw new HttpError(404, "Not found");
       if ((await getPreviewMode()) === "disabled") {
         throw new HttpError(404, "Preview generation is disabled", "PREVIEW_DISABLED");
@@ -213,9 +195,7 @@ router.post(
     if (!plate) throw new HttpError(404, "Not found");
     const ok = await saveThumbFromBytes(plate.id, file.buffer);
     if (!ok) throw new HttpError(400, "Invalid thumbnail image");
-    // Every model needs at least one preview image for the detail page's gallery; a client-
-    // rendered 3D snapshot (this route) is the fallback when nothing better (an imported cover
-    // photo) already provided one.
+    // Only when no better preview (e.g. an imported cover) exists.
     await addGeneratedPreviewImageIfNone(plate.printId, file.buffer);
     res.json({ print: await printOutById(req.userId!, plate.printId) });
   }),

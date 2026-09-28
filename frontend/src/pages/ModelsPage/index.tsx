@@ -25,9 +25,7 @@ type Props = {
   onSelectCategory: (id: string | null) => void;
   categoriesVersion: number;
   onCategoriesChanged: () => void;
-  /** Bumped whenever prints change elsewhere (e.g. the top bar's upload/import) so the grid
-   *  refetches without needing a full remount -- keeps this page's own state (like the category
-   *  manager modal) intact across those refreshes. */
+  /** Bumped when prints change elsewhere, to refetch the grid. */
   printsVersion: number;
   onUnauthorized?: () => void;
   theme: ResolvedTheme;
@@ -57,25 +55,12 @@ export default function ModelsPage({ categoryId, onSelectCategory, categoriesVer
     });
   };
 
-  // Keeps the selected category mirrored into ?category=<id> so the URL is copy-able/bookmarkable
-  // and a reload lands back on the same filtered view, while categoryId itself stays lifted to
-  // AppShell (it also needs to survive navigating away to a model and back).
-  //
-  // Two effects, one per direction -- but whenever categoryId and the URL start a render already
-  // disagreeing (a cold load of ?category=X while categoryId still defaults to null, or a browser
-  // back/forward that changes the URL out from under an unrelated categoryId), BOTH used to fire
-  // in that same commit, each reading the OTHER's still-stale value: the URL->state effect would
-  // schedule categoryId to catch up to the URL, while the state->URL effect -- seeing that same
-  // stale categoryId one commit longer -- would shove the URL back to match it, undoing the first
-  // effect's work. That handoff repeated every render, each one node lagging the other by exactly
-  // one step, which is the flicker. `syncingFromUrlRef` marks a categoryId change as having
-  // originated from the URL (not a user click), so the state->URL effect knows to skip pushing it
-  // right back.
+  // Mirrors the selected category into ?category=<id>. When the URL and state disagree, both sync
+  // effects fire and undo each other, causing flicker; `syncingFromUrlRef` marks a change that came
+  // from the URL so it isn't pushed straight back.
   const categoryParam = searchParams.get("category");
   const syncingFromUrlRef = useRef(false);
 
-  // URL -> state: adopts ?category on first load and on any navigation that changes it externally
-  // (browser back/forward, a pasted link).
   useEffect(() => {
     if (categoryParam !== categoryId) {
       syncingFromUrlRef.current = true;
@@ -84,8 +69,6 @@ export default function ModelsPage({ categoryId, onSelectCategory, categoriesVer
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryParam]);
 
-  // state -> URL: covers every other way categoryId can change -- clicking a category, or it being
-  // cleared out from under the user (e.g. deleteCategory below clearing the active selection).
   useEffect(() => {
     if (syncingFromUrlRef.current) {
       syncingFromUrlRef.current = false;
@@ -101,9 +84,7 @@ export default function ModelsPage({ categoryId, onSelectCategory, categoriesVer
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryId]);
 
-  // A root category has no models of its own directly in the tree UI, so selecting one should
-  // pull in every model filed under any of its subcategories (plus the root itself, since prints
-  // can technically still be filed directly on it).
+  // A root category includes the models in all its subcategories.
   const categoryIdFilter = useMemo(() => {
     if (!categoryId) return undefined;
     const isRoot = categories.some(f => f.id === categoryId && !f.parent_id);
@@ -112,12 +93,6 @@ export default function ModelsPage({ categoryId, onSelectCategory, categoriesVer
     return [categoryId, ...childIds];
   }, [categoryId, categories]);
 
-  // Plain "Models" (and the route's default back-to-Dashboard) while nothing's selected; once a
-  // category is active, the title becomes its name (with a small "Category" subtitle underneath
-  // instead of a "Models - " prefix competing with the name for the same line's width -- same
-  // treatment as the collection/tag/model detail pages' own subtitles) and back instead clears
-  // the filter -- "back to all" one level at a time, matching the sidebar's own
-  // initial-vs-filtered framing.
   const selectedCategory = categoryId ? categories.find(f => f.id === categoryId) ?? null : null;
   usePageHeader({
     title: selectedCategory ? selectedCategory.name || t("models:categories.untitled") : undefined,
@@ -226,10 +201,7 @@ export default function ModelsPage({ categoryId, onSelectCategory, categoriesVer
       await categoriesApi.updateMeta(id, meta);
       onCategoriesChanged();
     } catch (err) {
-      // Unlike the other handlers here, this one rethrows anything but the auth-redirect case:
-      // CategoryMetaDialog shows the specific message (e.g. a bad category-id string naming the
-      // exact typo) inline and keeps the dialog open with the user's edits intact, instead of a
-      // generic alert() that closes the dialog and discards what they typed either way.
+      // Rethrow so CategoryMetaDialog shows the error inline and keeps the user's edits.
       if (handleError(err)) return;
       throw err;
     }

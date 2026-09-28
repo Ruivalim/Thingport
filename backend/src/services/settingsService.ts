@@ -1,8 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 
-// Storage-template settings (get/setStorageTemplate) live in printService.ts — not duplicated here.
-
 async function getBoolSetting(key: string, fallback: boolean): Promise<boolean> {
   const row = await prisma.setting.findUnique({ where: { key } });
   if (row === null || row === undefined) return fallback;
@@ -22,8 +20,6 @@ export type CaptchaSettings = Record<CaptchaPlace, boolean>;
 export const CAPTCHA_PLACES: readonly CaptchaPlace[] = ["login", "register", "import"];
 const captchaKey = (place: CaptchaPlace) => `captcha_${place}`;
 
-// Instance-wide, admin-set (Administration > Captcha): where the web app asks for a captcha. All
-// off by default -- see services/captchaService.ts.
 export async function getCaptchaSettings(): Promise<CaptchaSettings> {
   const values = await Promise.all(CAPTCHA_PLACES.map((place) => getBoolSetting(captchaKey(place), false)));
   return Object.fromEntries(CAPTCHA_PLACES.map((place, i) => [place, values[i]])) as CaptchaSettings;
@@ -50,9 +46,6 @@ export async function setAllowRegistrations(value: boolean): Promise<void> {
   await setBoolSetting(ALLOW_REGISTRATIONS_KEY, value);
 }
 
-// Administration > Rendering: reduce a heavy model's triangle count in its 3D preview (see
-// modelPreviewRender.ts's simplifyGroupMeshes). Off by default -- previews then show the model's
-// exact geometry, as they always have.
 const SIMPLIFY_PREVIEWS_KEY = "simplify_previews";
 
 export async function getSimplifyPreviews(): Promise<boolean> {
@@ -68,9 +61,7 @@ const PREVIEW_MODES = new Set<PreviewMode>(["automatic", "on-demand", "disabled"
 const PREVIEW_MODE_KEY = "preview_mode";
 const DEFAULT_PREVIEW_MODE: PreviewMode = "automatic";
 
-// Instance-wide (not per-user): every browser hitting this API generates/serves previews
-// against the same storage, so letting each user pick their own mode would just mean the last
-// save wins anyway. Admin-configured instead, like the storage template above.
+// Instance-wide: every user's previews share the same storage.
 export async function getPreviewMode(): Promise<PreviewMode> {
   const row = await prisma.setting.findUnique({ where: { key: PREVIEW_MODE_KEY } });
   const value = row?.value;
@@ -89,10 +80,7 @@ export async function setPreviewMode(value: PreviewMode): Promise<void> {
 
 const THINGIVERSE_ACCESS_TOKEN_KEY = "thingiverse_access_token";
 
-// Instance-wide, not per-user: it's a credential for api.thingiverse.com (the official
-// Developer API -- see thingiverseApi.ts), tied to whichever Thingiverse account registered
-// the app at thingiverse.com/apps/create, not to any one Thingport user's own account. Every
-// user's Thingiverse imports share it, same as the storage template and preview mode above.
+// Instance-wide: the token belongs to whichever Thingiverse account registered the app.
 export async function getThingiverseAccessToken(): Promise<string | null> {
   const row = await prisma.setting.findUnique({ where: { key: THINGIVERSE_ACCESS_TOKEN_KEY } });
   const value = row?.value;
@@ -129,10 +117,7 @@ function envInt(name: string, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-// Seeds from SMTP_HOST/SMTP_PORT/SMTP_SECURE/SMTP_USER/SMTP_PASS/SMTP_FROM the first time this is
-// read on a fresh instance -- once an admin saves anything via PATCH /settings/smtp, the DB row
-// becomes the sole source of truth (see setSmtpSettings) and these env vars are no longer
-// consulted, same pattern as the storage template / preview mode / Thingiverse token above.
+// Seeds from SMTP_* env vars until an admin saves settings; then the DB row wins.
 function smtpSeedFromEnv(): SmtpSettings {
   return {
     host: (process.env.SMTP_HOST || "").trim() || null,
@@ -167,17 +152,9 @@ export async function setSmtpSettings(patch: Partial<SmtpSettings>): Promise<Smt
 }
 
 const AUTH_TOKEN_TTL_KEY = "auth_token_ttl_seconds";
-// Matches the old AUTH_TOKEN_TTL env default (12 hours) -- used only when neither a DB row nor
-// the env var itself is set.
 const DEFAULT_AUTH_TOKEN_TTL_SECONDS = 43200;
 
-// How long a signed-in session's token stays valid before requiring another login (see
-// auth.ts's issueToken, which every login/register/verify route goes through). Seeds from the
-// AUTH_TOKEN_TTL env var the first time this is read on a fresh instance -- once an admin saves
-// a value via PATCH /settings/auth (AdminSettingsPage's Session section), the DB row becomes the
-// sole source of truth, same pattern as SMTP/preview mode/Thingiverse token above. Changing this
-// only affects tokens issued *after* the change; anyone already signed in keeps whatever TTL was
-// active when their token was issued, since that's baked into the JWT itself.
+// Seeds from AUTH_TOKEN_TTL until an admin saves a value. Only affects newly issued tokens.
 export async function getAuthTokenTtl(): Promise<number> {
   const row = await prisma.setting.findUnique({ where: { key: AUTH_TOKEN_TTL_KEY } });
   const value = row?.value;
@@ -193,6 +170,3 @@ export async function setAuthTokenTtl(seconds: number): Promise<void> {
   });
 }
 
-// Database connection info + the live "Test & Save" switch live in databaseSettingsService.ts,
-// not here -- unlike everything else in this file, it isn't just a Setting-table row; it needs
-// db.ts's client-swap primitive and its own Postgres-specific connection testing.

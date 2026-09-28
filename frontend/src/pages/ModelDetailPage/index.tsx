@@ -46,11 +46,7 @@ export default function ModelDetailPage({ theme, onSelectCategory, onUnauthorize
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [previewOpen, setPreviewOpen] = useState(false);
 
-  // Back always returns wherever the user came from (the models grid, filtered to whichever
-  // category they'd selected, or an author page) -- browser history already carries that, so this
-  // is also what a post-delete redirect below reuses. useSmartBack skips over any history entry
-  // that's the same route as this one (e.g. a sort-tab change re-pushing the same list page)
-  // instead of requiring an extra click to actually leave.
+  // Returns wherever the user came from; useSmartBack skips same-route history entries.
   const goBack = useSmartBack();
 
   usePageHeader({
@@ -111,11 +107,7 @@ export default function ModelDetailPage({ theme, onSelectCategory, onUnauthorize
   const activeImage = images[activeImageIndex] || images[0];
   const firstPlate = print.plates[0];
   const canPreview3d = Boolean(firstPlate) && MODEL_EXTS.has(extOf(firstPlate?.filename || ""));
-  // Every model should end up with at least one preview image -- an import brings its own cover
-  // photo, but a plain file upload has nothing to show until one is generated. When there isn't
-  // one yet, render the live 3D view as a visible fallback *and* (invisibly) let the same
-  // snapshot pipeline the grid cards use generate + upload one in the background, so this page
-  // shows something useful immediately and self-heals on the next visit.
+  // With no preview image yet, show the live 3D view and generate a snapshot in the background.
   const needsGeneratedPreview = !hasImages && Boolean(firstPlate) && MODEL_EXTS.has(extOf(firstPlate?.filename || ""));
 
   const goPrevImage = () => setActiveImageIndex(i => (i - 1 + images.length) % images.length);
@@ -305,10 +297,7 @@ export default function ModelDetailPage({ theme, onSelectCategory, onUnauthorize
                       bgcolor: "background.paper",
                       borderColor: "divider",
                       color: "text.primary",
-                      // Chip's "clickable" hover/focus/active tint is applied via a same-specificity
-                      // (two-class) selector of its own, so a plain "&:hover" override here loses
-                      // the cascade -- !important is the deliberate escape hatch for that, not an
-                      // accident.
+                      // !important: Chip's own clickable styles use a same-specificity selector.
                       "&:hover, &:focus-visible, &:active": {
                         backgroundColor: (muiTheme) => `${muiTheme.palette.background.paper} !important`,
                       },

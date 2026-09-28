@@ -17,22 +17,17 @@ import { useGravatarUrl } from "../hooks/useGravatarUrl";
 import { useAuthorPreviewEnabled } from "../hooks/useAuthorPreviewEnabled";
 
 const PREVIEW_MODEL_COUNT = 3;
-// The card's width follows from its one-row model grid: PREVIEW_MODEL_COUNT squares of
-// MODEL_SQUARE_PX, the 6px gaps between them (gap: 0.75 below), and 12px side padding (p: 1.5).
+// Width = PREVIEW_MODEL_COUNT squares + 6px gaps + 12px side padding.
 const MODEL_SQUARE_PX = 70;
 const CARD_WIDTH = PREVIEW_MODEL_COUNT * MODEL_SQUARE_PX + (PREVIEW_MODEL_COUNT - 1) * 6 + 2 * 12;
 const COVER_HEIGHT = 120;
-// Long enough that sweeping the pointer across a grid of cards doesn't pop cards open, short
-// enough to feel like a response to deliberately resting on an author.
+// Long enough that sweeping across a grid doesn't pop cards open.
 const ENTER_DELAY_MS = 450;
-// Short grace period so the pointer can travel from the link onto the card itself.
 const LEAVE_DELAY_MS = 150;
-// Re-hovering the same author within this window reuses the last load (counts stay near-live
-// without a request on every hover).
 const CACHE_TTL_MS = 60_000;
 
 type AuthorPreview = {
-  author: Author | null; // null for the viewer's own uploads (SELF_AUTHOR_ID) -- no Author row
+  author: Author | null; // null for SELF_AUTHOR_ID
   models: Print[];
   total: number;
 };
@@ -46,7 +41,7 @@ function loadAuthorPreview(authorId: string): Promise<AuthorPreview> {
     authorId === SELF_AUTHOR_ID ? Promise.resolve(null) : authorsApi.get(authorId),
     printsApi.list({ author_id: authorId, order_by: "newest", limit: PREVIEW_MODEL_COUNT, offset: 0 }),
   ]).then(([author, list]) => ({ author, models: list.items, total: list.total ?? list.items.length }));
-  // A failed load must not stick in the cache -- the next hover should just try again.
+  // Don't cache failures.
   promise.catch(() => previewCache.delete(authorId));
   previewCache.set(authorId, { at: Date.now(), promise });
   return promise;
@@ -94,9 +89,7 @@ function AuthorPreviewCard({ authorId, viewer }: CardProps) {
     : null;
 
   return (
-    // Portal-rendered, but React still bubbles its clicks through the component tree -- stop
-    // them here so clicking inside the card doesn't also trigger the link/card it's anchored to
-    // (e.g. a model grid card's own navigate-to-model onClick).
+    // Portal clicks still bubble through the React tree to the anchoring link/card.
     <Box onClick={e => e.stopPropagation()} sx={{ width: CARD_WIDTH }}>
       <Box
         sx={{
@@ -207,17 +200,13 @@ function AuthorPreviewCard({ authorId, viewer }: CardProps) {
 }
 
 type Props = CardProps & {
-  /** The author link (name and/or avatar) the card anchors to -- must be able to hold a ref. */
+  /** Must be able to hold a ref. */
   children: ReactElement;
-  /** Skip the card entirely, e.g. for an "Unknown" author with nothing to preview. */
   disabled?: boolean;
 };
 
-/** Wraps an author link so resting the pointer on it (or focusing it) opens a preview card: the
- *  author's cover, avatar/name/@handle, how many of their models are in this library, and their
- *  latest few. `authorId` may be SELF_AUTHOR_ID for the viewer's own uploads (pass `viewer`).
- *  Nothing is fetched until the card actually opens. Off entirely when the user has turned the
- *  preview off on their Profile page. */
+/** Opens an author preview on hover or focus. `authorId` may be SELF_AUTHOR_ID (pass `viewer`).
+ *  Fetches only once opened. */
 export default function AuthorHoverCard({ authorId, viewer, children, disabled }: Props) {
   const enabled = useAuthorPreviewEnabled();
   if (disabled || !enabled) return children;

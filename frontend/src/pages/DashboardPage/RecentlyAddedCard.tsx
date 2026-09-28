@@ -17,8 +17,6 @@ type Props = {
   models: DashboardModel[];
 };
 
-// Same relative-time formatting as NotificationBell.tsx (kept local rather than shared since
-// it's a 6-line function) -- reuses its i18n keys since the phrasing isn't notification-specific.
 function relativeTime(iso: string, t: (key: string, opts?: Record<string, unknown>) => string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const minutes = Math.round(diffMs / 60_000);
@@ -30,9 +28,6 @@ function relativeTime(iso: string, t: (key: string, opts?: Record<string, unknow
   return t("notifications.daysAgo", { count: days });
 }
 
-/** Recently added models -- full-width, bottom of the dashboard. No "see more": this card only
- *  ever shows a fixed handful (see backend's dashboardService.ts), same as
- *  youtube-mp3-vault's RecentlyAddedCard. */
 export default function RecentlyAddedCard({ models }: Props) {
   const { t } = useTranslation("app");
   const navigate = useNavigate();

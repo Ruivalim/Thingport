@@ -18,37 +18,28 @@ import { resolvePrintablesModel } from "./printablesApi";
 import { getThingiverseAccessToken } from "./settingsService";
 import { resolveThingiverseThing, ThingiverseAuthError } from "./thingiverseApi";
 
-// Administration > Triggers > "Link missing authors", instance-wide: models imported while their
-// author couldn't be saved (MakerWorld, for a while -- see makerworldCloudApi.ts's
-// completeMakerworldAuthor) only know the author by name. A run first links every such model
-// whose name matches a known author (authorService.ts's LINKABLE_PRINTS), then looks the rest up
-// on the site each came from -- once per distinct creator, not per model, since everything they
-// made links from that one lookup. Only metadata is fetched, never files.
+// Links models that only know their author by name: first by name matching, then by looking the
+// rest up on their site once per distinct creator. Only metadata is fetched.
 
 const LOOKUP_PROVIDERS = ["makerworld", "thingiverse", "printables"] as const;
 type LookupProvider = (typeof LOOKUP_PROVIDERS)[number];
 
-/** Why part of a run was skipped -- shown to the admin, who can usually fix it. */
 export type LookupProblem = "thingiverse_no_token" | "thingiverse_token_rejected" | "makerworld_captcha" | "makerworld_login_rejected";
 
 export type AuthorLinkingRun = {
   running: boolean;
   startedAt: string;
   finishedAt: string | null;
-  /** Creators to look up on their sites, and how many have been so far. */
   toLookUp: number;
   lookedUp: number;
-  /** Models linked by this run, both by name and from lookups. */
   linked: number;
-  /** Creators whose site didn't give an author (model gone, page unreachable...). */
   notFound: number;
   problems: LookupProblem[];
 };
 
 type Candidate = { printId: string; userId: string; provider: LookupProvider; externalId: string; creator: string };
 
-// One model per creator (per site) that no known author's name matches -- the newest, as the
-// likeliest still to be online. Ambiguous names are included: a lookup settles who it really is.
+// One model per unmatched creator per site: the newest, as the likeliest still online.
 const LOOKUP_CANDIDATES = Prisma.sql`
   SELECT DISTINCT ON (p."sourceProvider", lower(trim(p.creator)))
     p.id AS "printId", p."userId", p."sourceProvider" AS provider, p."sourceExternalId" AS "externalId", p.creator
@@ -59,8 +50,6 @@ const LOOKUP_CANDIDATES = Prisma.sql`
   ORDER BY p."sourceProvider", lower(trim(p.creator)), p."createdAt" DESC
 `;
 
-/** What the trigger would do now: models it can link by name straight away, and models whose
- *  author it would have to look up (on their sites). The trigger is shown when either is > 0. */
 export async function authorLinkingSummary(): Promise<{ linkable: number; lookup: number }> {
   const [row] = await prisma.$queryRaw<{ linkable: number; lookup: number }[]>`
     SELECT
@@ -75,12 +64,11 @@ export async function authorLinkingSummary(): Promise<{ linkable: number; lookup
 
 let current: AuthorLinkingRun | null = null;
 
-/** The current or last run since the server started, for the Triggers page to poll. */
 export function currentAuthorLinkingRun(): AuthorLinkingRun | null {
   return current;
 }
 
-/** Starts a run in the background; null if one is already running. */
+/** Null if a run is already in progress. */
 export function startAuthorLinking(adminUserId: string): AuthorLinkingRun | null {
   if (current?.running) return null;
   current = {
@@ -108,13 +96,10 @@ export function startAuthorLinking(adminUserId: string): AuthorLinkingRun | null
   return run;
 }
 
-/** Models that only know their author by name -- `linked` is how far this has dropped since the
- *  run started, which also counts what saving an author links along the way. */
 async function countUnlinked(): Promise<number> {
   return prisma.print.count({ where: { authorId: null, creator: { not: null } } });
 }
 
-/** Does the whole run, updating `run` as it goes -- awaited directly by tests. */
 export async function runAuthorLinking(run: AuthorLinkingRun): Promise<void> {
   const unlinkedAtStart = await countUnlinked();
   const updateLinked = async () => {
@@ -150,9 +135,8 @@ export async function runAuthorLinking(run: AuthorLinkingRun): Promise<void> {
     }
     const saved = author ? await upsertAuthorFromImport(author) : null;
     if (saved) {
-      // Saving the author already linked every model its name matches; this also covers the
-      // looked-up model and its siblings when the name the import stored differs from the
-      // author's (e.g. a MakerWorld nickname vs. display name).
+      // Also covers the looked-up model when its stored name differs from the author's (nickname vs.
+      // display name).
       await prisma.$executeRaw`
         UPDATE "Print" SET "authorId" = ${saved.id}
         WHERE "authorId" IS NULL AND "sourceProvider" = ${candidate.provider}
@@ -177,8 +161,6 @@ async function lookUpAuthor(candidate: Candidate, thingiverseToken: string | nul
       return (await resolvePrintablesModel(candidate.externalId))?.meta.author ?? null;
     }
     case "makerworld": {
-      // The model owner's MakerWorld login, if they saved one, reads MakerWorld's API directly;
-      // otherwise the model page (often behind Cloudflare -- FlareSolverr gets through).
       const cookie = (await getUserMakerworldCookie(candidate.userId)) ?? process.env.MAKERWORLD_COOKIE ?? null;
       const bearer = extractMakerworldBearerToken(cookie);
       return bearer

@@ -19,19 +19,8 @@ type Props = {
   onBookmarksChanged?: () => void;
 };
 
-/** The standalone Tags list: every tag across the user's library as a small chip --
- *  "<name> (<count>)" plus a bookmark toggle (Chip's own deleteIcon slot, repurposed -- its click
- *  target is already separate from the chip's own onClick, exactly the two independent actions
- *  this needs) -- wrapping left-to-right instead of one per row, so far more fit on screen at
- *  once. Colored and backgrounded like the sidebar itself (thingport.navInactiveText text,
- *  background.paper fill -- the same values Sidebar's own <aside> uses, not the page's own
- *  background behind it) with the same divider-in-light/invisible-in-dark border used by
- *  Sidebar/CategoriesPanel/ModelSidePanel (dividerBorderColor), so this reads as an extension of
- *  that same nav chrome rather than a one-off style. Sorted Popular (most models, default) or
- *  Name. Bookmarking surfaces the tag in
- *  the sidebar's own quick-access list (see Sidebar). A "hide rarely-used tags" switch (on by
- *  default) filters out anything used by fewer than 2 models -- purely a client-side filter over
- *  the same already-fetched list, not a separate API call. */
+/** Every tag as a chip with a bookmark toggle (the chip's deleteIcon slot). Rarely-used tags
+ *  (under 2 models) are hidden by default. */
 export default function TagsPage({ onUnauthorized, onBookmarksChanged }: Props) {
   const { t } = useTranslation(["models", "common"]);
   const navigate = useNavigate();

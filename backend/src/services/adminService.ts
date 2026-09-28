@@ -56,8 +56,7 @@ export type LogEntry = {
 
 const LOG_LIST_LIMIT = 500;
 
-/** Backs GET /admin/logs. `from`/`to` are inclusive date bounds; omitting both returns the most
- * recent entries up to LOG_LIST_LIMIT. */
+/** Inclusive date bounds; without them, the latest LOG_LIST_LIMIT entries. */
 export async function listLogs(filter: { userId?: string; from?: Date; to?: Date }): Promise<LogEntry[]> {
   const where: Prisma.LogWhereInput = {};
   if (filter.userId) where.userId = filter.userId;
@@ -84,9 +83,6 @@ export async function listLogs(filter: { userId?: string; from?: Date; to?: Date
   }));
 }
 
-/** Deletes every print (and its on-disk files) belonging to `userId` -- the same per-print
- * cleanup DELETE /print/:id already does, just looped across the whole user's library. Backs
- * the admin "delete all models for a user" trigger. */
 export async function deleteAllPrintsForUser(userId: string): Promise<number> {
   const prints = await prisma.print.findMany({ where: { userId }, select: { id: true } });
   for (const { id } of prints) {
@@ -107,11 +103,7 @@ export type StorageUsage = {
   modelCount: number;
 };
 
-/** Instance-wide disk use by models, across every user: every plate plus every supporting and
- *  prepared file -- the same files a model detail page's Size sums for one model (dto.ts's
- *  total_size), so the two always agree. Read from the stored per-file sizes rather than walking
- *  the storage directory, so it stays instant however large the library is. Gallery preview
- *  images and generated caches (thumbnails, 3D previews) aren't model files and aren't counted. */
+/** Plates plus supporting and prepared files, from stored sizes (matches dto.ts's total_size). */
 export async function getStorageUsage(): Promise<StorageUsage> {
   const [plates, files, modelCount] = await Promise.all([
     prisma.plate.aggregate({ _sum: { size: true } }),

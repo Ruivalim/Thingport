@@ -5,13 +5,8 @@ import IconButton from "@mui/material/IconButton";
 import StarIcon from "@mui/icons-material/Star";
 import type { SxProps, Theme } from "@mui/material/styles";
 
-// Ported from https://codepen.io/matthewbolanos/pen/yYXQZp (the star favourite-toggle burst
-// animation), swapping Font Awesome + jQuery for an MUI icon + a React-driven replay. Every
-// pixel value below is copied verbatim from that pen: the ring and icon-pop are in `em`
-// (cascades from fontSize, so they scale correctly at our much smaller icon size for free), and
-// the sparkle circle keeps the pen's raw viewBox units (r=24, dasharray "1 29", stroke-width
-// 0->20->0) inside its own viewBox -- SVG scales those with the box's own rendered size, so
-// shrinking the box to fit a 20px icon preserves the pen's exact proportions without retuning.
+// Burst animation adapted from https://codepen.io/matthewbolanos/pen/yYXQZp. Sizes are in em and
+// viewBox units so they scale with the icon.
 const popping = keyframes`
   0%   { transform: scale(0, 0); }
   40%  { transform: scale(0, 0); }
@@ -27,12 +22,7 @@ const ringSize = keyframes`
   0%   { width: 0; height: 0; }
   100% { width: 1.5em; height: 1.5em; }
 `;
-// The pen's own svg wasn't centered via transform (it used top/left + negative margins instead),
-// so its "transform: scale(...)" keyframes never had to share the property with anything else.
-// Ours centers the box with "translate(-50%, -50%)" (percentage margins need a known box size,
-// which an em-sized box doesn't have), so that translate has to be re-asserted on every frame
-// here -- otherwise the animation's own transform would replace it outright and the sparkle ring
-// would jump to the top-left corner the instant it starts playing.
+// The translate centering must be repeated in every frame or the animation's transform replaces it.
 const sparkleSize = keyframes`
   0%  { transform: translate(-50%, -50%) scale(.2, .2); }
   5%  { transform: translate(-50%, -50%) scale(.2, .2); }
@@ -49,25 +39,14 @@ type Props = {
   onClick: () => void;
   disabled?: boolean;
   ariaLabel: string;
-  /** The pen's own accent was an arbitrary demo purple (#ca12ea) -- this app's brand orange reads
-   *  as "starred" instead. */
   activeColor?: string;
-  /** Needs to be readable against whatever backdrop this instance sits on -- e.g. white over
-   *  ModelCard's dark hover scrim, vs. a neutral grey over FavoriteButton's plain page bg. */
   inactiveColor?: string;
-  /** Glyph size in px. Also the `em` baseline the ring/sparkle keyframes (copied from the pen in
-   *  em/viewBox units) scale from, so this must be a real pixel font-size -- not MUI's SvgIcon
-   *  `fontSize="inherit"`, which would leave that baseline undefined. */
+  /** Glyph size in px; also the em baseline for the animation, so it must be a real pixel size. */
   size?: number;
   sx?: SxProps<Theme>;
 };
 
-/** A favourite/star toggle with the codepen.io/matthewbolanos/pen/yYXQZp burst animation: the
- *  star pops, a ring flashes outward, and a dashed circle's dashes balloon into sparkles and fade
- *  -- all in one shot, only when going from unfavourited to favourited. Un-favouriting just fades
- *  the color back down with no animation, matching the original pen (a burst reads as a
- *  celebration; removing a favourite isn't one). Doesn't replay on mount even if `active` starts
- *  true, only on an actual false -> true click. */
+/** Plays the burst only on an actual false -> true click, never on mount or unfavourite. */
 export default function StarToggle({
   active,
   onClick,
@@ -83,8 +62,7 @@ export default function StarToggle({
 
   useEffect(() => {
     if (active && !wasActive.current) {
-      // Force a reflow before flipping playing back on, so a rapid unfavourite -> refavourite
-      // still restarts the animation instead of no-op'ing (it's already "on").
+      // Reset first so a quick unfavourite -> refavourite still restarts the animation.
       setPlaying(false);
       const raf = requestAnimationFrame(() => setPlaying(true));
       wasActive.current = active;
@@ -95,10 +73,8 @@ export default function StarToggle({
 
   useEffect(() => {
     if (!playing) return;
-    // A fixed timeout, not onAnimationEnd: the four animations here finish at three different
-    // times (.35s ring, .5s pop, .65s sparkle) and onAnimationEnd bubbles from whichever finishes
-    // first, which would flip `playing` off -- and with it, every other still-running one's
-    // `sx`-conditional `animation` property -- while the pop and sparkle still have time left.
+    // A timeout, not onAnimationEnd: the animations end at different times and the first to bubble
+    // would cut the others short.
     const PLAYING_DURATION_MS = 650;
     const timer = setTimeout(() => setPlaying(false), PLAYING_DURATION_MS);
     return () => clearTimeout(timer);

@@ -18,8 +18,7 @@ async function saveBuffer(id: string, input: Buffer): Promise<boolean> {
   const dest = previewImagePath(id);
   const tmp = `${dest}.${process.pid}.${Date.now()}.tmp`;
   try {
-    // Hero-sized (larger than the 512px card thumbnail) since this is the model detail page's
-    // main gallery image, not just a grid thumbnail.
+    // Hero-sized: this is the detail page's main image.
     await sharp(input)
       .flatten({ background: { r: 248, g: 250, b: 252 } })
       .resize(1600, 1600, { fit: "inside", withoutEnlargement: true })
@@ -33,8 +32,7 @@ async function saveBuffer(id: string, input: Buffer): Promise<boolean> {
   }
 }
 
-/** Appends one preview image at the next free position. Returns null if the buffer isn't a
- * decodable image (never throws -- callers treat image fetch/generation as best-effort). */
+/** Null if the buffer isn't a decodable image; never throws. */
 export async function addPreviewImage(printId: string, buffer: Buffer): Promise<PreviewImage | null> {
   const last = await prisma.previewImage.findFirst({ where: { printId }, orderBy: { position: "desc" } });
   const position = last ? last.position + 1 : 0;
@@ -47,9 +45,7 @@ export async function addPreviewImage(printId: string, buffer: Buffer): Promise<
   return row;
 }
 
-/** Used by the "generate a preview from the 3D file" fallback: only seeds a preview image when
- * the print doesn't already have one (an import's cover photo, or an earlier generated snapshot,
- * always wins over a fresh auto-generated one). */
+/** An existing image (e.g. an import's cover) always wins. */
 export async function addGeneratedPreviewImageIfNone(printId: string, buffer: Buffer): Promise<void> {
   const count = await prisma.previewImage.count({ where: { printId } });
   if (count > 0) return;

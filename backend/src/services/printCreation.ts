@@ -23,7 +23,7 @@ import type { Plate, Print } from "@prisma/client";
 const IMAGE_EXTS = new Set([".png", ".jpg", ".jpeg", ".webp", ".bmp"]);
 
 export type NewPlateInput = {
-  /** Original (untrusted) filename; will be sanitized. */
+  /** Untrusted; will be sanitized. */
   filename: string;
   mime?: string | null;
   size?: number;
@@ -31,7 +31,6 @@ export type NewPlateInput = {
   tempFilePath?: string; // moved (renamed) into managed storage, source is deleted
   copyFromPath?: string; // copied into managed storage, source left intact
   sourcePath?: string; // no-copy: file stays at this path, storagePath is still rendered/recorded
-  /** The MakerWorld profile this file was imported from -- see Plate.sourceInstanceId. */
   sourceInstanceId?: string | null;
 };
 
@@ -41,11 +40,8 @@ export type PrintMetaInput = {
   tags?: string[];
   categoryId?: string | null;
   creator?: string | null;
-  /** Id of an already-upserted Author row (see authorService.ts), e.g. "makerworld:12345". */
   authorId?: string | null;
-  /** Set when this print was resolved from a known provider's model URL (see
-   * importService.ts's identifySourceModel) -- backs de-duplication of future imports of the
-   * same source model. Null for uploads, zip/folder-scan imports, and unrecognized sources. */
+  /** Backs de-duplication of future imports of the same source model. */
   sourceProvider?: string | null;
   sourceExternalId?: string | null;
 };
@@ -69,7 +65,6 @@ async function placeFile(input: NewPlateInput, destAbsPath: string): Promise<str
     await fs.copyFile(input.copyFromPath, destAbsPath);
     return destAbsPath;
   }
-  // no-copy: nothing placed on disk, caller should use sourcePath for reads.
   return input.sourcePath ?? null;
 }
 
@@ -91,15 +86,11 @@ async function thumbnailAndSniff(plateId: string, filename: string, mime: string
     await saveThumbFromFile(plateId, effectivePath);
   } else if (ext === ".3mf") {
     await ensurePlateThumbnail(plateId, effectivePath);
-    // Only "automatic" pre-renders the interactive 3D preview at import; "on-demand" leaves it to
-    // the first viewer open (routes/plates.ts's preview.glb self-heal) and "disabled" never builds
-    // one. Not awaited: it can take real time for a large/high-poly model, and doing it here would
-    // block the upload/import response on that.
+    // "on-demand" builds the preview on first view, "disabled" never. Not awaited: it can be slow.
     if ((await getPreviewMode()) === "automatic") void generateModelPreviewGlb(plateId, effectivePath);
   }
 }
 
-/** Resolves the on-disk path to read a plate's bytes from (managed storage, else its sourcePath). */
 export function resolvePlateFilePath(plate: Pick<Plate, "storagePath" | "sourcePath">): string | null {
   const managed = managedPlatePath(plate);
   if (fsSync.existsSync(managed)) return managed;
@@ -107,7 +98,6 @@ export function resolvePlateFilePath(plate: Pick<Plate, "storagePath" | "sourceP
   return null;
 }
 
-/** Re-inspects plate[0] of a print and refreshes the auto-detected Print.preparedMetadata. */
 export async function refreshAutoPreparedMetadata(printId: string): Promise<void> {
   const plate0 = await prisma.plate.findFirst({ where: { printId }, orderBy: { position: "asc" } });
   let metadata: Prisma.InputJsonValue | null = null;
@@ -154,8 +144,7 @@ async function createPlateAtPosition(
       },
     });
   } catch (err) {
-    // e.g. a concurrent import of the same MakerWorld profile winning the (printId,
-    // sourceInstanceId) unique index -- don't leave the file we just placed orphaned in storage.
+    // e.g. a concurrent import of the same profile won; don't orphan the placed file.
     if (effectivePath && !input.sourcePath) await fs.rm(effectivePath, { force: true }).catch(() => undefined);
     throw err;
   }
@@ -164,7 +153,6 @@ async function createPlateAtPosition(
   return { record, effectivePath };
 }
 
-/** Creates a new Print with one or more Plates (in the given order). Used by /upload (single + multiplate). */
 export async function createPrint(
   userId: string,
   meta: PrintMetaInput,
@@ -172,9 +160,7 @@ export async function createPrint(
   plateInputs: NewPlateInput[],
 ): Promise<{ print: Print; plates: Plate[] }> {
   if (!plateInputs.length) throw new Error("createPrint requires at least one plate");
-  // meta.categoryId can come straight from a request body (upload/import/zip) with no prior
-  // ownership check by the caller -- verify here, once, rather than trusting every call site
-  // to have already confirmed it (the FK to Category.id alone doesn't prove *this user* owns it).
+  // categoryId may come straight from a request body, so verify ownership here.
   if (meta.categoryId) {
     const category = await prisma.category.findFirst({ where: { id: meta.categoryId, userId } });
     if (!category) throw new HttpError(400, "Category not found");
@@ -223,7 +209,6 @@ export async function createPrint(
   return { print, plates };
 }
 
-/** Appends one or more plates to an existing print (POST /print/:id/plates). */
 export async function addPlatesToPrint(userId: string, printId: string, plateInputs: NewPlateInput[]): Promise<Plate[]> {
   const print = await prisma.print.findFirst({ where: { id: printId, userId } });
   if (!print) throw new Error("Print not found");
@@ -245,7 +230,6 @@ export async function deletePlateFiles(plate: Pick<Plate, "storagePath">): Promi
     await fs.rm(abs, { force: true });
     await pruneEmptyStorageDirs(path.dirname(abs));
   } catch {
-    // best-effort cleanup
   }
 }
 

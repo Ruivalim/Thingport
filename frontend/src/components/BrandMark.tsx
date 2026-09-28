@@ -14,9 +14,7 @@ const HEIGHTS: Record<NonNullable<Props["size"]>, string> = {
   sm: "1.125rem",
 };
 
-/** The Thingport icon-only mark (no wordmark) -- used where the viewer's own theme prop, not the
- *  surrounding MUI theme, decides which variant to show (e.g. ModelViewer's fixed-theme preview
- *  canvas). */
+/** Icon-only mark, for places where the `theme` prop rather than MUI's theme picks the variant. */
 export default function BrandMark({ theme, size = "md" }: Props) {
   const src = theme === "dark" ? markOnDark : markColor;
   return (

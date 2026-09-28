@@ -30,9 +30,7 @@ export function clearToken() {
   storage.removeItem(TOKEN_KEY);
 }
 
-// The API has no /me endpoint, so the display name/email/role shown in the UserMenu is
-// persisted alongside the token from whatever /login or /register last returned, rather than
-// refetched on every page load.
+// There's no /me endpoint, so the user is stored with the token from the last login.
 export function readUser(): AuthUser | null {
   const storage = getStorage();
   if (!storage) return null;

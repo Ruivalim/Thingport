@@ -17,11 +17,7 @@ type Props = {
   onUnauthorized?: () => void;
 };
 
-/** Instance-wide: whether anyone may create an account, shown above the Users table. Turned off,
- *  the sign-in page drops its Register tab and the backend refuses registrations -- except the very
- *  first account, and people invited from here. Inviting needs SMTP (Connections > SMTP), since
- *  the link travels by email, so the button only appears once registrations are closed and SMTP is
- *  set up. */
+/** Closed registrations still admit the first account and invitees. Inviting needs SMTP. */
 export default function RegistrationsPanel({ onUnauthorized }: Props) {
   const { t } = useTranslation("app");
   const [allow, setAllow] = React.useState(true);

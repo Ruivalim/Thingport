@@ -15,7 +15,6 @@ import CheckEmailPanel from "./CheckEmailPanel";
 
 const MIN_PASSWORD_LENGTH = 8;
 
-/** From an invitation link's query string (see App.tsx). */
 export type Invite = { token: string; email: string };
 
 type Props = {
@@ -27,8 +26,7 @@ export default function RegisterPanel({ onSuccess, invite = null }: Props) {
   const { t } = useTranslation("app");
   const [displayName, setDisplayName] = React.useState("");
   const [email, setEmail] = React.useState(invite?.email ?? "");
-  // An invitation is checked with the backend before the form opens: "checking" until then,
-  // "valid" (email locked to the invited address) or "invalid" (form stays closed).
+  // "valid" locks the email to the invited address; "invalid" keeps the form closed.
   const [inviteState, setInviteState] = React.useState<"checking" | "valid" | "invalid">(invite ? "checking" : "valid");
   const [inviteError, setInviteError] = React.useState<string | null>(null);
   const captchaSettings = useCaptchaSettings();
@@ -38,11 +36,10 @@ export default function RegisterPanel({ onSuccess, invite = null }: Props) {
   const [confirmPassword, setConfirmPassword] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  // Set once the backend confirms this instance requires email verification -- replaces the
-  // form with CheckEmailPanel instead of ever calling onSuccess.
+  // Set when the account needs email verification.
   const [pendingEmail, setPendingEmail] = React.useState<string | null>(null);
 
-  // Keyed on the token string, not the invite object -- App.tsx builds that afresh every render.
+  // The token string, not the object, which App.tsx rebuilds every render.
   const inviteToken = invite?.token ?? null;
   React.useEffect(() => {
     if (!inviteToken) return;
@@ -84,8 +81,7 @@ export default function RegisterPanel({ onSuccess, invite = null }: Props) {
       if ("email_verification_required" in res) {
         setPendingEmail(res.email);
       } else {
-        // Leave /register?invite=... behind: the signed-in app doesn't have that route, and the
-        // one-time link shouldn't linger in the address bar or history.
+        // The one-time link shouldn't linger in the address bar or history.
         if (invite) window.history.replaceState(null, "", "/");
         onSuccess(res.token, res.expires_in, res.user);
       }

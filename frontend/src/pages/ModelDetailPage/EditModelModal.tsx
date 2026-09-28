@@ -66,22 +66,11 @@ type Props = {
   onClose: () => void;
   onUnauthorized?: () => void;
   onUpdated: (print: Print) => void;
-  /** Only used as a fallback when the print has neither an Author nor a plain `creator` string --
-   *  a direct upload has no import-source author at all, so this shows the viewer's own identity
-   *  instead of "Unknown" (see ModelCard/ModelSidePanel's identical showViewerAsAuthor fallback).
-   *  Purely a label here: there's no Author id behind it, so "Reset author" stays hidden either
-   *  way (hasImportedAuthor already only looks at real author/creator/source_provider data). */
+  /** Shown as the author of a direct upload, which has none. Label only. */
   viewer?: AuthUser | null;
 };
 
-/** The "Edit" modal for a model: title, category (a two-level tree, but only leaf/secondary
- *  categories are selectable), author (a "reset to me" action that also clears the import source),
- *  preview images (delete/upload/reorder, position 0 is the main/default image), description,
- *  tags, and the model's files/plates (delete/upload/reorder). Everything here is staged locally
- *  and only committed -- as a sequence of the existing field-scoped mutation calls -- when
- *  "Update" is clicked; "Cancel" discards it all, confirming first if anything was actually
- *  touched. Opened from ModelActionsMenu's "Edit" item, shared by the model detail page's header
- *  and the Models/Collection grids' per-card menu. */
+/** Edits are staged locally and committed only on "Update"; "Cancel" discards them. */
 export default function EditModelModal({ print, onClose, onUnauthorized, onUpdated, viewer }: Props) {
   const { t, i18n } = useTranslation(["models", "common"]);
   const confirmDialog = useConfirm();
@@ -97,13 +86,8 @@ export default function EditModelModal({ print, onClose, onUnauthorized, onUpdat
   const [images, setImages] = useState<ImageItem[]>(
     () => print.preview_images.map((img): ImageItem => ({ kind: "existing", id: img.id, url: img.url })),
   );
-  // Ids the user explicitly removed via the trash icon below -- handleUpdate deletes exactly
-  // these, rather than diffing the local `images` list against print.preview_images. A plain
-  // upload opens straight into this modal (see useUploadImport's post-upload redirect) before its
-  // automatically-generated thumbnail has necessarily finished uploading in the background; a
-  // diff-based delete would treat that not-yet-known image as "removed" the moment it appears and
-  // destroy it the instant "Update" is clicked. Tracking removals explicitly means an image this
-  // modal never learned about is simply never a delete candidate.
+  // Removals are tracked explicitly rather than diffed: a new upload's thumbnail may still be
+  // generating, and a diff would delete it as soon as it appeared.
   const [removedImageIds, setRemovedImageIds] = useState<Set<string>>(new Set());
   const [plateItems, setPlateItems] = useState<PlateItem[]>(
     () => print.plates.map((p): PlateItem => ({ kind: "existing", id: p.id, filename: p.filename })),
@@ -211,9 +195,6 @@ export default function EditModelModal({ print, onClose, onUnauthorized, onUpdat
         latest = authorRes.print ?? latest;
       }
 
-      // Preview images: delete only what the user explicitly removed (see removedImageIds' doc
-      // comment for why this isn't a diff against print.preview_images), upload what's new, then
-      // reorder to the arrangement the user actually left on screen.
       for (const id of removedImageIds) {
         const res = await printsApi.deletePreviewImage(print.id, id);
         latest = res.print ?? latest;
@@ -232,11 +213,7 @@ export default function EditModelModal({ print, onClose, onUnauthorized, onUpdat
       if (images.length) {
         let nextNew = 0;
         const known = images.map((img) => (img.kind === "existing" ? img.id : newImageIdsInOrder[nextNew++]));
-        // The reorder endpoint requires an exhaustive id list (see previewImages.ts's reorder
-        // route). `known` may not be exhaustive -- it can't include an image this modal never
-        // learned about (again, the background-generated-thumbnail case) -- so anything else
-        // currently in `latest` gets appended after it, in its own existing order, rather than
-        // tripping that endpoint's 400 or (the old bug) getting silently deleted.
+        // Reorder needs an exhaustive id list; images this modal never saw go after, in their order.
         const knownIds = new Set(known);
         const unknown = latest.preview_images
           .filter((img) => !knownIds.has(img.id))
@@ -247,16 +224,13 @@ export default function EditModelModal({ print, onClose, onUnauthorized, onUpdat
         latest = reorderRes.print ?? latest;
       }
 
-      // Model files (plates): upload -> delete -> rename -> reorder. Uploading first is what lets
-      // a model's only file be swapped for a new one in a single save -- deleting first would
-      // briefly leave it with none, which the backend refuses ("can't remove the only plate").
+      // Upload before delete so a model's only file can be swapped in one save.
       const newPlateFiles = plateItems.filter((p) => p.kind === "new").map((p) => p.file);
       let newPlateIdsInOrder: string[] = [];
       if (newPlateFiles.length) {
         const beforeIds = new Set(latest.plates.map((p) => p.id));
         const uploadRes = await printsApi.addPlates(print.id, newPlateFiles);
         latest = uploadRes.print;
-        // The backend appends them in upload order, so this lines up with newPlateFiles.
         newPlateIdsInOrder = latest.plates
           .filter((p) => !beforeIds.has(p.id))
           .toSorted((a, b) => a.position - b.position)
@@ -268,9 +242,7 @@ export default function EditModelModal({ print, onClose, onUnauthorized, onUpdat
         const res = await printsApi.deletePlate(print.id, original.id);
         latest = res.print ?? latest;
       }
-      // A replacement usually has the same name as the file it replaces, and while that one still
-      // existed the backend gave it a " (2)" suffix. Now it's gone, ask for the name as uploaded:
-      // the backend keeps the suffix if another of the model's files still has that name.
+      // The replaced file got its " (2)" suffix from the old one; rename back now it's gone.
       for (const [index, plateId] of newPlateIdsInOrder.entries()) {
         const wanted = newPlateFiles[index].name;
         const current = latest.plates.find((p) => p.id === plateId);
@@ -314,7 +286,6 @@ export default function EditModelModal({ print, onClose, onUnauthorized, onUpdat
             onChange={(e) => { setTitle(e.target.value); markDirty(); }}
             disabled={saving}
             fullWidth
-            // Deliberate: focus the title field the moment the dialog opens.
             // oxlint-disable-next-line jsx-a11y/no-autofocus
             autoFocus
           />
@@ -329,10 +300,8 @@ export default function EditModelModal({ print, onClose, onUnauthorized, onUpdat
             >
               <MenuItem value="">{t("models:edit.noCategory")}</MenuItem>
               {roots.flatMap((root) => [
-                // A real <ListSubheader> here would still get Select's selection/click handling
-                // cloned onto it (a known MUI quirk), leaving the menu stuck open on a "click" that
-                // selected nothing -- a disabled MenuItem sidesteps that entirely, since Select
-                // already knows to skip disabled items.
+                // A disabled MenuItem, not ListSubheader: MUI's Select still handles clicks on the latter and
+                // gets stuck open.
                 <MenuItem key={`h-${root.id}`} disabled divider sx={{ fontWeight: 700, opacity: "1 !important" }}>
                   {categoryName(root)}
                 </MenuItem>,

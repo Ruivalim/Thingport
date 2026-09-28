@@ -9,9 +9,6 @@ type Props = {
   onUnauthorized?: () => void;
 };
 
-/** The model detail page's header favourite toggle -- adds/removes the print from the built-in
- *  "Favourites" pseudo-collection (see backend/src/services/collectionService.ts). Toggle
- *  behaviour and toasts are shared with the model grid cards via useFavoriteToggle. */
 export default function FavoriteButton({ print, onUpdated, onUnauthorized }: Props) {
   const { isFavorite, toggle, label } = useFavoriteToggle(print, { onUpdated, onUnauthorized });
 

@@ -8,8 +8,6 @@ type Props = {
   email: string;
 };
 
-/** Shown in place of the registration form right after signing up on an instance with SMTP
- *  configured -- the account exists but can't sign in until the emailed link is clicked. */
 export default function CheckEmailPanel({ email }: Props) {
   const { t } = useTranslation("app");
 

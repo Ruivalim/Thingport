@@ -12,12 +12,9 @@ export type Collection = {
   item_count: number;
   cover_items: Print[];
   created_at: string;
-  /** Set only for the built-in "Favourites"/"Browsing History" pseudo-collections -- these can't
-   *  be edited or deleted, and their card/detail title should come from a translated label keyed
-   *  off this instead of `name`. */
+  /** Set only for the built-in pseudo-collections, which get a translated name and no edit/delete. */
   system_key: SystemCollectionKey | null;
-  /** Whether this user has bookmarked this collection into the sidebar's quick-access list --
-   *  always false for a system pseudo-collection, which can't be bookmarked. */
+  /** Always false for a system pseudo-collection. */
   bookmarked: boolean;
 };
 
@@ -27,8 +24,6 @@ export type CollectionInput = {
   tags?: string[];
 };
 
-/** One row of the "Add to collection" picker -- a real (non-system) collection this user owns,
- *  flagged with whether the print being edited is currently a member. */
 export type CollectionMembership = {
   id: string;
   name: string;
@@ -73,9 +68,7 @@ export const collectionsApi = {
     assertOk(res, "Delete collection failed");
   },
 
-  /** Drops one print's membership in a (real, non-system) collection -- the print itself is
-   *  untouched. Used by the model card's "Remove from collection" menu item, shown only while
-   *  browsing an actual collection. */
+  /** The print itself is untouched. */
   removeItem: async (collectionId: string, printId: string): Promise<void> => {
     const res = await fetch(`${apiBase()}/collection/${collectionId}/items/${printId}`, {
       method: "DELETE",
@@ -84,8 +77,6 @@ export const collectionsApi = {
     assertOk(res, "Remove from collection failed");
   },
 
-  /** Adds one print to a (real, non-system) collection -- the reverse of removeItem. Used by the
-   *  "Add to collection" picker. */
   addItem: async (collectionId: string, printId: string): Promise<void> => {
     const res = await fetch(`${apiBase()}/collection/${collectionId}/items/${printId}`, {
       method: "POST",
@@ -94,17 +85,12 @@ export const collectionsApi = {
     assertOk(res, "Add to collection failed");
   },
 
-  /** Every real (non-system) collection this user owns, flagged with whether `printId` is
-   *  currently a member -- backs the "Add to collection" picker. */
   listForPrint: async (printId: string): Promise<CollectionMembership[]> => {
     const res = await fetch(`${apiBase()}/print/${printId}/collections`, { headers: authHeaders() });
     assertOk(res, "Failed to list collections");
     return res.json();
   },
 
-  /** Adds/removes a (real, non-system) collection from the sidebar's quick-access "Bookmarks"
-   *  list -- same shape as tagsApi.bookmark/unbookmark. Used by the Collections grid card's "..."
-   *  menu and the collection detail page's title-row toggle. */
   bookmark: async (id: string): Promise<void> => {
     const res = await fetch(`${apiBase()}/collection/${id}/bookmark`, { method: "POST", headers: authHeaders() });
     assertOk(res, "Failed to bookmark collection");

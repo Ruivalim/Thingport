@@ -1,25 +1,20 @@
 import { useEffect, useState } from "react";
 import Box from "@mui/material/Box";
 
-// First change comes a little sooner than the rest, so hovering feels responsive without a
-// quick pass of the pointer over a card flashing it.
+// Sooner first change, but not so soon that a passing pointer flashes it.
 const FIRST_SLIDE_DELAY_MS = 500;
 const SLIDE_INTERVAL_MS = 1400;
 const FADE_MS = 350;
 
 type Props = {
-  /** Image URLs to cycle through, in order. */
   images: string[];
   alt?: string;
 };
 
-/** Overlay that fades through `images` on top of whatever is rendered beneath it (a card's
- *  default thumbnail). Mount it only while it should run -- e.g. while a card is hovered: images
- *  load on mount, and unmounting stops the timer and reveals the default beneath instantly. The
- *  parent must be `position: relative`. */
+/** Mount only while it should run: images load on mount, and unmounting reveals the default
+ *  instantly. The parent must be `position: relative`. */
 export default function HoverSlideshow({ images, alt }: Props) {
-  // null until the first tick, so every slide starts hidden and fades in (the default thumbnail
-  // stays visible underneath until then).
+  // null until the first tick, so the default thumbnail shows until the first fade-in.
   const [active, setActive] = useState<number | null>(null);
 
   useEffect(() => {
@@ -40,9 +35,7 @@ export default function HoverSlideshow({ images, alt }: Props) {
           src={src}
           alt={idx === active ? alt ?? "" : ""}
           aria-hidden={idx !== active}
-          // The incoming slide fades in on top while the outgoing one stays fully opaque beneath
-          // it, only dropping out (instantly, via a delayed 0ms transition) once the fade is done
-          // -- fading both at once would let the default thumbnail show through mid-crossfade.
+          // The outgoing slide stays opaque until the fade finishes, so the default never shows through.
           sx={{
             position: "absolute",
             inset: 0,

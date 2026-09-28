@@ -1,5 +1,3 @@
-// Reading MakerWorld's own page data (Next.js's __NEXT_DATA__) for the model the page shows.
-
 import { parseMakerworldModelUrl } from "../../shared/urls";
 
 export type MakerworldCreator = { uid?: string | number; name?: string };
@@ -11,8 +9,6 @@ export type MakerworldDesign = {
   instances?: MakerworldInstance[];
 };
 
-/** Which print profiles an import takes -- the panel's "Print profiles" choice. Same meaning as the
- *  backend's MakerworldProfileScope. */
 export type MakerworldProfileScope = "url" | "designer" | "all";
 export type MakerworldPage = { design: MakerworldDesign; nonce: string | null; requestedInstanceId: string | null };
 
@@ -35,7 +31,6 @@ function getPath(obj: unknown, ...keys: string[]): unknown {
   return current;
 }
 
-/** The design and nonce out of a __NEXT_DATA__ blob, if it's for `designId`. */
 function designFromNextData(nextData: unknown, designId: string): Omit<MakerworldPage, "requestedInstanceId"> | null {
   const design = getPath(nextData, "props", "pageProps", "design") as MakerworldDesign | undefined;
   if (!design || typeof design !== "object" || design.id == null || String(design.id) !== designId) return null;
@@ -43,15 +38,11 @@ function designFromNextData(nextData: unknown, designId: string): Omit<Makerworl
   return { design, nonce: typeof nonce === "string" && nonce.trim() ? nonce : null };
 }
 
-// Page data fetched for models reached by a client-side route change (see
-// loadMakerworldDesignForPage), by design id -- for this tab's lifetime.
+// Page data fetched after client-side navigation, by design id.
 const fetchedDesigns = new Map<string, Omit<MakerworldPage, "requestedInstanceId">>();
 
-/** The page's MakerWorld design data, or null if missing -- or stale: Next.js only writes
- *  __NEXT_DATA__ on a full page load, so after a client-side route change from one model to
- *  another it still describes the first-loaded design, and resolving from it would pair this
- *  page's metadata with that other model's 3MF. Then the model's own page data, if
- *  loadMakerworldDesignForPage has fetched it. */
+/** Null when missing or stale: Next.js only writes __NEXT_DATA__ on a full page load, so after
+ *  client-side navigation it describes the previous model. Falls back to fetched page data. */
 export function readMakerworldDesignForPage(pageUrl: string): MakerworldPage | null {
   const expected = parseMakerworldModelUrl(pageUrl);
   if (!expected) return null;
@@ -61,10 +52,8 @@ export function readMakerworldDesignForPage(pageUrl: string): MakerworldPage | n
 
 const PAGE_FETCH_TIMEOUT_MS = 10000;
 
-/** readMakerworldDesignForPage, fetching the model's own page when the one in the tab is stale --
- *  i.e. when the user got here by clicking through MakerWorld, which is the usual way. The same
- *  request a reload would make (same origin, the user's own session), made once per model: without
- *  it there's no profile list to offer and nothing to resolve downloads from. */
+/** Fetches the model's own page once when the tab's data is stale (the usual case after clicking
+ *  through MakerWorld). */
 export async function loadMakerworldDesignForPage(pageUrl: string): Promise<MakerworldPage | null> {
   const current = readMakerworldDesignForPage(pageUrl);
   if (current) return current;
@@ -88,8 +77,7 @@ export async function loadMakerworldDesignForPage(pageUrl: string): Promise<Make
   }
 }
 
-/** Same precedence as the backend's resolveMakerworldViaCloudApi: the requested profile (only if
- *  this design actually has it), then the design's default, then the first one. */
+/** The requested profile (if the design has it), then the default, then the first. */
 export function pickMakerworldInstanceId(design: MakerworldDesign, requestedInstanceId: string | null): string | null {
   const instances = Array.isArray(design.instances) ? design.instances.filter((inst) => inst && inst.id) : [];
   if (requestedInstanceId && instances.some((inst) => String(inst.id) === requestedInstanceId)) return requestedInstanceId;
@@ -97,9 +85,7 @@ export function pickMakerworldInstanceId(design: MakerworldDesign, requestedInst
   return instances.length ? String(instances[0].id) : null;
 }
 
-/** Profile ids to import for `scope` -- mirrors the backend's selectMakerworldProfiles: the
- *  link's profile (else the default) first, then the designer's own profiles (a profile whose
- *  instanceCreator is the design's designCreator), or every profile. */
+/** Mirrors the backend's selectMakerworldProfiles. */
 export function makerworldProfileIds(design: MakerworldDesign, scope: MakerworldProfileScope, requestedInstanceId: string | null): string[] {
   const primary = pickMakerworldInstanceId(design, requestedInstanceId);
   if (!primary) return [];
@@ -112,13 +98,10 @@ export function makerworldProfileIds(design: MakerworldDesign, scope: Makerworld
   return [primary, ...wanted.filter((id) => id !== primary)];
 }
 
-// A design's details past this size (a very long description, say) aren't sent -- the request
-// would outgrow the backend's JSON body limit, and the backend reads the page itself instead.
+// Larger designs would exceed the backend's JSON body limit; it reads the page itself instead.
 const MAX_IMPORT_DESIGN_CHARS = 64 * 1024;
 
-/** The parts of the page's design an import uses -- title, tags, description, creator, cover,
- *  gallery, categories -- sent with the import so the backend doesn't have to fetch this page
- *  again for them (see the backend's makerworldMetaFromExtension). Null when too big to send. */
+/** Sent with the import so the backend doesn't refetch the page. Null when too big. */
 export function makerworldDesignForImport(design: MakerworldDesign): Record<string, unknown> | null {
   const source = design as Record<string, unknown>;
   const out: Record<string, unknown> = {};
@@ -135,8 +118,6 @@ export function makerworldDesignForImport(design: MakerworldDesign): Record<stri
   return JSON.stringify(out).length <= MAX_IMPORT_DESIGN_CHARS ? out : null;
 }
 
-/** The title of the print profile named in the page URL's hash -- null when there's no hash or
- *  the page data is stale (see readMakerworldDesignForPage). */
 export function currentMakerworldProfileTitle(pageUrl: string): string | null {
   const page = readMakerworldDesignForPage(pageUrl);
   if (!page || !page.requestedInstanceId || !Array.isArray(page.design.instances)) return null;

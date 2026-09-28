@@ -3,12 +3,7 @@ import { prisma } from "../db";
 import { HttpError } from "../utils/fileUtils";
 import { DEFAULT_CATEGORIES, type DefaultCategoryNode } from "../seedData/defaultCategories";
 
-/** Ensures a parent category exists (and belongs to userId) and that assigning it keeps the
- * category tree at most two levels deep: a category can only be nested under a top-level
- * (parent-less) category, and a category that already has subcategories of its own can't become
- * a subcategory itself -- either would create a third level. With both of those enforced, a
- * cycle is structurally impossible (a category can never be its own ancestor), so there's nothing
- * left to walk. */
+/** Keeps the tree at most two levels deep, which also makes cycles impossible. */
 export async function validateParentCategory(
   userId: string,
   parentId: string | null | undefined,
@@ -32,11 +27,7 @@ export async function validateParentCategory(
   return parentId;
 }
 
-/** Materializes DEFAULT_CATEGORIES into real Category rows for a brand-new user, so every account
- * starts with a ready-made category tree (and the import auto-routing its cat-id mappings
- * enable) with zero manual setup -- see routes/auth.ts's /register. Takes a Prisma client so the
- * caller can run it inside the same transaction as the user's own creation, keeping "account
- * exists" and "account has its starter categories" atomic. */
+/** Takes a Prisma client so it can run in the user-creation transaction. */
 export async function seedDefaultCategories(
   tx: Prisma.TransactionClient,
   userId: string,

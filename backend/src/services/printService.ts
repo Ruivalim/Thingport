@@ -289,10 +289,8 @@ export async function pruneEmptyStorageDirs(start: string): Promise<void> {
 }
 
 /**
- * Re-renders and (if needed) moves every plate of a print after a change to anything its path
- * is built from: name, category, tags, creator, collections. Mirrors MakersVault's relocate_asset,
- * generalized to N plates. Supporting and prepared PrintFiles are never touched here — they live
- * at a fixed bundles/ path.
+ * Moves every plate of a print after a change to anything its storage path is built from.
+ * Supporting and prepared files live at a fixed bundles/ path and aren't touched.
  */
 export async function relocatePrint(print: PrintLike, plates: Plate[], template?: string | null): Promise<void> {
   const safeTemplate = validateStorageTemplate(template ?? (await getStorageTemplate()));

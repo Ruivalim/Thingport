@@ -4,9 +4,8 @@ import fsSync from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-// Its own file because the limits are read from env when config.ts loads: a 1 MB budget is below
-// what merely starting a worker thread costs, so every render here is guaranteed to be stopped by
-// a limit -- exercising the kill path without needing a genuinely huge fixture.
+// Separate file because limits are read when config.ts loads. 1 MB is below a worker's startup
+// cost, so every render hits a limit.
 vi.hoisted(() => {
   process.env.MODEL_PREVIEW_MAX_MEMORY_MB = "1";
 });
@@ -57,7 +56,7 @@ describe("modelPreviewCache -- worker limits", () => {
     const longAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
     await fs.utimes(errorPath, longAgo, longAgo);
     await generateModelPreviewGlb(plateId, fixture);
-    // Untouched: a retry would have rewritten it. (Rounded -- mtimeMs comes back with float noise.)
+    // Untouched: a retry would have rewritten it.
     expect(Math.round(fsSync.statSync(errorPath).mtimeMs)).toBe(longAgo.getTime());
   });
 });

@@ -16,10 +16,8 @@ type Props = {
 
 const POLL_MS = 2000;
 
-/** "Link missing authors": links imported models that only know their author by name, across the
- *  whole instance -- by name to authors already known, otherwise by looking the author up on the
- *  site the model came from (see backend authorLinkingService.ts). Runs in the background; this
- *  polls while it does. Only shown while there's something to link, or a run to report on. */
+/** Links name-only models to authors across the instance, looking authors up on their site where
+ *  needed. Shown only while there's something to link or report. */
 export default function LinkAuthorsSection({ onUnauthorized }: Props) {
   const { t } = useTranslation("app");
   const [status, setStatus] = React.useState<AuthorLinkingStatus | null>(null);

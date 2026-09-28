@@ -28,12 +28,8 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-/** Host/port always reflect the live DATABASE_URL this process was started with -- not editable
- *  here, since reaching a different server means changing that env var and restarting. Database/
- *  user/password can be switched live: "Test & Save" connects with the candidate credentials and
- *  runs a sanity query before applying anything, so a typo can't take the app down. The switch
- *  only affects this running process -- it does not survive a restart (see backend's
- *  databaseSettingsService.ts for why). */
+/** Host/port are fixed at startup. "Test & Save" verifies new credentials before switching, and the
+ *  switch doesn't survive a restart. */
 export default function DatabaseTab({ onUnauthorized }: Props) {
   const { t } = useTranslation(["app", "common"]);
   const [info, setInfo] = React.useState<DatabaseInfo | null>(null);

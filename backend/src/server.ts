@@ -4,9 +4,7 @@ import { prisma } from "./db"; // also ensures storage directories exist before 
 
 const app = createApp();
 
-// A job left RUNNING can only mean the previous process died mid-import (crash/redeploy) --
-// there's no way anything is still working on it. Clear the lock on startup so an interrupted
-// import doesn't wedge every future import behind it forever.
+// A RUNNING job at startup means the previous process died mid-import; clear the lock.
 prisma.importJob
   .updateMany({
     where: { status: "RUNNING" },

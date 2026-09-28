@@ -13,7 +13,6 @@ export type StorageSettings = {
 
 export type PreviewMode = "automatic" | "on-demand" | "disabled";
 
-/** Administration > Rendering (admin-only). */
 export type RenderingSettings = { simplify_previews: boolean };
 
 export type AuthSettings = {
@@ -29,8 +28,7 @@ export type SmtpSettings = {
   configured: boolean;
 };
 
-// `pass` is only ever sent, never received back (write-only, like the Thingiverse token) --
-// omit it entirely to leave the stored password untouched.
+// Omit `pass` to keep the stored password.
 export type SmtpSettingsInput = {
   host?: string | null;
   port?: number;
@@ -59,15 +57,12 @@ export type VersionCheck = {
   latest_frontend_sha: string | null;
 };
 
-// This bundle's own build commit, inlined by Vite at build time from the frontend Dockerfile's
-// GIT_SHA build arg -- null for `npm run dev` / a hand-built image with no --build-arg, which the
-// update checker treats as "can't check" rather than as outdated.
+// Inlined by Vite from the GIT_SHA build arg; null in dev, which the update checker treats as
+// "can't check".
 export const FRONTEND_GIT_SHA: string | null =
   (import.meta.env.VITE_GIT_SHA as string | undefined) || null;
 
 export const settingsApi = {
-  // Admin-only. See versionService.ts (backend) for why latest_backend_sha/latest_frontend_sha
-  // are each the latest commit touching that project's own directory, not raw main HEAD.
   getVersionCheck: async (): Promise<VersionCheck> => {
     const res = await fetch(`${apiBase()}/settings/version-check`, { headers: authHeaders() });
     assertOk(res, "Failed to check for updates");
@@ -96,8 +91,6 @@ export const settingsApi = {
     return res.json();
   },
 
-  // Instance-wide preview generation mode -- read by every user (the model detail page needs it
-  // to know whether to generate previews at all), written only from the admin settings panel.
   getPreviews: async (): Promise<{ mode: PreviewMode }> => {
     const res = await fetch(`${apiBase()}/settings/previews`, { headers: authHeaders() });
     assertOk(res, "Failed to load preview settings");
@@ -135,8 +128,7 @@ export const settingsApi = {
     return res.json();
   },
 
-  // Instance-wide: whether anyone may register. Closed means only invited emails (adminApi.inviteUser)
-  // -- and the very first account -- can.
+  // Closed means only invited emails, and the very first account, can register.
   getRegistrations: async (): Promise<{ allow_registrations: boolean }> => {
     const res = await fetch(`${apiBase()}/settings/registrations`, { headers: authHeaders() });
     assertOk(res, "Failed to load registration settings");
@@ -156,9 +148,7 @@ export const settingsApi = {
     return res.json();
   },
 
-  // Instance-wide Thingiverse Developer API Access Token, shared by every user's Thingiverse
-  // imports -- write-only like any other API secret: GET only ever reports whether one is
-  // configured, never the value itself.
+  // Write-only: GET only reports whether a token is configured.
   getThingiverse: async (): Promise<{ configured: boolean }> => {
     const res = await fetch(`${apiBase()}/settings/thingiverse`, { headers: authHeaders() });
     assertOk(res, "Failed to load Thingiverse settings");
@@ -178,9 +168,6 @@ export const settingsApi = {
     return res.json();
   },
 
-  // Instance-wide: how long a signed-in session's token stays valid before requiring another
-  // login (see backend's auth.ts issueToken). Admin-only both ways, like Storage above -- this
-  // affects every session on the instance, not just the caller's own.
   getAuth: async (): Promise<AuthSettings> => {
     const res = await fetch(`${apiBase()}/settings/auth`, { headers: authHeaders() });
     assertOk(res, "Failed to load session settings");
@@ -200,8 +187,6 @@ export const settingsApi = {
     return res.json();
   },
 
-  // SMTP is used to send the account-verification email on registration (see backend's
-  // routes/auth.ts) -- write-only for the password like the Thingiverse token above.
   getSmtp: async (): Promise<SmtpSettings> => {
     const res = await fetch(`${apiBase()}/settings/smtp`, { headers: authHeaders() });
     assertOk(res, "Failed to load SMTP settings");
@@ -221,18 +206,14 @@ export const settingsApi = {
     return res.json();
   },
 
-  // Host/port always reflect the live DATABASE_URL the backend process was started with --
-  // database/user reflect whatever's currently active, which a "Test & Save" switch below may
-  // have changed for this running process.
+  // Host/port are fixed at startup; database/user may have been switched by "Test & Save".
   getDatabase: async (): Promise<DatabaseInfo> => {
     const res = await fetch(`${apiBase()}/settings/database`, { headers: authHeaders() });
     assertOk(res, "Failed to load database info");
     return res.json();
   },
 
-  // Tests the candidate database/user/password against the live Postgres server before applying
-  // anything -- see backend's databaseSettingsService.ts. On success, hot-swaps every database
-  // call in the running backend process over to it; does NOT persist across a restart.
+  // Not persisted across a backend restart.
   testAndSaveDatabase: async (payload: DatabaseCredentialsInput): Promise<DatabaseInfo> => {
     const res = await fetch(`${apiBase()}/settings/database`, {
       method: "POST",
@@ -246,21 +227,13 @@ export const settingsApi = {
     return res.json();
   },
 
-  // Per-user (not admin-only, unlike Thingiverse above): each user's own MakerWorld session
-  // cookie, saved server-side so it (a) follows them across devices and (b) makes "connected"
-  // a real fact the admin Users table can show -- see services/makerworldCookieService.ts.
-  // Write-only like the other credentials here.
   getMakerworld: async (): Promise<{ configured: boolean }> => {
     const res = await fetch(`${apiBase()}/settings/makerworld`, { headers: authHeaders() });
     assertOk(res, "Failed to load MakerWorld settings");
     return res.json();
   },
 
-  // `verify: true` -- unlike the extension's own best-effort PATCH to this same endpoint (a
-  // live-captured browser cookie it already knows just worked) -- has the backend test a
-  // non-empty cookie against MakerWorld before storing it, so a stale/mistyped paste is caught
-  // here instead of only surfacing as a failed import later. Clearing the cookie (null) is
-  // never tested, only a new value.
+  // Clearing (null) is never verified.
   updateMakerworld: async (cookie: string | null): Promise<{ configured: boolean }> => {
     const res = await fetch(`${apiBase()}/settings/makerworld`, {
       method: "PATCH",
@@ -274,8 +247,6 @@ export const settingsApi = {
     return res.json();
   },
 
-  // Per-user preferred slicer, for a future "open in {slicer}" launch via that slicer's own URL
-  // protocol -- not a secret, so unlike the credentials above this echoes the value back plainly.
   getSlicer: async (): Promise<{ slicer: string | null }> => {
     const res = await fetch(`${apiBase()}/settings/slicer`, { headers: authHeaders() });
     assertOk(res, "Failed to load slicer setting");
@@ -295,10 +266,7 @@ export const settingsApi = {
     return res.json();
   },
 
-  // Per-user theme (light/dark/system), server-persisted so it follows the account across
-  // devices/browsers instead of being stuck in one browser's localStorage -- see App.tsx's
-  // themeSelection state. Not a secret, so like slicer above this echoes the value back plainly.
-  // Null means "never set"; the caller falls back to its own default in that case.
+  // Null means never set.
   getTheme: async (): Promise<{ theme: ThemeSelection | null }> => {
     const res = await fetch(`${apiBase()}/settings/theme`, { headers: authHeaders() });
     assertOk(res, "Failed to load theme setting");
@@ -318,8 +286,6 @@ export const settingsApi = {
     return res.json();
   },
 
-  // Per-user on/off for the author preview card shown on hovering an author link (see
-  // hooks/useAuthorPreviewEnabled.ts). On by default server-side.
   getAuthorPreview: async (): Promise<{ enabled: boolean }> => {
     const res = await fetch(`${apiBase()}/settings/author-preview`, { headers: authHeaders() });
     assertOk(res, "Failed to load author preview setting");

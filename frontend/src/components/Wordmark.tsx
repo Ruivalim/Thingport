@@ -13,8 +13,6 @@ const HEIGHTS: Record<NonNullable<Props["size"]>, string> = {
   sm: "1.125rem",
 };
 
-/** The Thingport logo lockup (icon + wordmark combined into one image) -- swaps between the
- *  light- and dark-theme variants based on the active MUI palette mode. */
 export default function Wordmark({ size = "md" }: Props) {
   const theme = useTheme();
   const src = theme.palette.mode === "dark" ? lockupOnDark : lockupColor;

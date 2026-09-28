@@ -4,19 +4,14 @@ import { useLocation, useNavigate, useNavigationType } from "react-router-dom";
 type LogEntry = { key: string; pathname: string };
 
 type NavigationHistoryValue = {
-  /** Retraces history like `navigate(-1)`, but first skips over any run of consecutive entries
-   *  that share the current page's pathname (only the search string differs -- e.g. a sort-tab
-   *  change on a list page pushes a new entry for the same route) so one click always actually
-   *  leaves the page instead of landing back on what looks like the exact same screen. */
+  /** Like `navigate(-1)`, but skips consecutive entries for the same pathname (e.g. sort changes). */
   goBack: () => void;
 };
 
 const NavigationHistoryContext = React.createContext<NavigationHistoryValue | null>(null);
 
-/** Tracks the SPA's own navigation log (keyed by react-router's per-location `key`, which stays
- *  stable across a real POP back/forward too) so `goBack` can look at what pathname actually
- *  precedes the current one -- something the browser History API doesn't expose directly. Mount
- *  once, near the app root and inside the Router, so every route change is observed. */
+/** Keeps its own log since the History API doesn't expose previous entries. Mount inside the
+ *  Router. */
 export function NavigationHistoryProvider({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigationType = useNavigationType();
@@ -38,9 +33,7 @@ export function NavigationHistoryProvider({ children }: { children: React.ReactN
         posRef.current = 0;
       }
     } else {
-      // POP -- either the browser's own back/forward button, or a `navigate(-n)` call this
-      // provider made itself. Either way the target entry was already logged earlier, so find it
-      // by key rather than assuming a single-step move.
+      // Back/forward or our own navigate(-n): find the entry by key rather than assuming one step.
       const idx = log.findIndex((e) => e.key === entry.key);
       if (idx !== -1) {
         posRef.current = idx;
@@ -72,8 +65,6 @@ export function NavigationHistoryProvider({ children }: { children: React.ReactN
   return <NavigationHistoryContext.Provider value={value}>{children}</NavigationHistoryContext.Provider>;
 }
 
-/** `goBack()` in place of `navigate(-1)` for any "top bar back arrow" style control -- see
- *  NavigationHistoryProvider's doc comment for why a plain `navigate(-1)` isn't always enough. */
 export function useSmartBack(): () => void {
   const ctx = React.useContext(NavigationHistoryContext);
   if (!ctx) throw new Error("useSmartBack must be used within a NavigationHistoryProvider");

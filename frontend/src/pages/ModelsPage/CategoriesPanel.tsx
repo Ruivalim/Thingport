@@ -30,12 +30,6 @@ type Props = {
   onUpdateMeta: (id: string, meta: CategoryMetaInput) => Promise<void>;
 };
 
-// Every row (the pinned "All" row, a root category, or one of its children) is either the active
-// filter (the theme's nav-selected gradient + accent text) or not (transparent, the theme's
-// dedicated nav-inactive gray) -- a plain two-state system, rather than the extra "expanded but
-// not the active one" light-grey/dark-grey tiers this used to hardcode, which were literal
-// light-theme hex values (#ffffff, #5c5c5c, #212b36, #a3a3a3, and a translucent near-white row
-// background) that read as invisible or wrong against a dark background.
 function rowSx(active: boolean) {
   return {
     borderRadius: 1.5,
@@ -44,9 +38,7 @@ function rowSx(active: boolean) {
     ...(active
       ? { "&:hover": { background: (theme: Theme) => theme.thingport.selectedNavBackground } }
       : {
-          // Dark mode only: hovering an inactive row shouldn't tint its background -- just
-          // brighten its label (and chevron, for a root row) to white. Light mode keeps the
-          // existing action.hover tint.
+          // Dark mode: brighten the label instead of tinting the background on hover.
           "&:hover": (theme: Theme) =>
             theme.palette.mode === "dark"
               ? { backgroundColor: "transparent", "& .MuiListItemText-primary, & .MuiSvgIcon-root": { color: "#fff" } }
@@ -65,12 +57,7 @@ function rowTextSx(active: boolean, extra?: object) {
   };
 }
 
-/** The Models page's own category browser: a pinned "All" row, then a strictly two-level tree --
- *  top-level categories expand to reveal their subcategories AND select themselves, filtering the
- *  grid to every model under any of their subcategories; subcategories narrow the filter down to
- *  just that one. Only one top-level category can be expanded at a time, and it only collapses
- *  when another one is clicked. Creating, renaming, and deleting categories all happen in the
- *  cog-triggered CategoryManagerModal, not inline here. */
+/** A two-level tree: a root selects all its subcategories' models; one root is expanded at a time. */
 export default function CategoriesPanel({ categories, loading, selectedId, onSelect, onCreate, onRename, onDelete, onReorder, onUpdateMeta }: Props) {
   const { t, i18n } = useTranslation(["models", "common"]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -79,13 +66,8 @@ export default function CategoriesPanel({ categories, loading, selectedId, onSel
 
   const untitledLabel = t("models:categories.untitled");
 
-  // Keeps the tree's expand state in sync with an externally-driven selectedId -- a page refresh
-  // on ?category=<childId>, a browser back/forward, or any other selection that didn't originate
-  // from clicking a root row here (see handleRootClick, which sets expandedId itself for the
-  // click case). Without this, the selected child's parent root would stay collapsed and the
-  // child would never render at all (its List lives inside a `Collapse ... unmountOnExit`), even
-  // though the grid alongside it is correctly filtered. Re-runs once categories finishes loading
-  // too, since selectedId is already known from the URL before that fetch resolves.
+  // Expand the selected child's root when the selection comes from outside (URL, back/forward), or
+  // the child never renders.
   useEffect(() => {
     if (!selectedId) return;
     const selected = categories.find(c => c.id === selectedId);

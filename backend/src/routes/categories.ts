@@ -90,14 +90,8 @@ router.patch(
 
 const MAX_CAT_IDS = 50;
 
-/** Parses the category manager's "800;71;1001"-style text field into the int array actually
- * stored on Category.*CatIds -- a category can list several ids per site (e.g. a parent category
- * plus a couple of its subcategories), matched by overlap at import time (see importService.ts's
- * resolveCategoryIdByCategory). Blank/whitespace-only input clears the field. Stray/duplicate
- * separators are tolerated (e.g. "800;;71;" or "800;800;71") since that's an easy typo to make
- * in a free-text field and there's nothing genuinely ambiguous about it; anything that isn't a
- * positive whole number is rejected with a message naming the exact bad token, so a typo doesn't
- * silently vanish instead of erroring. */
+/** Parses "800;71;1001" into ids. Blank clears; stray or duplicate separators are tolerated;
+ * anything not a positive integer is rejected with a message naming it. */
 function parseCatIdsInput(raw: string | null | undefined): number[] {
   const trimmed = (raw ?? "").trim();
   if (!trimmed) return [];

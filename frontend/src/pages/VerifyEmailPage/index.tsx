@@ -14,11 +14,7 @@ type Props = {
   onSuccess: (token: string, expires_in: number, user: AuthUser) => void;
 };
 
-/** Reached from the link in the verification email (see backend's mailer.ts) -- rendered by
- *  App.tsx in place of AuthPage whenever the pre-login browser is at /verify-email. There's no
- *  router at that point in the tree (see App.tsx's comment), so this reads `token` straight off
- *  `window.location` rather than via react-router. On success it logs the user straight in --
- *  see routes/auth.ts's POST /verify-email, which issues a token the same way /login does. */
+/** Rendered outside the router, so `token` is read from window.location. Success signs in. */
 export default function VerifyEmailPage({ onSuccess }: Props) {
   const { t } = useTranslation("app");
   const [error, setError] = React.useState<string | null>(null);

@@ -30,14 +30,7 @@ type Props = {
   viewer?: AuthUser | null;
 };
 
-/** Same list/grid/sort/infinite-scroll shape as CollectionDetailPage, but for a tag: tags aren't
- *  entities with their own id/description, just a string carried in the URL, so there's no
- *  fetch-by-id step (or "not found" state) -- the page header title comes directly from the
- *  route param and the list is prints filtered by that tag, plus (since collections can carry
- *  tags too) any collections carrying it, shown first in the same grid as CollectionCards. The
- *  title row has a bookmark toggle (TagBookmarkButton) plus a "..." menu (TagActionsMenu, so far
- *  just "Download all Tag models as zip") -- same two-control layout as CollectionDetailPage's
- *  own title row. */
+/** Prints with this tag, preceded by collections carrying it. */
 export default function TagDetailPage({ theme, previewMode, onUnauthorized, onBookmarksChanged, viewer }: Props) {
   const { tagName } = useParams<{ tagName: string }>();
   const tag = tagName ? decodeURIComponent(tagName) : "";
@@ -125,9 +118,7 @@ export default function TagDetailPage({ theme, previewMode, onUnauthorized, onBo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tag]);
 
-  // Collections list has no server-side tag filter (and isn't paginated -- CollectionsPage
-  // fetches all of them too), so this filters client-side and refetches only on tag change, not
-  // sortMode -- collections here aren't sorted, just shown ahead of the prints grid.
+  // Collections aren't paginated or tag-filterable server-side, so filter here.
   useEffect(() => {
     if (!tag) return;
     let cancelled = false;

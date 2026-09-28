@@ -1,8 +1,6 @@
 name: Backend image
 
-# Only runs when backend/ (or the build workflow) changes — a frontend-only commit never
-# triggers a backend publish, and vice versa (see frontend-image.yml). To build+publish either
-# image on demand regardless of what changed, use the "Manual image publish" workflow instead.
+# Runs when backend/ or the build workflow changes. Use "Manual image publish" to force a build.
 on:
   push:
     branches: [main]
@@ -23,10 +21,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # The whole backend suite against a real Postgres -- including tests/providerImports.test.ts,
-  # which imports from Thingiverse, Printables and MakerWorld end to end (their HTTP mocked), so a
-  # change that breaks importing fails here instead of reaching users. The image isn't built or
-  # published unless this passes.
+  # The full backend suite against real Postgres, including end-to-end provider imports. The image
+  # is only built and published if this passes.
   test:
     runs-on: ubuntu-latest
     permissions:

@@ -73,8 +73,7 @@ describe("import dedup", () => {
     expect(uploadRes.status).toBe(200);
     const printId = uploadRes.body.prints[0].id;
 
-    // Uploads don't go through importPrintFromUrl, so backfill the source identity directly --
-    // equivalent to what a real MakerWorld import would have stamped on create.
+    // Uploads skip importPrintFromUrl, so set the source identity directly.
     await prisma.print.update({
       where: { id: printId },
       data: { sourceProvider: "makerworld", sourceExternalId: "999111" },
@@ -97,16 +96,14 @@ describe("import dedup", () => {
   });
 });
 
-// Distinct bytes per MakerWorld profile, like the real thing -- what the SHA-256 match keys on.
+// Distinct bytes per profile, which the SHA-256 match keys on.
 function profileFileContents(instanceId: string) {
   return `solid profile-${instanceId} endsolid`;
 }
 
 describe("MakerWorld print profiles", () => {
-  // One design, several print profiles ("instances"), each with its own 3MF -- see
-  // importService.ts's addMakerworldProfileToPrint. Every import here goes through the extension's
-  // pre-resolved path (resolved_download_url + profile ids), so the only fetches are the model page
-  // itself and the file; both are intercepted.
+  // One design with several profiles, each its own 3MF, imported via the extension's pre-resolved
+  // path.
   const designId = "888777";
   const pageUrl = `https://makerworld.com/en/models/${designId}-profile-slug`;
   const originalFetch = global.fetch;
@@ -214,7 +211,7 @@ describe("MakerWorld print profiles", () => {
   });
 
   it("tags an untagged plate whose file matches the downloaded profile instead of adding a copy", async () => {
-    // Deliberately a non-default profile -- older imports could come from any profile.
+    // A non-default profile: older imports could come from any.
     const printId = await createLegacyPrint(profileFileContents("200"));
 
     mockMakerworldFetch();
@@ -227,7 +224,6 @@ describe("MakerWorld print profiles", () => {
     expect(matched.alreadyImported).toBe(true);
     expect(matched.print.id).toBe(printId);
     expect(matched.plates.map((plate) => plate.sourceInstanceId)).toEqual(["200", "100"]);
-    // The hash is stored on first use, so later comparisons don't re-read the file.
     expect(matched.plates[0].contentSha256).toMatch(/^[0-9a-f]{64}$/);
   });
 });
@@ -284,6 +280,6 @@ describe("notifications", () => {
 
     const after = await listNotifications(userId);
     expect(after.unreadCount).toBe(0);
-    await markAllRead(userId); // idempotent no-op, just exercising the direct service path too
+    await markAllRead(userId);
   });
 });

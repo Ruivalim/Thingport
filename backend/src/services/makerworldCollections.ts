@@ -9,14 +9,8 @@ import {
   noteCaptchaChallenge,
 } from "./makerworldCaptcha";
 
-// MakerWorld's own /api/v1/design-service/favorites/* endpoints back the collection page's
-// "load more" pagination. Same host as the design/download endpoints we already call directly
-// (see makerworldCloudApi.ts) and, like those, not behind Cloudflare's bot-management challenge
-// even unauthenticated. Public collections work fine without a token, but a private one (e.g.
-// a user's own default/unshared collection) answers with a clean application-level 403
-// ("The client does not have access rights to the content.") unless the same bearer token
-// used for design/download resolution is sent -- confirmed against a live private collection.
-// So the token is sent whenever we have one, same as everywhere else MakerWorld is called.
+// Not behind Cloudflare. Private collections return 403 without the bearer token, so it's sent
+// whenever available.
 const COLLECTION_API_BASE = "https://makerworld.com/api/v1/design-service/favorites";
 const COLLECTION_PAGE_SIZE = 20;
 const COLLECTION_MAX_ENTRIES = 300;
@@ -41,17 +35,9 @@ function collectionHeaders(bearerToken: string | null): Record<string, string> {
   return headers;
 }
 
-/** Same defensive fallback used elsewhere for MakerWorld's /api/v1/* paths: they haven't been
- * seen behind Cloudflare's challenge in practice, but if that ever changes, retry once through
- * FlareSolverr rather than failing outright.
- *
- * This surface turned out to answer with the exact same CAPTCHA-challenge shape and 401/403
- * auth failures as the design/download-resolution endpoints in makerworldCloudApi.ts do -- and,
- * for a large collection, its own pagination is its own burst (a 300-entry collection is 15
- * unpaced page fetches before a single model import even starts). Both modules now share one
- * cooldown (makerworldCaptcha.ts) and the same `paceMs`-before-every-call convention, so a
- * challenge tripped while just listing a collection is caught immediately -- instead of being
- * swallowed as "no more results" -- and doesn't get re-tripped by the import job that follows. */
+/** Retries once through FlareSolverr if Cloudflare ever appears. Shares the CAPTCHA cooldown and
+ * `paceMs` convention with makerworldCloudApi.ts, since a large collection's pagination is its
+ * own burst. */
 async function fetchCollectionJson(url: string, bearerToken: string | null, paceMs?: number): Promise<unknown | null> {
   if (makerworldCaptchaCooloffActive()) throw new MakerworldCaptchaError();
   await maybeSleep(paceMs);
@@ -115,14 +101,8 @@ export async function fetchMakerworldCollectionTitle(
   return typeof data.title === "string" && data.title.trim() ? data.title.trim() : null;
 }
 
-/** Pages through the collection's design list (20 at a time, matching the site's own page
- * size) until it runs out, hits `total`, or hits maxItems -- whichever comes first. maxItems
- * is a safety cap, not a UX limit: it exists so a pathological or misreported `total` can't
- * turn this into an unbounded loop against a live upstream.
- *
- * `paceMs`, when set, is awaited (via fetchCollectionJson) before *every* page fetch, including
- * the first -- callers that already made a preceding MakerWorld call (e.g. the title fetch just
- * above) get that gap for free instead of needing their own separate delay. */
+/** maxItems is a safety cap against a misreported `total`, not a UX limit. `paceMs` is awaited
+ * before every page, including the first. */
 export async function fetchMakerworldCollectionEntries(
   collectionId: string,
   bearerToken: string | null = null,

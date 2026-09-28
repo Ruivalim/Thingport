@@ -5,24 +5,18 @@ import { createJob, getJob } from "../src/services/importJobService";
 import { listNotifications } from "../src/services/notificationService";
 import { HttpError } from "../src/utils/fileUtils";
 
-// runCollectionImportJob talks to MakerWorld over the network via importPrintFromUrl -- mock
-// just that one export (keeping everything else in the module real) so this test can exercise
-// the batch-resilience and notification-wording behavior deterministically and offline.
+// Mock only importPrintFromUrl so this runs offline.
 vi.mock("../src/services/importService", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../src/services/importService")>();
   return { ...actual, importPrintFromUrl: vi.fn<typeof actual.importPrintFromUrl>() };
 });
 
-// The real 1s-per-item pacing delay (see IMPORT_COLLECTION_DELAY_MS) exists to avoid a burst
-// request pattern against MakerWorld -- irrelevant here since importPrintFromUrl is mocked and
-// no real requests happen, so it'd just make this file slow for no reason.
+// No real requests happen, so skip the pacing delay.
 vi.mock("../src/config", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../src/config")>();
   return { ...actual, IMPORT_COLLECTION_DELAY_MS: 0 };
 });
 
-// runThingiverseCollectionImportJob resolves the real Collection name over the network -- mock
-// just that one export so the collection-naming behavior can be asserted deterministically.
 vi.mock("../src/services/thingiverseApi", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../src/services/thingiverseApi")>();
   return { ...actual, fetchThingiverseCollectionTitle: vi.fn<typeof actual.fetchThingiverseCollectionTitle>() };
@@ -54,9 +48,6 @@ beforeAll(async () => {
 
 describe("runCollectionImportJob", () => {
   it("processes MakerWorld collection designs strictly one at a time, never in a concurrent burst", async () => {
-    // Firing several designs' API calls at once is the traffic shape most likely to trip
-    // MakerWorld's anti-abuse CAPTCHA (see COLLECTION_IMPORT_CONCURRENCY's comment in
-    // importJobRunner.ts) -- assert the actual concurrency guarantee, not just its intent.
     let active = 0;
     let maxActive = 0;
     const mockedImport = vi.mocked(importPrintFromUrl);
@@ -103,8 +94,7 @@ describe("runCollectionImportJob", () => {
           alreadyImported: false,
         };
       }
-      // A hidden/private/deleted MakerWorld model surfaces as a 403/404 (see fetchWithGuard in
-      // importService.ts) -- distinct from an arbitrary failure like a 500.
+      // Hidden/deleted models surface as 403/404.
       if (url.endsWith("/2")) throw new HttpError(404, "Not found");
       throw new HttpError(500, "Boom");
     });
@@ -164,9 +154,7 @@ describe("runCollectionImportJob", () => {
   });
 
   it("labels a mid-batch CAPTCHA cooloff distinctly instead of an opaque wall of generic failures", async () => {
-    // Mirrors the real-world shape that motivated this: a handful of models succeed, then
-    // MakerWorld's anti-abuse layer trips and every remaining item in the batch fails the same
-    // way (see classifyImportFailure's "rateLimited" case in importJobRunner.ts).
+    // A few succeed, then the CAPTCHA trips and every remaining item fails the same way.
     const mockedImport = vi.mocked(importPrintFromUrl);
     mockedImport.mockImplementation(async (_userId: string, url: string) => {
       if (url.endsWith("/1") || url.endsWith("/2")) {
@@ -271,8 +259,7 @@ describe("runThingiverseLikesImportJob", () => {
       maxActive = Math.max(maxActive, active);
       await new Promise((resolve) => setTimeout(resolve, 10));
       active--;
-      // addPrintsToCollection enforces a real FK to Print, so the collection-linking half of
-      // this test needs an actual row, not just a fabricated id string.
+      // addPrintsToCollection needs a real Print row for its FK.
       const print = await prisma.print.create({
         data: { userId, name: `Liked ${url}`, nameNormalized: `liked ${url}`.toLowerCase() },
       });

@@ -17,15 +17,8 @@ type Props = {
   onSave: (meta: CategoryMetaInput) => Promise<void>;
 };
 
-/** Meta title/description/site-category-ids editor for one category, opened from its "details"
- *  icon in the manager. Saving with all fields blank clears the category's metadata entirely.
- *  The three `*CatIds` fields drive auto-categorization on import (see importService.ts's
- *  resolveCategoryIdByCategory on the backend): when an imported model's own site category id
- *  matches ANY id listed here, it lands in this category automatically -- a category can list
- *  several ids per site (e.g. a parent category plus a couple of its subcategories), entered as
- *  plain numbers separated by ";" (parsed and validated server-side by routes/categories.ts's
- *  parseCatIdsInput). A validation failure (a typo, say) is shown inline here and keeps the
- *  dialog open with the edits intact, rather than closing and discarding them. */
+/** Blank fields clear the metadata. Imports whose site category id matches any listed id
+ *  (";"-separated) land in this category. Validation errors show inline and keep the edits. */
 export default function CategoryMetaDialog({ category, onClose, onSave }: Props) {
   const { t } = useTranslation(["models", "common"]);
   const untitledLabel = t("models:categories.untitled");
@@ -69,7 +62,6 @@ export default function CategoryMetaDialog({ category, onClose, onSave }: Props)
             value={title}
             onChange={e => setTitle(e.target.value)}
             disabled={saving}
-            // Deliberate: focus the field the moment the dialog opens.
             // oxlint-disable-next-line jsx-a11y/no-autofocus
             autoFocus
           />

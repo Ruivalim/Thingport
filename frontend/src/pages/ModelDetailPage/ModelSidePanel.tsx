@@ -32,22 +32,12 @@ type Props = {
   print: Print;
   onSelectCategory: (id: string) => void;
   onUnauthorized?: () => void;
-  /** Receives the updated print after a download or Open in {Slicer} bumps its print count. */
   onUpdated?: (print: Print) => void;
-  /** Only used as a fallback when the print has neither an Author nor a plain `creator` string --
-   *  a direct upload has no import-source author at all, so it shows the viewer's own identity
-   *  instead of "Unknown", since every print here is the viewer's own. */
+  /** Shown as the author of a direct upload, which has none. */
   viewer?: AuthUser | null;
 };
 
-/** The model detail page's right-hand summary card, sticky so it stays in view while the
- *  description/tags column scrolls: the full title, author (jumps to their author page), category (jumps back
- *  to the Models grid filtered to it), "Open in {Slicer}" (only when both a preference is set
- *  and this print has a slicer_url, and a pick of which file when there are several -- see
- *  useOpenInSlicer, shared with ModelActionsMenu's menu item),
- *  "Download model files" (the same picker-or-direct-download flow as ModelActionsMenu's
- *  Download, via useDownloadPrint so the two can't drift), view/print counts, and -- only for an
- *  actually-imported print, per source_provider -- when it was imported. */
+/** The detail page's sticky summary card. */
 export default function ModelSidePanel({ print, onSelectCategory, onUnauthorized, onUpdated, viewer }: Props) {
   const { t } = useTranslation(["models", "common"]);
   const navigate = useNavigate();
@@ -61,11 +51,7 @@ export default function ModelSidePanel({ print, onSelectCategory, onUnauthorized
   const goToCategory = () => {
     if (!print.category_id) return;
     onSelectCategory(print.category_id);
-    // Carries the category straight into the URL instead of navigating to plain "/models" and
-    // letting ModelsPage's mount-time effects reconcile categoryId against the (momentarily
-    // absent) ?category= param -- those two effects each only no-op once state and URL already
-    // agree, so landing with them disagreeing made the grid flicker between the category and
-    // "All" for a render or two before settling.
+    // Go straight to the filtered URL; landing on plain /models makes the grid flicker.
     navigate(`/models?category=${print.category_id}`);
   };
 
@@ -87,12 +73,7 @@ export default function ModelSidePanel({ print, onSelectCategory, onUnauthorized
         borderRadius: "12px",
         borderColor: dividerBorderColor,
         position: { xs: "static", md: "sticky" },
-        // TopBar is sticky too (see its own doc comment) and sits above this in stacking order --
-        // sticking at a fixed offset from the viewport top would land this panel right underneath
-        // it once both are pinned simultaneously. --topbar-height (set by TopBar itself, since it
-        // can wrap taller on narrow widths) keeps this just below it instead -- no extra gap added
-        // on top, since TopBar's own pb: 2 already is that gap, now that it's real padding on the
-        // sticky element itself rather than a separate margin outside it.
+        // Stick just below the sticky TopBar, which can wrap taller.
         top: "var(--topbar-height, 80px)",
       }}
     >
@@ -187,7 +168,6 @@ export default function ModelSidePanel({ print, onSelectCategory, onUnauthorized
 
         {slicerOption && slicerTargets.length > 0 && (
           <Button
-            // One target: a plain link to it. Several: pick which (see SlicerFileMenu).
             {...(slicerTargets.length === 1
               ? { component: "a" as const, href: slicerTargets[0].href, onClick: recordUse }
               : { onClick: (e: React.MouseEvent<HTMLElement>) => setSlicerMenuAnchor(e.currentTarget), endIcon: <ArrowDropDownIcon /> })}

@@ -19,7 +19,7 @@ beforeAll(async () => {
   if (registered.status !== 200) {
     throw new Error(`Failed to register during test setup: ${registered.status} ${JSON.stringify(registered.body)}`);
   }
-  // SMTP isn't configured in tests, so registration signs in immediately (no verification step).
+  // No SMTP in tests, so registration signs in immediately.
   token = registered.body.token;
 });
 

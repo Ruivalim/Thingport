@@ -35,34 +35,17 @@ type Props = {
   print: Print;
   onUnauthorized?: () => void;
   onDeleted: () => void;
-  /** Called with the fresh print after a successful Edit-modal update, so the grid card / detail
-   *  page it's rendered in can refresh without a full refetch -- same shape as onFavoriteChange. */
   onUpdated?: (print: Print) => void;
-  /** Set only while browsing an actual (non-system) collection -- shows "Remove from collection"
-   *  above Delete. Favourites/Browsing History have no real membership to drop (see
-   *  collectionsApi.removeItem's doc comment), so callers there simply don't pass this. */
+  /** Only for a real collection; shows "Remove from collection". */
   collectionId?: string;
   onRemovedFromCollection?: () => void;
-  /** Lets callers restyle the trigger button -- e.g. the Models grid's hover overlay, which
-   *  needs to read over an arbitrary thumbnail instead of the detail page header's plain icon. */
   triggerSx?: SxProps<Theme>;
-  /** Overrides the trigger icon's glyph size in px -- default (undefined) keeps the standard
-   *  fontSize="small" (20px) used everywhere else. Only the Models grid hover overlay bumps
-   *  this, to stay legible now that it no longer sits on a dark circular backdrop. */
+  /** Glyph size in px; defaults to fontSize="small". */
   iconFontSize?: number;
-  /** Passed straight through to EditModelModal's own `viewer` fallback -- see its doc comment. */
   viewer?: AuthUser | null;
 };
 
-/** The "..." menu for a model: "Add to collection" (opens the chip-toggle picker), "Remove from
- *  collection" (only while browsing one -- grouped right after Add, its counterpart), Download
- *  (single file, or a plate picker / zip-all for multi-plate models), Edit (opens EditModelModal,
- *  driven by a `?edit=<id>` URL param -- see openEdit/closeEdit below), Delete (confirm, then
- *  delete), then a divider followed by the two "leaves the app" actions grouped together: "Open
- *  in {Slicer}" (launches the user's preferred slicer via its own URL protocol -- disabled when
- *  no slicer is set, or it's set to "Other") and -- only for an imported print -- "Open in
- *  {Provider}" linking back to the original model page. Shared by the model detail page's header
- *  and the Models/Collection grids' per-card hover overlay. */
+/** The "..." menu for a model, shared by the detail header and grid cards. */
 export default function ModelActionsMenu({
   print,
   onUnauthorized,
@@ -83,8 +66,7 @@ export default function ModelActionsMenu({
   const [deleting, setDeleting] = useState(false);
   const [removingFromCollection, setRemovingFromCollection] = useState(false);
   const [addToCollectionOpen, setAddToCollectionOpen] = useState(false);
-  // Driven by the URL (?edit=<id>) rather than local state, per spec -- lets a direct link (or the
-  // back button) open/close it too, and lets the grid-card trigger below just navigate there.
+  // Driven by ?edit=<id> so links and the back button open/close it.
   const editOpen = searchParams.get("edit") === print.id;
   const { pickerOpen, setPickerOpen, downloading, handleDownload, downloadPlate, downloadAllZip, sortedPlates, recordUse } =
     useDownloadPrint(print, onUnauthorized, onUpdated);

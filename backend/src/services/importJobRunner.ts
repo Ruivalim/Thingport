@@ -23,15 +23,7 @@ import { fetchPrintablesCollectionTitle } from "./printablesApi";
 import { createLog } from "./auditLog";
 import { HttpError } from "../utils/fileUtils";
 
-// Deliberately sequential (not a handful in parallel) -- firing several designs' worth of
-// api.bambulab.com calls at once, back to back with zero pacing, is a burst pattern that looks
-// nothing like a human browsing the site and is the most likely reason a large collection trips
-// MakerWorld's anti-abuse CAPTCHA (see classifyImportFailure's "rateLimited" case) after only a
-// handful of models. Neither Bambu nor bambuddy's independent writeup (#2790) publish an exact
-// threshold, so this isn't a guarantee -- just removing the most obviously bot-shaped part of
-// the traffic. The actual pacing between and within each design's own calls now happens
-// per-call, not per-item -- see IMPORT_MAKERWORLD_CALL_DELAY_MS's comment in config.ts and
-// ImportRequestBody.makerworldPaceMs.
+// Sequential on purpose: parallel bursts of api.bambulab.com calls trip MakerWorld's CAPTCHA.
 const COLLECTION_IMPORT_CONCURRENCY = 1;
 
 type CollectionImportJobBody = ImportRequestBody & { design_ids: string[] };
@@ -41,19 +33,8 @@ type ThingiverseCollectionImportJobBody = ImportRequestBody & { thing_ids: strin
 type PrintablesCollectionImportJobBody = ImportRequestBody & { model_ids: string[]; collectionId: string };
 type MakerworldProfilesImportJobBody = ImportRequestBody & { scope: Exclude<MakerworldProfileScope, "url"> };
 
-// Distinguishes *why* a single design failed, so a batch of many failures reads as one clear
-// cause instead of an opaque "N failed":
-//  - "unavailable": the model itself is gone -- private, deleted, or hidden (403/404, see
-//    fetchWithGuard in importService.ts). Nothing to retry.
-//  - "rateLimited": MakerWorld's anti-abuse layer challenged this account with a CAPTCHA
-//    (see makerworldCaptchaCooloffActive in makerworldCloudApi.ts) -- once that trips, EVERY
-//    remaining item in the batch fails instantly with the same error for the rest of the
-//    cooloff (hours, not minutes), which is what turns "a couple of models are unavailable"
-//    into "149 of 153 failed" if left unlabeled. Worth its own bucket since the fix (wait,
-//    then retry) is completely different.
-//  - "auth": the MakerWorld session cookie was rejected outright (401) -- every item fails this
-//    way, not just some, so it's really an account-level problem, not a per-model one.
-//  - "other": genuinely per-item failures (network hiccup, unparseable page, etc).
+// Why a design failed, so a batch reads as one clear cause instead of "N failed". Once a CAPTCHA
+// ("rateLimited") or auth failure hits, every remaining item fails the same way.
 type ImportFailureReason = "unavailable" | "rateLimited" | "auth" | "other";
 
 function classifyImportFailure(err: unknown): ImportFailureReason {
@@ -71,12 +52,7 @@ async function markJobFailed(jobId: string, err: unknown): Promise<void> {
   await updateJob(jobId, { status: "ERROR", errorMessage: message }).catch(() => undefined);
 }
 
-/** Imports several print profiles of one MakerWorld model in the background -- every profile its
- * designer uploaded, or every profile (see makerworldCloudApi.ts's selectMakerworldProfiles) --
- * as one model with a file per profile: the first creates it, each later one is added to it
- * (importService.ts's addMakerworldProfileToPrint, which skips profiles it already has). Paced
- * like a collection import, one profile at a time; see routes/imports.ts's
- * POST /import/makerworld-profiles. */
+/** Imports several print profiles of one MakerWorld model as one model with a file per profile. */
 export async function runMakerworldProfilesImportJob(jobId: string, userId: string, body: MakerworldProfilesImportJobBody): Promise<void> {
   try {
     const parsed = parseMakerworldModelUrl(body.url);
@@ -110,7 +86,6 @@ export async function runMakerworldProfilesImportJob(jobId: string, userId: stri
           else imported++;
         } catch (err) {
           failed++;
-          // Every later profile would fail the same way -- stop asking MakerWorld.
           const reason = classifyImportFailure(err);
           if (reason === "rateLimited" || reason === "auth") stopReason = reason;
         }
@@ -148,9 +123,6 @@ export async function runMakerworldProfilesImportJob(jobId: string, userId: stri
   }
 }
 
-/** Runs a MakerWorld collection's batch import in the background -- see routes/imports.ts's
- * POST /import/collection, which creates the ImportJob row and kicks this off without awaiting
- * it. Mirrors the per-design import logic that used to live inline in that route handler. */
 export async function runCollectionImportJob(jobId: string, userId: string, body: CollectionImportJobBody): Promise<void> {
   try {
     let imported = 0;
@@ -185,9 +157,7 @@ export async function runCollectionImportJob(jobId: string, userId: string, body
         else if (reason === "auth") authFailed++;
       } finally {
         processed++;
-        // Never let a transient progress-write hiccup on one item cascade into failing the
-        // whole batch via the Promise.all in mapWithConcurrency -- the items already imported
-        // (successPrintIds) and the ones still to come must not be lost over a single DB blip.
+        // A progress-write failure mustn't fail the whole batch.
         await updateJob(jobId, { processed, imported, alreadyInLibrary, failedCount: failed.length }).catch(() => undefined);
       }
     });
@@ -212,9 +182,6 @@ export async function runCollectionImportJob(jobId: string, userId: string, body
       status: "DONE",
       sourceLabel: collectionTitle,
       resultCollectionId,
-      // Only when this is unambiguous -- see resultPrintId's doc comment on the schema. A batch
-      // job that happens to succeed on just one item still deserves "open that one model" over
-      // "open the (now single-item) collection it also landed in".
       resultPrintId: successPrintIds.length === 1 ? successPrintIds[0] : null,
       processed,
       imported,
@@ -233,9 +200,6 @@ export async function runCollectionImportJob(jobId: string, userId: string, body
     if (alreadyInLibrary) bodyParts.push(`${alreadyInLibrary} already in your library`);
     const otherFailed = failed.length - unavailable - rateLimited - authFailed;
     if (unavailable) bodyParts.push(`${unavailable} unavailable (private, deleted, or hidden)`);
-    // rateLimited and authFailed both mean the rest of the batch was doomed the moment the
-    // first one hit -- see classifyImportFailure above -- so call out the actionable cause
-    // instead of just a count, especially since this is usually the bulk of a large failure.
     if (rateLimited) {
       bodyParts.push(
         `${rateLimited} blocked by a MakerWorld CAPTCHA challenge (too many requests at once) — this usually clears in 1-4 hours, then retry the same collection`,
@@ -254,16 +218,9 @@ export async function runCollectionImportJob(jobId: string, userId: string, body
   }
 }
 
-/** Shared runner behind both Thingiverse batch import kinds (Likes and named Collections --
- * see the two exported wrappers below): resolves the Access Token once, imports every Thing id
- * with the same pacing/concurrency as the MakerWorld collection job above (same reasoning: a
- * burst of requests reads as automated traffic, worth avoiding even though Thingiverse's
- * official API hasn't shown the same anti-abuse behavior MakerWorld's has), then files every
- * successful import into `collectionTitle` (created on first use, reused on every later import
- * that resolves to the same title -- e.g. every Likes import shares one "Thingiverse Likes"
- * collection; a named Thingiverse Collection gets/reuses a Thingport Collection of that same
- * name). `resolveCollectionTitle` runs after the per-item loop (not before) so a Collection's
- * real name -- an extra API call -- is only fetched once real work has actually happened. */
+/** Shared by the Thingiverse Likes and Collection imports. Successful imports are filed into the
+ * collection named by `resolveCollectionTitle`, which runs afterwards so it costs no API call
+ * when nothing was imported. */
 async function runThingiverseThingsImportJob(
   jobId: string,
   userId: string,
@@ -344,10 +301,6 @@ async function runThingiverseThingsImportJob(
     if (alreadyInLibrary) bodyParts.push(`${alreadyInLibrary} already in your library`);
     const otherFailed = failed.length - unavailable - rateLimited - authFailed;
     if (unavailable) bodyParts.push(`${unavailable} unavailable (private, deleted, or hidden)`);
-    // Same idea as the MakerWorld CAPTCHA case above: once Thingiverse's Cloudflare bot-management
-    // trips, every remaining item fails the same way for a while, so call out the actionable
-    // cause instead of a vague "N failed" -- especially since this is usually the bulk of a
-    // large batch's failures once it trips.
     if (rateLimited) {
       bodyParts.push(
         `${rateLimited} blocked by Thingiverse's rate-limit protection (too many requests at once) — wait a while, then retry`,
@@ -367,10 +320,6 @@ async function runThingiverseThingsImportJob(
   }
 }
 
-/** Runs a Thingiverse user's automatic "Likes" batch import in the background -- see
- * routes/imports.ts's POST /import/thingiverse-likes. Every successfully imported Thing lands in
- * a shared "Thingiverse Likes" collection (one bucket for "things liked on Thingiverse", reused
- * across every user's likes import -- deliberately, matching how the feature was asked for). */
 export async function runThingiverseLikesImportJob(jobId: string, userId: string, body: ThingiverseLikesImportJobBody): Promise<void> {
   await runThingiverseThingsImportJob(
     jobId,
@@ -381,11 +330,6 @@ export async function runThingiverseLikesImportJob(jobId: string, userId: string
   );
 }
 
-/** Runs a named Thingiverse Collection's batch import in the background -- see
- * routes/imports.ts's POST /import/thingiverse-collection. Unlike Likes, a Collection has a real
- * user-given name (fetchThingiverseCollectionTitle) -- successful imports land in a Thingport
- * Collection of that same name, created on first use and reused if the same Thingiverse
- * Collection is ever imported again. */
 export async function runThingiverseCollectionImportJob(
   jobId: string,
   userId: string,
@@ -401,12 +345,6 @@ export async function runThingiverseCollectionImportJob(
   );
 }
 
-/** Runs a named Printables Collection's batch import in the background -- see
- * routes/imports.ts's POST /import/printables-collection. Mirrors
- * runThingiverseThingsImportJob's shape (own resolver, same sequential pacing, files successful
- * imports into a Thingport Collection named after the real Printables Collection name) but
- * simpler: Printables needs no access token, so there's no equivalent "isn't configured for this
- * instance" failure mode to handle up front. */
 export async function runPrintablesCollectionImportJob(jobId: string, userId: string, body: PrintablesCollectionImportJobBody): Promise<void> {
   try {
     let imported = 0;
@@ -484,8 +422,6 @@ export async function runPrintablesCollectionImportJob(jobId: string, userId: st
   }
 }
 
-/** Runs a remote zip's selected-entries batch import in the background -- see
- * routes/imports.ts's POST /import/zip. */
 export async function runZipImportJob(jobId: string, userId: string, body: ZipImportJobBody): Promise<void> {
   let tempPath: string | null = null;
   try {
@@ -521,7 +457,6 @@ export async function runZipImportJob(jobId: string, userId: string, body: ZipIm
       processed: body.entries.length,
       imported: prints.length,
       failedCount: failed.length,
-      // Only when this is unambiguous -- see resultPrintId's doc comment on the schema.
       resultPrintId: prints.length === 1 ? prints[0].id : null,
     });
     void createLog({

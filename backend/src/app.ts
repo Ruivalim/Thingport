@@ -36,8 +36,7 @@ export function createApp(): Express {
 
   app.use(express.json());
 
-  // Mounted under /api because the frontend is served separately by its own nginx container,
-  // which reverse-proxies /api/* here unmodified (see frontend/nginx.conf).
+  // The frontend's nginx proxies /api/* here unmodified.
   app.use("/api", healthRoutes);
   app.use("/api", captchaRoutes);
   app.use("/api", authRoutes);
@@ -57,12 +56,10 @@ export function createApp(): Express {
   app.use("/api", adminRoutes);
   app.use("/api", dashboardRoutes);
 
-  // 404 fallback for unmatched routes.
   app.use((_req: Request, res: Response) => {
     res.status(404).json({ detail: "Not found" });
   });
 
-  // Central error handler: HttpError carries its own status, everything else is a 500.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
     if (err instanceof HttpError) {

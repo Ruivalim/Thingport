@@ -9,10 +9,7 @@ import { getLinkedAuthorsForUser, isAuthorLinked, linkAuthorToUser } from "../se
 const router = Router();
 router.use(requireAuth);
 
-// Author rows aren't user-scoped -- they're shared, public creator info pulled from
-// MakerWorld/Thingiverse/Printables (see authorService.ts's deleteAuthorIfOrphaned, which already
-// checks Print.authorId across every user, not just one), so there's no per-user ownership check
-// here beyond being signed in to the instance at all.
+// Authors are shared across users, so there's no ownership check.
 router.get(
   "/author/:id",
   asyncHandler(async (req, res) => {
@@ -22,8 +19,6 @@ router.get(
   }),
 );
 
-// The Author rows the current user has claimed as themselves -- backs both the "My models" page's
-// provider chips and (client-side, per author) whether to show "It's me!" on a given author page.
 router.get(
   "/me/author-links",
   asyncHandler(async (req, res) => {
@@ -32,8 +27,6 @@ router.get(
   }),
 );
 
-// The Author page's "It's me!" button, after its confirmation modal. See linkAuthorToUser's doc
-// comment for the two uniqueness rules this enforces.
 router.post(
   "/author/:id/link",
   asyncHandler(async (req, res) => {

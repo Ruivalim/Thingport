@@ -1,5 +1,4 @@
-/** Site-internal link: prefixes the base path (`/`, or e.g. `/Thingport/` on a project-path build) to a route like
- *  `docs/install/`. Every internal link goes through this so a custom domain is a config change. */
+/** Prefixes the base path to a site-internal route like `docs/install/`. */
 export function url(route = ""): string {
   const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
   return base + route.replace(/^\//, "");

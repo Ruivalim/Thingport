@@ -44,7 +44,6 @@ export type StorageUsage = {
   model_count: number;
 };
 
-/** Why part of a "Link missing authors" run was skipped. */
 export type AuthorLookupProblem = "thingiverse_no_token" | "thingiverse_token_rejected" | "makerworld_captcha" | "makerworld_login_rejected";
 
 export type AuthorLinkingRun = {
@@ -58,8 +57,6 @@ export type AuthorLinkingRun = {
   problems: AuthorLookupProblem[];
 };
 
-/** `linkable`: models linkable by name right away; `lookup`: models whose author would be looked
- *  up on their site. */
 export type AuthorLinkingStatus = { linkable: number; lookup: number; run: AuthorLinkingRun | null };
 
 export const adminApi = {
@@ -69,7 +66,6 @@ export const adminApi = {
     return res.json();
   },
 
-  /** Emails an invitation to register (only while registrations are closed and SMTP is set up). */
   inviteUser: async (email: string): Promise<{ email: string; expires_at: string; expires_in_days: number }> => {
     const res = await fetch(`${apiBase()}/admin/invitations`, {
       method: "POST",
@@ -86,7 +82,6 @@ export const adminApi = {
     return res.json();
   },
 
-  /** Administration > Triggers > "Link missing authors" (see backend authorLinkingService.ts). */
   getAuthorLinking: async (): Promise<AuthorLinkingStatus> => {
     const res = await fetch(`${apiBase()}/admin/triggers/link-authors`, { headers: authHeaders() });
     if (res.status === 401) throw new UnauthorizedError();

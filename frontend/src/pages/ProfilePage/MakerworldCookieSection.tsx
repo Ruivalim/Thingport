@@ -18,11 +18,7 @@ type Props = {
   onUnauthorized?: () => void;
 };
 
-/** Required to import links/models from MakerWorld -- unlike the old always-open textarea
- *  (CookiePanel), this never displays the stored cookie itself: just a status chip plus
- *  add/edit/remove. Saves locally (still what every import request in this browser sends) and
- *  syncs to the backend so "connected" is a real, cross-device fact -- see
- *  services/makerworldCookieService.ts. */
+/** Never displays the stored cookie. Saves locally and syncs to the backend. */
 export default function MakerworldCookieSection({ cookie, onUpdateMakerWorld, onUnauthorized }: Props) {
   const { t } = useTranslation(["app", "common"]);
   const [configured, setConfigured] = React.useState(Boolean(cookie.trim()));
@@ -111,7 +107,6 @@ export default function MakerworldCookieSection({ cookie, onUpdateMakerWorld, on
               onChange={e => setDraft(e.target.value)}
               placeholder={t("profile.makerworld.placeholder") ?? undefined}
               disabled={saving}
-              // Deliberate: focus the cookie field the moment editing starts.
               // oxlint-disable-next-line jsx-a11y/no-autofocus
               autoFocus
             />

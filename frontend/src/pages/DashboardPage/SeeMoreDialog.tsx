@@ -21,9 +21,7 @@ type Props<T> = {
   renderItem: (item: T, index: number) => React.ReactNode;
 };
 
-/** Shared "see more" dialog behind every list card's See more button -- fetches an expanded
- *  (but still capped) version of that card's list lazily, only once opened. Generic over the row
- *  type so ModelListCard and AuthorListCard can reuse it with their own row rendering. */
+/** Fetches lazily, once opened. */
 export default function SeeMoreDialog<T>({ open, onClose, title, emptyText, fetcher, getKey, renderItem }: Props<T>) {
   const { t } = useTranslation("common");
   const [items, setItems] = React.useState<T[] | null>(null);
@@ -36,7 +34,6 @@ export default function SeeMoreDialog<T>({ open, onClose, title, emptyText, fetc
     fetcher()
       .then(setItems)
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load"));
-    // Only re-fetch when the dialog opens, not on every render (fetcher isn't stable).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 

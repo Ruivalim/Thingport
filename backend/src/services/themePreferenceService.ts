@@ -1,8 +1,6 @@
 import { prisma } from "../db";
 
-// Kept in sync by hand with frontend's constants/settingsOptions.ts ThemeSelection -- there's no
-// shared package between the two, and this list changes rarely enough that duplicating it here
-// (like slicerPreferenceService.ts's SLICER_IDS) is simpler than wiring up a shared module.
+// Kept in sync by hand with the frontend's ThemeSelection.
 export const THEME_SELECTIONS = ["light", "dark", "system"] as const;
 export type ThemeSelection = (typeof THEME_SELECTIONS)[number];
 

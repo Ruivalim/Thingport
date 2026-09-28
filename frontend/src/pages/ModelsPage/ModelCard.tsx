@@ -33,21 +33,13 @@ type Props = {
   onFavoriteChange?: (print: Print) => void;
   onUpdated?: (print: Print) => void;
   onUnauthorized?: () => void;
-  /** Set only by CollectionDetailPage, and only for a real (non-system) collection -- shows
-   *  "Remove from collection" in the card's "..." menu. See ModelActionsMenu's doc comment. */
+  /** Only for a real collection; shows "Remove from collection". */
   collectionId?: string;
   onRemovedFromCollection?: (id: string) => void;
-  /** Only used as a fallback when the print has neither an Author nor a plain `creator` string --
-   *  a direct upload has no import-source author at all, so it shows the viewer's own identity
-   *  instead of "Unknown" (every print in this per-user app is, after all, the viewer's own).
-   *  Not passed down from AuthorPage: a print reachable from there always has a real Author, so
-   *  the fallback never applies there. */
+  /** Shown as the author of a direct upload, which has none. */
   viewer?: AuthUser | null;
 };
 
-// The star/"..." hover icons sit on a plain neutral circle -- readable over any thumbnail color
-// without a drop-shadow crutch -- and both share this exact size so they read as one matched pair
-// regardless of which icon (star vs. dots) is inside.
 const OVERLAY_BUTTON_SIZE = 30;
 const HOVER_ICON_SIZE = 18;
 const overlayButtonSx = {
@@ -56,8 +48,7 @@ const overlayButtonSx = {
   padding: 0,
   borderRadius: "50%",
   bgcolor: "background.paper",
-  // IconButton's own hover state otherwise tints its background on top of this -- keep it flat
-  // no matter which state (hover, focus-visible, actively pressed) triggers that.
+  // Keep the background flat in every interaction state.
   "&:hover, &.Mui-focusVisible, &:active": { bgcolor: "background.paper" },
 } as const;
 
@@ -76,9 +67,6 @@ export default function ModelCard({
   const { t } = useTranslation(["models", "common"]);
   const navigate = useNavigate();
   const muiTheme = useTheme();
-  // headingText is dark text in light mode, white in dark mode -- exactly the contrast an icon
-  // needs against overlayButtonSx's own bgcolor (background.paper: white in light mode, the panel
-  // color in dark mode).
   const overlayIconColor = muiTheme.thingport.headingText;
   const { isFavorite, toggle: toggleFavorite, label: favoriteLabel } = useFavoriteToggle(item, {
     onUpdated: onFavoriteChange,
@@ -86,16 +74,12 @@ export default function ModelCard({
   });
   const author = item.author;
   const viewerAvatarUrl = useGravatarUrl(viewer?.email, 40);
-  // Direct uploads have no Author row and usually no `creator` string either -- fall back to the
-  // viewer's own identity rather than "Unknown", since every print here is the viewer's own.
-  // Deliberately NOT clickable to an author page (see the click handler below, still keyed off
-  // the real `author` object): there's no Author id behind this fallback to navigate to.
+  // Not clickable: there's no Author id behind this fallback.
   const showViewerAsAuthor = !author?.name && !author?.handle && !item.creator && !item.source_provider && Boolean(viewer);
   const authorName = author?.name || author?.handle || item.creator || (showViewerAsAuthor ? viewer!.display_name : null);
   const authorAvatarUrl = author?.avatar_url || (showViewerAsAuthor ? viewerAvatarUrl : undefined);
   const providerInfo = printProviderInfo(item.source_provider);
-  // Hover slideshow through the gallery -- only worth running with more than one image, and
-  // only mounted while hovered so it neither loads the images nor ticks for idle cards.
+  // Only mounted while hovered, so idle cards don't load images or tick.
   const [hovered, setHovered] = useState(false);
   const slideshowImages = item.preview_images.length > 1 ? item.preview_images.map(img => printsApi.fileUrl(img.url)) : [];
 

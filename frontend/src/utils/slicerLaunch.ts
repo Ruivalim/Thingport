@@ -1,35 +1,18 @@
-// The Thingport Bridge helper app's own protocol (see bridge/README.md) -- it downloads the
-// file itself and hands it to the local slicer, for slicers whose own URL handler won't take it
-// directly.
+// The Thingport Bridge helper app's protocol (see bridge/README.md).
 const BRIDGE_SCHEME = "thingport";
 
-// Bambu Studio's bambustudio:// and PrusaSlicer's prusaslicer:// handlers both only open files
-// served from a domain allowlist (Bambu Lab's own storefronts; printables.com plus a handful of
-// sites Prusa has manually whitelisted, respectively) -- a self-hosted Thingport instance is
-// never on either list, so the direct protocol silently no-ops. Cura does register cura://open,
-// but only when it was installed in a way that actually wires up OS protocol handling (not
-// reliable across its AppImage/Flatpak/Microsoft Store builds), so it's routed the same way for
-// consistency. All three are handed to the Bridge instead, which downloads the file itself and
-// execs the local slicer directly, bypassing both the domain check and protocol registration.
-// OrcaSlicer accepts any HTTP(S) URL through its own handler, so it still bypasses the Bridge.
-// Anycubic Slicer Next is an OrcaSlicer fork and understands the same links -- but it registers
-// OrcaSlicer's own orcaslicer:// protocol rather than one of its own, so with both installed only
-// one of them gets those links. Routing it through the Bridge, which launches it by path, opens
-// the one the user actually picked.
+// bambustudio:// and prusaslicer:// only open files from allowlisted domains, and Cura's cura://
+// registration is unreliable, so the Bridge downloads the file and launches them directly.
+// Anycubic Slicer Next registers OrcaSlicer's orcaslicer:// protocol, so with both installed only
+// one would get the link; the Bridge launches it by path instead.
 const BRIDGED_SLICERS = new Set(["bambustudio", "prusaslicer", "cura", "anycubicslicernext"]);
 
-/** Whether slicerId launches through the Thingport Bridge helper app rather than the slicer's
- *  own URL protocol -- used to show the "install the Bridge" hint for the right slicers. */
 export function isBridgedSlicer(slicerId: string): boolean {
   return BRIDGED_SLICERS.has(slicerId);
 }
 
-// Elegoo Slicer (elegooslicer://) and Snapmaker Orca (snapmaker-orca://) are OrcaSlicer forks
-// that, unlike Anycubic's, register a protocol of their own and accept any HTTP(S) URL through
-// it, so they launch directly like OrcaSlicer. Both name the downloaded file after the URL's last
-// path segment, which a prepared print's URL (.../prepared-print) doesn't end in -- so each is
-// also passed the filename the way its handler reads it: Elegoo from a filename= query parameter
-// on the file URL itself, Snapmaker Orca from a name= parameter after the file= one.
+// Elegoo Slicer and Snapmaker Orca launch directly like OrcaSlicer, but name the file after the
+// URL's last segment, so each gets the filename the way its handler reads it.
 function withFilenameHint(slicerId: string, fileUrl: string, filename: string): { fileUrl: string; extra: string } {
   if (slicerId === "elegooslicer") {
     const url = new URL(fileUrl, window.location.origin);
@@ -42,10 +25,7 @@ function withFilenameHint(slicerId: string, fileUrl: string, filename: string): 
   return { fileUrl, extra: "" };
 }
 
-// Builds the URL that "Open in {Slicer}" navigates to: either the slicer's own registered
-// protocol handler (e.g. orcaslicer://), or -- for a BRIDGED_SLICERS id -- the Thingport Bridge
-// protocol, which downloads fileUrl locally before handing it to the slicer. Only meaningful for
-// the SLICER_OPTIONS ids that register a protocol; never call this for "other".
+// Only for SLICER_OPTIONS ids that register a protocol; never "other".
 export function slicerLaunchUrl(slicerId: string, fileUrl: string, filename?: string): string {
   if (BRIDGED_SLICERS.has(slicerId)) {
     const params = new URLSearchParams({ url: fileUrl, slicer: slicerId });

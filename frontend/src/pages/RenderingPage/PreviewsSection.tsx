@@ -19,8 +19,6 @@ type Props = {
   onSaved?: (mode: PreviewMode) => void;
 };
 
-// Instance-wide, not per-user -- every browser hitting this API generates/serves previews
-// against the same storage, so this is admin-configured like Storage Structure.
 export default function PreviewsSection({ onUnauthorized, onSaved }: Props) {
   const { t } = useTranslation("app");
   const [mode, setMode] = React.useState<PreviewMode>("automatic");

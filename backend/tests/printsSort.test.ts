@@ -3,9 +3,7 @@ import request from "supertest";
 import { createApp } from "../src/app";
 import { prisma } from "../src/db";
 
-// GET /prints's `orderBy` param (newest [default] / popular / downloads) -- see printsSort's
-// sortValue() in routes/prints.ts. Kept to exactly these three fixed metrics, no per-column
-// ascending/descending toggle, mirroring MakerWorld's model-browsing sort row.
+// Three fixed metrics, like MakerWorld's sort row.
 
 const app = createApp();
 let token: string;
@@ -33,9 +31,7 @@ describe("GET /prints -- orderBy", () => {
   let newestId: string;
 
   beforeAll(async () => {
-    // Distinct createdAt/viewCount/printCount per print, deliberately *not* correlated with each
-    // other (oldest has the most views, newest has the most prints) so each sort mode's result
-    // order can only match if it's actually reading the field it claims to.
+    // Deliberately uncorrelated values, so each sort only passes by reading its own field.
     const oldest = await prisma.print.create({
       data: {
         userId,

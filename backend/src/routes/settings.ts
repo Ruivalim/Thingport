@@ -53,11 +53,8 @@ function storageSettingsOut(template: string, moved = 0, skipped = 0) {
   };
 }
 
-// Admin-only, read-only -- queries GitHub for the latest commit touching backend/ and frontend/
-// on main and compares each against this backend's own baked-in build commit (see
-// versionService.ts for why raw main HEAD isn't the right comparison). Frontend compares its own
-// baked commit (VITE_GIT_SHA, embedded at build time) against latest_frontend_sha itself; the
-// backend doesn't know what commit served the calling browser's bundle.
+// Compares the latest backend/ and frontend/ commits on main against this build's commit. The
+// frontend compares its own baked-in commit against latest_frontend_sha.
 router.get(
   "/settings/version-check",
   requireAdmin,
@@ -66,8 +63,6 @@ router.get(
   }),
 );
 
-// Admin-only end to end now: the storage template affects every user's files, and the only UI
-// that reads this lives in the admin settings panel.
 router.get(
   "/settings/storage",
   requireAdmin,
@@ -77,8 +72,7 @@ router.get(
   }),
 );
 
-// Instance-wide: reorganizing "apply to existing" walks and relocates every user's files, not
-// just the caller's, so this is admin-only.
+// Admin-only: "apply to existing" relocates every user's files.
 const storageSettingsSchema = z.object({ template: z.string(), apply_existing: z.boolean().default(false) });
 router.post(
   "/settings/storage",
@@ -99,8 +93,7 @@ router.get(
   }),
 );
 
-// Administration > Captcha. Reading them is public and lives in routes/captcha.ts -- the sign-in
-// and register forms need it before anyone is logged in.
+// Reading these is public (routes/captcha.ts): sign-in and register forms need them.
 const captchaSettingsSchema = z.object({ login: z.boolean(), register: z.boolean(), import: z.boolean() }).partial();
 router.patch(
   "/settings/captcha",
@@ -110,8 +103,7 @@ router.patch(
   }),
 );
 
-// Administration > Users. Closing registrations makes POST /register refuse everyone but
-// invitees (see services/invitationService.ts) and the very first account.
+// Closed registrations still admit invitees and the very first account.
 const registrationsSchema = z.object({ allow_registrations: z.boolean() });
 router.post(
   "/settings/registrations",
@@ -123,8 +115,6 @@ router.post(
   }),
 );
 
-// Admin-only both ways, like Storage above -- this affects every session on the instance
-// (including whoever's editing it), not just the caller's own login.
 router.get(
   "/settings/auth",
   requireAdmin,
@@ -133,9 +123,7 @@ router.get(
   }),
 );
 
-// 5 minutes to 1 year -- wide enough to cover any real deployment, narrow enough that a typo
-// (e.g. an extra zero) still lands somewhere sane instead of "never expires" or "expires
-// immediately". Only affects tokens issued *after* saving -- see auth.ts's issueToken.
+// Bounds catch typos. Only affects tokens issued after saving.
 const MIN_AUTH_TOKEN_TTL_SECONDS = 5 * 60;
 const MAX_AUTH_TOKEN_TTL_SECONDS = 365 * 24 * 60 * 60;
 const authSettingsSchema = z.object({
@@ -151,8 +139,6 @@ router.patch(
   }),
 );
 
-// Read is open to every user -- LibraryPage needs the current mode to know whether to generate
-// previews at all. Only admins can change it (see getPreviewMode's instance-wide rationale).
 router.get(
   "/settings/previews",
   asyncHandler(async (_req, res) => {
@@ -171,8 +157,7 @@ router.post(
   }),
 );
 
-// Administration > Rendering. A change removes just the cached previews it would alter (in the
-// background -- it reads every cached preview's header), so they're rebuilt on their next view.
+// A change drops the cached previews it would alter, in the background.
 router.get(
   "/settings/rendering",
   requireAdmin,
@@ -198,12 +183,8 @@ router.patch(
   }),
 );
 
-// Read is open to every user -- UserMenu's Thingiverse connection chip needs to know whether
-// imports will actually work, same as /settings/previews above. Only admins can change it: the
-// token is a shared credential for the whole instance's Thingiverse imports, not a per-user
-// preference. GET never echoes the token itself back (write-only, like any other API secret) --
-// only whether one is currently configured, so the admin UI can show "configured" / "not
-// configured" without re-displaying the value.
+// Readable by every user so the UI can tell whether imports will work. GET never echoes the
+// token, only whether one is set.
 router.get(
   "/settings/thingiverse",
   asyncHandler(async (_req, res) => {
@@ -218,8 +199,6 @@ router.post(
   asyncHandler(async (req, res) => {
     const body = parseBody(thingiverseSettingsSchema, req.body);
     const trimmed = (body.access_token ?? "").trim();
-    // Only a new, non-empty token needs testing -- clearing it always succeeds, since there's
-    // nothing to verify a logged-out state against.
     if (trimmed && !(await verifyThingiverseAccessToken(trimmed))) {
       throw new HttpError(
         422,
@@ -231,11 +210,7 @@ router.post(
   }),
 );
 
-// Admin-only "Connections" page: SMTP (editable, used by registration's email-verification flow
-// -- see routes/auth.ts) and Database (editable "Test & Save", see databaseSettingsService.ts).
-
 function smtpSettingsOut(smtp: SmtpSettings) {
-  // pass is never echoed back, same write-only convention as the Thingiverse token above.
   return { host: smtp.host, port: smtp.port, secure: smtp.secure, user: smtp.user, from: smtp.from, configured: Boolean(smtp.host) };
 }
 
@@ -252,8 +227,7 @@ const smtpSettingsSchema = z.object({
   port: z.number().int().min(1).max(65535).optional(),
   secure: z.boolean().optional(),
   user: z.string().nullable().optional(),
-  // Omitted entirely (not just empty-string) means "keep the current password" -- the frontend
-  // only ever sends this key when the admin actually typed a new one.
+  // Omitted means keep the current password.
   pass: z.string().nullable().optional(),
   from: z.string().optional(),
 });
@@ -282,12 +256,8 @@ router.get(
   }),
 );
 
-// "Test & Save": connects with the candidate credentials and runs a sanity query *before*
-// touching anything live -- on failure the app keeps running against whatever database it's
-// currently on, same as before the request. Only on success does it hot-swap every `prisma.*`
-// call in this process over to the new database. See databaseSettingsService.ts for why this
-// does NOT persist across a restart -- host/port can't be changed here either, only
-// database/user/password on the same Postgres server this process was started against.
+// Tests the credentials before hot-swapping the live connection. Not persisted across restarts
+// (see databaseSettingsService.ts); host/port can't change.
 const databaseSettingsSchema = z.object({
   database: z.string().trim().min(1, "Database name is required"),
   user: z.string().trim().min(1, "User is required"),
@@ -308,9 +278,7 @@ router.post(
   }),
 );
 
-// Per-user, not admin-only: each user brings their own MakerWorld login for their own imports
-// (see services/makerworldCookieService.ts), unlike the instance-wide Thingiverse token above.
-// Write-only like the other credentials here -- GET only ever reports whether one is set.
+// Per-user, unlike the instance-wide Thingiverse token. GET only reports whether one is set.
 router.get(
   "/settings/makerworld",
   asyncHandler(async (req, res) => {
@@ -318,13 +286,7 @@ router.get(
   }),
 );
 
-// `verify` is opt-in (defaults off) rather than always-on: this same endpoint also gets a
-// best-effort background PATCH from the Chrome extension (extension/background.js,
-// maybeSyncMakerworldCookie) piggybacking a live-captured browser cookie onto an import request
-// -- that path already knows the cookie just worked (it came straight from an active MakerWorld
-// tab) and deliberately swallows failures, so adding a live network test there would only add
-// latency for no benefit. Only ProfilePage's manual Save (settingsApi.updateMakerworld) sends
-// `verify: true`.
+// `verify` is opt-in: the extension's background sync sends a cookie it already knows works.
 const MAKERWORLD_UNVERIFIABLE_MESSAGES: Record<
   Extract<MakerworldCookieCheck, { result: "unverifiable" }>["reason"],
   string
@@ -342,8 +304,6 @@ router.patch(
   asyncHandler(async (req, res) => {
     const body = parseBody(makerworldSettingsSchema, req.body);
     const trimmed = (body.cookie ?? "").trim();
-    // Only a new, non-empty cookie needs testing -- clearing it (trimmed === "") always
-    // succeeds, since there's nothing to verify a logged-out state against.
     if (body.verify && trimmed) {
       const check = await verifyMakerworldCookie(trimmed);
       if (check.result === "invalid") {
@@ -352,7 +312,7 @@ router.patch(
           "MakerWorld rejected this cookie -- it may be invalid or expired. Copy a fresh Cookie header from a logged-in makerworld.com tab and try again.",
         );
       }
-      // 503, not 422: nothing is known to be wrong with the cookie, the check itself couldn't run.
+      // 503, not 422: nothing is known to be wrong with the cookie.
       if (check.result === "unverifiable") throw new HttpError(503, MAKERWORLD_UNVERIFIABLE_MESSAGES[check.reason]);
     }
     const configured = await setUserMakerworldCookie(req.userId!, body.cookie);
@@ -360,9 +320,6 @@ router.patch(
   }),
 );
 
-// Per-user preferred slicer, for a future "open in {slicer}" launch via that slicer's own URL
-// protocol -- see services/slicerPreferenceService.ts. Not a secret, so unlike the credentials
-// above this echoes the value back plainly.
 router.get(
   "/settings/slicer",
   asyncHandler(async (req, res) => {
@@ -380,10 +337,7 @@ router.patch(
   }),
 );
 
-// Per-user theme (light/dark/system), server-persisted so it follows the account across
-// devices/browsers instead of being stuck in one browser's localStorage -- see
-// services/themePreferenceService.ts. Not a secret, so like slicer above this echoes the value
-// back plainly. Null means "never set"; the frontend falls back to its own default in that case.
+// Null means never set; the frontend applies its default.
 router.get(
   "/settings/theme",
   asyncHandler(async (req, res) => {
@@ -401,8 +355,6 @@ router.patch(
   }),
 );
 
-// Per-user on/off for the author preview card shown on hovering an author link -- see
-// services/authorPreviewPreferenceService.ts. On by default.
 router.get(
   "/settings/author-preview",
   asyncHandler(async (req, res) => {

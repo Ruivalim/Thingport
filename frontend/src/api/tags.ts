@@ -10,15 +10,12 @@ export type TagSummary = {
 };
 
 export const tagsApi = {
-  /** Every tag across this user's whole library (unfiltered), with its model count and whether
-   *  it's bookmarked -- backs the standalone Tags list page. */
   listSummary: async (sort: TagSortMode = "popular"): Promise<TagSummary[]> => {
     const res = await fetch(`${apiBase()}/tags/summary?sort=${sort}`, { headers: authHeaders() });
     assertOk(res, "Failed to list tags");
     return res.json();
   },
 
-  /** Just the bookmarked tag names, alphabetical -- for the sidebar's quick-access list. */
   listBookmarked: async (): Promise<string[]> => {
     const res = await fetch(`${apiBase()}/tags/bookmarked`, { headers: authHeaders() });
     assertOk(res, "Failed to list bookmarked tags");

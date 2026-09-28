@@ -23,10 +23,8 @@ const OUT_DIR = path.join(ROOT, "docs", "store");
 const SCREENSHOTS_DIR = path.join(ROOT, "docs", "screenshots");
 const STORE_SCREENSHOT = { width: 1280, height: 800 };
 
-// The content script's real stylesheet, for templates that show the in-page UI (tile-large.html).
-// It's written for a shadow root, so its `:host` custom properties are re-scoped to `.tg-scope`.
-// Transitions are switched off: the stylesheet lands after the page has rendered, and a button
-// would otherwise be captured mid-fade from its default gray to green.
+// The content script's stylesheet, with `:host` properties re-scoped to `.tg-scope`. Transitions
+// are off so buttons aren't captured mid-fade.
 const CONTENT_CSS =
   sass.compile(path.join(ROOT, "src", "content", "styles", "content.scss")).css.replaceAll(":host", ".tg-scope") +
   "\n*, *::before, *::after { transition: none !important; }";
@@ -42,7 +40,6 @@ await mkdir(OUT_DIR, { recursive: true });
 const browser = await chromium.launch();
 try {
   for (const asset of ASSETS) {
-    // deviceScaleFactor 1: the stores want these exact pixel sizes.
     const page = await browser.newPage({ viewport: { width: asset.width, height: asset.height }, deviceScaleFactor: 1 });
     await page.goto(pathToFileURL(path.join(TEMPLATES, asset.template)).href, { waitUntil: "load" });
     await page.addStyleTag({ content: CONTENT_CSS });
@@ -52,7 +49,7 @@ try {
     console.log(`docs/store/${asset.out}  ${asset.width}x${asset.height}`);
   }
 
-  // The stores only take PNG screenshots, at 1280x800 (the README's are 2x JPEGs).
+  // The stores only take PNG screenshots at 1280x800.
   await mkdir(path.join(OUT_DIR, "screenshots"), { recursive: true });
   const page = await browser.newPage({ viewport: STORE_SCREENSHOT, deviceScaleFactor: 1 });
   for (const file of (await readdir(SCREENSHOTS_DIR)).filter((f) => f.endsWith(".jpg")).toSorted()) {

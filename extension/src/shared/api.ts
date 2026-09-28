@@ -1,5 +1,4 @@
-// The slices of Thingport's API responses this extension reads. Not exhaustive -- only the fields
-// actually used here; see the backend's dto.ts for the full shapes.
+// Only the fields this extension reads; see the backend's dto.ts for the full shapes.
 
 export type ImportOutcome = "created" | "profile_added" | "already_imported";
 

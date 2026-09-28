@@ -15,7 +15,6 @@ type Props = {
   onToggleEntry: (path: string) => void;
 };
 
-/** The scrollable checkbox list shown in the zip import wizard's "select files" step. */
 export default function ZipEntryList({ entries, selected, busy, noFilesLabel, onToggleEntry }: Props) {
   return (
     <Box sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1, maxHeight: 360, overflow: "auto" }}>

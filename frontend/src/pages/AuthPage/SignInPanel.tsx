@@ -37,7 +37,7 @@ export default function SignInPanel({ onSuccess }: Props) {
       onSuccess(res.token, res.expires_in, res.user);
     } catch (err) {
       console.error(err);
-      // Every attempt uses the captcha up, right or wrong -- show a fresh one.
+      // Every attempt uses the captcha up.
       if (captchaSettings?.login) setCaptchaKey((k) => k + 1);
       if (err instanceof EmailNotVerifiedError) {
         setNeedsVerification(true);

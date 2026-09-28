@@ -1,7 +1,6 @@
 import { defineConfig } from "vite";
 
 function normalizeHostEntry(entry) {
-  // Accept full URLs or bare hostnames and strip protocol/port when present.
   try {
     const parsed = new URL(entry);
     return parsed.hostname;
@@ -14,8 +13,7 @@ function parseAllowedHosts(value, extras = []) {
   const extraHosts = extras.map(normalizeHostEntry).filter(Boolean);
 
   if (!value) {
-    // Default to permissive host handling in containerized/reverse-proxy setups.
-    // Users can still explicitly lock this down with VITE_ALLOWED_HOSTS.
+    // Permissive by default for container/reverse-proxy setups; lock down with VITE_ALLOWED_HOSTS.
     return true;
   }
 
@@ -50,8 +48,7 @@ export default defineConfig({
     host: true,
     allowedHosts: resolvedAllowedHosts,
     proxy: {
-      // Forward /api/* to the backend during local development (npm run dev), mirroring the
-      // nginx reverse proxy used in the Docker image (see nginx.conf).
+      // Mirrors the Docker image's nginx proxy.
       "/api": {
         target: "http://localhost:8000",
         changeOrigin: true,

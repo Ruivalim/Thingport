@@ -18,23 +18,13 @@ import { saveResponseToDisk } from "../utils/downloadResponse";
 type Props = {
   open: boolean;
   onClose: () => void;
-  /** Which prints this covers -- see DownloadZipFilter. Combined with `filename` this is sent
-   *  as-is to both POST /download/zip/summary (on open) and POST /download/zip (on confirm). */
   filter: DownloadZipFilter;
   filename: string;
-  /** Dialog title -- callers phrase this themselves (e.g. "Download collection as zip", or
-   *  "Download tag \"foo\" as zip") since only they know which context this is. */
   title: string;
   onUnauthorized?: () => void;
 };
 
-/** The "are you sure?" step shown before any group zip download (a whole collection, or every
- *  model carrying a tag) -- shows how many models are included and an approximate combined file
- *  size *before* committing to building the zip, fetched via POST /download/zip/summary (model
- *  count + a sum of stored Plate/PrintFile sizes -- an upper bound on the real zip, since DEFLATE
- *  only ever shrinks, but cheap enough to compute without generating anything). If a future
- *  filter type can't size itself this cheaply, `size_bytes` can come back as 0/omitted and this
- *  just shows the model count alone -- see the summary rendering below. */
+/** Shows the model count and an approximate size before building the zip. */
 export default function DownloadZipConfirmDialog({ open, onClose, filter, filename, title, onUnauthorized }: Props) {
   const { t } = useTranslation(["models", "common"]);
   const [loading, setLoading] = useState(true);
@@ -70,8 +60,7 @@ export default function DownloadZipConfirmDialog({ open, onClose, filter, filena
       }
     })();
     return () => { cancelled = true; };
-    // filter/filename are provided fresh by the caller on every open (a new object literal each
-    // render), so keying only on `open` avoids re-fetching the summary on every parent re-render.
+    // The caller passes fresh object literals each render; only `open` should refetch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 

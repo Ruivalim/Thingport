@@ -9,19 +9,14 @@ export function normalizeCollectionName(name: string): string {
   return name.trim().toLowerCase();
 }
 
-/** Throws 409 if `name` matches one of the built-in pseudo-collections' names ("Favourites",
- * "Browsing History") -- those ids are reserved, so a same-named real Collection would just be a
- * confusing second card with the identical label. Checked before assertCollectionNameAvailable
- * so the reserved-name message wins over a plain "already exists" for these two names. */
+/** Checked first so the reserved-name message wins over "already exists". */
 function assertCollectionNameNotReserved(name: string): void {
   const normalized = normalizeCollectionName(name);
   const reserved = Object.values(SYSTEM_COLLECTIONS).find((c) => normalizeCollectionName(c.name) === normalized);
   if (reserved) throw new HttpError(409, `"${reserved.name}" is reserved for the built-in collection`);
 }
 
-/** Throws 409 if `name` is already taken by another of this user's collections (or is reserved
- * for a built-in pseudo-collection). Used by the manual create/rename routes so a raw Prisma
- * unique-constraint violation never reaches the client. */
+/** So a raw Prisma unique-constraint error never reaches the client. */
 export async function assertCollectionNameAvailable(
   userId: string,
   name: string,
@@ -38,9 +33,7 @@ export async function assertCollectionNameAvailable(
   if (existing) throw new HttpError(409, `A collection named "${name.trim()}" already exists`);
 }
 
-/** Looks up a user's collection by name (case-insensitive), creating it if it doesn't exist yet.
- * Used by the MakerWorld collection import flow: re-importing the same MakerWorld collection
- * (identified by its title) lands in the same Collection row instead of creating a duplicate. */
+/** Case-insensitive, so re-importing a collection reuses the same row. */
 export async function findOrCreateCollectionByName(userId: string, name: string): Promise<Collection> {
   const trimmed = name.trim();
   const nameNormalized = normalizeCollectionName(trimmed);
@@ -49,9 +42,8 @@ export async function findOrCreateCollectionByName(userId: string, name: string)
   return prisma.collection.create({ data: { userId, name: trimmed, nameNormalized } });
 }
 
-/** Adds `printIds` to a collection, skipping any already present, continuing the display
- * position from wherever the collection's items currently leave off -- then moves their files if
- * the storage template has a {collection} folder. */
+/** Skips prints already present, then moves files if the storage template has a {collection}
+ * folder. */
 export async function addPrintsToCollection(collectionId: string, printIds: string[]): Promise<void> {
   if (!printIds.length) return;
   const last = await prisma.collectionItem.findFirst({
@@ -66,12 +58,8 @@ export async function addPrintsToCollection(collectionId: string, printIds: stri
   await relocatePrintsForToken("collection", printIds);
 }
 
-// ---- Built-in "Favourites" / "Browsing History" pseudo-collections ----------------------------
-//
-// These aren't real Collection rows -- they're synthesized on the fly from Print.favoritedAt /
-// Print.lastViewedAt (a print is "in" one iff that column is non-null, ordered most-recent-first)
-// so there's nothing to keep in sync, and no join-table membership to manage. Their ids ("favorites"
-// / "history") are reserved and can never collide with a real Collection's cuid.
+// Favourites and History aren't real rows: they're derived from Print.favoritedAt/lastViewedAt.
+// Their ids are reserved.
 
 const SYSTEM_COLLECTION_COVER_LIMIT = 4;
 

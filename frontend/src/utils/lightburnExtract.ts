@@ -1,6 +1,5 @@
-// Byte-sniffing extraction of an embedded preview image from a .lbrn/.lbrn2 LightBurn project
-// file: the format is either a zip archive (in which case we unzip via fflate and pick the best
-// image entry) or a flat XML/binary file with an image embedded as raw bytes or base64 text.
+// Extracts the embedded preview from a .lbrn/.lbrn2 file, which is either a zip or a flat file with
+// the image as raw bytes or base64.
 import { extOf } from "./fileExtensions";
 
 export type PreviewPayload = {

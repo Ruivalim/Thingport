@@ -24,18 +24,11 @@ type Props = {
   onUpdated: (collection: Collection) => void;
   onUnauthorized?: () => void;
   onDeleted: () => void;
-  /** Called after a successful bookmark/unbookmark so the sidebar's own bookmarked list can
-   *  refetch -- same callback TagBookmarkButton/TagsPage already use for tags. */
   onBookmarksChanged?: () => void;
-  /** Lets callers restyle the trigger button -- e.g. the Collections grid's hover overlay,
-   *  which needs to read over an arbitrary cover photo instead of the header's plain icon. */
   triggerSx?: SxProps<Theme>;
 };
 
-/** The "..." menu for a collection: Bookmark/Remove from bookmarks, Edit (opens the same
- *  create/edit modal used from the Collections grid, prefilled) and Delete (confirm, then
- *  delete). Shared by the collection detail page's header and the Collections grid's per-card
- *  hover overlay. */
+/** Shared by the collection detail header and the Collections grid cards. */
 export default function CollectionActionsMenu({
   collection,
   onUpdated,

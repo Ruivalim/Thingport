@@ -1,5 +1,5 @@
-// Batch flow for listing pages whose entries the backend can list (Thingiverse Likes/Collections,
-// Printables Collections). MakerWorld collections use the guided flow in makerworldCollection.ts.
+// Batch flow for Thingiverse Likes/Collections and Printables Collections. MakerWorld collections
+// use the guided flow in makerworldCollection.ts.
 
 import type { BatchEntriesResult, ImportJob } from "../../shared/api";
 import { ctx } from "../context";
@@ -67,8 +67,7 @@ async function runBatchImport(): Promise<void> {
 
 async function pollJobWithProgress(jobId: string, instanceUrl: string): Promise<void> {
   for (;;) {
-    // The panel was torn down (e.g. an SPA route change) since the last tick -- stop polling. The
-    // job itself keeps running server-side either way; this just stops watching it.
+    // The panel is gone; the job keeps running server-side.
     if (!isPanelMounted()) return;
     const job = await api<ImportJob>("GET", `/import/jobs/${jobId}`);
     if (!isPanelMounted()) return;

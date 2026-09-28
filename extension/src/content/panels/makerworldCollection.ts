@@ -1,9 +1,6 @@
-// MakerWorld guided collection import. MakerWorld (unlike the other providers) trips a multi-hour
-// account-wide CAPTCHA lockout from a burst of collection-import API calls, even with pacing -- see
-// background/makerworldJob.ts. This avoids MakerWorld's collection-listing API entirely: every
-// model id is scraped from the page's own DOM after scrolling it to the end -- the same requests
-// MakerWorld's site already makes for a person scrolling by hand. No entry-selection step (unlike
-// the batch flow) -- every not-yet-imported model is queued.
+// MakerWorld collection import. Avoids MakerWorld's collection-listing API (a burst of those calls
+// trips an account-wide CAPTCHA) by scrolling the page and scraping model ids from the DOM.
+// Every not-yet-imported model is queued.
 
 import type { Collection, ImportStatus } from "../../shared/api";
 import { request } from "../../shared/messages";
@@ -14,16 +11,13 @@ import { api, escapeHtml, sleep } from "../runtime";
 import { getShadowRoot, onPanelAction, renderPanel } from "../shell";
 import { errorHtml, statusHtml, successHtml } from "./results";
 
-// Wait before the first scroll/check: the page can still be mid-hydration (most often right after
-// navigating back from a finished guided run), and checking too early can see zero cards, which the
-// stagnant-round check below would mistake for "already at the end".
+// The page may still be hydrating; checking too early sees zero cards and looks like the end.
 const SCAN_START_DELAY_MS = 1500;
 const SCAN_ROUND_DELAY_MS = 700;
 const SCAN_MAX_ROUNDS = 300; // generous: 153 models at ~20/page is ~8 loads
 const SCAN_STAGNANT_LIMIT = 6;
 
-/** True once MakerWorld's own "No more data" end-of-list marker shows -- matched on rendered text,
- *  not a class name (MakerWorld's CSS-module classes are build hashes that change on redeploy). */
+/** Matched on text: MakerWorld's class names are build hashes. */
 function hasNoMoreDataMarker(): boolean {
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
@@ -32,7 +26,6 @@ function hasNoMoreDataMarker(): boolean {
   return false;
 }
 
-/** Every distinct design id linked from the DOM -- a card links to "/en/models/1954043-...". */
 function extractModelIds(): string[] {
   const ids = new Set<string>();
   for (const a of document.querySelectorAll('a[href*="/models/"]')) {
@@ -42,10 +35,7 @@ function extractModelIds(): string[] {
   return [...ids];
 }
 
-/** Repeatedly scrolls the last loaded card into view -- the standard nudge for an
- *  intersection-observer infinite scroll, and more reliable than scrolling the window when the real
- *  scroll container is some nested element. Stops on the "No more data" marker, or once the count
- *  stops growing for several rounds (a safety net if that wording changes); never loops forever. */
+/** Scrolls the last card into view until the end marker shows or the count stops growing. */
 async function scrollToEnd(onProgress: (count: number) => void): Promise<void> {
   let lastCount = -1;
   let stagnantRounds = 0;
@@ -65,9 +55,7 @@ async function scrollToEnd(onProgress: (count: number) => void): Promise<void> {
   }
 }
 
-/** This user's Thingport collection matching the MakerWorld collection's title (case-insensitive,
- *  like the backend's uniqueness check), created if missing. Null on any failure -- the import
- *  still proceeds, it just has nowhere to file into. */
+/** Case-insensitive match on title, created if missing. Null on failure; the import proceeds. */
 async function findOrCreateCollection(name: string | null): Promise<string | null> {
   const trimmed = (name || "").trim();
   if (!trimmed) return null;
@@ -135,8 +123,7 @@ async function startGuidedImport(toImport: ModelStatus[], alreadyImported: Model
   renderPanel(statusHtml("Preparing your collection…"));
   const collectionId = await findOrCreateCollection(collectionTitle);
 
-  // Already-imported models are filed here, synchronously, rather than by the background job --
-  // they need no page visit, so there's nothing to pace.
+  // Already-imported models need no page visit, so they're filed here directly.
   if (alreadyImported.length && collectionId) {
     renderPanel(statusHtml(`Adding ${alreadyImported.length} existing model${alreadyImported.length === 1 ? "" : "s"} to your collection…`));
     for (const entry of alreadyImported) {
@@ -151,5 +138,4 @@ async function startGuidedImport(toImport: ModelStatus[], alreadyImported: Model
 
   renderPanel(statusHtml("Starting guided import…"));
   await request("START_MAKERWORLD_COLLECTION_JOB", { urls: toImport.map((e) => e.url), collectionId, originalUrl });
-  // The tab is about to navigate to the first model's page; the job overlay takes over from there.
 }

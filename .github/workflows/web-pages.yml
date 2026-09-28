@@ -1,11 +1,7 @@
 name: Website
 
-# Builds the static site in web/ and deploys it to GitHub Pages. Only runs when something the site
-# is built from changes: web/ itself, plus the repo docs it renders (docs/, the Grab/Bridge READMEs,
-# the Grab development guide, CONTRIBUTING.md), the compose/.env files it embeds, the install.sh it serves, and the app's and
-# the extension's logos/fonts/screenshots.
-# Conversely, every other workflow is path-filtered to its own folder, so a web/-only change
-# triggers this workflow and nothing else (except web/src/lib/site.mjs, which also drives wiki.yml).
+# Builds the static site in web/ and deploys it to GitHub Pages, when web/ or anything it renders
+# or embeds changes (docs, READMEs, compose files, install.sh, logos, screenshots).
 on:
   push:
     branches: [main]
@@ -64,8 +60,7 @@ jobs:
           node-version-file: web/.nvmrc
           cache: npm
           cache-dependency-path: web/package-lock.json
-      # Supplies the live Pages URL and base path ("" with the thingport.net custom domain).
-      # PR builds skip it -- they may come from forks -- and fall back to astro.config.mjs's defaults.
+      # Supplies the Pages URL and base path. Skipped for PR builds, which may come from forks.
       - id: pages
         if: github.event_name != 'pull_request'
         uses: actions/configure-pages@v5

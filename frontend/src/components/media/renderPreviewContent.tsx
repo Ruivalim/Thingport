@@ -20,9 +20,7 @@ function PreviewPlaceholder({ text }: { text: string }) {
   );
 }
 
-// Shared by PrintCard (card thumbnail, variant "card") and PrintPreviewModal (full detail view,
-// variant "modal") -- picks the right preview widget (raster image, ModelViewer/ModelSnapshot for
-// 3D, LightBurnPreview, or a placeholder) for a print's active plate.
+// Picks the preview widget for a print's active plate.
 export function renderPreviewContent(
   print: Print,
   variant: PreviewVariant,

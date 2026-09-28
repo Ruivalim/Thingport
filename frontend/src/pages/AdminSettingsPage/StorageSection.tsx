@@ -17,8 +17,7 @@ type Props = {
   onUnauthorized?: () => void;
 };
 
-// Two example plates of the same print, to show that sibling plates
-// share the {model} directory under the default template.
+// Two plates of one print, showing that siblings share the {model} directory.
 const PLATE_PREVIEW_VALUES: Record<string, string>[] = [
   {
     category: "Props/Workshop",

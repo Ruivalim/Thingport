@@ -14,8 +14,7 @@ const createdPrintIds: string[] = [];
 const createdCategoryIds: string[] = [];
 
 function tmpFile(name: string, contents: string): string {
-  // supertest's .attach() uses the path's basename as the uploaded filename, so each file
-  // needs its own directory to keep that basename exactly as given (e.g. "solo.stl").
+  // supertest uses the basename as the upload filename, so each file gets its own directory.
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "thingport-test-"));
   const p = path.join(dir, name);
   fs.writeFileSync(p, contents);
@@ -34,8 +33,7 @@ const TEST_EMAIL = "test@example.com";
 const TEST_PASSWORD = "test-password-123";
 
 beforeAll(async () => {
-  // Register the primary test account, or log in if a previous run against a persistent test
-  // DB already created it.
+  // Log in instead if a persistent test DB already has the account.
   let res = await request(app)
     .post("/api/register")
     .send({ displayName: "Test User", email: TEST_EMAIL, password: TEST_PASSWORD });

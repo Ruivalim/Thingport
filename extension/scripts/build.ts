@@ -19,15 +19,12 @@ function compileScss(file: string): { css: string; watchFiles: string[] } {
   return { css: result.css, watchFiles: result.loadedUrls.filter((u) => u.protocol === "file:").map((u) => fileURLToPath(u)) };
 }
 
-/** `import css from "./x.scss?inline"` -> the compiled CSS as a string (for the content script's
- *  shadow root); a plain `import "./x.scss"` -> CSS esbuild emits next to the importing entry
- *  (the popup's popup.css). */
+/** `?inline` imports compile to a CSS string (for the shadow root); plain imports emit a CSS file. */
 const scssPlugin: esbuild.Plugin = {
   name: "scss",
   setup(build) {
-    // Paths are kept relative to the extension folder: esbuild writes them into the bundles as
-    // `// scss:<path>` comments, and an absolute path would leak the build machine's folder layout
-    // into the shipped code -- and stop a store reviewer's rebuild matching the upload byte for byte.
+    // Relative paths: esbuild writes them into the bundle, and absolute ones would leak the build
+    // machine's layout and break reproducible store builds.
     build.onResolve({ filter: /\.scss(\?inline)?$/ }, (args) => {
       const inline = args.path.endsWith("?inline");
       const file = path.resolve(args.resolveDir, args.path.replace(/\?inline$/, ""));
@@ -45,7 +42,6 @@ const scssPlugin: esbuild.Plugin = {
   },
 };
 
-/** Static files and the manifest, written after every (re)build. */
 function staticFilesPlugin(target: Target, outdir: string, pkg: { version: string; description: string }): esbuild.Plugin {
   return {
     name: "static-files",
@@ -74,11 +70,10 @@ async function buildTarget(target: Target, watch: boolean): Promise<void> {
     },
     outdir,
     bundle: true,
-    // Classic scripts everywhere: content scripts can't be modules, and one format keeps the
-    // background identical between Chrome's service worker and Firefox's event page.
+    // Content scripts can't be modules, and one format keeps Chrome's and Firefox's background identical.
     format: "iife",
     target: ["chrome110", "firefox115"],
-    // Readable output -- store reviewers (AMO in particular) read the submitted code.
+    // Store reviewers (AMO in particular) read the submitted code.
     minify: false,
     sourcemap: watch ? "inline" : false,
     legalComments: "none",

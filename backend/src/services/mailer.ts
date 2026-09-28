@@ -2,10 +2,7 @@ import nodemailer from "nodemailer";
 import { PUBLIC_URL } from "../config";
 import { getSmtpSettings } from "./settingsService";
 
-/** Sends one email through the instance's SMTP settings. Only ever called once the caller has
- * already confirmed SMTP is configured (isSmtpConfigured) -- throws if `host` somehow ends up
- * unset here anyway, since silently dropping one of these emails would leave its recipient with
- * no way in. */
+/** Throws without a host rather than silently dropping the email. */
 async function sendMail(message: { to: string; subject: string; text: string; html: string }): Promise<void> {
   const smtp = await getSmtpSettings();
   if (!smtp.host) throw new Error("SMTP is not configured");
@@ -23,8 +20,6 @@ function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }
 
-/** Sends the account-verification email a new registration (see routes/auth.ts) waits on before
- * it can sign in. */
 export async function sendVerificationEmail(to: string, displayName: string, token: string): Promise<void> {
   const link = `${PUBLIC_URL}/verify-email?token=${encodeURIComponent(token)}`;
   await sendMail({
@@ -35,8 +30,7 @@ export async function sendVerificationEmail(to: string, displayName: string, tok
   });
 }
 
-/** Sends an invitation to register while registrations are closed (see
- * services/invitationService.ts). `link` is the full registration URL, token included. */
+/** `link` is the full registration URL, token included. */
 export async function sendInvitationEmail(to: string, inviterName: string, link: string, expiresInDays: number): Promise<void> {
   await sendMail({
     to,

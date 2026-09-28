@@ -7,25 +7,17 @@ import { MODEL_PREVIEWS, MODEL_PREVIEW_MAX_MEMORY_MB, MODEL_PREVIEW_TIMEOUT_SECO
 import type { ModelPreviewWorkerInput, ModelPreviewWorkerResult } from "./modelPreviewWorker";
 import { getSimplifyPreviews } from "./settingsService";
 
-// Owns the pre-rendered GLB cache for the interactive 3D preview: which plates have one, which
-// failed, and running the render itself -- in a worker thread (modelPreviewWorker.ts ->
-// modelPreviewRender.ts) under a memory and time limit, so a pathological .3mf costs at most that
-// thread, never the server's event loop or the host's memory.
+// Renders run in a worker thread under memory and time limits, so a pathological .3mf can't take
+// down the server.
 
-// ---- Cache path helpers (same shape as printService.ts's plateThumbPath/plateThumbExists) -----
-
-// Part of the cache filename, so a change to what buildGlbGroup produces makes every older GLB a
-// cache miss and gets it regenerated on next view, rather than serving stale geometry forever.
-// v2: the Z-up -> Y-up conversion became a rotation instead of a mirroring swap. v3: a component
-// takes only its own object from a shared part file (multi-part models were built k times over).
-// Failure markers carry it too, so a file an older renderer refused gets another attempt.
+// Part of the cache filename, so bumping it regenerates older GLBs on next view. Failure markers
+// carry it too, so a file an older renderer refused gets another attempt.
 const PREVIEW_FORMAT_VERSION = 3;
 
 export function modelPreviewGlbPath(plateId: string): string {
   return path.join(MODEL_PREVIEWS, `${plateId}.v${PREVIEW_FORMAT_VERSION}.glb`);
 }
 
-/** Pre-versioning filename (v1) -- removed once its replacement is written. */
 function legacyModelPreviewGlbPath(plateId: string): string {
   return path.join(MODEL_PREVIEWS, `${plateId}.glb`);
 }
@@ -34,14 +26,12 @@ function modelPreviewErrorPath(plateId: string): string {
   return path.join(MODEL_PREVIEWS, `${plateId}.v${PREVIEW_FORMAT_VERSION}.error`);
 }
 
-/** Pre-versioning failure marker -- ignored, and removed alongside a successful render. */
 function legacyModelPreviewErrorPath(plateId: string): string {
   return path.join(MODEL_PREVIEWS, `${plateId}.error`);
 }
 
-/** Written before generation starts and removed when it ends (either way). Still being there
- * with nothing in flight means the process died mid-generation (OOM kill, container restart), so
- * that plate is never retried automatically -- delete this file to allow another attempt. */
+/** Left behind when the process died mid-render (e.g. OOM), so that plate isn't retried
+ * automatically. Delete it to allow another attempt. */
 function modelPreviewPendingPath(plateId: string): string {
   return path.join(MODEL_PREVIEWS, `${plateId}.pending`);
 }
@@ -50,13 +40,9 @@ export function modelPreviewGlbExists(plateId: string): boolean {
   return fsSync.existsSync(modelPreviewGlbPath(plateId));
 }
 
-// ---- Failure bookkeeping ------------------------------------------------------------------------
-
 const ERROR_RETRY_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
-// Error-file prefix for failures that would just repeat (file refused as too complex, render
-// killed for exceeding its limits): never retried automatically, unlike a transient error which
-// gets another go after the cooldown. Delete the .error file to force a retry, e.g. after raising
-// MODEL_PREVIEW_MAX_MEMORY_MB.
+// Failures that would just repeat (too complex, killed for limits) are never retried
+// automatically. Delete the .error file to force a retry.
 const PERMANENT_FAILURE_PREFIX = "permanent: ";
 const UNSUPPORTED_MARKER = `${PERMANENT_FAILURE_PREFIX}unsupported`;
 
@@ -71,12 +57,8 @@ function recentlyFailed(plateId: string): boolean {
   }
 }
 
-// ---- Worker supervision -------------------------------------------------------------------------
-
-// From compiled output (dist/*.js) the worker is plain JS. From TypeScript source (the `tsx watch`
-// dev server, vitest) it needs tsx's CommonJS hook registered inside the thread first -- workers
-// don't inherit the parent's loader, and on Node 20 `--import tsx` in the worker's execArgv doesn't
-// apply to its entry file either, hence an eval'd bootstrap that requires both explicitly.
+// Under tsx (dev, vitest) the worker needs tsx's hook registered first: workers don't inherit the
+// parent's loader, and on Node 20 `--import tsx` doesn't apply to the entry file.
 const WORKER_FILE = path.join(__dirname, `modelPreviewWorker${path.extname(__filename)}`);
 const WORKER_BOOTSTRAP = WORKER_FILE.endsWith(".ts")
   ? `require(${JSON.stringify(createRequire(__filename).resolve("tsx/cjs"))}); require(${JSON.stringify(WORKER_FILE)});`
@@ -84,11 +66,8 @@ const WORKER_BOOTSTRAP = WORKER_FILE.endsWith(".ts")
 
 const MEMORY_POLL_MS = 250;
 
-// With Administration > Rendering's "simplify" on, a heavier model's preview is reduced to about
-// this many triangles (see modelPreviewRender.ts's simplifyGroupMeshes). 3D printing models are
-// often far denser than a screen shows: 1M triangles still looks the same, while shrinking the
-// file the viewer downloads and what a phone's GPU has to hold. Lighter models are untouched.
-// Defined here rather than in the renderer so the server thread never loads the renderer.
+// Models rarely look different above 1M triangles on screen. Defined here so the server thread
+// never loads the renderer.
 export const SIMPLIFY_TARGET_TRIANGLES = 1_000_000;
 
 type RenderOutcome =
@@ -98,14 +77,8 @@ type RenderOutcome =
   | { status: "limit"; reason: string }
   | { status: "error"; error: string };
 
-/** Runs one render in a fresh worker thread and resolves once that thread is gone (so its memory
- * is released before the next queued render starts). Never rejects. Limits:
- *  - heap: the worker's own V8 old-generation cap (resourceLimits) -- exceeding it terminates just
- *    the worker (ERR_WORKER_OUT_OF_MEMORY);
- *  - total memory: mesh data lives in typed arrays, outside any V8 heap cap, so a watchdog on this
- *    side also polls the process RSS and terminates the worker if it has grown past the budget
- *    since the render started;
- *  - time: terminated after MODEL_PREVIEW_TIMEOUT_SECONDS. */
+/** Resolves once the thread is gone, so its memory is freed before the next render. Never
+ * rejects. Mesh data lives outside the V8 heap cap, so a watchdog also polls process RSS. */
 function renderInWorker(input: ModelPreviewWorkerInput): Promise<RenderOutcome> {
   return new Promise((resolve) => {
     const maxGrowthBytes = MODEL_PREVIEW_MAX_MEMORY_MB * 1024 * 1024;
@@ -154,18 +127,13 @@ function renderInWorker(input: ModelPreviewWorkerInput): Promise<RenderOutcome> 
   });
 }
 
-// ---- Public entry point -------------------------------------------------------------------------
-
 const inFlight = new Set<string>();
 const crashWarned = new Set<string>();
 
-// One render at a time, process-wide: a multi-profile import creates several .3mf plates at once,
-// and rendering them in parallel would multiply peak memory past the per-render limit.
+// One render at a time: parallel renders would multiply peak memory past the limit.
 let queue: Promise<void> = Promise.resolve();
 
-/** Generates (or refuses to, gracefully) the cached GLB for one plate. Always resolves --
- * never throws -- so callers can fire-and-forget it without a .catch(). Safe to call
- * concurrently for the same plateId (subsequent calls no-op while one is queued or running). */
+/** Never throws. Concurrent calls for the same plate no-op. */
 export async function generateModelPreviewGlb(plateId: string, srcPath: string): Promise<void> {
   if (modelPreviewGlbExists(plateId) || inFlight.has(plateId) || recentlyFailed(plateId)) return;
   if (fsSync.existsSync(modelPreviewPendingPath(plateId))) {
@@ -184,11 +152,7 @@ export async function generateModelPreviewGlb(plateId: string, srcPath: string):
   await run;
 }
 
-/** Where a plate's preview stands, for the viewer to decide between waiting, giving up, and
- *  loading it: "generating" covers queued too; "failed" covers a file too heavy to preview, a
- *  render that hit its limits, and one interrupted by a crash -- none of which will retry on
- *  their own soon; "unsupported" is a 3MF layout the server's parser doesn't handle, left to the
- *  browser's more general loaders. */
+/** "failed" won't retry soon; "unsupported" is left to the browser's loaders. */
 export type ModelPreviewState = "ready" | "generating" | "failed" | "unsupported";
 
 export function modelPreviewState(plateId: string): ModelPreviewState {
@@ -250,19 +214,14 @@ async function runGeneration(plateId: string, srcPath: string): Promise<void> {
   }
 }
 
-// ---- Simplification setting changes -----------------------------------------------------------
-
 type GlbSummary = { triangles: number; simplified: boolean };
 
-/** Reads just a cached GLB's JSON chunk (not its geometry): how many triangles it holds, and
- *  whether the renderer simplified it (the `simplified` note it leaves in the preview's
- *  metadata). Null for a file that isn't a GLB this renderer wrote. */
+/** Reads only a cached GLB's JSON chunk. Null for a file this renderer didn't write. */
 async function readGlbSummary(file: string): Promise<GlbSummary | null> {
   const handle = await fs.open(file, "r");
   try {
     const header = Buffer.alloc(20);
     await handle.read(header, 0, 20, 0);
-    // "glTF" magic, then the first chunk must be JSON ("JSON" = 0x4e4f534a).
     if (header.readUInt32LE(0) !== 0x46546c67 || header.readUInt32LE(16) !== 0x4e4f534a) return null;
     const json = Buffer.alloc(header.readUInt32LE(12));
     await handle.read(json, 0, json.length, 20);
@@ -285,10 +244,7 @@ async function readGlbSummary(file: string): Promise<GlbSummary | null> {
   }
 }
 
-/** After the Rendering "simplify" setting changes, removes the cached previews that would now
- *  come out differently -- turned on: the ones over the triangle budget; turned off: the ones
- *  that were simplified -- so they're rebuilt the next time they're viewed. Every other preview
- *  is left as it is. Returns how many were removed. */
+/** Removes the cached previews the new setting would change, so they're rebuilt on next view. */
 export async function dropPreviewsAffectedBySimplification(simplify: boolean): Promise<number> {
   const suffix = `.v${PREVIEW_FORMAT_VERSION}.glb`;
   let removed = 0;

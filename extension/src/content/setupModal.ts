@@ -1,9 +1,5 @@
-// The grayed-out icon's dialog (supported page, extension not configured yet). Explains what's
-// missing and hands off to the extension's own setup form (background/setup.ts) rather than
-// collecting anything here: saving needs a host-permission prompt only an extension page can show,
-// and the password never goes into this page's DOM. Saving writes the config to storage, which
-// index.ts's storage listener turns into unmount() + init(): the dialog goes away and the normal,
-// active icon takes its place.
+// The grayed-out icon's dialog. Setup happens in an extension page: saving needs a host-permission
+// prompt, and the password never enters this page's DOM.
 
 import { send } from "../shared/messages";
 import { fillIcons } from "../shared/icon";

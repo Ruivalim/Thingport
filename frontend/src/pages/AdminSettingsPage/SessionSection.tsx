@@ -16,8 +16,7 @@ type Props = {
   onUnauthorized?: () => void;
 };
 
-// Mirrors the backend's own bounds (routes/settings.ts's MIN/MAX_AUTH_TOKEN_TTL_SECONDS) so a
-// bad value is rejected client-side before it ever reaches the server.
+// Mirrors the backend's bounds.
 const MIN_SECONDS = 5 * 60;
 const MAX_SECONDS = 365 * 24 * 60 * 60;
 
@@ -27,13 +26,10 @@ const UNIT_SECONDS: Record<DurationUnit, number> = {
   hours: 3600,
   days: 86400,
   weeks: 604800,
-  months: 2629800, // 30.44 days, i.e. a year / 12 -- close enough for a rough conversion hint
+  months: 2629800, // a year / 12
 };
 
-/** Picks the largest unit `totalSeconds` amounts to at least one of, e.g. 90000 -> "1 day", not
- *  "1500 minutes" -- so a large TTL always reads as a plain "X hours/days/weeks/months" instead
- *  of forcing the admin to do that arithmetic themselves. Returns null under a minute, where the
- *  raw seconds the admin already typed are conversion enough. */
+/** e.g. 90000 -> "1 day". Null under a minute. */
 function bestFitDuration(totalSeconds: number): { unit: DurationUnit; value: number } | null {
   const units: DurationUnit[] = ["months", "weeks", "days", "hours", "minutes"];
   for (const unit of units) {
@@ -45,12 +41,7 @@ function bestFitDuration(totalSeconds: number): { unit: DurationUnit; value: num
   return null;
 }
 
-/** Instance-wide: how long a freshly issued sign-in token stays valid before that user has to
- *  log in again (see backend's auth.ts issueToken and getAuthTokenTtl) -- admin-configured like
- *  Storage Structure and Model Previews above it. Seeded from the AUTH_TOKEN_TTL env var the
- *  first time this is ever read on a fresh instance; once saved here, the DB value takes over
- *  for good. Only affects tokens issued after saving -- anyone already signed in keeps whatever
- *  length was active at their own login. */
+/** Only affects tokens issued after saving. */
 export default function SessionSection({ onUnauthorized }: Props) {
   const { t } = useTranslation("app");
   const [seconds, setSeconds] = React.useState(43200);

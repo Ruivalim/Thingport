@@ -8,11 +8,7 @@ export function buildAuthorId(provider: string, externalId: string): string {
   return `${provider}:${externalId}`;
 }
 
-/** Upserts an Author row from resolved import metadata and returns the full record (not just
- * its id) so callers can build an immediate API response without a second fetch. Refreshes
- * every field the import did get (bio/avatar/etc. can change between imports), so re-importing a
- * model from an already-known author keeps that author's record current rather than stale from
- * first import. Never throws -- a broken author fetch shouldn't fail the print import itself. */
+/** Refreshes every field the import got. Never throws: a broken author shouldn't fail the import. */
 export async function upsertAuthorFromImport(info: ImportedAuthorInfo | null): Promise<Author | null> {
   if (!info) return null;
   const id = buildAuthorId(info.provider, info.externalId);
@@ -32,9 +28,7 @@ export async function upsertAuthorFromImport(info: ImportedAuthorInfo | null): P
         avatarUrl: info.avatarUrl,
         backgroundUrl: info.backgroundUrl,
       },
-      // A field the new import didn't get is left as it was rather than erased: a MakerWorld
-      // import often only has the design's short creator summary (the fuller profile endpoint
-      // being behind Cloudflare), and shouldn't wipe a bio/links/cover an earlier import fetched.
+      // Fields this import lacks are kept, so a creator-summary-only import doesn't wipe a fuller profile.
       update: info.unverified
         ? {}
         : {
@@ -50,18 +44,13 @@ export async function upsertAuthorFromImport(info: ImportedAuthorInfo | null): P
   } catch {
     return null;
   }
-  // Models imported before this author had a record -- see linkUnattributedPrints.
   await linkUnattributedPrints(author.id).catch((err) => console.error("Couldn't link earlier imports to their author", err));
   return author;
 }
 
-/** Models that only know their author by name, each paired with the one author record that
- * name belongs to. A model gets a plain-text `creator` on every import, but a linked Author only
- * when the import could build one -- and for a while MakerWorld imports couldn't (see
- * makerworldCloudApi.ts's completeMakerworldAuthor). The match is by the author's name or
- * handle, within the model's own provider, ignoring case and a leading "@"; a name two authors
- * share matches nobody rather than being guessed. (A model whose author was reset has no creator
- * left to match.) */
+/** Models that only know their author by name, paired with the one author that name or handle
+ * belongs to within the same provider (case-insensitive, ignoring a leading "@"). A name shared
+ * by two authors matches nobody. */
 export const LINKABLE_PRINTS = Prisma.sql`
   SELECT p2.id AS print_id, min(a.id) AS author_id
   FROM "Print" p2
@@ -75,9 +64,7 @@ export const LINKABLE_PRINTS = Prisma.sql`
   HAVING count(*) = 1
 `;
 
-/** Links models to their author record (see LINKABLE_PRINTS) -- every such model across the
- * instance, or with `authorId`, only those matching that author: run for each author an import
- * saves, so earlier imports of theirs get linked right away. Returns how many it linked. */
+/** With `authorId`, only that author's models. Returns how many were linked. */
 export async function linkUnattributedPrints(authorId: string | null = null): Promise<number> {
   return prisma.$executeRaw`
     UPDATE "Print" p SET "authorId" = m.author_id
@@ -86,50 +73,31 @@ export async function linkUnattributedPrints(authorId: string | null = null): Pr
   `;
 }
 
-/** Deletes an Author row once nothing references it any more. Author rows aren't user-scoped --
- * two different users importing the same MakerWorld/Thingiverse/Printables creator share one row
- * -- so this checks Print.authorId across every user, not just the caller's. Used after clearing
- * a print's authorId (the Edit modal's "reset author" action) to avoid leaving an orphaned Author
- * behind once the last print referencing it has been detached. */
+/** Authors are shared across users, so this checks every user's prints. */
 export async function deleteAuthorIfOrphaned(authorId: string): Promise<void> {
   const remaining = await prisma.print.count({ where: { authorId } });
   if (remaining > 0) return;
   await prisma.author.delete({ where: { id: authorId } }).catch(() => undefined);
 }
 
-/** Whether ANY Thingport account has claimed this Author as themselves -- what the Author page
- * uses to decide whether to show "It's me!" at all, without revealing *who* claimed it (Author
- * rows are shared/global, so the claimant could be a different account on this instance). */
+/** Doesn't reveal who claimed it. */
 export async function isAuthorLinked(authorId: string): Promise<boolean> {
   const link = await prisma.authorLink.findUnique({ where: { authorId }, select: { id: true } });
   return Boolean(link);
 }
 
-/** The Author rows this user has claimed as themselves -- backs both the "My models" page's
- * provider chips and (via authorIdsForSelfPrints below) its models grid, and lets the Author page
- * work out locally whether to show "It's me!" (hidden once the viewer already has a different
- * author linked for that same provider -- see linkAuthorToUser's PROVIDER_ALREADY_LINKED check). */
 export async function getLinkedAuthorsForUser(userId: string): Promise<Author[]> {
   const links = await prisma.authorLink.findMany({ where: { userId }, include: { author: true } });
   return links.map((l) => l.author);
 }
 
-/** Author ids linked to this user, for the "My models" grid query (routes/prints.ts's
- * SELF_AUTHOR_ID handling) -- a plain id list is all that query needs, unlike
- * getLinkedAuthorsForUser's full rows for the chips UI. */
 export async function getLinkedAuthorIds(userId: string): Promise<string[]> {
   const links = await prisma.authorLink.findMany({ where: { userId }, select: { authorId: true } });
   return links.map((l) => l.authorId);
 }
 
-/** Claims an Author row as this user's own identity (the Author page's "It's me!" button, after
- * its confirmation modal). Enforces the two real-world rules AuthorLink's schema comment
- * describes -- this author isn't already claimed by anyone, and the user doesn't already have a
- * *different* author linked for this same provider -- then merges the author's bio/backgroundUrl
- * onto the user record, but only into fields still empty (a user who links a second provider
- * keeps whatever bio/cover their first link already set; see User's own doc comment). The
- * author's profile link is "copied over" implicitly and unconditionally by the link relation
- * itself -- unlike bio/cover, there's no "already defined" case for it to conditionally skip. */
+/** Enforces AuthorLink's rules, then copies the author's bio/backgroundUrl onto the user where
+ * those are still empty. */
 export async function linkAuthorToUser(userId: string, authorId: string): Promise<{ author: Author; user: User }> {
   const author = await prisma.author.findUnique({ where: { id: authorId } });
   if (!author) throw new HttpError(404, "Author not found");

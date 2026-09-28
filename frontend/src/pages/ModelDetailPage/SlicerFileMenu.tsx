@@ -15,15 +15,11 @@ type Props = {
   onClose: () => void;
   slicerLabel: string;
   targets: SlicerTarget[];
-  /** Called as a target's link is followed (e.g. to bump the print count). */
   onOpen: () => void;
-  /** Opens directly below the anchor at exactly its width -- for a full-width button, so the menu
-   *  reads as that button's dropdown. Off for a small anchor like an icon button. */
+  /** Opens below the anchor at its exact width, for a full-width button. */
   matchAnchorWidth?: boolean;
 };
 
-/** "Open in {Slicer}" for a model with more than one file: pick which one to hand the slicer,
- *  rather than always the first. Each row is a real link to the slicer's URL protocol. */
 export default function SlicerFileMenu({ anchorEl, onClose, slicerLabel, targets, onOpen, matchAnchorWidth = false }: Props) {
   const { t } = useTranslation(["models"]);
   const paperSx = matchAnchorWidth && anchorEl ? { width: anchorEl.offsetWidth } : { maxWidth: 360 };

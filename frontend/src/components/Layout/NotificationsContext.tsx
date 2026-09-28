@@ -12,9 +12,7 @@ type NotificationsContextValue = {
 
 const NotificationsContext = createContext<NotificationsContextValue | null>(null);
 
-// Not urgent -- the primary trigger for a new notification is the current tab's own tracked
-// import job finishing (ImportJobContext refreshes this directly when that happens). This
-// interval only catches a notification created elsewhere (another tab/device).
+// Only catches notifications from other tabs/devices; the tracked import job refreshes directly.
 const POLL_INTERVAL_MS = 45_000;
 
 export function NotificationsProvider({

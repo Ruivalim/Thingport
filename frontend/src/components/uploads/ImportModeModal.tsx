@@ -29,14 +29,7 @@ function errorMessage(err: unknown, fallback: string) {
 }
 
 /**
- * Prompts the user, for a flat multi-file drop or picker selection, to choose
- * between importing each file as its own print ("separate") or bundling all
- * of them as plates of one new multi-part print ("multiplate").
- *
- * Structurally similar to useZipImportPrompt() in ZipImportModal.tsx, but
- * this is a distinct decision (single vs. multi-plate print) with its own
- * simpler one-step UI -- it intentionally does not share state with the zip
- * import wizard.
+ * For a flat multi-file selection: import each file as its own print, or all as plates of one.
  */
 export function useImportModePrompt() {
   const { t } = useTranslation("app");

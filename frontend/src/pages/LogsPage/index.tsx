@@ -54,10 +54,7 @@ function defaultFromDate(): string {
   return isoDateOnly(d);
 }
 
-/** Admin-only audit-trail viewer -- logins/logouts, uploads, imports, model edits/deletes, and
- *  collection creates/edits/deletes/item adds/removes. Filters mirror the write side's granularity: one entry per
- *  action, not per file, so a batch import shows as a single "import completed" row (see
- *  services/importJobRunner.ts) rather than one row per model. */
+/** One entry per action, not per file: a batch import is a single row. */
 export default function LogsPage({ onUnauthorized }: Props) {
   const { t, i18n } = useTranslation(["app", "common"]);
   const [users, setUsers] = React.useState<AdminUser[]>([]);

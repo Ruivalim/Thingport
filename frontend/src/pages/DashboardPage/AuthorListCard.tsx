@@ -44,8 +44,6 @@ function AuthorRow({ author, rank, modelCountLabel, onClick }: {
   );
 }
 
-/** Top Authors -- authors this user has the most models from, ranked by model count. 5-row
- *  preview with a See more dialog. Every row navigates to the author's page. */
 export default function AuthorListCard({ authors }: Props) {
   const { t } = useTranslation("app");
   const navigate = useNavigate();

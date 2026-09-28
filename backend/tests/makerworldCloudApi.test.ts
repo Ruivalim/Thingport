@@ -31,8 +31,6 @@ describe("resolveMakerworldViaCloudApi", () => {
       const url = String(input);
       if (url.includes("/design-service/design/")) {
         designCalls++;
-        // First call: a bare, non-captcha-shaped 418 -- the transient, request-scoped flag
-        // mirrored from maziggy/bambuddy's #2790 writeup, not the real IP-level block.
         if (designCalls === 1) return jsonResponse(418, { error: "temporary" });
         return jsonResponse(200, VALID_DESIGN);
       }
@@ -64,9 +62,6 @@ describe("resolveMakerworldViaCloudApi", () => {
 
     const callsAfterFirstChallenge = fetchMock.mock.calls.length;
     await expect(resolveMakerworldViaCloudApi("789", null, "test-token")).rejects.toBeInstanceOf(MakerworldCaptchaError);
-    // The cooloff guard at the top of resolveMakerworldViaCloudApi should refuse this second
-    // call before it ever reaches fetch -- continuing to hit MakerWorld while blocked is
-    // exactly what deepens the block, per bambuddy's independent findings.
     expect(fetchMock.mock.calls.length).toBe(callsAfterFirstChallenge);
   });
 });

@@ -7,39 +7,23 @@ export const THEME_IDS: ResolvedTheme[] = ["light", "dark"];
 
 const BODY_FONT_STACK =
   '"Open Sans", "system-ui", "Segoe UI", Roboto, Oxygen, Ubuntu, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif';
-/** The brand/display face used for h5/h6 (page and section titles) -- kept as one exported
- *  constant so every usage stays in sync. */
 export const DISPLAY_FONT_STACK = '"Thingport", sans-serif';
 
-/**
- * Extra design tokens MUI's Theme doesn't model natively: the page background (a plain color
- * for light/dark, a layered radial-gradient CSS value for the neon/purple/blue themes) and the
- * three.js model material colors used by ModelViewer's paletteForTheme().
- */
+/** Tokens MUI's Theme doesn't model: the page background and three.js material colors. */
 declare module "@mui/material/styles" {
   interface Theme {
     thingport: {
       pageBackground: string;
       modelColor: string;
       modelEmissive: string;
-      /** A separate accent used for things that shouldn't compete with the primary green
-       *  (e.g. an attention/alert-style label) -- not one of MUI's error/warning palette
-       *  roles, just a second brand-adjacent color for cases that call for it. */
+      /** A secondary accent that doesn't compete with the primary green. */
       altText: string;
-      /** Unselected nav-row label/icon color for the Sidebar rail and the Models page's
-       *  Categories box -- narrower than text.secondary (which is used all over for ordinary
-       *  muted text) so recoloring nav rows can't leak into unrelated UI. */
+      /** Separate from text.secondary so recoloring nav rows can't leak into unrelated UI. */
       navInactiveText: string;
-      /** Selected nav row background (Sidebar rail rows, Categories box rows) -- a `background`
-       *  (not `bgcolor`) value since dark mode's is a left-to-right gradient, not a flat color;
-       *  light mode's is still just a flat tint expressed the same way. */
+      /** A `background` value: dark mode's is a gradient. */
       selectedNavBackground: string;
-      /** Selected nav row label/icon color -- the brand accent in dark mode, unchanged
-       *  (inherited) text color in light mode. */
       selectedNavText: string;
-      /** Heading/emphasis text (dashboard stat numbers and pane headers, a model card's title,
-       *  the model detail page's "Description"/"Tags" headlines, etc.) -- plain white in dark
-       *  mode for contrast against those panes' backgrounds, unchanged (text.primary) in light. */
+      /** White in dark mode, text.primary in light. */
       headingText: string;
     };
   }
@@ -81,8 +65,6 @@ type ThemeDef = {
   headingText: string;
 };
 
-// Values ported 1:1 from the original CSS custom properties so the visual identity of each
-// theme carries over even though the implementation is now an MUI theme object.
 const THEME_DEFS: Record<ResolvedTheme, ThemeDef> = {
   light: {
     mode: "light",
@@ -104,9 +86,8 @@ const THEME_DEFS: Record<ResolvedTheme, ThemeDef> = {
     modelEmissive: "#94a3b8",
     navInactiveText: "#858585",
     selectedNavBackground: alpha("#5be584", 0.2),
-    // Matches the pre-existing collapsed-rail icon treatment (selected -> primary.main).
     selectedNavText: "#00b800",
-    headingText: "#1f1f1f", // == text above; unused in light mode's actual styling either way
+    headingText: "#1f1f1f",
   },
   dark: {
     mode: "dark",
@@ -162,17 +143,12 @@ export function buildTheme(id: ResolvedTheme): Theme {
       MuiButton: { styleOverrides: { root: { borderRadius: 8 } } },
       MuiChip: { styleOverrides: { root: { borderRadius: 6 } } },
       MuiTooltip: { styleOverrides: { tooltip: { backgroundColor: d.panelStrong, color: d.text } } },
-      // A success toast (see ToastProvider) should always read as "this worked" in the brand
-      // green (#00b800) with white text -- e.g. favoriting a model -- not MUI's own default
-      // success palette, in either theme.
+      // Success toasts always use the brand green, not MUI's success palette.
       MuiAlert: {
         styleOverrides: {
           filledSuccess: { backgroundColor: d.accent, color: d.accentContrast },
-          // Dark mode only: MUI's default standard/outlined alerts use fixed near-black tints
-          // (darken(color, 0.9)) that read as muddy black boxes on this theme's navy panels. A
-          // translucent tint of the severity color instead lets the panel show through, with a
-          // matching hairline border and light text. Success uses the brand green, like the
-          // success toast above. Filled alerts (toasts) keep their own solid styling.
+          // MUI's dark alerts are near-black boxes on navy panels; use a translucent severity tint instead.
+          // Filled alerts (toasts) keep their own styling.
           ...(d.mode === "dark"
             ? {
                 root: ({ ownerState, theme }) => {
@@ -191,11 +167,8 @@ export function buildTheme(id: ResolvedTheme): Theme {
             : {}),
         },
       },
-      // Dark mode is deliberately square everywhere -- corners, chips, avatars, the back-to-top
-      // FAB, all of it. `sx`-set radii (the vast majority of them: cards, panels, the info box,
-      // etc.) beat theme.shape.borderRadius and component styleOverrides alike, so nothing short
-      // of an !important global rule reaches all of them; MuiCssBaseline's styleOverrides is
-      // exactly the escape hatch for page-level CSS the theme needs to own like this.
+      // Dark mode is square everywhere. `sx` radii beat theme overrides, so only a global !important
+      // rule reaches them all.
       ...(d.mode === "dark"
         ? { MuiCssBaseline: { styleOverrides: "*, *::before, *::after { border-radius: 0 !important; }" } }
         : {}),
@@ -214,23 +187,16 @@ export function buildTheme(id: ResolvedTheme): Theme {
   return createTheme(options);
 }
 
-/** textSubtle isn't part of MUI's palette shape; components that need it read this directly. */
 export function subtleTextColor(id: ResolvedTheme): string {
   return THEME_DEFS[id].textSubtle;
 }
 
-/** accentSoft (a translucent tint of the accent color) isn't part of MUI's palette shape either. */
 export function accentSoftColor(id: ResolvedTheme): string {
   return THEME_DEFS[id].accentSoft;
 }
 
-/** The one `borderColor` every container-edge/column-divider border in the app should use: the
- *  theme's divider color (`palette.divider`, i.e. `theme.thingport.border`/`borderStrong`'s light-
- *  mode value) in light mode, invisible in dark mode -- dark mode's panels already contrast against
- *  the page background on their own, so an explicit border there reads as an unwanted extra line
- *  rather than a separator. Shared by Sidebar, CategoriesPanel, ModelSidePanel, and AuthorPage's
- *  profile-column divider so all four can never drift from each other; use as
- *  `sx={{ borderColor: dividerBorderColor, ... }}`. */
+/** The border colour for container edges: the divider in light mode, invisible in dark mode where
+ *  panels already contrast with the background. */
 export function dividerBorderColor(theme: Theme): string {
   return theme.palette.mode === "dark" ? "transparent" : "divider";
 }

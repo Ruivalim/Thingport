@@ -13,10 +13,10 @@ const ALL_OFF = { login: false, register: false, import: false };
 
 let adminToken: string;
 let memberToken: string;
-// Shared database across test files (see vitest.config.ts) -- put the settings back afterwards.
+// The database is shared across files, so restore the settings afterwards.
 let previousSettings: Awaited<ReturnType<typeof getCaptchaSettings>>;
 
-/** A captcha whose answer the test knows -- the HTTP endpoint never reveals it. */
+/** The HTTP endpoint never reveals the answer. */
 function solved(): { captcha_id: string; captcha_answer: string } {
   const { id, answer } = createCaptcha();
   return { captcha_id: id, captcha_answer: answer };
@@ -69,7 +69,7 @@ describe("GET /api/captcha", () => {
     expect(Object.keys(res.body).toSorted()).toEqual(["id", "image"]);
     expect(res.body.image).toMatch(/^data:image\/svg\+xml;base64,/);
     const svg = Buffer.from(res.body.image.split(",")[1], "base64").toString("utf8");
-    // Characters are drawn as outlines, so there's no text for a script to read out of the SVG.
+    // Drawn as outlines, so there's no text to read out of the SVG.
     expect(svg).toContain("<path");
     expect(svg).not.toContain("<text");
   });
@@ -181,7 +181,7 @@ describe("captcha on import", () => {
 
   it("lets an import through with a solved captcha, or from Thingport Grab", async () => {
     await setCaptchaSettings({ import: true });
-    // Nothing is listening at this address, so the import itself fails -- but past the captcha.
+    // Nothing listens here, so the import fails, but only after the captcha.
     const body = { url: "http://127.0.0.1:9/model.stl" };
     const captchaCodes = ["CAPTCHA_REQUIRED", "CAPTCHA_INVALID"];
     const withCaptcha = await request(app).post("/api/import").set(auth(memberToken)).send({ ...body, ...solved() });

@@ -12,10 +12,7 @@ import "C"
 
 import "log"
 
-// onOpenURLCallback is set once before RunURLListener blocks the main thread inside Cocoa's run
-// loop -- handleGetURLEvent (urlhandler_darwin.m) calls back into it for every thingport://
-// link the OS delivers via Apple Events, which is how macOS hands a custom URL scheme to an
-// already-registered app bundle (there is no argv equivalent, unlike Windows/Linux).
+// macOS delivers thingport:// links as Apple Events; handleGetURLEvent calls back into this.
 var onOpenURLCallback func(raw string)
 
 //export goHandleOpenURL
@@ -28,10 +25,7 @@ func goHandleOpenURL(cURL *C.char) {
 	}
 }
 
-// listenForAppleEventURLs blocks forever, running as a Dock-less (LSUIElement) background agent
-// that hands every thingport:// open to handle. macOS reuses this running instance for
-// subsequent link clicks instead of relaunching, so it just keeps servicing callback until the
-// process is terminated.
+// Runs as a Dock-less background agent. macOS reuses this instance for later clicks.
 func listenForAppleEventURLs(handle func(raw string)) {
 	onOpenURLCallback = handle
 	C.RunURLListener()

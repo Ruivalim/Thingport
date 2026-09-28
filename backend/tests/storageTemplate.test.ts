@@ -11,8 +11,7 @@ import { getStorageTemplate, setStorageTemplate, validateStorageTemplate } from 
 const app = createApp();
 const stamp = Date.now();
 let token: string;
-// The template is instance-wide and every test file shares one database (see vitest.config.ts),
-// so it's put back afterwards.
+// The database is shared across files, so restore the template afterwards.
 let previousTemplate: string;
 
 const auth = () => ({ Authorization: `Bearer ${token}` });

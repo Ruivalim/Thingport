@@ -2,9 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { keyframes } from "@emotion/react";
 import Box from "@mui/material/Box";
 
-// Two sequential phases, both moving downward: the old value drops out below first, and only
-// then does the new one drop in from above. No fading -- the container's overflow clip is what
-// hides each value outside its slot.
+// The old value drops out below, then the new one drops in from above; overflow clips both.
 const EXIT_MS = 200;
 const ENTER_MS = 240;
 
@@ -21,14 +19,10 @@ type Props = {
   value: number;
 };
 
-/** Renders a number inline, animating each change like an odometer. The first render is static,
- *  so only a change seen while mounted (e.g. a print count bumped by a download) animates.
- *  Inherits typography from its parent, so wrap it in the Typography that styled the plain
- *  number before. */
+/** Animates changes like an odometer; the first render is static. Inherits typography. */
 export default function RollingNumber({ value }: Props) {
   const lastValueRef = useRef(value);
-  // The value being rolled out (null when idle), and a counter that remounts both spans -- and so
-  // restarts their animations -- on every change, including a second one mid-animation.
+  // rollKey remounts both spans to restart their animations, even mid-animation.
   const [outgoing, setOutgoing] = useState<number | null>(null);
   const [rollKey, setRollKey] = useState(0);
 
@@ -47,9 +41,8 @@ export default function RollingNumber({ value }: Props) {
       <Box
         component="span"
         key={`in-${rollKey}`}
-        // Keyed off rollKey rather than `outgoing` so clearing the old value when its exit ends
-        // doesn't strip this still-running animation. "backwards" holds it above the slot
-        // (clipped, so invisible) through the delay while the old value is leaving.
+        // Keyed off rollKey so clearing `outgoing` doesn't cut this animation short. "backwards" keeps it
+        // hidden above the slot during the delay.
         sx={
           rollKey > 0
             ? {

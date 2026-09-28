@@ -25,10 +25,7 @@ type Props = {
   onUnauthorized?: () => void;
 };
 
-/** Admin-only "trigger" actions -- one-off operations run against other users' data or the whole
- *  instance: linking imported models to their authors (shown only when some can be), and
- *  deleting all of one user's models. A plain list of Paper sections rather than a generic
- *  "trigger registry" -- two don't justify the abstraction. */
+/** One-off operations on other users' data or the whole instance. */
 export default function TriggersPage({ onUnauthorized }: Props) {
   const { t } = useTranslation(["app", "common"]);
   const [users, setUsers] = React.useState<AdminUser[]>([]);
@@ -164,7 +161,6 @@ export default function TriggersPage({ onUnauthorized }: Props) {
               onChange={e => setConfirmText(e.target.value)}
               placeholder={selectedUser?.email}
               disabled={deleting}
-              // Deliberate: focus the confirmation field the moment the dialog opens.
               // oxlint-disable-next-line jsx-a11y/no-autofocus
               autoFocus
             />

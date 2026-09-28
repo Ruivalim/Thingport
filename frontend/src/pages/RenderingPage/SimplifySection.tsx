@@ -17,9 +17,7 @@ type Props = {
   onUnauthorized?: () => void;
 };
 
-/** "Simplify models before preview": the backend reduces a heavy model's 3D preview to about 1M
- *  triangles (see backend/src/services/modelPreviewRender.ts's simplifyGroupMeshes). Off by
- *  default; saves as soon as it's switched. */
+/** Saves as soon as it's switched. */
 export default function SimplifySection({ onUnauthorized }: Props) {
   const { t } = useTranslation("app");
   const [enabled, setEnabled] = React.useState<boolean | null>(null);

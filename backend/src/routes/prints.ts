@@ -25,15 +25,10 @@ import type { Prisma } from "@prisma/client";
 const router = Router();
 router.use(requireAuth);
 
-// Sentinel `author_id` value the "My models" author page sends to mean "prints with no real
-// author at all" (see buildPrintWhere below) -- never a value a real Author id could take.
+// `author_id` sentinel for "prints with no real author".
 const SELF_AUTHOR_ID = "self";
 
-// Tag matching is case-insensitive (a print tagged "Fun" should still show up under "fun"), which
-// Postgres array containment (`hasEvery`/`hasSome`) doesn't support natively -- so tags are left
-// out of the DB where clause and matched in JS instead, via matchesTagList below. Every route that
-// filters by tags already fetches full print rows before paginating in application code (see GET
-// /prints), so this costs nothing extra.
+// Postgres array containment is case-sensitive, so tags are matched in JS after fetching.
 function parseTagList(req: Request): string[] {
   const tagsParam = typeof req.query.tags === "string" ? req.query.tags : "";
   return tagsParam
@@ -63,18 +58,12 @@ async function buildPrintWhere(req: Request): Promise<Prisma.PrintWhereInput> {
   const authorId = typeof req.query.author_id === "string" ? req.query.author_id.trim() : "";
 
   const where: Prisma.PrintWhereInput = { userId: req.userId };
-  // Composed as top-level AND clauses (rather than each assigning `where.OR` directly) since the
-  // self-author case and the `q` search below each need their own OR group -- the second one
-  // would otherwise silently clobber the first.
+  // AND clauses so the self-author and search OR groups don't clobber each other.
   const andClauses: Prisma.PrintWhereInput[] = [];
   if (categoryIds.length === 1) where.categoryId = categoryIds[0];
   else if (categoryIds.length > 1) where.categoryId = { in: categoryIds };
   if (authorId === SELF_AUTHOR_ID) {
-    // The "My models" author page (see AuthorPage's self mode): "no real author at all" (no
-    // Author row, no plain creator string, not resolved from a known import source -- exactly
-    // what ModelCard/ModelSidePanel's showViewerAsAuthor fallback covers) OR one of the Author
-    // rows this user has explicitly linked as themselves (the Author page's "It's me!" button --
-    // see authorService.ts's getLinkedAuthorIds/linkAuthorToUser).
+    // "My models": prints with no author at all, or by an Author the user linked as themselves.
     const linkedAuthorIds = await getLinkedAuthorIds(req.userId!);
     andClauses.push({
       OR: [
@@ -104,8 +93,6 @@ async function buildPrintWhere(req: Request): Promise<Prisma.PrintWhereInput> {
   if (andClauses.length) where.AND = andClauses;
   return where;
 }
-
-// ---- POST /upload ---------------------------------------------------------------------------
 
 router.post(
   "/upload",
@@ -142,11 +129,8 @@ router.post(
           void createLog({ userId: req.userId!, action: "model_uploaded", targetId: print.id, details: { name: print.name } });
         }
       } else {
-        // Only files the 3D viewer can actually render become Plates -- anything else (e.g. a
-        // bundled .f3d source) is attached as a SUPPORTING file below instead, so it doesn't show
-        // up as an unviewable "plate" in the plate switcher. If nothing in the batch is
-        // renderable, fall back to the old all-as-plates behavior so createPrint still gets at
-        // least one plate.
+        // Non-renderable files become SUPPORTING files. If nothing is renderable, every file becomes a
+        // plate so the print still has one.
         const renderableFiles = files.filter(isRenderableUpload);
         const supportingFiles = renderableFiles.length ? files.filter((f) => !isRenderableUpload(f)) : [];
         const plateFiles = renderableFiles.length ? renderableFiles : files;
@@ -173,8 +157,6 @@ router.post(
     }
   }),
 );
-
-// ---- GET /prints ------------------------------------------------------------------------------
 
 type PrintSortMode = "newest" | "popular" | "downloads";
 
@@ -219,9 +201,7 @@ router.get(
       filesByPrint.set(f.printId, list);
     }
 
-    // The "Favourites"/"Browsing History" pseudo-collections default to most-recent-first (by
-    // when they were favorited/last viewed) under the "newest" sort -- "popular"/"downloads"
-    // still sort by their own metric even inside those collections, same as anywhere else.
+    // Under "newest", Favourites and Browsing History sort by when they were favorited/viewed.
     const collectionIdParam = typeof req.query.collection_id === "string" ? req.query.collection_id.trim() : "";
     const systemKey = systemCollectionKeyForId(collectionIdParam);
     const recencyField = systemKey === "favorites" ? "favoritedAt" : systemKey === "history" ? "lastViewedAt" : null;
@@ -247,8 +227,7 @@ router.get(
       const hasMore = sorted.length > start + paged.length;
       res.setHeader("X-Has-More", hasMore ? "true" : "false");
       res.setHeader("X-Next-Offset", String(start + paged.length));
-      // Every match, not just this page -- e.g. an author hover card's "N models" alongside a
-      // 4-item preview, without a second request.
+      // Total across all pages, e.g. for a hover card's "N models".
       res.setHeader("X-Total-Count", String(sorted.length));
     }
 
@@ -261,13 +240,10 @@ router.get(
   }),
 );
 
-// ---- GET /print/:id ----------------------------------------------------------------------------
-
 router.get(
   "/print/:id",
   asyncHandler(async (req, res) => {
-    // Opening a model's detail page always counts as a view, even for the print's own owner --
-    // lastViewedAt is what the "Browsing History" pseudo-collection sorts/filters by.
+    // Counts owner views too: lastViewedAt drives Browsing History.
     await prisma.print.updateMany({
       where: { id: req.params.id, userId: req.userId },
       data: { viewCount: { increment: 1 }, lastViewedAt: new Date() },
@@ -275,8 +251,6 @@ router.get(
     res.json(await printOutById(req.userId!, req.params.id));
   }),
 );
-
-// ---- POST/DELETE /print/:id/favorite ---------------------------------------------------------
 
 router.post(
   "/print/:id/favorite",
@@ -302,16 +276,11 @@ router.delete(
   }),
 );
 
-// ---- POST /print/:id/download --------------------------------------------------------------
-
 router.post(
   "/print/:id/download",
   asyncHandler(async (req, res) => {
-    // Recorded explicitly from the detail page's download actions (single-file, per-plate, or
-    // "download all as zip") and "Open in {Slicer}", rather than inside the plate-file/zip routes
-    // themselves -- those are shared by the 3D viewer, snapshot generation, and bulk tag/category
-    // zips, none of which are a user downloading *this* model. Returns the updated print (like
-    // the favorite routes) so the caller can show the new count without refetching.
+    // Recorded explicitly by the detail page: the file/zip routes also serve the viewer, snapshots
+    // and bulk zips, which aren't downloads of this model.
     const result = await prisma.print.updateMany({
       where: { id: req.params.id, userId: req.userId },
       data: { printCount: { increment: 1 } },
@@ -320,8 +289,6 @@ router.post(
     res.json(await printOutById(req.userId!, req.params.id));
   }),
 );
-
-// ---- GET /tags ----------------------------------------------------------------------------
 
 router.get(
   "/tags",
@@ -341,12 +308,8 @@ router.get(
   }),
 );
 
-// ---- POST /download/zip[/summary] ----------------------------------------------------------
-// Both routes accept the same filter (see DownloadZipFilter): print_ids, tag, category_id, and/or
-// collection_id, combined with AND when more than one is given. /summary is the "are you sure?"
-// confirmation step -- model count + an upper-bound size estimate, computed straight from stored
-// Plate/PrintFile size columns with no filesystem access and no zip actually built (see
-// estimateDownloadSize) -- called before the real download in DownloadZipConfirmDialog.
+// Filters combine with AND. /summary estimates count and size from stored columns without
+// touching the filesystem.
 
 const downloadFilterSchema = z.object({
   print_ids: z.array(z.string()).optional(),
@@ -379,9 +342,7 @@ router.post(
     assertDownloadFilterGiven(body);
     const prints = await resolvePrintsForDownload(req.userId!, body);
 
-    // A tag or collection download cuts across categories by nature, so its zip skips the usual
-    // per-category subfolder (see buildZipEntries) -- a category download's entries all share one
-    // category anyway, and a bare print_ids selection keeps its existing nested layout.
+    // Tag and collection downloads span categories, so they skip per-category subfolders.
     const flatten = Boolean(body.tag || body.collection_id);
 
     let downloadName = body.filename || "thingport.zip";
@@ -406,8 +367,6 @@ router.post(
     await sendPrintsZip(res, prints, downloadName, { flatten });
   }),
 );
-
-// ---- Plate file streaming + print thumbnail -----------------------------------------------
 
 router.get(
   "/print/:id/plate/:plateId/file/:filename",
@@ -455,8 +414,6 @@ router.get(
     res.sendFile(path.resolve(filePath));
   }),
 );
-
-// ---- Print metadata mutation routes ---------------------------------------------------------
 
 const tagsSchema = z.object({ tags: z.array(z.string()) });
 router.post(
@@ -536,11 +493,8 @@ router.post(
   }),
 );
 
-// Clears the imported author/creator and import-source linkage, so the print reads exactly like
-// one this user uploaded themselves (a plain upload never sets authorId/creator/sourceProvider/
-// sourceExternalId -- see createPrint in printCreation.ts). Used by the Edit modal's "reset
-// author" action. If that was the last print anywhere referencing this Author, the row itself is
-// deleted too (see deleteAuthorIfOrphaned) rather than left behind with nothing pointing to it.
+// Resets author/source linkage so the print reads like the user's own upload, deleting the Author
+// row if nothing else references it.
 router.post(
   "/print/:id/author-reset",
   asyncHandler(async (req, res) => {

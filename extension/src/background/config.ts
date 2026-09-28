@@ -22,14 +22,10 @@ export async function getState(): Promise<ExtensionState> {
   };
 }
 
-// The host permission for the chosen instance origin is requested by the popup itself, not here --
-// chrome.permissions.request() must run within the user gesture that triggered it (the popup's
-// own submit click), which doesn't survive a runtime.sendMessage hop into the background. By the
-// time SAVE_CONFIG arrives, the popup has already been granted (or refused, in which case it
-// never sends this) that permission.
+// The popup requests the host permission itself: it needs the submit's user gesture.
 export async function saveConfig({ instanceUrl, email, password }: { instanceUrl: string; email: string; password: string }): Promise<null> {
   const normalized = normalizeInstanceUrl(instanceUrl);
-  // Validate before persisting -- a typo'd URL or wrong password shouldn't silently save.
+  // Validate before persisting.
   await loginAndStoreToken({ instanceUrl: normalized, email, password });
   await chrome.storage.local.set({ instanceUrl: normalized, email, password, disabled: false });
   return null;

@@ -37,10 +37,8 @@ async function pruneBundleDirs(start: string): Promise<void> {
 }
 
 /**
- * Saves an uploaded supporting/prepared file from a temp path onto a print. Mirrors
- * MakersVault's save_asset_file: role is auto-classified from the filename (or upgraded
- * to PREPARED after sniffing a .3mf that turns out to be a sliced gcode.3mf); a new
- * PREPARED file replaces (deletes) any existing one for the print.
+ * Saves an uploaded file onto a print. The role comes from the filename (a .3mf containing
+ * gcode becomes PREPARED); a new PREPARED file replaces the existing one.
  */
 export async function saveFileFromTemp(
   userId: string,

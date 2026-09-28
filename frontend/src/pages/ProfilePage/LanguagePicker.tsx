@@ -7,8 +7,7 @@ import ButtonBase from "@mui/material/ButtonBase";
 import CheckIcon from "@mui/icons-material/Check";
 import { SUPPORTED_LANGUAGES } from "../../constants/languages";
 
-/** Applies immediately on click, no save button -- same as it worked in the old standalone
- *  Language settings section. */
+/** Applies immediately on click. */
 export default function LanguagePicker() {
   const { t, i18n } = useTranslation("app");
   return (

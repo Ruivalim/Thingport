@@ -2,10 +2,7 @@ import { IMPORT_BROWSER_USER_AGENT, IMPORT_HTML_MAX_BYTES, IMPORT_TIMEOUT_SECOND
 import { HttpError } from "../utils/fileUtils";
 import { htmlToPlainText, type ImportedAuthorInfo, type ImportedPageMetadata } from "./importResolvers";
 
-// The public api.printables.com GraphQL endpoint -- unlike www.printables.com (Cloudflare-gated,
-// confirmed via a plain fetch returning its "Just a moment..." challenge page), api.printables.com
-// answers a bare unauthenticated POST directly, confirmed live against a real model id. No cookie,
-// no bearer token, no FlareSolverr proxying needed for any of the requests below.
+// Unlike Cloudflare-gated www.printables.com, the GraphQL API answers unauthenticated requests.
 const PRINTABLES_GRAPHQL_URL = "https://api.printables.com/graphql/";
 const PRINTABLES_MEDIA_BASE = "https://media.printables.com/";
 const API_TIMEOUT_MS = IMPORT_TIMEOUT_SECONDS * 1000;
@@ -128,23 +125,14 @@ export type PrintablesGalleryImage = { name: string; url: string };
 
 export type PrintablesModelResolution = {
   meta: Partial<ImportedPageMetadata>;
-  /** The model's actual model files (`.3mf`/`.stl`/`.step`/etc, per the `stls` bucket -- despite
-   * the name, Printables uses it for every generic model-file upload, not literally STL-only).
-   * Deliberately excludes the `gcodes`/`slas` buckets: those are pre-sliced, printer/material-
-   * specific output, not the kind of generic model file the other providers import either. Each
-   * still needs its actual download link resolved separately (see resolvePrintablesDownloadLinks
-   * below) -- the id here is Printables' file id, not yet a URL. */
+  /** From the `stls` bucket, which holds every model-file type despite its name. Pre-sliced
+   * gcodes/slas are excluded. Download links are resolved separately. */
   plateFiles: PrintablesPlateFile[];
-  /** The model's photo gallery (includes the cover image too) -- fed to
-   * attachImportedPreviewImages as extra gallery images alongside the cover thumbnail, same as
-   * ThingiverseThingResolution.galleryImages. */
+  /** Includes the cover image. */
   galleryImages: PrintablesGalleryImage[];
 };
 
-/** Resolves a Printables model's metadata (title, description, tags, author, category, cover +
- * gallery images) and its file list (ids + names only -- see resolvePrintablesDownloadLinks for
- * turning those into actual download URLs) from the public GraphQL API. Returns null for a
- * model that doesn't exist / isn't public. */
+/** Null for a model that doesn't exist or isn't public. */
 export async function resolvePrintablesModel(modelId: string): Promise<PrintablesModelResolution | null> {
   const data = (await fetchPrintablesGraphql(MODEL_QUERY, { id: modelId })) as
     | { data?: { print?: Record<string, unknown> } }
@@ -198,10 +186,8 @@ export async function resolvePrintablesModel(modelId: string): Promise<Printable
   return { meta, plateFiles, galleryImages };
 }
 
-/** Resolves the real, time-limited download link for each of a model's files (Printables never
- * exposes a static/direct URL for a model file -- every download has to go through this mutation
- * first) in one batched call. Best-effort per file: a file missing from the response just won't
- * become a plate, same as importThingiverseThing's tolerance for individual unreachable files. */
+/** Printables has no static file URLs; every download goes through this mutation. A file missing
+ * from the response is skipped. */
 export async function resolvePrintablesDownloadLinks(
   modelId: string,
   fileIds: string[],
@@ -233,11 +219,7 @@ export async function resolvePrintablesDownloadLinks(
   return links;
 }
 
-// -- Collections ---------------------------------------------------------------------------
-
-/** A user-curated, named "Collection" -- Printables' bookmark mechanism, one per URL like
- * `printables.com/@handle/collections/{id}`. The `@handle` segment is cosmetic (only the
- * numeric id is used against the API), same as Thingiverse's own Collection URLs. */
+/** The `@handle` segment is cosmetic; only the id is used. */
 export function parsePrintablesCollectionUrl(url: string): { collectionId: string } | null {
   let parsed: URL;
   try {
@@ -253,9 +235,7 @@ export function parsePrintablesCollectionUrl(url: string): { collectionId: strin
 
 export type PrintablesCollectionEntry = { modelId: string; title: string; cover: string | null };
 
-/** Printables has no human-readable name on a thumbnail-only listing (ThumbnailPrintType has no
- * `name` field, only `slug`) -- turns "prusa-core-one-nozzle-wiper-remix" into "Prusa core one
- * nozzle wiper remix" so the collection picker shows something readable instead of a raw slug. */
+/** Thumbnail listings have no name, only a slug. */
 function titleFromSlug(slug: string): string {
   const words = slug.split("-").filter(Boolean);
   if (!words.length) return slug;
@@ -264,9 +244,6 @@ function titleFromSlug(slug: string): string {
 
 const COLLECTION_TITLE_QUERY = `query ($id: ID!) { collection(id: $id) { id name } }`;
 
-/** Cheap, title-only fetch -- used by the job runner once the batch import is done (see
- * importJobRunner.ts's runPrintablesCollectionImportJob), so the Thingport Collection it files
- * results into doesn't require re-running the full listing. */
 export async function fetchPrintablesCollectionTitle(collectionId: string): Promise<string | null> {
   const data = (await fetchPrintablesGraphql(COLLECTION_TITLE_QUERY, { id: collectionId })) as
     | { data?: { collection?: Record<string, unknown> } }
@@ -275,13 +252,8 @@ export async function fetchPrintablesCollectionTitle(collectionId: string): Prom
   return typeof name === "string" && name.trim() ? name.trim() : null;
 }
 
-// The actual query the site itself sends its own collection page's "load more" scroll trigger --
-// a real, properly cursor-paginated listing, unlike `collection(id).thumbnails11` (a hard-capped,
-// unparameterized 11-item preview field used elsewhere on the site, e.g. the "add to collection"
-// picker). Confirmed live end to end against an 89-model collection: 3 pages of `limit: 30`,
-// terminated by an empty-string `cursor` on the last page (NOT null -- a naive `cursor == null`
-// check treats an empty string as "keep going" and the API happily restarts from page 1, an easy
-// infinite-loop trap). No auth needed, same as every other Printables query here.
+// The site's own "load more" query. The last page ends with an empty-string cursor, not null --
+// a `cursor == null` check restarts from page 1 forever.
 const COLLECTION_MODELS_QUERY = `
   query CollectionModels($collectionId: ID!, $limit: Int, $cursor: String, $ordering: CollectionPrintsOrderingEnum) {
     moreCollectionModels(limit: $limit, cursor: $cursor, collectionId: $collectionId, ordering: $ordering) {
@@ -298,12 +270,8 @@ const COLLECTION_PAGE_SIZE = 30;
 const COLLECTION_MAX_PAGES = 20;
 const COLLECTION_MAX_ENTRIES = 600;
 
-/** Pages through every model in a Collection via moreCollectionModels, deduplicating and capping
- * at COLLECTION_MAX_ENTRIES/COLLECTION_MAX_PAGES purely as a safety net against a pathological
- * collection or an unexpected non-terminating cursor -- not expected to ever actually bite given
- * the confirmed termination behavior above. An item referencing a deleted/hidden print (no
- * `model`, only `unavailableModel`) is skipped, same tolerance as everywhere else in this file for
- * one bad entry not derailing the whole listing. */
+/** The caps are a safety net against a non-terminating cursor. Items for deleted/hidden models
+ * are skipped. */
 async function fetchAllPrintablesCollectionModels(collectionId: string): Promise<PrintablesCollectionEntry[]> {
   const found = new Map<string, PrintablesCollectionEntry>();
   let cursor: string | null = null;
@@ -336,11 +304,7 @@ async function fetchAllPrintablesCollectionModels(collectionId: string): Promise
   return Array.from(found.values());
 }
 
-/** Resolves a Printables Collection's title and full model list via real cursor pagination (see
- * fetchAllPrintablesCollectionModels) -- no FlareSolverr, no page-scraping, no arbitrary preview
- * cap: this reaches every model in the collection in the overwhelming majority of cases.
- * `truncated` only trips if COLLECTION_MAX_ENTRIES/COLLECTION_MAX_PAGES's safety net was actually
- * needed (an exceptionally large collection), not as a matter of course. */
+/** `truncated` only when the safety caps were hit. */
 export async function fetchPrintablesCollectionEntries(
   collectionId: string,
 ): Promise<{ title: string | null; entries: PrintablesCollectionEntry[]; total: number; truncated: boolean }> {

@@ -1,8 +1,4 @@
-// Thingport Bridge is a small helper app (source in /bridge, built by
-// .github/workflows/bridge-release.yml) that "Open in Bambu Studio" hands off to instead of
-// Bambu Studio's own bambustudio:// link -- see bridge/README.md for why. These are stable URLs:
-// GitHub always resolves /releases/latest/download/<asset> to that asset on the most recent
-// release, so they don't need updating when a new Bridge build ships.
+// /releases/latest/download/<asset> always resolves to the newest Bridge build.
 const BRIDGE_RELEASES_BASE = "https://github.com/TautvydasDerzinskas/Thingport/releases/latest/download";
 
 export type BridgeDownload = { os: "windows" | "macos" | "linux"; label: string; asset: string };

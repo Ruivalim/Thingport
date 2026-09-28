@@ -11,11 +11,7 @@ type Props = {
 
 type State = "idle" | "sending" | "sent" | "error";
 
-/** Shared "Resend verification email" affordance -- used both right after registering
- *  (CheckEmailPanel) and when a sign-in attempt is blocked because the account isn't verified
- *  yet (SignInPanel). The backend's response is always the same generic message regardless of
- *  whether the account exists or is already verified, so there's nothing more specific to show
- *  here even on failure. */
+/** The backend's reply is deliberately generic, so there's nothing more specific to show. */
 export default function ResendVerificationButton({ email }: Props) {
   const { t } = useTranslation("app");
   const [state, setState] = React.useState<State>("idle");

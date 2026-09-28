@@ -19,13 +19,8 @@ export const LINKS = {
 };
 
 /**
- * Every docs page. Pages with a `source` are rendered straight from that Markdown file in the
- * repo, so the site can never drift from what's on GitHub -- edit the file, not a copy. The rest
- * are Astro pages under src/pages/docs/. Only the metadata below lives here.
- *
- * `unlisted: true` pages are built (and have a stable URL) but stay out of the docs navigation --
- * the sidebar, the previous/next links, the docs index and the wiki sidebar. They're reached from
- * a link in another page instead, e.g. Grab's privacy policy from the Grab page.
+ * Pages with a `source` render straight from that repo Markdown file; the rest are Astro pages
+ * under src/pages/docs/. `unlisted` pages are built but left out of all navigation.
  */
 export const DOCS = [
   {
@@ -82,7 +77,6 @@ export const DOCS = [
     title: "Thingport Grab privacy policy",
     nav: "Thingport Grab privacy",
     description: "What the Thingport Grab browser extension stores, what it sends, and where.",
-    // Linked from the Grab page, and the URL to give the browser extension stores.
     unlisted: true,
   },
   {
@@ -119,7 +113,6 @@ export const DOCS = [
   },
 ];
 
-/** The docs that appear in navigation (see `unlisted` above). */
 export const NAV_DOCS = DOCS.filter((d) => !d.unlisted);
 
 /** Repo files that have a page on this site, so links between them stay on the site. */

@@ -13,10 +13,7 @@ function sortedBookmarks(tags: Iterable<string>): string[] {
   return [...tags].toSorted((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
 }
 
-// ---- GET /tags/summary?sort=popular|name -------------------------------------------------------
-// Every tag across this user's whole library (unfiltered -- unlike GET /tags in prints.ts, which
-// scopes to whatever grid filter is active), with its model count and whether it's bookmarked.
-// Backs the standalone Tags list page.
+// Every tag in the library (unlike GET /tags, which follows the grid filter).
 
 const sortSchema = z.enum(["popular", "name"]).catch("popular");
 
@@ -47,11 +44,7 @@ router.get(
   }),
 );
 
-// ---- GET /tags/bookmarked ------------------------------------------------------------------------
-// Just the bookmarked tag names -- for TagsPage/TagDetailPage's own bookmark toggles, so they can
-// tell whether the tag they're showing is already bookmarked. Deliberately not /tags/summary,
-// which scans every print. The sidebar's quick-access list itself reads GET /bookmarks instead
-// (routes/bookmarks.ts), which also carries the manual sort order and the bookmarked collections.
+// Just the bookmarked names, without scanning every print like /tags/summary.
 
 router.get(
   "/tags/bookmarked",
@@ -59,12 +52,6 @@ router.get(
     res.json(sortedBookmarks(await listBookmarkedTagSet(req.userId!)));
   }),
 );
-
-// ---- POST/DELETE /tags/:tag/bookmark --------------------------------------------------------------
-// Adds/removes this tag from the sidebar's quick-access "Bookmarks" section (see
-// services/bookmarkService.ts and GET /bookmarks in routes/bookmarks.ts, which is what the
-// sidebar itself actually reads -- these two just flip membership from the Tags list/detail
-// pages' own toggle).
 
 router.post(
   "/tags/:tag/bookmark",

@@ -1,5 +1,3 @@
-// The "Recent imports" strip -- read from extension storage only (see background/recentImports.ts).
-
 import { send, type RecentImport } from "../shared/messages";
 import { els } from "./dom";
 
@@ -9,8 +7,7 @@ function recentItemEl(item: RecentImport): HTMLAnchorElement {
   link.href = item.url;
   link.title = item.title || "";
   link.setAttribute("aria-label", item.title || "Imported model");
-  // Opened from here rather than a plain target="_blank": a link click inside an extension popup
-  // isn't guaranteed to open a tab, and the popup should close once it has.
+  // A plain link click in a popup isn't guaranteed to open a tab, and the popup should close after.
   link.addEventListener("click", (event) => {
     event.preventDefault();
     void chrome.tabs.create({ url: item.url });

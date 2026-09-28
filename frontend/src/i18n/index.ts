@@ -6,11 +6,8 @@ import en from "./locales/en.json";
 import lt from "./locales/lt.json";
 import { LANGUAGE_STORAGE_KEY, SUPPORTED_LANGUAGES } from "../constants/languages";
 
-// Namespaces are split by ownership area rather than kept in one giant file:
-// "common" - generic actions/words reused everywhere (Save, Cancel, Delete, ...)
-// "app"    - shell chrome: login, sidebar, settings, upload bar, import/zip modals, tag editor
-// "library" - the model viewer overlays, LightBurn preview, and other shared preview widgets
-// "models" - the Models page (categories panel, model grid/card), model detail page, and author page
+// Namespaces by area: "common" (generic words), "app" (shell chrome, modals), "library" (viewer
+// overlays and previews), "models" (Models page, model detail, author page).
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)

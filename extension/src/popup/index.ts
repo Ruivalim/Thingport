@@ -1,6 +1,5 @@
-// Toolbar popup (also opened as a tab by background/setup.ts when the browser won't open the popup
-// for the in-page setup dialog). Shows the setup form until the extension is configured, then the
-// enable switch and the recent-imports strip.
+// Toolbar popup (or a tab, when the browser won't open the popup): the setup form until configured,
+// then the enable switch and recent imports.
 
 import { fillIcons } from "../shared/icon";
 import { send, type ExtensionState } from "../shared/messages";
@@ -9,14 +8,11 @@ import { clearError, els, showError } from "./dom";
 import { loadRecentImports } from "./recentImports";
 import "./styles/popup.scss";
 
-// Set when background/setup.ts had to open this page in a tab from a page's setup dialog: once
-// saved, go back to that page -- its icon has already switched to the active one -- instead of
-// leaving this tab behind.
+// When opened as a tab from a page's setup dialog, return there once saved.
 const returnTabId = Number.parseInt(new URLSearchParams(location.search).get("returnTab") ?? "", 10);
 
 fillIcons(document);
 
-/** The instance URL as shown under the title -- the scheme is noise at this size. */
 function displayInstanceUrl(instanceUrl: string): string {
   return instanceUrl.replace(/^https?:\/\//i, "");
 }
@@ -88,9 +84,7 @@ els.setupForm.addEventListener("submit", async (event) => {
   els.saveBtn.disabled = true;
   els.saveBtn.textContent = "Saving…";
   try {
-    // Must be called right here, not in the background's SAVE_CONFIG handler --
-    // permissions.request() needs the user gesture this submit carries, which a sendMessage hop
-    // would lose.
+    // Must happen here: permissions.request() needs this submit's user gesture.
     const granted = await chrome.permissions.request({ origins: [`${origin}/*`] });
     if (!granted) {
       showError("Thingport Grab needs permission to reach this instance to work.");

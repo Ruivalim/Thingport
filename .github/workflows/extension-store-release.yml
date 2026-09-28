@@ -1,26 +1,14 @@
 name: Extension store release
 
-# Versioned releases of Thingport Grab (extension/), with semantic-release. Runs every Friday at
-# 13:00 Polish time -- releasing whatever extension changes landed that week -- or whenever it's
-# started by hand (Actions > Extension store release > Run workflow, or
-# `gh workflow run extension-store-release.yml`).
-#
-# semantic-release (extension/.releaserc.json) looks only at commits that changed files under
-# extension/ since the last thingport-grab-v* tag, and picks the version from their Conventional
-# Commit types: feat -> minor, fix/perf -> patch, "!" or BREAKING CHANGE -> major; docs, refactor,
-# chore, ci etc. don't release. With nothing releasable, the run just ends. With a release, it
-# bumps extension/package.json, writes extension/CHANGELOG.md, commits both to main, tags
-# thingport-grab-v<version>, creates a GitHub release with the store zips, and publishes to
-# Microsoft Edge Add-ons.
-#
-# The per-merge builds (the extension-latest release, the signed Firefox .xpi) are separate: see
-# extension-release.yml.
+# Versioned releases of Thingport Grab via semantic-release (extension/.releaserc.json): every
+# Friday at 13:00 Polish time, or on demand. Only commits touching extension/ count; with a
+# releasable one it bumps the version, writes the changelog, tags, creates a GitHub release with
+# the store zips, and publishes to Edge Add-ons. Per-merge builds are in extension-release.yml.
 on:
   workflow_dispatch: {}
   schedule:
-    # GitHub cron is UTC-only, and 13:00 in Poland is 11:00 UTC in summer (CEST) but 12:00 UTC in
-    # winter (CET) -- so it fires at both, and the "Friday 13:00 in Warsaw?" step lets only the
-    # matching one through.
+    # GitHub cron is UTC-only; fire at both CET and CEST equivalents and let the Warsaw-time step
+    # pick the right one.
     - cron: "0 11 * * 5"
     - cron: "0 12 * * 5"
 
@@ -74,8 +62,7 @@ jobs:
           GIT_COMMITTER_NAME: github-actions[bot]
           GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
         run: npx semantic-release
-      # Not semantic-release's own GitHub plugin: it marks every release as the repo's "latest",
-      # and that slot belongs to Bridge (its download links use /releases/latest/).
+      # Not semantic-release's GitHub plugin: it marks releases "latest", a slot Bridge's links rely on.
       - name: GitHub release
         if: steps.release.outputs.version != ''
         env:
@@ -92,10 +79,9 @@ jobs:
           path: extension/dist/zips/*.zip
           if-no-files-found: error
 
-  # Its own job so it can be retried on its own (Re-run failed jobs): Edge takes one submission at
-  # a time, so if the previous version is still in certification this fails with
-  # InProgressSubmission -- re-run it once Microsoft has finished. Credentials: see
-  # extension/CONTRIBUTING.md, "One-time setup: Edge publishing credentials".
+  # Its own job so it can be re-run alone: Edge takes one submission at a time and fails with
+  # InProgressSubmission while the previous one is in certification. Credentials: see
+  # extension/CONTRIBUTING.md.
   publish-edge:
     needs: release
     if: needs.release.outputs.version != ''

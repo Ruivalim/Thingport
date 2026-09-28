@@ -17,22 +17,12 @@ import {
 
 export { MAKERWORLD_CAPTCHA_MESSAGE, makerworldCaptchaCooloffActive, MakerworldAuthError, MakerworldCaptchaError } from "./makerworldCaptcha";
 
-// MakerWorld's own website (makerworld.com) sits behind Cloudflare bot management and a
-// separate Geetest CAPTCHA on its download-resolution endpoints. api.bambulab.com is the
-// same Bambu Cloud backend the official apps (Bambu Studio, Bambu Handy) talk to -- same
-// account, same bearer token -- but isn't behind either defense. Confirmed against live
-// traffic; the same finding is independently documented by other reverse-engineering
-// projects (kloshi-io/makerworld-api-reverse, maziggy/bambuddy, Pr0zak/YASTL).
+// makerworld.com puts Cloudflare and a Geetest CAPTCHA in front of download resolution;
+// api.bambulab.com is the same Bambu Cloud backend (same bearer token) without either.
 const DESIGN_API_BASE = "https://api.bambulab.com/v1/design-service";
 const PROFILE_DOWNLOAD_BASE = "https://api.bambulab.com/v1/iot-service/api/user/profile";
-// This one lives on makerworld.com rather than api.bambulab.com (unlike the two above) -- but
-// like the other makerworld.com /api/v1/* paths already used elsewhere (favorites/collections),
-// it's a clean, unauthenticated, non-Cloudflare-gated JSON endpoint. Confirmed live.
 const AUTHOR_PROFILE_BASE = "https://makerworld.com/api/v1/design-user-service/user/profile";
-// Same host/service family as AUTHOR_PROFILE_BASE above, but the "who am I" variant -- requires
-// a valid bearer and returns the *authenticated* account's own preferences, so unlike the public
-// author-profile lookup this is exactly what a cookie test needs: it can only succeed for a
-// currently-logged-in session, not merely a well-formed token.
+// Only succeeds for a logged-in session, so it doubles as the cookie check.
 const SELF_PREFERENCE_URL = "https://makerworld.com/api/v1/design-user-service/my/preference";
 const CLOUD_API_TIMEOUT_MS = IMPORT_TIMEOUT_SECONDS * 1000;
 const MAKERWORLD_PROVIDER = "makerworld";
@@ -50,11 +40,8 @@ function cloudApiHeaders(bearerToken: string): Record<string, string> {
   };
 }
 
-// A single 418 is sometimes just a request-scoped flag that clears on the very next call,
-// not yet the full IP-level block -- confirmed independently by maziggy/bambuddy (#2790),
-// which retries once after a short backoff before treating a 418 as real. One retry costs
-// little on the (rare) 418 path and can save an entire batch import from tripping the harder,
-// hours-long cooloff (see CAPTCHA_COOLOFF_MS below) over what would have been a one-off blip.
+// A single 418 is often a one-off flag rather than the IP-level block, so retry once before
+// treating it as real and triggering the hours-long captcha cooloff.
 const TRANSIENT_418_RETRY_DELAY_MS = 1500;
 
 async function fetchCloudJson(
@@ -89,9 +76,7 @@ async function fetchCloudJson(
   return null;
 }
 
-/** Users paste the raw browser `Cookie:` header into Settings (unchanged UX) -- this pulls
- * just the `token` value out of it to use as a Bearer credential against api.bambulab.com,
- * or accepts a bare pasted token directly (no `;`/`=`/whitespace) as a convenience. */
+/** Pulls the `token` value out of a pasted `Cookie:` header, or accepts a bare token. */
 export function extractMakerworldBearerToken(rawCookieOrToken: string | null | undefined): string | null {
   const raw = (rawCookieOrToken || "").trim();
   if (!raw) return null;
@@ -106,20 +91,12 @@ export function extractMakerworldBearerToken(rawCookieOrToken: string | null | u
   return null;
 }
 
-/** Outcome of verifyMakerworldCookie. "unverifiable" means the check never got an answer about
- * the cookie itself -- Cloudflare challenged the request and FlareSolverr is unset, unreachable,
- * or couldn't solve it, or MakerWorld didn't respond -- so the cookie may be perfectly fine. */
+/** "unverifiable" means the check never reached MakerWorld, so the cookie may still be fine. */
 export type MakerworldCookieCheck =
   | { result: "valid" }
   | { result: "invalid" }
   | { result: "unverifiable"; reason: "cloudflare_no_flaresolverr" | "flaresolverr_failed" | "network" };
 
-/** Called before storing a cookie pasted into Profile > MakerWorld (see routes/settings.ts'
- * PATCH /settings/makerworld), so a stale/expired/mistyped paste is rejected up front instead of
- * only surfacing as a failed import later. A malformed paste (extractMakerworldBearerToken
- * finding no usable token at all) is rejected without a network call; otherwise this is the
- * same self-profile request api.bambulab.com/MakerWorld clients use right after login, so a 200
- * here means the account is genuinely logged in, not just that the string looks token-shaped. */
 export async function verifyMakerworldCookie(rawCookieOrToken: string): Promise<MakerworldCookieCheck> {
   const bearerToken = extractMakerworldBearerToken(rawCookieOrToken);
   if (!bearerToken) return { result: "invalid" };
@@ -137,12 +114,8 @@ export async function verifyMakerworldCookie(rawCookieOrToken: string): Promise<
       signal: controller.signal,
     });
     if (res.status === 403 && looksLikeCloudflareBlock(res.headers)) {
-      // A Cloudflare challenge is about this server's IP, not the token -- it says nothing
-      // either way about the cookie, so without a way past it the answer is "couldn't check".
       if (!isFlaresolverrEnabled()) return { result: "unverifiable", reason: "cloudflare_no_flaresolverr" };
-      // This endpoint answers 200 with an empty body through FlareSolverr's browser when the
-      // session isn't actually logged in, so a bare status check would accept any string here.
-      // Assert on the parsed body instead -- only a genuinely authenticated session has a `uid`.
+      // Through FlareSolverr this answers 200 even when logged out; only a real session has a `uid`.
       const solved = await fetchViaFlaresolverr(SELF_PREFERENCE_URL, `token=${bearerToken}`);
       if (!solved) return { result: "unverifiable", reason: "flaresolverr_failed" };
       const data = extractJsonFromBrowserBody(solved.body);
@@ -183,12 +156,6 @@ function pickString(source: Record<string, unknown>, keys: string[]): string | n
   return null;
 }
 
-/** Same defensive fallback used for the other makerworld.com /api/v1/* endpoints (collections):
- * not seen behind Cloudflare's challenge in practice, but retry once through FlareSolverr
- * rather than failing outright if that ever changes. No bearer token needed -- author profiles
- * are public. `paceMs`, when set (collection batch imports -- see resolveMakerworldViaCloudApi),
- * is awaited before the request so this call keeps the same pacing as every other one in the
- * sequence. */
 async function fetchAuthorProfileJson(uid: string, paceMs?: number): Promise<unknown | null> {
   await maybeSleep(paceMs);
   const url = `${AUTHOR_PROFILE_BASE}/${uid}`;
@@ -221,10 +188,6 @@ async function fetchAuthorProfileJson(uid: string, paceMs?: number): Promise<unk
   }
 }
 
-/** Fetches the richer author record (bio, links, background image) for a MakerWorld uid, for
- * the Author table. Best-effort: a failure here shouldn't fail the import, since `creator`
- * (plain string, from the design's own embedded designCreator summary) already covers the
- * simple display case. */
 async function fetchMakerworldAuthorInfo(uid: string, paceMs?: number): Promise<ImportedAuthorInfo | null> {
   const data = await fetchAuthorProfileJson(uid, paceMs);
   if (!isRecord(data)) return null;
@@ -245,10 +208,7 @@ async function fetchMakerworldAuthorInfo(uid: string, paceMs?: number): Promise<
   };
 }
 
-/** `basic` (from the design's own creator summary -- see makerworldAuthorFromDesignCreator) with
- * whatever the fuller author profile adds on top, when that can be fetched. Best-effort: the
- * profile endpoint is behind Cloudflare's challenge, so without FlareSolverr this is usually just
- * `basic` -- which still gives a linked author with an avatar. */
+/** `basic` enriched with the full author profile when it can be fetched (best-effort). */
 export async function completeMakerworldAuthor(
   basic: ImportedAuthorInfo | null,
   paceMs?: number,
@@ -268,10 +228,6 @@ export async function completeMakerworldAuthor(
   };
 }
 
-/** Just a design's author, through api.bambulab.com (no Cloudflare there) -- for linking a model
- * imported before its author could be saved (authorLinkingService.ts), without downloading
- * anything. Null when the design can't be read; throws MakerworldCaptchaError /
- * MakerworldAuthError like resolveMakerworldViaCloudApi, so a caller can stop asking. */
 export async function fetchMakerworldDesignAuthor(
   designId: string,
   bearerToken: string,
@@ -281,20 +237,17 @@ export async function fetchMakerworldDesignAuthor(
   return design ? completeMakerworldAuthor(makerworldAuthorFromDesignCreator(design.designCreator), paceMs) : null;
 }
 
-/** Which of a MakerWorld design's print profiles ("instances") an import takes: the one the link
- * names (else the design's default) -- what a single import always did -- every profile the
- * designer uploaded, or every profile including community-uploaded ones. */
+/** Which print profiles ("instances") to import: the linked one (else the default), the
+ * designer's own, or all including community uploads. */
 export type MakerworldProfileScope = "url" | "designer" | "all";
 
 function instanceIdOf(inst: Record<string, unknown>): string {
   return String(inst.id);
 }
 
-/** Instance ids to import for `scope`, from a design's own data (the api.bambulab.com design, or
- * the model page's __NEXT_DATA__ -- the same shape). A profile is the designer's when its
- * `instanceCreator` is the design's `designCreator` (confirmed live: `isOfficial` and `isDefault`
- * say nothing about who uploaded it). The link's profile, else the default, comes first, so it's
- * what creates the model -- later ones are added to it as further files. */
+/** The primary profile comes first since it creates the model; the rest are added as files.
+ * A profile is the designer's when `instanceCreator` matches `designCreator` -- `isOfficial`
+ * and `isDefault` say nothing about who uploaded it. */
 export function selectMakerworldProfiles(
   design: Record<string, unknown>,
   scope: MakerworldProfileScope,
@@ -322,9 +275,6 @@ export function selectMakerworldProfiles(
   return [primary, ...wanted.filter((id) => id !== primary)];
 }
 
-/** A design's own data (title, creator, print profiles) through api.bambulab.com, without
- * resolving any download. Null when it can't be read; throws MakerworldCaptchaError /
- * MakerworldAuthError like resolveMakerworldViaCloudApi. */
 export async function fetchMakerworldDesign(
   designId: string,
   bearerToken: string,
@@ -343,17 +293,8 @@ export async function fetchMakerworldDesign(
 }
 
 /**
- * Resolves a MakerWorld design to a real, directly-downloadable (signed S3) URL entirely
- * through api.bambulab.com -- no Cloudflare, no cookie-gated web session, no HTML scraping.
- * Returns null for anything that should fall back to the existing page-scraping resolver
- * (missing/malformed data); throws MakerworldCaptchaError/MakerworldAuthError for the two
- * failure shapes worth telling the user about specifically.
- *
- * `paceMs`, when set, is awaited before *every* outbound request this makes (design fetch,
- * profile/download-link fetch, author-profile fetch) -- used by collection batch imports (see
- * importJobRunner.ts's runCollectionImportJob) to keep every single call in the whole sequence
- * evenly spaced, not just the gap between one model and the next. Left unset for single-model
- * imports, which have not been observed to need it.
+ * Resolves a design to a signed download URL via api.bambulab.com. Null means fall back to page
+ * scraping. `paceMs` is awaited before every request so collection imports stay evenly spaced.
  */
 export async function resolveMakerworldViaCloudApi(
   designId: string,

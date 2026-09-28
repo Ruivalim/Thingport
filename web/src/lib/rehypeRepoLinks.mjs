@@ -22,8 +22,7 @@ export function rehypeRepoLinks({ base = "/" } = {}) {
       const value = attr && node.properties?.[attr];
       if (typeof value === "string" && value) node.properties[attr] = rewrite(attr, value, dir, basePrefix);
     });
-    // Inline HTML in the Markdown (the install guides' centered `<img src="icon.png">`) stays a raw
-    // string rather than becoming elements, so its attributes are rewritten textually.
+    // Inline HTML stays a raw string, so its attributes are rewritten textually.
     visit(tree, "raw", (node) => {
       node.value = node.value.replace(
         /\b(href|src)="([^"]*)"/g,
@@ -42,7 +41,7 @@ function rewrite(attr, value, dir, basePrefix) {
   const anchor = hash ? `#${hash}` : "";
   if (attr === "src") return `https://raw.githubusercontent.com/${REPO}/${BRANCH}/${repoPath}`;
   if (repoPath in SITE_ROUTES_BY_SOURCE) return basePrefix + SITE_ROUTES_BY_SOURCE[repoPath] + anchor;
-  // A dotfile like `.env` has no extname as far as path is concerned, but is still a file.
+  // `.env` has no extname but is still a file.
   const isFile = path.posix.extname(repoPath) || path.posix.basename(repoPath).startsWith(".");
   return `${REPO_URL}/${isFile ? "blob" : "tree"}/${BRANCH}/${repoPath}${anchor}`;
 }

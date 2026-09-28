@@ -11,8 +11,6 @@ type LightBurnPreviewProps = {
   url: string;
   assetId?: string;
   filename: string;
-  /** Sizing/fit styles for the resolved <img>, e.g. { objectFit: "cover" } for a card thumbnail
-   *  vs. { objectFit: "contain", bgcolor: "action.hover" } for the full preview modal. */
   imgSx?: SxProps<Theme>;
 };
 

@@ -107,10 +107,7 @@ async function fetchRecentlyAdded(userId: string, limit: number): Promise<Dashbo
   return prints.map(toModelSummary);
 }
 
-// Ranked by how many models this user has from each author, not by anything the author
-// themselves did -- groupBy can't orderBy an aggregate reliably here, so the sort happens in JS
-// (the same pattern thingport's admin/adminService.ts and youtube-mp3-vault's dashboard both
-// use for "top X by count").
+// Sorted in JS: groupBy can't reliably order by an aggregate here.
 async function fetchTopAuthors(userId: string, limit: number): Promise<DashboardAuthor[]> {
   const grouped = await prisma.print.groupBy({
     by: ["authorId"],
@@ -139,9 +136,6 @@ async function fetchTopAuthors(userId: string, limit: number): Promise<Dashboard
     .filter((a): a is DashboardAuthor => a !== null);
 }
 
-// A fixed, small set in practice (today: "makerworld", "thingiverse", or null for anything
-// uploaded/zip-imported directly, bucketed here as "thingport") -- no "see more" needed on the
-// frontend for this one.
 async function fetchTopProviders(userId: string): Promise<DashboardProvider[]> {
   const grouped = await prisma.print.groupBy({
     by: ["sourceProvider"],

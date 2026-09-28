@@ -1,8 +1,4 @@
-// Provider URL recognition. Deliberately duplicated from
-// frontend/src/components/uploads/useUploadImport.tsx (the web app's own import-link classifier)
-// and backend/src/services/{makerworldCloudApi,thingiverseApi,printablesApi}.ts (the single-model
-// URL parsers) rather than shared across the project boundary -- keep them in sync by hand if a
-// provider ever changes its URL shape.
+// Provider URL recognition, duplicated from the frontend and backend parsers. Keep in sync by hand.
 
 export type Provider = "makerworld" | "thingiverse" | "printables";
 
@@ -32,15 +28,11 @@ export function parseMakerworldModelUrl(url: string): { designId: string; reques
   if (!parsed || !parsed.hostname.toLowerCase().endsWith("makerworld.com")) return null;
   const m = parsed.pathname.match(/\/models?\/(\d+)/i);
   if (!m) return null;
-  // The print profile picked on the page, if any (e.g. #profileId-123456) -- same as the
-  // backend's parseMakerworldModelUrl.
   const hashMatch = parsed.hash.match(/profileid-(\d+)/i);
   return { designId: m[1], requestedInstanceId: hashMatch ? hashMatch[1] : null };
 }
 
-/** Mirrors the backend's buildImportSourceUrl (importService.ts) for MakerWorld -- lets the guided
- *  collection import turn a bare design id into a real page URL to navigate the tab to, and to
- *  check import status for, without a round trip through the backend just to reconstruct it. */
+/** Mirrors the backend's buildImportSourceUrl. */
 export function makerworldModelUrl(designId: string): string {
   return `https://makerworld.com/en/models/${designId}`;
 }
@@ -83,9 +75,7 @@ export function isPrintablesCollectionUrl(url: string): boolean {
   return Boolean(parsed && isHost(parsed, "printables.com") && /\/collections\/\d+/i.test(parsed.pathname));
 }
 
-/** Classifies a page for the floating icon's behavior. Returns null for anything not recognized
- *  (icon stays hidden). `kind: "single"` pages get the already-imported dedup check before
- *  showing the icon; `kind: "batch"` pages (a listing of many designs) always show it. */
+/** Null keeps the icon hidden. "single" pages get a dedup check; "batch" pages always show it. */
 export function classifyUrl(url: string): Classification | null {
   if (isMakerworldCollectionUrl(url)) return { kind: "batch", provider: "makerworld", type: "collection" };
   if (isThingiverseLikesUrl(url)) return { kind: "batch", provider: "thingiverse", type: "likes" };

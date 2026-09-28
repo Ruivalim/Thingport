@@ -1,6 +1,5 @@
-// Generates each browser's manifest.json from one definition. Chrome and Edge run the background as
-// an MV3 service worker; Firefox has no extension service workers and runs the same bundle as an
-// event page via background.scripts, plus its own gecko settings.
+// Generates each browser's manifest.json. Firefox has no extension service workers, so it runs the
+// same bundle as an event page.
 
 export const TARGETS = ["chrome", "firefox", "edge"] as const;
 export type Target = (typeof TARGETS)[number];
@@ -24,12 +23,11 @@ export function buildManifest(target: Target, pkg: { version: string; descriptio
     icons: iconSet("color"),
     action: {
       default_popup: "popup.html",
-      // Dark/inactive until a page shows the floating icon -- see background/tabIcon.ts.
       default_icon: iconSet("dark"),
     },
     background: target === "firefox" ? { scripts: ["background.js"] } : { service_worker: "background.js" },
     permissions: ["storage", "tabs", "cookies", "downloads"],
-    // The user's own instance origin, requested at setup time (see popup/index.ts).
+    // The user's instance origin, requested at setup.
     optional_host_permissions: ["*://*/*"],
     content_scripts: [{ matches: PROVIDER_MATCHES, js: ["content.js"], run_at: "document_idle" }],
   };
@@ -37,12 +35,10 @@ export function buildManifest(target: Target, pkg: { version: string; descriptio
   if (target === "firefox") {
     manifest.browser_specific_settings = {
       gecko: {
-        // Ties every signed version together as updates of one add-on -- never change it once
-        // builds have been distributed (see README).
+        // Never change once builds have been distributed: it ties signed versions together.
         id: "grab@thingport.app",
         strict_min_version: "109.0",
-        // Only covers data sent to the developer or a third party; the user's own self-hosted
-        // instance is neither (see README).
+        // The user's own instance counts as neither the developer nor a third party.
         data_collection_permissions: { required: ["none"] },
       },
     };

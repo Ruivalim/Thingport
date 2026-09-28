@@ -9,10 +9,7 @@ function systemPrefersDark(): boolean {
     : false;
 }
 
-/** Turns the user's persisted ThemeSelection into a concrete ResolvedTheme for rendering. "light"
- *  and "dark" pass straight through; "system" tracks window.matchMedia's prefers-color-scheme
- *  live, so switching the OS theme while "Adapt to system" is selected updates the app
- *  immediately, with no reload. */
+/** "system" tracks prefers-color-scheme live. */
 export function useResolvedTheme(selection: ThemeSelection): ResolvedTheme {
   const [systemDark, setSystemDark] = useState(systemPrefersDark);
 

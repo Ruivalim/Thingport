@@ -33,31 +33,13 @@ type Props = {
   theme: ResolvedTheme;
   previewMode: PreviewMode;
   onUnauthorized?: () => void;
-  /** Only read for the `/authors/self` "My models" route (see UserMenu's menu item and
-   *  ModelCard/ModelSidePanel's showViewerAsAuthor click-through) -- every other author id backs
-   *  a real, shared Author row instead, fetched below. */
+  /** Only used by the `/authors/self` "My models" route. */
   viewer?: AuthUser | null;
-  /** Called after a successful "It's me!" link with the (possibly bio/cover-enriched) viewer --
-   *  same shape as ChangeEmailPage's own onUserUpdated, so App.tsx's handleUserUpdated can persist
-   *  and propagate it app-wide. */
   onUserUpdated?: (user: AuthUser) => void;
 };
 
-/** An author's own page: a cover strip, then a narrow profile column (avatar, name, @handle, a
- *  provider chip linking back to their profile on the site they were imported from, and their
- *  bio) beside a wide "Models" grid of every print by them this user has imported -- the models
- *  route's own grid pattern, reused as-is via ModelCard. The whole thing reads as a page of its
- *  own, sidebar-colored, sitting inside the app shell rather than blending into it -- a light-theme
- *  divider on the profile column's right edge separates it from the models grid (matching the rest
- *  of the app's light-mode borders, dropped in dark mode where the two columns already contrast).
- *  Author rows are shared across users (not scoped to this account -- see
- *  authorService.ts's doc comment on the backend), so there's nothing here to edit.
- *
- *  Doubles as the viewer's own "My models" page when `authorId === SELF_AUTHOR_ID`: a plain
- *  upload has no Author row at all (see ModelCard/ModelSidePanel's showViewerAsAuthor fallback),
- *  so there's nothing to authorsApi.get() -- the profile column instead shows the viewer's own
- *  identity, and the grid is fetched via the backend's matching SELF_AUTHOR_ID sentinel rather
- *  than a real author_id. */
+/** An author's page: profile column beside a grid of their imported models. Doubles as the
+ *  viewer's own "My models" page when `authorId === SELF_AUTHOR_ID`. */
 export default function AuthorPage({ theme, previewMode, onUnauthorized, viewer, onUserUpdated }: Props) {
   const { authorId } = useParams<{ authorId: string }>();
   const navigate = useNavigate();
@@ -73,10 +55,7 @@ export default function AuthorPage({ theme, previewMode, onUnauthorized, viewer,
   const [loadingMore, setLoadingMore] = useState(false);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(false);
-  // The Author rows the viewer has already claimed as themselves -- backs self mode's provider
-  // chips and, on a real author page, whether "It's me!" should show at all (hidden once the
-  // viewer already has a different author linked for that same provider, or this one is already
-  // linked to someone). Fetched alongside everything else below regardless of mode.
+  // Authors the viewer has claimed: self-mode provider chips, and whether "It's me!" shows.
   const [myLinks, setMyLinks] = useState<Author[]>([]);
   const [linking, setLinking] = useState(false);
 
@@ -84,12 +63,6 @@ export default function AuthorPage({ theme, previewMode, onUnauthorized, viewer,
     ? viewer?.display_name || t("models:card.unknownAuthor")
     : author?.name || author?.handle || t("models:card.unknownAuthor");
 
-  // Only overrides the title -- the route's own default onBack (see AppLayout's useRouteChrome,
-  // "/authors/" -> useSmartBack) already does exactly "back button goes to the previous page".
-  // A real (non-self) author gets a small "Author" subtitle under their name instead of an
-  // "Author - " prefix sharing the title line with it -- same treatment as the collection/tag/
-  // model/category detail headers. "My models" has no such prefix to move in the first place,
-  // so the self view stays plain.
   usePageHeader({
     title: isSelf ? t("models:author.myModelsPageTitle") : author ? t("models:author.pageTitleWithName", { name: displayName }) : undefined,
     subtitle: !isSelf && author ? t("models:author.subtitle") : undefined,
@@ -213,8 +186,6 @@ export default function AuthorPage({ theme, previewMode, onUnauthorized, viewer,
 
   const providerInfo = isSelf ? null : importProviderInfo(author?.provider);
   const profileUrl = isSelf || !author ? null : authorProfileUrl(author);
-  // Self mode's bio/cover come from the viewer's own profile fields -- populated by linking an
-  // author elsewhere (see authorService.ts's linkAuthorToUser) rather than fetched here.
   const bioText = isSelf ? viewer?.bio || null : author?.bio || author?.bio_translated;
   const avatarUrl = isSelf ? viewerAvatarUrl : (author?.avatar_url ?? undefined);
   const backgroundUrl = isSelf ? viewer?.background_url || null : author?.background_url;
@@ -226,8 +197,7 @@ export default function AuthorPage({ theme, previewMode, onUnauthorized, viewer,
           height: `${COVER_HEIGHT}px`,
           bgcolor: "action.hover",
           ...(backgroundUrl && {
-            // Quoted, not a bare url(...) -- an unquoted CSS url() treats the first unescaped ")"
-            // as its terminator, which a data: URI (or any URL containing one) would break.
+            // Quoted: an unquoted url() ends at the first ")", which a data: URI can contain.
             backgroundImage: `url("${backgroundUrl}")`,
             backgroundSize: "cover",
             backgroundPosition: "center",
@@ -241,10 +211,7 @@ export default function AuthorPage({ theme, previewMode, onUnauthorized, viewer,
             display: "grid",
             gridTemplateColumns: { xs: "1fr", md: "320px 1fr" },
             gap: "32px",
-            // "stretch" (the grid default, but spelled out since the divider below depends on it)
-            // -- so the shorter profile column's box is exactly as tall as the models grid next to
-            // it, and its border-right runs the full height instead of stopping wherever the
-            // profile column's own (usually much shorter) content ends.
+            // Stretch so the profile column's border runs the grid's full height.
             alignItems: "stretch",
             pt: 3,
             pb: 3
@@ -253,10 +220,7 @@ export default function AuthorPage({ theme, previewMode, onUnauthorized, viewer,
           <Box
             sx={{
               borderRight: { xs: "none", md: "1px solid" },
-              // Unlike every other light-mode-only border in the app (see dividerBorderColor),
-              // this one stays visible in dark mode too -- the same plain `divider` token the
-              // sidebar's own Download/Administration separator renders unconditionally, rather
-              // than the sidebar's own outer edge (which dividerBorderColor hides in dark mode).
+              // Unlike dividerBorderColor, this stays visible in dark mode.
               borderColor: "divider",
               pr: { xs: 0, md: 4 },
             }}

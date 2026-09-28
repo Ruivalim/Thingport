@@ -19,12 +19,7 @@ type Props = {
   onUnauthorized?: () => void;
 };
 
-/** Admin-only roster of every account on the instance, under the instance-wide registration
- *  switch and invitations (RegistrationsPanel). The roster itself is read-only. Models/Collections are
- *  per-user counts; MakerWorld is a connected/not-connected flag (each user's own MakerWorld
- *  session cookie, saved server-side from Settings -> Imports -- see
- *  services/makerworldCookieService.ts). The "delete all models for a user" action lives on the
- *  Settings -> Triggers page, not here. */
+/** Read-only roster of every account, under the registration switch and invitations. */
 export default function UsersPage({ onUnauthorized }: Props) {
   const { t, i18n } = useTranslation(["app", "common"]);
   const [users, setUsers] = React.useState<AdminUser[]>([]);

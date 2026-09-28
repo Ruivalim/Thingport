@@ -38,9 +38,7 @@ func TestFindWindowsCommandResolvesVersionedCuraInstall(t *testing.T) {
 	t.Setenv("ProgramFiles", "")
 	t.Setenv("ProgramFiles(x86)", "")
 
-	// Cura's install dir embeds its version, so only a glob (see findWindowsCommand) resolves it.
-	// The older version's dir has no exe in it, to confirm an empty match is skipped rather than
-	// returned as a false positive.
+	// Cura needs the glob. The older dir has no exe, so an empty match must be skipped.
 	older := filepath.Join(base, "UltiMaker Cura 5.7")
 	newer := filepath.Join(base, "UltiMaker Cura 5.8")
 	if err := os.MkdirAll(older, 0755); err != nil {
@@ -65,7 +63,7 @@ func TestFindWindowsCommandResolvesAnycubicSlicerNext(t *testing.T) {
 	t.Setenv("ProgramFiles(x86)", "")
 	t.Setenv("LOCALAPPDATA", "")
 
-	// The folder name isn't documented, so an unexpected one must still be found by the glob.
+	// The folder name isn't documented, so the glob must find an unexpected one.
 	dir := filepath.Join(base, "Anycubic Slicer Next 1.3")
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		t.Fatalf("mkdir: %v", err)

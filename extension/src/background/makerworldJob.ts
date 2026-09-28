@@ -1,16 +1,8 @@
-// MakerWorld guided collection import.
+// MakerWorld guided collection import: navigates the tab to each model's page and imports it
+// there, one at a time. Real page loads pace the requests the way no config value can, which
+// keeps MakerWorld's account-wide CAPTCHA from tripping.
 //
-// MakerWorld's anti-abuse system CAPTCHAs the whole account for hours the moment a burst of
-// collection-import API calls looks automated -- even with pacing, a large collection can trip it
-// almost immediately (see the backend's IMPORT_MAKERWORLD_CALL_DELAY_MS comment). Rather than
-// firing every design's import calls back-to-back from the backend, this drives the tab to each
-// model's own page, one at a time -- a real navigation + page load imposes pacing no config value
-// can fake, and looks like a person browsing rather than a script. Each page load is a plain
-// single-model import (importSingle), the same path a manual visit uses.
-//
-// State lives in chrome.storage (not a module variable) because the job outlives any single page
-// load in the tab it's driving, and an MV3 background can be suspended and woken again between
-// steps -- tabs.onUpdated firing later is what wakes it, at which point it re-reads this.
+// State lives in chrome.storage because an MV3 background can be suspended between steps.
 
 import type { ImportStatus } from "../shared/api";
 import type { MakerworldJob, MakerworldJobError } from "../shared/messages";
@@ -20,14 +12,9 @@ import { importSingle } from "./importJobs";
 
 const JOB_STORAGE_KEY = "makerworldCollectionJob";
 const JOB_ERROR_STORAGE_KEY = "makerworldJobError";
-// Pacing after each import, on top of however long the model page itself took to load --
-// deliberately not configurable, since a shorter value would undercut the point of this feature.
+// Not configurable: a shorter delay defeats the point.
 const STEP_DELAY_MS = 5000;
-// tabs.sendMessage has no timeout of its own -- if the content script's resolution ever stalls
-// (its own fetches are bounded, but e.g. the listener could throw before replying) the job would
-// otherwise sit forever behind a progress overlay that never moves. Comfortably above the content
-// script's own worst case (an 8s click capture, then up to two 8s-bounded fallback fetches), so it
-// only ever fires for a genuinely stuck resolution.
+// tabs.sendMessage has no timeout; this is well above the content script's own worst case.
 const DOWNLOAD_RESOLVE_TIMEOUT_MS = 30000;
 
 async function getJob(): Promise<MakerworldJob | null> {
@@ -46,10 +33,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
   return Promise.race([promise, new Promise<null>((resolve) => setTimeout(() => resolve(null), ms))]);
 }
 
-/** Started once the user clicks "Start import" on a MakerWorld collection page -- `urls` is every
- *  not-yet-imported design's page URL (already-imported ones were filed into the destination
- *  collection by the content script before this runs). Stores the job, then makes the first move;
- *  tabs.onUpdated's "complete" handler drives every step after that. */
+/** `urls` are the not-yet-imported designs. tabs.onUpdated drives every step after the first. */
 export async function startJob(tabId: number, { urls, collectionId, originalUrl }: { urls: string[]; collectionId: string | null; originalUrl: string }): Promise<null> {
   if (!urls.length) return null;
   await setJob({
@@ -66,8 +50,7 @@ export async function startJob(tabId: number, { urls, collectionId, originalUrl 
   return null;
 }
 
-/** The overlay's Abort button -- returns the tab to where the run started and discards the rest of
- *  the queue. Nothing already imported is undone. */
+/** Returns the tab to where the run started. Nothing already imported is undone. */
 export async function abortJob(tabId: number): Promise<null> {
   const job = await getJob();
   if (!job || job.tabId !== tabId) return null;
@@ -76,9 +59,7 @@ export async function abortJob(tabId: number): Promise<null> {
   return null;
 }
 
-/** The job driving this tab, or (when there's none) a just-stopped job's error -- read-and-clear,
- *  surfaced exactly once, on the page that loads right after the job stops itself (always the
- *  original collection page, see advanceJob), not on a later unrelated visit. */
+/** A just-stopped job's error is read-and-clear, so it's shown exactly once. */
 export async function getJobForTab(tabId: number | undefined): Promise<{ job: MakerworldJob | null; error: MakerworldJobError | null }> {
   const job = tabId != null ? await getJob() : null;
   if (job && job.tabId === tabId) return { job, error: null };
@@ -88,18 +69,12 @@ export async function getJobForTab(tabId: number | undefined): Promise<{ job: Ma
   return { job: null, error };
 }
 
-/** True as long as nothing else (most relevantly forceAdvanceJob) has already moved the job past
- *  the step a call started on. advanceJob and forceAdvanceJob can race to finish the same step --
- *  a large model can take long enough to import that someone clicks "Import next" before the
- *  original request comes back -- and this keeps a late automatic completion from double-advancing
- *  or clobbering a step the manual path already moved past. */
+/** Keeps a late automatic completion from double-advancing a step "Import next" already moved past. */
 async function isStillAtStep(tabId: number, stepIndex: number): Promise<boolean> {
   const current = await getJob();
   return Boolean(current && current.tabId === tabId && current.index === stepIndex);
 }
 
-/** Paces, then moves to the next URL -- or, after the last one, back to the collection page the
- *  run started from. Shared by the normal completion and the manual "Import next". */
 async function moveForward(tabId: number, job: MakerworldJob): Promise<void> {
   job.index += 1;
   if (job.index >= job.urls.length) {
@@ -109,7 +84,7 @@ async function moveForward(tabId: number, job: MakerworldJob): Promise<void> {
   }
   await setJob(job);
   await sleep(STEP_DELAY_MS);
-  // The user may have hit Abort during the pacing delay -- re-check before navigating on.
+  // The user may have hit Abort during the delay.
   const stillActive = await getJob();
   if (!stillActive || stillActive.tabId !== tabId) return;
   job.awaitingLoad = true;
@@ -117,10 +92,8 @@ async function moveForward(tabId: number, job: MakerworldJob): Promise<void> {
   await chrome.tabs.update(tabId, { url: job.urls[job.index] });
 }
 
-/** Runs once the tab finishes loading the current step's model page: imports it, paces, moves on.
- *  Any import failure stops the whole run rather than skipping past it: this almost always means
- *  MakerWorld itself just rejected the request (CAPTCHA, rate limit, expired session), and firing
- *  more requests at that point would only make it worse. */
+/** Any failure stops the run: it almost always means MakerWorld rejected the request, and more
+ *  requests would make it worse. */
 export async function advanceJob(tabId: number): Promise<void> {
   const job = await getJob();
   if (!job || job.tabId !== tabId || !job.awaitingLoad) return;
@@ -129,23 +102,19 @@ export async function advanceJob(tabId: number): Promise<void> {
   await setJob(job);
 
   const currentUrl = job.urls[stepIndex];
-  // Ask the content script on the page we just navigated to (it has DOM access to __NEXT_DATA__
-  // and a same-origin fetch carrying the real session cookie) to resolve the download URL itself.
-  // This matters most here: it's this per-model loop that would otherwise fire MakerWorld
-  // resolution calls back-to-back. Best-effort -- null lets the backend resolve it as before.
+  // The content script resolves the download itself with the page's session. Best-effort: null
+  // lets the backend resolve it.
   let resolved = null;
   try {
     const reply = await withTimeout(sendToTab(tabId, "RESOLVE_MAKERWORLD_DOWNLOAD_URL"), DOWNLOAD_RESOLVE_TIMEOUT_MS);
     if (reply && reply.ok) resolved = reply.data;
   } catch {
-    // No listener yet, or the tab navigated away already -- fine, see above.
   }
 
   try {
     await importSingle({ url: currentUrl, collectionId: job.collectionId, resolved });
   } catch (err) {
-    // A manual "Import next" may have moved the job past this step while the request was in
-    // flight -- then this failure is stale and says nothing about the current step.
+    // A manual "Import next" may have moved past this step while the request was in flight.
     if (!(await isStillAtStep(tabId, stepIndex))) return;
     await setJob(null);
     const error: MakerworldJobError = { message: err instanceof Error ? err.message : String(err), imported: job.imported, total: job.total };
@@ -154,18 +123,13 @@ export async function advanceJob(tabId: number): Promise<void> {
     return;
   }
 
-  // Same staleness check on the success path, so a slow-but-alive request can't double-advance.
   if (!(await isStillAtStep(tabId, stepIndex))) return;
   job.imported += 1;
   await moveForward(tabId, job);
 }
 
-/** The overlay's "Import next" -- a manual escape hatch for when the automatic advance never comes
- *  back. The likeliest cause isn't MakerWorld: a model with an unusually large file can take long
- *  enough to import that MV3's background lifecycle limits kill this extension's background
- *  mid-request, silently dropping the await above (the import itself still completes server-side).
- *  So this confirms the stuck step actually landed in Thingport first (and files it into the
- *  destination collection if that got skipped too) before crediting it and continuing. */
+/** Manual escape hatch: MV3 can kill the background mid-request on a large import. Confirms the
+ *  stuck step actually landed in Thingport before continuing. */
 export async function forceAdvanceJob(tabId: number): Promise<null> {
   const job = await getJob();
   if (!job || job.tabId !== tabId) return null;
@@ -179,15 +143,12 @@ export async function forceAdvanceJob(tabId: number): Promise<null> {
       }
     }
   } catch {
-    // Status check failed (instance unreachable, etc.) -- proceed anyway; the user already saw it
-    // land in their library before reaching for this button.
+    // Status check failed: proceed anyway, the user saw it land before clicking.
   }
   await moveForward(tabId, job);
   return null;
 }
 
-/** The driven tab was closed outright -- no further tabs.onUpdated will ever act on the job, so
- *  drop it rather than leave it orphaned in storage. */
 export async function dropJobIfForTab(tabId: number): Promise<void> {
   const job = await getJob();
   if (job && job.tabId === tabId) await setJob(null);

@@ -6,11 +6,7 @@ import { search } from "../services/searchService";
 const router = Router();
 router.use(requireAuth);
 
-// ---- GET /search?q=... -----------------------------------------------------------------------
-// Backs the global search box in the top bar (models primary, collections + tags secondary --
-// see searchService.ts). A blank/whitespace-only `q` just returns empty results rather than
-// erroring -- the frontend already debounces and gates on a minimum length before calling this,
-// but there's no reason to make that a hard requirement here too.
+// A blank `q` returns empty results.
 router.get(
   "/search",
   asyncHandler(async (req, res) => {

@@ -22,10 +22,7 @@ import {
   isThingiverseThingUrl,
 } from "../../utils/importLinkDetection";
 
-// Every dropped/picked entry's relativePath equals its bare filename when the
-// selection has no folder structure. A webkitdirectory folder pick always
-// prefixes relativePath with the folder name, so this only ever fires for a
-// flat multi-file picker selection.
+// A folder pick always prefixes relativePath with the folder name.
 function isFlatFileSet(entries: { file: File; relativePath: string }[]) {
   return entries.length > 1 && entries.every(entry => entry.relativePath === entry.file.name);
 }
@@ -37,9 +34,7 @@ type Props = {
   onUnauthorized?: () => void;
 };
 
-/** Backs the top bar's "+ Add" menu -- Upload opens a hidden file input, Import opens a
- *  paste-a-link dialog. Both funnel into the same zip/multi-plate/collection prompts used
- *  elsewhere in the app, so `modals` must be rendered by the caller alongside the menu. */
+/** `modals` must be rendered by the caller alongside the menu. */
 export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUnauthorized }: Props) {
   const { t } = useTranslation("app");
   const showToast = useToast();
@@ -59,15 +54,11 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
   } = useImportJob();
   const isBusy = uploading || importing || zipPrompt.isOpen || collectionPrompt.isOpen || importModePrompt.isOpen;
 
-  // Sends the user straight into editing a just-uploaded model (per spec: a plain upload has no
-  // title/notes/tags/category yet, so drop into edit mode immediately to fill them in) -- reuses
-  // the same `?edit=<id>` URL param ModelActionsMenu's own "Edit" menu item drives.
+  // A plain upload has no metadata yet, so open it straight in edit mode.
   const openForEditing = (print: Print) => {
     navigate(`/models/${print.id}?edit=${print.id}`);
   };
 
-  // A provider import, by contrast, arrives with real metadata already (title, creator, preview
-  // images, ...) -- just open its details page, not the edit form.
   const openForViewing = (print: Print) => {
     navigate(`/models/${print.id}`);
   };
@@ -197,9 +188,7 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
     showToast({ message: t(key, { name }) });
   };
 
-  /** `profileScope`: for a MakerWorld model link, which of its print profiles to import (the
-   *  import dialog's "Print profiles" choice) -- anything beyond the link's own runs as a
-   *  background job. */
+  /** `profileScope`: which MakerWorld print profiles to import; more than the link's runs as a job. */
   const submitImport = async (rawUrl: string, captcha?: CaptchaAnswer | null, profileScope: MakerworldProfileScope = "url") => {
     const url = rawUrl.trim();
     if (!url) return;
@@ -214,11 +203,7 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
       };
 
       if (isMakerworldCollectionUrl(url)) {
-        // MakerWorld collections are no longer importable from this dialog -- only via the
-        // Thingport Grab browser extension. AddMenu's own inline warning (driven by the same
-        // isMakerworldCollectionUrl check) should already stop the user from reaching this point
-        // via the dialog's Import button; this is the same guard for any other caller of
-        // submitImport.
+        // MakerWorld collections can only be imported via the extension.
         alert(t("addMenu.makerworldCollectionBlocked"));
         return;
       }
@@ -310,8 +295,7 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
       }
 
       if (isThingiverseThingUrl(url) || isPrintablesModelUrl(url)) {
-        // Both always resolve to several files; skip straight past the inspect/zip-picker steps
-        // -- the backend already splits them into plates automatically.
+        // The backend splits these into plates itself.
         const imported = await importsApi.fromLink(payload);
         showImportedToast(imported);
         onUploaded();
@@ -356,8 +340,6 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
           }
         },
         onImportSelected: async (entries: string[]) => {
-          // Same deal as the collection branch above: hands off to the background job +
-          // global progress bar instead of blocking here.
           try {
             await startZipImport({ ...payload, entries });
           } catch (err) {

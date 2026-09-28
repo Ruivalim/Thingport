@@ -9,13 +9,7 @@ type Props = {
   category: Category;
 };
 
-/** The rounded title+description banner shown above the grid when the selected category has
- *  admin-set meta text (Category.metaTitle/metaDescription, edited via CategoryMetaDialog) --
- *  mirrors MakerWorld's category banner, a light rounded box with the category's display title
- *  and blurb sitting above its model grid. Models page only: a plain Collection has no
- *  analogous meta text today. Renders nothing without a title -- the description alone isn't
- *  worth a banner. Shows the built-in starter category tree's translated text when the current
- *  language has one and the admin hasn't overwritten it -- see translateCategoryDisplay. */
+/** Shown above the grid when the category has meta text. Nothing without a title. */
 export default function CategoryBanner({ category }: Props) {
   const { i18n } = useTranslation();
   const display = translateCategoryDisplay(category, i18n);

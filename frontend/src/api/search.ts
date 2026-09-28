@@ -14,8 +14,7 @@ export type SearchTagResult = {
 };
 
 export type SearchResult = {
-  /** Full Print objects (same shape ModelCard already renders), pre-ranked by the backend --
-   *  name matches outrank description/tag matches, see backend's searchService.ts. */
+  /** Pre-ranked by the backend. */
   models: Print[];
   collections: SearchCollectionResult[];
   tags: SearchTagResult[];

@@ -1,9 +1,7 @@
 name: Bridge release
 
-# Only runs when bridge/ (the slicer-bridge helper app) or this workflow changes -- everything
-# else in the repo never touches it. PRs get a build-only check (all three OS binaries, no
-# release); a push to main additionally publishes them as a new GitHub Release that the
-# in-app Download page links to via /releases/latest.
+# Runs when bridge/ changes. PRs build all three binaries; pushes to main also publish a GitHub
+# release, which the in-app Download page links to via /releases/latest.
 on:
   push:
     branches: [main]
@@ -69,9 +67,7 @@ jobs:
           if-no-files-found: error
 
   build-macos:
-    # Custom-URL-scheme handling on macOS goes through Cocoa (see cmd/thingport-bridge/
-    # urlhandler_darwin.m), so this binary needs cgo + the Xcode toolchain and can only be
-    # built on an actual Mac runner -- unlike Windows/Linux, it can't be cross-compiled.
+    # macOS URL-scheme handling needs cgo and Cocoa, so it can't be cross-compiled.
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4

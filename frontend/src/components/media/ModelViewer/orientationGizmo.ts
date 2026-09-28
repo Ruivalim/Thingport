@@ -1,14 +1,10 @@
-// A small "which way am I looking at this from" cube, rendered into a corner of the main
-// viewer's own canvas via a scissored sub-viewport (the standard three.js technique for
-// compositing a second mini-scene into one WebGL canvas without a second <canvas>/renderer).
+// A small orientation cube drawn into a scissored corner of the main viewer's canvas.
 import * as THREE from "three";
 
 const GIZMO_SIZE = 72;
 const GIZMO_MARGIN = 12;
 
-// BoxGeometry's per-face material array is ordered [+X, -X, +Y, -Y, +Z, -Z]. The scene is set up
-// Y-up (see modelLoaders.ts's Z-up -> Y-up conversion), and the viewer's default camera looks
-// in mostly from +Z, so +Z reads naturally as "front" here.
+// BoxGeometry's face order is [+X, -X, +Y, -Y, +Z, -Z]; the default camera looks from +Z, "front".
 const FACE_LABELS = ["RIGHT", "LEFT", "TOP", "BOTTOM", "FRONT", "BACK"];
 
 function makeFaceTexture(label: string): THREE.CanvasTexture {
@@ -33,7 +29,6 @@ function makeFaceTexture(label: string): THREE.CanvasTexture {
 }
 
 export type OrientationGizmo = {
-  /** Call once per frame, after the main scene has been rendered into the full viewport. */
   render: (mainCamera: THREE.Camera, target: THREE.Vector3, viewportWidth: number, viewportHeight: number) => void;
   dispose: () => void;
 };
@@ -65,9 +60,7 @@ export function createOrientationGizmo(renderer: THREE.WebGLRenderer): Orientati
       camera.up.copy(mainCamera.up);
       camera.lookAt(0, 0, 0);
 
-      // Bottom-right: clear of the "3D Preview" button (bottom-left) and the preview modal's
-      // close button (top-right). three.js viewport/scissor y=0 is the canvas BOTTOM, so a low y
-      // here places this near the visual bottom.
+      // Bottom-right, clear of the other buttons. Viewport y=0 is the canvas bottom.
       const x = viewportWidth - GIZMO_SIZE - GIZMO_MARGIN;
       const y = GIZMO_MARGIN;
       renderer.setScissorTest(true);

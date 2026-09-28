@@ -1,6 +1,4 @@
-// The shadow-rooted host every piece of in-page UI lives in (the floating icon, its panel, the
-// setup modal, the full-page overlays), so none of it is styled by -- or styles -- the provider's
-// own page.
+// Shadow-rooted host for all in-page UI, isolated from the provider page's styles.
 
 import { createIcon } from "../shared/icon";
 import css from "./styles/content.scss?inline";
@@ -46,14 +44,13 @@ export function mountFab(root: ShadowRoot, { variant, label, title, onClick }: F
   root.appendChild(button);
 }
 
-/** The panel above the icon. `onFirstOpen` runs once, the first time it's opened. Returns the
- *  toggle the icon's click handler calls. */
+/** `onFirstOpen` runs once. Returns the toggle for the icon's click handler. */
 export function mountPanel(root: ShadowRoot, onFirstOpen: () => void): () => void {
   const panel = document.createElement("div");
   panel.className = "tg-panel";
   panel.hidden = true;
 
-  // Outside contentEl (renderPanel's target) so it survives every re-render.
+  // Outside contentEl so it survives re-renders.
   const closeBtn = document.createElement("button");
   closeBtn.className = "tg-close";
   closeBtn.type = "button";
@@ -84,15 +81,12 @@ export function setPanelOpen(open: boolean): void {
   if (panelEl) panelEl.hidden = !open;
 }
 
-/** Whether the panel still exists -- false once unmountHost() ran (e.g. an SPA route change). */
 export function isPanelMounted(): boolean {
   return contentEl !== null;
 }
 
 export function renderPanel(html: string): void {
-  // A no-op, not a bug, once the panel's been torn down mid-flow -- a still-in-flight step (like
-  // the batch progress poll) has nothing left to draw into, but the request/job it's watching keeps
-  // running regardless (see background/importJobs.ts).
+  // The panel may have been torn down mid-flow; the background work continues regardless.
   if (!contentEl) return;
   contentEl.innerHTML = html;
 }

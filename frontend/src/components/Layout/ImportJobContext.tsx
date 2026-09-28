@@ -12,9 +12,7 @@ type StartPrintablesCollectionImportPayload = Parameters<typeof importsApi.fromP
 type StartMakerworldProfilesImportPayload = Parameters<typeof importsApi.fromMakerworldProfiles>[0];
 
 type ImportJobContextValue = {
-  /** Non-null exactly while a batch import (MakerWorld collection, a Thingiverse Collection or
-   *  Likes list, or remote-zip) is running -- drives the global progress bar and disables the
-   *  Add/Import/Upload menu app-wide. */
+  /** Non-null while a batch import runs; drives the progress bar and disables importing. */
   activeJob: ImportJob | null;
   isImporting: boolean;
   startCollectionImport: (payload: StartCollectionImportPayload) => Promise<void>;
@@ -35,8 +33,6 @@ export function ImportJobProvider({
   children,
 }: {
   onUnauthorized?: () => void;
-  /** Called once, right after a job leaves RUNNING -- refreshes the current grid and the
-   *  notification bell (the job's own completion is what created the notification). */
   onJobCompleted?: () => void;
   children: React.ReactNode;
 }) {
@@ -63,20 +59,12 @@ export function ImportJobProvider({
       stopPolling();
       setActiveJob(null);
       onJobCompletedRef.current?.();
-      // Any finished import lands the viewer somewhere useful: exactly one resulting print (see
-      // the backend's resultPrintId -- set for a "ZIP" job, or a "COLLECTION" batch job that
-      // happened to succeed on just one item) opens straight to its details page, matching
-      // useUploadImport's openForViewing for a synchronous single-link import. Not edit mode: an
-      // import arrives with real metadata already, unlike a plain upload. More than one result
-      // has no single "it" to open, so it goes to the models grid instead -- and nothing goes
-      // anywhere for a job that imported nothing at all (every item failed).
+      // One resulting print opens its details page; more go to the models grid; none stays put.
       if (job.status === "DONE") {
         if (job.result_print_id) {
           navigate(`/models/${job.result_print_id}`);
         } else if (job.imported + job.already_in_library > 1) {
-          // job.imported alone undercounts a batch where some items were dedup hits (already in
-          // the library) rather than newly imported -- those still landed a real print each, and
-          // still count toward "more than one result" the same as a fresh import would.
+          // Dedup hits count as results too.
           navigate("/models");
         }
       }
@@ -92,7 +80,6 @@ export function ImportJobProvider({
     pollRef.current = window.setInterval(() => { void pollJob(jobId); }, POLL_INTERVAL_MS);
   }, [pollJob, stopPolling]);
 
-  // Restores the progress bar / lock after a page refresh mid-import.
   useEffect(() => {
     (async () => {
       try {

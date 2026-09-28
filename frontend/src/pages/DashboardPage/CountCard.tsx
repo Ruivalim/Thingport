@@ -8,10 +8,7 @@ type Props = {
   onClick?: () => void;
 };
 
-/** A single stat card in the dashboard's first column (Collections/Models/Authors/Categories).
- *  When `onClick` is given, the whole card is a link -- hover background + pointer cursor are
- *  the only affordance, no arrow icon, matching youtube-mp3-vault's dashboard count cards.
- *  Omitting `onClick` (Authors, for now) renders a plain static card. */
+/** With `onClick`, the whole card is a link. */
 export default function CountCard({ icon, count, label, onClick }: Props) {
   return (
     <Paper

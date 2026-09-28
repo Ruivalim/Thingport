@@ -18,17 +18,12 @@ import { buildBambuModelGroup, loadCachedBambuGlb, type Parsed3MFData, type Plat
 import { createOrientationGizmo } from "./orientationGizmo";
 import BrandMark from "../../BrandMark";
 
-// This viewer's lighting/tone-mapping setup, build-plate + grid + shadow-catcher rendering, and
-// fitCameraToBox below are ported from maziggy/bambuddy (https://github.com/maziggy/bambuddy,
-// frontend/src/components/ModelViewer.tsx, AGPL-3.0-only). Thingport uses this file under the
-// same license -- see LICENSE at the repo root. Multi-plate parsing itself lives in
-// ../../../utils/bambuThreeMf.ts, ported from the same source.
+// Partly adapted (with modifications) from github.com/maziggy/bambuddy, AGPL-3.0-only.
 
 export type RenderStyle = "solid" | "wire" | "xray";
 export type CameraView = "top" | "front" | "side";
 
-/** Imperative controls for a mounted viewer -- a camera preset is a one-off action (clicking
- *  "Top" twice should re-frame twice), not state, so it's a method rather than a prop. */
+/** A camera preset is a one-off action (clicking "Top" twice re-frames twice), not state. */
 export type ModelViewerHandle = {
   setCameraView: (view: CameraView) => void;
 };
@@ -38,36 +33,24 @@ type ModelViewerProps = {
   ext: string;
   viewKey?: string;
   theme: ResolvedTheme;
-  /** Overrides the theme-derived material color (e.g. the fixed "red plate" look used by the
-   *  model detail page's 3D preview modal) while keeping the rest of the palette intact. */
+  /** Overrides the theme-derived material color while keeping the rest of the palette. */
   colorOverride?: string;
-  /** For a multi-plate Bambu Studio 3MF: which internal plate to render (null renders every
-   *  plate's build items together). Ignored for every other format. */
+  /** For a multi-plate Bambu 3MF: which internal plate to render (null renders all). */
   selectedPlateId?: number | null;
-  /** Server pre-rendered GLB for this plate (see backend/src/services/modelPreviewCache.ts) --
-   *  when present, tried first for a 3MF instead of parsing the raw file client-side. Null/
-   *  undefined (not yet generated, or a non-3MF) falls back to the existing live parse. */
+  /** Server pre-rendered GLB, tried before parsing a 3MF client-side. */
   previewGlbUrl?: string | null;
-  /** Fired once after a 3MF's internal plates are known -- empty for a single-plate/non-Bambu
-   *  file. `getThumbnail` is bound to the already-fetched file bytes, so a caller building a
-   *  plate picker doesn't need to refetch the (often tens of MB) file itself. */
+  /** Fired once a 3MF's internal plates are known. `getThumbnail` reuses the fetched bytes. */
   onPlatesDetected?: (plates: PlateSummary[], getThumbnail: (index: number) => Promise<string | null>) => void;
-  /** Solid (default), wireframe, or see-through "X-ray" materials. */
   renderStyle?: RenderStyle;
-  /** Whether the build plate + grid is drawn, for formats that have one (see buildPlateForMeshes). */
   showBuildPlate?: boolean;
-  /** STL/OBJ/STEP (and a non-Bambu 3MF) carry no bed size, so by default they get no plate.
-   *  Set to draw a standard DEFAULT_BED_SIZE bed under them anyway (grown to fit a bigger model). */
+  /** Draw a default bed under formats that carry no bed size (STL/OBJ/STEP, non-Bambu 3MF). */
   buildPlateForMeshes?: boolean;
-  /** Slowly orbits the camera around the model. */
   autoRotate?: boolean;
-  /** Camera preset to frame the model from on load and on plate switches (until setCameraView
-   *  picks another). Unset keeps the per-format defaults and restores a saved view if any. */
+  /** Camera preset to frame the model from on load. Unset keeps per-format defaults. */
   initialCameraView?: CameraView;
 };
 
-// Appearance props that change without reloading the model: read through a ref by the setup
-// effect (for whatever it builds next) and pushed onto the live scene by their own effect.
+// Appearance props that change without reloading the model.
 type Appearance = Required<Pick<ModelViewerProps, "renderStyle" | "showBuildPlate" | "autoRotate">> & {
   colorOverride?: string;
 };
@@ -79,22 +62,17 @@ const DEFAULT_BED_SIZE = 256;
 
 type ViewErrorKey = "unsupported" | "failed" | "tooComplex";
 
-// While the server is still generating a 3MF's preview, the viewer asks again this often, for at
-// most this long (a queued collection import can hold it back a while) -- instead of parsing the
-// raw file in the browser, which for the heavy models that take the server longest is exactly
-// what exhausts the browser's memory.
+// Poll for the server's 3MF preview rather than parsing in the browser: the models that take the
+// server longest are the ones that exhaust browser memory.
 const SERVER_PREVIEW_POLL_MS = 3000;
 const SERVER_PREVIEW_WAIT_MS = 10 * 60 * 1000;
 
 const BAMBU_PLATE_COLOR = 0x00ae42;
 
-// Bambu Studio's own three-quarter view (used for multi-plate 3MF); mostly-front-on with a
-// slight elevation/side offset for depth for every other format (STL/OBJ/STEP), so a single
-// uploaded model loads facing the viewer rather than from a corner.
+// Bambu Studio's three-quarter view for multi-plate 3MF; mostly front-on for everything else.
 const BAMBU_VIEW_DIRECTION = new THREE.Vector3(0.7, 0.5, 0.7).normalize();
 const FRONT_VIEW_DIRECTION = new THREE.Vector3(0.9, 0.7, 2.1).normalize();
 
-// Axis-aligned presets for the preview toolbar. +Z is "front", matching the default views above.
 // Top keeps a hair of +Z so OrbitControls' up vector isn't parallel to the view direction.
 const CAMERA_VIEW_DIRECTIONS: Record<CameraView, THREE.Vector3> = {
   top: new THREE.Vector3(0, 1, 0.0001).normalize(),
@@ -102,21 +80,15 @@ const CAMERA_VIEW_DIRECTIONS: Record<CameraView, THREE.Vector3> = {
   side: new THREE.Vector3(1, 0, 0),
 };
 
-/** Frame the camera on a bounding box, solving for distance against both the vertical and
- *  (aspect-derived) horizontal field of view so the model fills the frame -- with margin from
- *  `padding` -- at any viewport shape and from any direction, without ever cropping on orbit
- *  (the box's circumscribed sphere, not just its "tallest axis", sets the distance). Ported from
- *  bambuddy's fitCameraToBox, generalized with a `direction` param so it can also replace this
- *  viewer's old ad-hoc radius*k heuristic for the non-3MF formats. */
+/** Frames the camera on a bounding box using its circumscribed sphere against both vertical and
+ *  horizontal FOV, so the model is never cropped at any aspect or orbit angle. */
 function fitCameraToBox(
   camera: THREE.PerspectiveCamera,
   controls: any,
   box: THREE.Box3,
   direction: THREE.Vector3 = BAMBU_VIEW_DIRECTION,
   padding = 1.15,
-  /** Size of scenery around the model (the build plate's diagonal) that must not be cut off by
-   *  the far plane -- the camera frames the model, so a bed much larger than it would otherwise
-   *  end in a hard clipped edge a few model-lengths behind it. */
+  /** Scenery size (the bed diagonal) the far plane must not clip. */
   sceneryExtent = 0
 ): void {
   const size = box.getSize(new THREE.Vector3());
@@ -155,13 +127,11 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
   const mountRef = useRef<HTMLDivElement | null>(null);
   const appearanceRef = useRef<Appearance>({ colorOverride, renderStyle, showBuildPlate, autoRotate });
   appearanceRef.current = { colorOverride, renderStyle, showBuildPlate, autoRotate };
-  // Set by the setup effect once its scene exists; cleared on teardown.
   const sceneApiRef = useRef<{
     applyAppearance: () => void;
     setCameraView: (view: CameraView) => void;
   } | null>(null);
-  // Bridges the setup effect below to the selectedPlateId effect further down, so switching
-  // plates rebuilds the already-parsed group in place instead of refetching/reparsing the file.
+  // Lets plate switches rebuild the already-parsed group instead of refetching the file.
   const rebuildBambuPlateRef = useRef<((plateId: number | null) => void) | null>(null);
   const [viewError, setViewError] = useState<ViewErrorKey | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -186,31 +156,22 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
     const scene = new THREE.Scene();
     const initialWidth = mount.clientWidth || 300;
     const initialHeight = mount.clientHeight || 300;
-    // Real aspect from the start: opening this in a dialog/modal never fires a window "resize"
-    // event (only the listener registered further down would catch that), so leaving this at the
-    // constructor's placeholder 1:1 until some future resize left every framing calculation
-    // (centerSceneOn, fitCameraToBox) solving for the wrong aspect for the entire session.
+    // A dialog never fires a window resize, so set the real aspect now or framing is wrong.
     const camera = new THREE.PerspectiveCamera(45, initialWidth / initialHeight, 0.1, 10000);
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setSize(initialWidth, initialHeight);
-    // Filmic tone mapping + sub-1.0 exposure keeps a saturated filament colour's lit side from
-    // clipping to white against RoomEnvironment's bright IBL -- ported from bambuddy.
+    // Keeps saturated filament colours from clipping to white under RoomEnvironment's IBL.
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 0.85;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     mount.appendChild(renderer.domElement);
 
-    // Image-based lighting from a generated room: soft gradients and a hint of reflection across
-    // curved surfaces, which flat ambient + a couple of directional lights can't produce (every
-    // same-facing surface got an identical colour, flattening models into silhouettes).
     const pmrem = new THREE.PMREMGenerator(renderer);
     const environment = pmrem.fromScene(new RoomEnvironment(), 0.04);
     scene.environment = environment.texture;
 
-    // One mostly-overhead key light for the contact shadow and a highlight direction; the
-    // environment supplies the fill.
     const keyLight = new THREE.DirectionalLight(0xffffff, 0.9);
     keyLight.position.set(60, 260, 90);
     keyLight.castShadow = true;
@@ -223,9 +184,7 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
 
     let controls: any;
     let teardown: (() => void) | undefined;
-    // Bumped to v2 when the Z-up -> Y-up axis conversion was added: a view saved under v1 has a
-    // camera position/target computed for the old (unrotated) layout, so restoring it now would
-    // orbit around a point nowhere near where the model actually sits.
+    // v2: views saved before the Z-up -> Y-up conversion would orbit the wrong point.
     const storageKey = viewKey ? `ps-view-v2-${viewKey}` : null;
 
     const loadSavedView = () => {
@@ -253,10 +212,7 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
       } catch {}
     };
 
-    // Build-plate group: grid + tinted plane + a dedicated shadow-catcher plane just above it
-    // (the tinted plane is unlit MeshBasicMaterial and can't receive shadows itself). Sized/
-    // repositioned from the asset's own build volume once known -- only a Bambu 3MF carries a
-    // real one; STL/OBJ/STEP get a DEFAULT_BED_SIZE stand-in only with buildPlateForMeshes.
+    // The tinted plane is unlit and can't receive shadows, so a separate shadow catcher sits above it.
     let buildVolume = { x: DEFAULT_BED_SIZE, y: DEFAULT_BED_SIZE };
     const gridHelper = new THREE.GridHelper(buildVolume.x, Math.ceil(buildVolume.x / 16), 0x444444, 0x333333);
     gridHelper.visible = false;
@@ -312,9 +268,7 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
       shadowCatcher.geometry = new THREE.PlaneGeometry(buildVolume.x, buildVolume.y);
     };
 
-    // Color / render style for everything under `obj`. Colors only change with a colorOverride
-    // (otherwise the theme palette or per-filament colors stay); X-ray also turns off depth
-    // writes and backface culling so inner walls show through. Shadows are for solid only.
+    // X-ray disables depth writes and backface culling so inner walls show through.
     const applyAppearance = (obj: THREE.Object3D | null) => {
       if (!obj) return;
       const { colorOverride: color, renderStyle: style } = appearanceRef.current;
@@ -337,25 +291,17 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
       });
     };
 
-    // Last framed bounds, so camera presets can re-frame without re-measuring.
     let lastFitBox: THREE.Box3 | null = null;
-    // Active camera preset direction; null keeps the per-format default (3/4 view for Bambu 3MF,
-    // raised front for everything else).
+    // null keeps the per-format default view.
     let presetDirection: THREE.Vector3 | null = initialCameraView ? CAMERA_VIEW_DIRECTIONS[initialCameraView] : null;
 
-    // 3MF-only state: kept around so a selectedPlateId change (switching plates) rebuilds the
-    // group locally instead of refetching/reparsing the whole file.
     let bambuParsed: Parsed3MFData | null = null;
     let bambuFilamentColors: string[] = [];
     let currentPlateId: number | null = selectedPlateId;
-    // Set instead of bambuParsed when a cached GLB (server pre-render) loads successfully --
-    // its meshes are already built/merged/colored, so switching plates is just a visibility
-    // toggle on its child groups rather than rebuilding geometry from raw parsed data.
+    // A cached GLB already contains every plate, so switching plates is a visibility toggle.
     let cachedGlbRoot: THREE.Group | null = null;
 
-    // World-space bounds of only the *visible* meshes under `root`. Box3.setFromObject ignores
-    // visibility, which for a cached GLB (every plate's meshes loaded, all but one hidden) would
-    // measure the whole multi-plate grid Bambu Studio lays plates out on, not the active plate.
+    // Box3.setFromObject ignores visibility, which would measure every plate of a cached GLB.
     const visibleBox = (root: THREE.Object3D): THREE.Box3 => {
       root.updateMatrixWorld(true);
       const box = new THREE.Box3();
@@ -367,11 +313,8 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
       return box;
     };
 
-    // Shared tail for both the live-parse and cached-GLB paths: position the (already-built)
-    // group on the build plate, frame the camera, and clear loading -- an empty box (e.g. a
-    // plate with no visible geometry) must still clear loading rather than leaving the spinner
-    // stuck forever, regardless of which path produced it. `refitCamera` is set on a plate
-    // switch so the newly shown plate is framed, rather than restoring the previous saved view.
+    // An empty box must still clear loading, or the spinner sticks. `refitCamera` frames a newly
+    // shown plate instead of restoring the saved view.
     const bedExtent = () => (buildPlateLaidOut ? Math.hypot(buildVolume.x, buildVolume.y) : 0);
     const fitCamera = (box: THREE.Box3, defaultDirection: THREE.Vector3) =>
       fitCameraToBox(camera, controls, box, presetDirection ?? defaultDirection, undefined, bedExtent());
@@ -387,8 +330,7 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
         setIsLoading(false);
         return;
       }
-      // Offsets are relative (+=): the cached-GLB root is reused across plate switches, so its
-      // position already carries the previous plate's offset, which the world-space box includes.
+      // Relative offsets: the reused cached-GLB root still carries the previous plate's offset.
       const center = box.getCenter(new THREE.Vector3());
       group.position.y -= box.min.y;
       if (centerOnBuildPlate) {
@@ -418,9 +360,6 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
       finalizeGroupPlacement(group, centerOnBuildPlate, refitCamera);
     };
 
-    // Cached-GLB equivalent of renderBambuGroup: the group (and every plate's meshes) is already
-    // in the scene from the initial load below -- switching plates is just showing the matching
-    // "plate-{id}" child group and hiding the rest, no rebuild/refetch.
     const showCachedGlbPlate = (plateId: number | null, centerOnBuildPlate: boolean, refitCamera = false) => {
       if (!cachedGlbRoot) return;
       const targetName = plateId != null ? `plate-${plateId}` : null;
@@ -430,8 +369,6 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
         child.visible = visible;
         if (visible) matched = true;
       });
-      // Requested plate id isn't one of this file's plates (shouldn't normally happen) -- show
-      // everything rather than an empty scene.
       if (!matched) cachedGlbRoot.children.forEach(child => { child.visible = true; });
       finalizeGroupPlacement(cachedGlbRoot, centerOnBuildPlate, refitCamera);
     };
@@ -444,12 +381,9 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
         controls.dampingFactor = 0.05;
         controls.enablePan = true;
         controls.target.set(0, 50, 0);
-        // "end" (a finished drag/zoom), not "change": auto-rotate and programmatic framing move
-        // the camera every frame, and only the user's own view is worth restoring next time.
+        // Only a user's own drag/zoom is worth saving; auto-rotate fires "change" every frame.
         controls.addEventListener("end", saveView);
 
-        // Shared by every non-Bambu path (STL/OBJ/STEP, plain 3MF): theme it, add it, and either
-        // set it on a stand-in bed or just frame it as-is.
         const showMeshObject = (obj: THREE.Object3D) => {
           applyThemeToObject(obj, palette);
           applyAppearance(obj);
@@ -457,7 +391,6 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
           scene.add(obj);
           const box = visibleBox(obj);
           if (buildPlateForMeshes && !box.isEmpty()) {
-            // Grow past the default for a model that wouldn't fit on it (10% margin).
             const size = box.getSize(new THREE.Vector3());
             buildVolume = {
               x: Math.max(DEFAULT_BED_SIZE, Math.ceil(size.x * 1.1)),
@@ -475,10 +408,7 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
 
         const e = (ext || "").toLowerCase();
 
-        // Tries the server's pre-rendered GLB for a 3MF, waiting while it's still being generated.
-        // Returns true when the server settled it -- the scene is set up, or an error is showing
-        // -- and false when the caller should parse the raw file in the browser instead (see
-        // CachedGlbOutcome's "fallback").
+        // Returns false when the caller should parse the raw file in the browser instead.
         const tryLoadCachedGlb = async (): Promise<boolean> => {
           if (!previewGlbUrl) return false;
           const deadline = Date.now() + SERVER_PREVIEW_WAIT_MS;
@@ -521,8 +451,6 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
             if (!usedCache && !disposed) {
               const result = await loadBambuThreeMFForViewer(url);
               if (!result) {
-                // Not a 3MF the Bambu-aware parser could make sense of -- fall back to the
-                // generic loader chain (simple parse, then three.js's own ThreeMFLoader).
                 const obj = await loadObjectFromAsset(e, url);
                 if (!obj) {
                   reportError("unsupported");
@@ -563,9 +491,7 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
         console.error("Viewer init failed:", err);
       }
 
-      // A StrictMode double-invoke (or a fast prop change) can dispose this instance before we
-      // get here -- bail rather than wiring up a resize listener/gizmo/render loop for a
-      // renderer that's already been torn down.
+      // StrictMode can dispose this instance before we get here.
       if (disposed) return;
 
       let width = mount.clientWidth || 300;
@@ -587,7 +513,6 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
 
       const animate = () => {
         if (disposed) return;
-        // Read per frame so a toggle made while the model was still loading isn't lost.
         if (controls) controls.autoRotate = appearanceRef.current.autoRotate;
         controls?.update();
         renderer.render(scene, camera);
@@ -641,21 +566,12 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
     rebuildBambuPlateRef.current = null;
     sceneApiRef.current = null;
   };
-  // initialCameraView is read once, like selectedPlateId: later presets go through
-  // setCameraView, and a parent tracking the active preset in state must not trigger a reload.
-  // colorOverride and the other appearance props are read via appearanceRef and applied live by
-  // the appearance effect below, so changing them never reloads the model.
-  // selectedPlateId and onPlatesDetected are deliberately excluded: this effect does the full
-  // parse/scene setup, reading selectedPlateId only once as the initial plate. Switching plates
-  // afterward is handled by the separate lightweight effect below via rebuildBambuPlateRef,
-  // without re-parsing/re-fetching the model -- including either dependency here would re-run
-  // the full setup on every plate click (or every render, since onPlatesDetected is an
-  // unmemoized callback prop).
+  // Only the initial plate/camera view are read here; later changes go through the lighter effects
+  // below so they don't re-parse the model (onPlatesDetected is also an unmemoized prop).
   // oxlint-disable-next-line react/exhaustive-effect-dependencies
   // oxlint-disable-next-line react-hooks/exhaustive-deps
 }, [url, ext, viewKey, theme, previewGlbUrl]);
 
-  // Switching the selected plate rebuilds the already-parsed group in place (no refetch).
   useEffect(() => {
     rebuildBambuPlateRef.current?.(selectedPlateId ?? null);
   }, [selectedPlateId]);

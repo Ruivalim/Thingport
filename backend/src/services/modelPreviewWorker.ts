@@ -1,8 +1,7 @@
 import { parentPort, workerData } from "node:worker_threads";
 import { renderModelPreviewGlb, type RenderOptions } from "./modelPreviewRender";
 
-// Worker-thread entry point for one preview render (spawned per job by modelPreviewCache.ts, which
-// enforces the memory/time limits). Reports exactly one message, then lets the thread exit.
+// Worker entry point for one preview render. Posts exactly one message, then exits.
 
 export type ModelPreviewWorkerInput = { srcPath: string; destPath: string; options: RenderOptions };
 export type ModelPreviewWorkerResult =

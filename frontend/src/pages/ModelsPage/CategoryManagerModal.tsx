@@ -47,8 +47,6 @@ function hasMeta(category: Category): boolean {
   );
 }
 
-/** One editable row shared by both category levels: plain text + move-up/move-down/details/edit/
- *  delete icons, or (while editing) a text field + save/cancel. */
 function CategoryRow({
   name,
   indent,
@@ -123,7 +121,6 @@ function CategoryRow({
               if (e.key === "Enter") commit();
               if (e.key === "Escape") cancelEdit();
             }}
-            // Deliberate: focus the field the moment edit mode is entered.
             // oxlint-disable-next-line jsx-a11y/no-autofocus
             autoFocus
           />
@@ -199,8 +196,6 @@ function CategoryRow({
   );
 }
 
-/** Inline "add" row: a text field that appears in place of an "+ Add ..." button, shared by both
- *  the top-level "add category" affordance and each category's "add subcategory" affordance. */
 function AddRow({ indent, placeholder, busy, onAdd }: {
   indent: number;
   placeholder: string;

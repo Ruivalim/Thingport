@@ -3,10 +3,6 @@ import { buildImportSourceUrl, identifySourceModel } from "../src/services/impor
 import { toPrintOut } from "../src/dto";
 import { prisma } from "../src/db";
 
-// "Open in {Provider}" (model card + detail menu) needs the original model page URL rebuilt
-// from Print.sourceProvider/sourceExternalId -- confirms both the pure URL-building direction
-// and that it's actually wired into the API-facing PrintOut shape.
-
 describe("buildImportSourceUrl", () => {
   it("rebuilds the exact URL identifySourceModel would parse back out again", () => {
     const makerworldUrl = "https://makerworld.com/en/models/1698989-brian-griffin";

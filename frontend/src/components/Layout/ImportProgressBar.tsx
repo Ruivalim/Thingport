@@ -6,9 +6,7 @@ import LinearProgress from "@mui/material/LinearProgress";
 import Tooltip from "@mui/material/Tooltip";
 import { useImportJob } from "./ImportJobContext";
 
-/** A fixed bar pinned to the bottom of the viewport, shown app-wide for as long as a batch
- *  import (MakerWorld collection or remote zip) is running -- hovering it shows the full
- *  imported/already-in-library/failed breakdown. */
+/** Shown while a batch import runs; hovering shows the full breakdown. */
 export default function ImportProgressBar() {
   const { t } = useTranslation("app");
   const { activeJob } = useImportJob();

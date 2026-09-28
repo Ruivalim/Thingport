@@ -43,8 +43,7 @@ function auth(token: string) {
   return { Authorization: `Bearer ${token}` };
 }
 
-// Log writes are fire-and-forget (see services/auditLog.ts) so the HTTP response can return
-// before the row lands -- poll briefly instead of asserting immediately after the triggering call.
+// Log writes are fire-and-forget, so poll briefly.
 async function waitForLog(
   token: string,
   predicate: (log: { action: string; target_id: string | null; details: Record<string, unknown> }) => boolean,

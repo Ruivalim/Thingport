@@ -29,23 +29,15 @@ type Config struct {
 	Slicers     map[string]SlicerConfig `json:"slicers,omitempty"`
 }
 
-// scheme is only for protocols Thingport can't hand off directly to a slicer's own URL handler:
-// Bambu Studio's bambustudio:// and PrusaSlicer's prusaslicer:// both only accept links from a
-// domain allowlist (Bambu Lab's storefronts; printables.com plus sites Prusa has manually
-// whitelisted) that a self-hosted Thingport instance is never on, and Cura's cura://open only
-// works when its OS protocol registration actually took (unreliable across its
-// AppImage/Flatpak/Microsoft Store builds). OrcaSlicer accepts any HTTP(S) URL through its own
-// protocol, so it's launched straight from the browser and never reaches here.
+// Only for slicers Thingport can't hand off to directly: bambustudio:// and prusaslicer:// only
+// accept allowlisted domains, and Cura's cura:// registration is unreliable. OrcaSlicer accepts
+// any URL, so it never reaches here.
 const scheme = "thingport"
 
 func main() {
 	if len(os.Args) < 2 {
-		// On Windows/Linux the OS execs a fresh process with the URL as argv[1] every time, so a
-		// bare "no args" launch unambiguously means "run me to install". macOS instead delivers a
-		// thingport:// open to an already-running app bundle out-of-band as an Apple Event --
-		// there's no argv equivalent -- so a bare launch there must be assumed to be that GUI
-		// case; mac install instead requires the explicit --install flag below (see
-		// runDefaultLaunch's darwin implementation).
+		// Windows/Linux pass the URL as argv[1], so no args means "install". macOS delivers it as an
+		// Apple Event instead, so install there needs --install.
 		runDefaultLaunch()
 		return
 	}
@@ -74,8 +66,6 @@ func printUsage() {
 	fmt.Println("  thingport-bridge <thingport://open?...>")
 }
 
-// runInstallAndReport is the shared body of "explicitly asked to install" -- via --install on
-// any OS, or a bare no-args launch on Windows/Linux (see main's comment on runDefaultLaunch).
 func runInstallAndReport() {
 	target, err := installSelf()
 	if err != nil {
@@ -313,9 +303,7 @@ func findWindowsCommand(id string, candidates map[string][]string) string {
 		}
 		for _, base := range bases {
 			full := filepath.Join(base, rel)
-			// Cura's install directory embeds its version (e.g. "UltiMaker Cura 5.8"), so its
-			// candidate is a glob pattern rather than a fixed path -- everyone else's is a plain
-			// path and fileExists() is enough.
+			// Cura's install directory embeds its version, so its candidate is a glob.
 			if strings.Contains(rel, "*") {
 				if matches, err := filepath.Glob(full); err == nil && len(matches) > 0 {
 					sort.Strings(matches)
@@ -340,8 +328,7 @@ func findLinuxCommand(id string, candidates map[string][]string) string {
 	return ""
 }
 
-// findMacCommand checks each candidate app bundle in /Applications and then in the user's own
-// ~/Applications (a common drag-to-install target that needs no admin rights).
+// Also checks ~/Applications, a common install target that needs no admin rights.
 func findMacCommand(id string, candidates map[string][]string) string {
 	home, _ := os.UserHomeDir()
 	for _, appPath := range candidates[id] {
@@ -362,18 +349,14 @@ func windowsCandidates() map[string][]string {
 		"bambustudio": {"Bambu Studio\\BambuStudio.exe"},
 		"orcaslicer":  {"OrcaSlicer\\OrcaSlicer.exe"},
 		"prusaslicer": {"PrusaSlicer\\PrusaSlicer.exe"},
-		// UltiMaker/Ultimaker Cura's install dir embeds its version number, so these are globs
-		// (see findWindowsCommand) rather than fixed paths; the rebrand from "Ultimaker" to
-		// "UltiMaker" happened around 5.7, so both spellings are worth trying.
+		// Globs because the dir embeds the version; renamed "Ultimaker" -> "UltiMaker" around 5.7.
 		"cura": {
 			"UltiMaker Cura */UltiMaker-Cura.exe",
 			"Ultimaker Cura */UltiMaker-Cura.exe",
 			"Ultimaker Cura */Cura.exe",
 		},
-		// Anycubic's fork of OrcaSlicer. Its own orcaslicer:// handler would work too, but it
-		// shares that protocol with OrcaSlicer itself (whichever registered last wins), so it's
-		// launched by path instead. The install folder's exact name isn't documented, hence the
-		// variants and the trailing glob.
+		// Launched by path: its orcaslicer:// handler clashes with OrcaSlicer's. The folder name isn't
+		// documented, hence the variants.
 		"anycubicslicernext": {
 			"AnycubicSlicerNext\\AnycubicSlicerNext.exe",
 			"Anycubic Slicer Next\\AnycubicSlicerNext.exe",
@@ -387,11 +370,8 @@ func linuxCandidates() map[string][]string {
 		"bambustudio": {"bambu-studio", "BambuStudio"},
 		"orcaslicer":  {"orca-slicer", "OrcaSlicer"},
 		"prusaslicer": {"prusa-slicer", "PrusaSlicer"},
-		// Only catches a PATH-visible install (e.g. via snap, which symlinks into /snap/bin) --
-		// AppImage and Flatpak builds aren't discoverable this way and need a config.json entry
-		// or THINGPORT_SLICER_CURA override instead (see bridge/README.md).
+		// PATH only: AppImage and Flatpak builds need a config.json entry (see bridge/README.md).
 		"cura": {"cura", "UltiMaker-Cura"},
-		// Same PATH-only caveat as Cura: an AppImage needs a config.json entry instead.
 		"anycubicslicernext": {"AnycubicSlicerNext", "anycubicslicernext", "anycubic-slicer-next"},
 	}
 }
@@ -401,7 +381,6 @@ func macCandidates() map[string][]string {
 		"bambustudio": {"/Applications/BambuStudio.app"},
 		"orcaslicer":  {"/Applications/OrcaSlicer.app"},
 		"prusaslicer": {"/Applications/PrusaSlicer.app", "/Applications/Original Prusa Drivers/PrusaSlicer.app"},
-		// Rebranded from "Ultimaker Cura" to "UltiMaker Cura" around version 5.7.
 		"cura":               {"/Applications/UltiMaker Cura.app", "/Applications/Ultimaker Cura.app"},
 		"anycubicslicernext": {"/Applications/AnycubicSlicerNext.app", "/Applications/Anycubic Slicer Next.app"},
 	}

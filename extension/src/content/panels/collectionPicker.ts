@@ -1,5 +1,4 @@
-// "Add to collection" picker -- single-model imports only; a batch import lands in Thingport's own
-// auto-named collection for that batch, matching the web app.
+// Single-model imports only; batch imports get their own auto-named collection.
 
 import type { Collection } from "../../shared/api";
 import { api, escapeHtml } from "../runtime";
@@ -17,7 +16,7 @@ export async function collectionPickerHtml(): Promise<string> {
       <select id="tg-collection" class="tg-select"><option value="">No collection</option>${options}</select>
     `;
   } catch {
-    return ""; // Collections failed to load -- import still works without the picker.
+    return ""; // import still works without the picker
   }
 }
 

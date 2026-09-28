@@ -32,8 +32,6 @@ const collectionSchema = z.object({
 
 const COVER_ITEM_LIMIT = 4;
 
-/** The collection's models, for moving their files once its name or its existence stops being
- *  what their {collection} folder was built from. */
 async function collectionPrintIds(collectionId: string): Promise<string[]> {
   const items = await prisma.collectionItem.findMany({ where: { collectionId }, select: { printId: true } });
   return items.map((item) => item.printId);
@@ -170,10 +168,7 @@ router.delete(
   }),
 );
 
-// Drops one print's membership -- the print itself, and every other collection it's in, are
-// untouched. Only meaningful for a real collection: the built-in Favourites/Browsing History
-// pseudo-collections have no CollectionItem rows to remove (their membership is Print.favoritedAt
-// / Print.lastViewedAt) -- the frontend routes "remove" there through unfavorite instead.
+// Real collections only: Favourites/History membership comes from Print columns.
 router.delete(
   "/collection/:id/items/:printId",
   asyncHandler(async (req, res) => {
@@ -196,9 +191,6 @@ router.delete(
   }),
 );
 
-// The reverse of the DELETE above -- adds one print to a real collection. Same system-collection
-// restriction: Favourites/Browsing History membership comes from Print.favoritedAt/lastViewedAt,
-// not CollectionItem rows, so the frontend never offers this for them.
 router.post(
   "/collection/:id/items/:printId",
   asyncHandler(async (req, res) => {
@@ -219,12 +211,6 @@ router.post(
     });
   }),
 );
-
-// ---- POST/DELETE /collection/:id/bookmark ----------------------------------------------------
-// Adds/removes this collection from the sidebar's quick-access "Bookmarks" section -- the
-// Collections grid card's "..." menu and the collection detail page's title-row toggle. Same
-// system-collection restriction as the item add/remove routes above: Favourites/Browsing History
-// have no real Collection row for a Bookmark to reference.
 
 router.post(
   "/collection/:id/bookmark",
@@ -252,9 +238,7 @@ router.delete(
   }),
 );
 
-// Every real (non-system) collection this user owns, flagged with whether `printId` is currently
-// a member -- backs the "Add to collection" picker opened from ModelActionsMenu. System
-// pseudo-collections are omitted since they can't be toggled this way (see the POST/DELETE above).
+// Real collections only, flagged with whether `printId` is a member.
 router.get(
   "/print/:id/collections",
   asyncHandler(async (req, res) => {

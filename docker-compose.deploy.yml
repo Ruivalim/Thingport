@@ -56,9 +56,7 @@ services:
     networks:
       - app-net
 
-  # Frontend: nginx serving the built static app and reverse-proxying /api/* to the backend
-  # container over the compose network (see frontend/nginx.conf) — the same single-entry-point
-  # pattern as docker-compose.yml, just built from a published image instead of local source.
+  # Frontend: nginx serving the app and proxying /api/* to the backend (see frontend/nginx.conf).
   frontend:
     # Pin to a specific build instead of :latest, e.g.:
     #   FRONTEND_IMAGE=ghcr.io/tautvydasderzinskas/thingport-frontend:sha-a8fef7d

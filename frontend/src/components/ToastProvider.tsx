@@ -13,11 +13,7 @@ const ToastContext = React.createContext<((options: ToastOptions) => void) | nul
 
 let nextKey = 0;
 
-/** App-wide toast/snackbar, mirroring ConfirmProvider's single-instance-shared-by-every-caller
- *  shape: `showToast({ message, severity })` in place of wiring up a Snackbar per component.
- *  Mounted once in AppLayout. Queues toasts one at a time (MUI's own recommended pattern for
- *  consecutive Snackbars) instead of stacking or dropping one that fires while another is
- *  still showing. */
+/** Queues toasts one at a time. Mounted once in AppLayout. */
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [queue, setQueue] = React.useState<QueuedToast[]>([]);
   const [current, setCurrent] = React.useState<QueuedToast | null>(null);
@@ -61,7 +57,6 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Returns a function that queues a toast -- `showToast({ message: "..." })`. */
 export function useToast() {
   const showToast = React.useContext(ToastContext);
   if (!showToast) throw new Error("useToast must be used within a ToastProvider");

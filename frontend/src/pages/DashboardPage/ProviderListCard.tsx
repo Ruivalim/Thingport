@@ -14,10 +14,7 @@ type Props = {
   providers: DashboardProvider[];
 };
 
-/** Top Providers -- how many of this user's models came from each source (MakerWorld,
- *  Thingiverse, or a direct Thingport upload). A fixed, small set in practice, so unlike the
- *  other list cards this one has no "see more" dialog and its rows aren't clickable -- there's
- *  no per-provider filtered view to link to yet. */
+/** A small fixed set, so no "see more" and no clickable rows. */
 export default function ProviderListCard({ providers }: Props) {
   const { t } = useTranslation("app");
 

@@ -1,8 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 
-// No real email goes anywhere: the mailer is replaced, and each test reads the invitation link it
-// was asked to send from the mock's calls.
+// The mailer is mocked; tests read the invitation link from its calls.
 vi.mock("../src/services/mailer", () => ({
   sendVerificationEmail: vi.fn<(to: string, displayName: string, token: string) => Promise<void>>(async () => undefined),
   sendInvitationEmail: vi.fn<(to: string, inviterName: string, link: string, expiresInDays: number) => Promise<void>>(
@@ -25,8 +24,7 @@ const sendInvitation = vi.mocked(sendInvitationEmail);
 const sendVerification = vi.mocked(sendVerificationEmail);
 let adminToken: string;
 let memberToken: string;
-// Every test file shares one database (see vitest.config.ts), so the instance-wide settings this
-// file changes are put back afterwards.
+// The database is shared across files, so restore the instance-wide settings afterwards.
 let previousSmtpHost: string | null;
 let previousAllowRegistrations: boolean;
 
@@ -34,7 +32,6 @@ const stamp = Date.now();
 const email = (name: string) => `${name}-${stamp}@example.com`;
 const auth = (token: string) => ({ Authorization: `Bearer ${token}` });
 
-/** The token from the link in the most recent invitation email. */
 function lastInvitationToken(): string {
   const link = sendInvitation.mock.calls.at(-1)![2];
   return new URL(link, "http://thingport.test").searchParams.get("invite")!;
@@ -175,7 +172,7 @@ describe("registering with an invitation", () => {
       .post("/api/register")
       .send({ displayName: "Invited User", email: invitee, password: "password123", invite_token: token });
     expect(res.status).toBe(200);
-    // Signed straight in: the invitation link already proved the mailbox, so no verification email.
+    // The invitation already proved the mailbox, so no verification email.
     expect(res.body.token).toBeTruthy();
     expect(res.body.user.email).toBe(invitee);
     expect(sendVerification).not.toHaveBeenCalled();

@@ -13,11 +13,7 @@ function createToken(userId: string, role: Role, ttlSeconds: number): string {
   });
 }
 
-/** Signs a fresh JWT for `userId`, using the instance's current session length (admin-configurable
- *  -- see settingsService.ts's getAuthTokenTtl / AdminSettingsPage's Session section) -- and
- *  returns that same length alongside it so the caller can echo it back as the login response's
- *  `expires_in`. Every route that issues a token (register/login/verify-email/refresh) goes
- *  through this instead of calling createToken directly. */
+/** Uses the admin-configured session length and returns it for `expires_in`. */
 export async function issueToken(userId: string, role: Role): Promise<{ token: string; expiresIn: number }> {
   const expiresIn = await getAuthTokenTtl();
   return { token: createToken(userId, role, expiresIn), expiresIn };
@@ -31,8 +27,7 @@ export function verifyToken(token: string): TokenPayload | null {
   }
 }
 
-/** Accepts either an `Authorization: Bearer <token>` header or a `?token=` query param
- * (needed for <img>/direct file links that can't set headers). */
+/** `?token=` is for <img>/direct file links that can't set headers. */
 export function extractToken(req: Request): string | undefined {
   const header = req.header("authorization");
   const headerToken = header?.toLowerCase().startsWith("bearer ") ? header.slice(7).trim() : undefined;
@@ -40,9 +35,6 @@ export function extractToken(req: Request): string | undefined {
   return headerToken || queryToken;
 }
 
-/** Every route in this app requires a real account -- there's no "auth disabled" mode, since
- * there'd be no way to resolve which user's data a request is even asking about. Attaches the
- * token's subject/role to the request so handlers can scope their queries. */
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
   const token = extractToken(req);
   const payload = token ? verifyToken(token) : null;
@@ -55,8 +47,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
   next();
 }
 
-/** Must run after requireAuth. For routes whose effect isn't confined to the caller's own
- * data (e.g. an instance-wide storage template affecting every user's files). */
+/** Must run after requireAuth. */
 export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
   if (req.userRole !== "ADMIN") {
     res.status(403).json({ detail: "Admin access required" });

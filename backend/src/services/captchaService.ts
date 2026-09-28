@@ -1,11 +1,7 @@
-// Image captchas for login, registration and import (turned on per place in Administration >
-// Captcha). Generated here, no outside service: svg-captcha draws each character as vector
-// outlines -- not <text> -- with a slight tilt and a couple of noise lines, so the answer isn't
-// sitting in the image's markup, yet it stays easy for a person to read.
+// Image captchas for login, registration and import. svg-captcha draws characters as outlines,
+// not <text>, so the answer isn't in the markup.
 //
-// Answers live only in this process's memory: each captcha is single-use (checked answers are
-// dropped, right or wrong) and expires after CAPTCHA_TTL_MS. A restart simply invalidates any
-// captcha that was on screen -- the form fetches a new one.
+// Answers live in memory, are single-use, and expire after CAPTCHA_TTL_MS.
 
 import crypto from "node:crypto";
 import type { NextFunction, Request, Response } from "express";
@@ -14,9 +10,9 @@ import { HttpError } from "../utils/fileUtils";
 import { isCaptchaEnabled, type CaptchaPlace } from "./settingsService";
 
 const CAPTCHA_TTL_MS = 10 * 60 * 1000;
-// Bounds memory if something requests captchas in a loop: the oldest pending ones go first.
+// Bounds memory if something requests captchas in a loop.
 const MAX_PENDING = 5000;
-// Characters people mix up (0/O, 1/I/l) are left out -- the point is stopping scripts, not people.
+// Confusable characters are left out.
 const IGNORE_CHARS = "0oO1iIlL";
 
 const pending = new Map<string, { answer: string; expiresAt: number }>();
@@ -27,8 +23,7 @@ function dropExpired(now: number): void {
   }
 }
 
-/** A new captcha: its id, the image to show (as a data: URL), and the answer -- which callers
- *  other than tests must not send to the client. */
+/** `answer` must never be sent to the client (tests only). */
 export function createCaptcha(): { id: string; image: string; answer: string } {
   const now = Date.now();
   dropExpired(now);
@@ -49,7 +44,7 @@ export function createCaptcha(): { id: string; image: string; answer: string } {
   return { id, image: `data:image/svg+xml;base64,${Buffer.from(data).toString("base64")}`, answer: text };
 }
 
-/** Checks (and uses up) a captcha. Case-insensitive, surrounding spaces ignored. */
+/** Uses the captcha up. Case-insensitive. */
 export function verifyCaptcha(id: unknown, answer: unknown): boolean {
   if (typeof id !== "string" || typeof answer !== "string") return false;
   const entry = pending.get(id);
@@ -58,22 +53,16 @@ export function verifyCaptcha(id: unknown, answer: unknown): boolean {
   return entry.answer.toLowerCase() === answer.trim().toLowerCase();
 }
 
-// The Origin a browser puts on a request an extension's background script sends to another site
-// (checked live for Chromium: a POST from an MV3 service worker carries chrome-extension://<id>).
+// MV3 service worker requests carry chrome-extension://<id> as Origin.
 const EXTENSION_ORIGIN = /^(chrome|moz|safari-web)-extension:\/\//i;
 
-/** Thingport Grab (the browser extension) isn't asked for captchas -- it signs in and imports in the
- *  background, with nowhere to show one. It's recognized by its X-Thingport-Client header, or, for
- *  versions from before that header existed, by the extension Origin its browser attaches: every
- *  guarded endpoint is a POST, which always carries one. A page's own requests can't claim an
- *  extension Origin (the browser sets it), but anything outside a browser can send either, so this
- *  is a convenience for the extension, not a security boundary. */
+/** The extension has nowhere to show a captcha. Recognized by X-Thingport-Client or, for older
+ *  versions, its Origin. Anything outside a browser can fake either, so this isn't a security
+ *  boundary. */
 export function isExtensionRequest(req: Request): boolean {
   return req.get("x-thingport-client") === "grab" || EXTENSION_ORIGIN.test(req.get("origin") ?? "");
 }
 
-/** Throws unless `place` doesn't need a captcha right now, or the request body carries a correct
- *  one (`captcha_id` + `captcha_answer`). */
 export async function checkCaptcha(req: Request, place: CaptchaPlace): Promise<void> {
   if (isExtensionRequest(req) || !(await isCaptchaEnabled(place))) return;
   const body = (req.body ?? {}) as { captcha_id?: unknown; captcha_answer?: unknown };
@@ -85,7 +74,6 @@ export async function checkCaptcha(req: Request, place: CaptchaPlace): Promise<v
   }
 }
 
-/** Route middleware form of checkCaptcha, for endpoints guarded as a whole (the import starts). */
 export function requireCaptcha(place: CaptchaPlace) {
   return (req: Request, _res: Response, next: NextFunction) => {
     checkCaptcha(req, place).then(() => next(), next);

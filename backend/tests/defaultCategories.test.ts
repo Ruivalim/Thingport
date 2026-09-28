@@ -1,9 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_CATEGORIES, type DefaultCategoryNode } from "../src/seedData/defaultCategories";
 
-// Pure data-shape checks for the starter category tree seedDefaultCategories (categoryService.ts)
-// materializes for every new user -- no DB/app needed, since this only validates the static
-// data itself against the same constraints the rest of the app enforces on real Category rows.
+// Validates the static starter tree against the constraints enforced on real categories.
 
 function flatten(nodes: DefaultCategoryNode[], depth = 0): Array<{ node: DefaultCategoryNode; depth: number }> {
   return nodes.flatMap((node) => [

@@ -71,26 +71,15 @@ export type ImportRequestBody = ImportCookies & {
   tags?: string[];
   category_id?: string | null;
   filename?: string | null;
-  /** Set by the Thingport Grab browser extension for a MakerWorld import: the actual download
-   *  URL, already resolved client-side (from the live page's own __NEXT_DATA__ + a fetch() made
-   *  in that page's context, so real cookies attach automatically). When present, openImportResponse
-   *  skips both of its own resolution paths for this url -- see its use there. */
+  /** Download URL the Thingport Grab extension already resolved in the page; skips server-side
+   *  resolution. */
   resolved_download_url?: string | null;
-  /** Sent alongside resolved_download_url: the MakerWorld profile that URL downloads -- see
-   *  ImportedPageMetadata.makerworldProfile. Null when the extension couldn't tell. */
+  /** The MakerWorld profile resolved_download_url downloads, when known. */
   resolved_instance_id?: string | null;
-  /** Sent alongside resolved_download_url: the MakerWorld design as the live page embeds it
-   *  (its __NEXT_DATA__ design, trimmed to what an import uses), so the model's details come
-   *  from the page the user is on rather than from the backend fetching that page again -- a
-   *  request Cloudflare often blocks. Client-supplied, so see makerworldMetaFromExtension for
-   *  how far it's trusted. */
+  /** The page's MakerWorld design data, so the backend needn't fetch a Cloudflare-gated page.
+   *  Client-supplied -- see makerworldMetaFromExtension. */
   makerworld_design?: Record<string, unknown> | null;
-  /** Internal only -- never comes from the request body/schema. Set by runCollectionImportJob
-   *  on each per-design body it builds for a MakerWorld collection batch import, and read
-   *  wherever a MakerWorld-bound call happens along this whole chain (tryMakerworldCloudApi,
-   *  openImportResponse's final fetch, attachImportedPreviewImages) so every single outbound
-   *  call in the sequence -- not just the gap between models -- gets the same pacing. Unset
-   *  (no extra delay) for a single-model import. */
+  /** Internal only: per-request delay for MakerWorld collection imports. Never from the body. */
   makerworldPaceMs?: number;
 };
 
@@ -133,9 +122,7 @@ async function rawFetch(url: string, headers: Record<string, string>): Promise<R
   }
 }
 
-/** Loads `url` through FlareSolverr's real browser and wraps the rendered body as an HTML
- * Response, so callers (openImportResponse's page-scraping path) can treat it exactly like
- * an ordinary fetch result. */
+/** Loads `url` through FlareSolverr and wraps the rendered body as an HTML Response. */
 async function proxiedResponse(url: string, cookieHeader?: string | null): Promise<Response | null> {
   const solved = await fetchViaFlaresolverr(url, cookieHeader);
   if (!solved) return null;
@@ -151,7 +138,6 @@ async function fetchWithGuard(url: string, headers: Record<string, string>): Pro
     try {
       hostname = new URL(url).hostname;
     } catch {
-      // validateRemoteUrl already rejects unparsable URLs upstream
     }
 
     let res: Response;
@@ -177,10 +163,7 @@ async function fetchWithGuard(url: string, headers: Record<string, string>): Pro
 
 export type OpenImportResult = { response: Response; finalUrl: string; meta: ImportedPageMetadata };
 
-/** A MakerWorld design's own data (title, creator, print profiles), as its model page embeds it in
- * __NEXT_DATA__ -- the fallback to makerworldCloudApi.ts's fetchMakerworldDesign when there's no
- * MakerWorld login to use its API. The page is often behind Cloudflare's challenge for a server
- * (FlareSolverr gets through); null when it can't be read. */
+/** Fallback for fetchMakerworldDesign when there's no MakerWorld login. */
 async function fetchMakerworldPageDesign(
   designId: string,
   cookie: string | null,
@@ -202,8 +185,6 @@ async function fetchMakerworldPageDesign(
   return design && typeof design === "object" && !Array.isArray(design) ? (design as Record<string, unknown>) : null;
 }
 
-/** A MakerWorld design's data for choosing which print profiles to import -- through MakerWorld's
- * API with the user's MakerWorld login, else from the model page. */
 export async function fetchMakerworldDesignForImport(
   designId: string,
   cookie: string | null,
@@ -213,10 +194,7 @@ export async function fetchMakerworldDesignForImport(
   return bearer ? fetchMakerworldDesign(designId, bearer, paceMs) : fetchMakerworldPageDesign(designId, cookie, paceMs);
 }
 
-/** A MakerWorld design's author from its model page -- the fallback to
- * makerworldCloudApi.ts's fetchMakerworldDesignAuthor when there's no MakerWorld login to use its
- * API. The page is often behind Cloudflare's challenge for a server (FlareSolverr gets through);
- * null when it can't be read. */
+/** Fallback for fetchMakerworldDesignAuthor when there's no MakerWorld login. */
 export async function fetchMakerworldPageAuthor(
   designId: string,
   cookie: string | null,
@@ -236,8 +214,6 @@ export async function fetchMakerworldPageAuthor(
   return completeMakerworldAuthor(extractPageMetadata(buffer.toString("utf-8"), "makerworld.com").author, paceMs);
 }
 
-/** Whether `url` is on MakerWorld's image CDN -- where every cover, gallery picture and avatar
- * in a design lives. */
 function isMakerworldCdnUrl(url: string | null | undefined): url is string {
   if (!url) return false;
   try {
@@ -248,11 +224,8 @@ function isMakerworldCdnUrl(url: string | null | undefined): url is string {
   }
 }
 
-/** The import's metadata from the design the Thingport Grab extension read off the live model
- * page (body.makerworld_design) -- null when there's none, or it's for another model, so the
- * backend reads the page itself instead. It comes from the client, so the image URLs the backend
- * will fetch are limited to MakerWorld's own CDN, and the author it names can create an author
- * record but not overwrite one (see ImportedAuthorInfo.unverified). */
+/** Metadata from the design the extension sent. It's client-supplied, so image fetches are
+ * limited to MakerWorld's CDN and the author can't overwrite an existing record. */
 async function makerworldMetaFromExtension(url: string, body: ImportRequestBody): Promise<ImportedPageMetadata | null> {
   const design = body.makerworld_design;
   const parsed = parseMakerworldModelUrl(url);
@@ -276,11 +249,7 @@ async function makerworldMetaFromExtension(url: string, body: ImportRequestBody)
 
 type MakerworldCloudShortcut = { downloadUrl: string; meta: ImportedPageMetadata };
 
-/** Attempts the api.bambulab.com resolution path for a MakerWorld model URL. Returns null
- * for anything that should fall back to the existing page-scraping resolver (not a model
- * URL, no usable token, or an unexpected upstream shape); rethrows the two failures worth
- * telling the user about directly (expired session, CAPTCHA challenge) as HttpErrors instead
- * of silently falling through to a resolver that would just fail the same way again. */
+/** Null means fall back to page scraping; auth and CAPTCHA failures are rethrown as HttpErrors. */
 async function tryMakerworldCloudApi(url: string, body: ImportRequestBody): Promise<MakerworldCloudShortcut | null> {
   const parsed = parseMakerworldModelUrl(url);
   if (!parsed) return null;
@@ -292,21 +261,15 @@ async function tryMakerworldCloudApi(url: string, body: ImportRequestBody): Prom
     return resolved;
   } catch (err) {
     if (err instanceof MakerworldCaptchaError) throw new HttpError(429, err.message);
-    // 400, not 401: this is MakerWorld's own session rejecting our request, not the caller's
-    // Thingport session -- the frontend's generic API client treats any 401 as "your
-    // Thingport session expired" and force-logs-out, which would be exactly wrong here.
+    // 400, not 401: the frontend treats any 401 as an expired Thingport session and logs out.
     if (err instanceof MakerworldAuthError) throw new HttpError(400, err.message);
     throw err;
   }
 }
 
 /**
- * Fetches `url`, following HTML "landing pages" recursively (MakerWorld/Printables/Thingiverse
- * page scraping, or generic <a href>/JSON link sniffing) until it lands on the actual model file
- * response. Mirrors MakersVault's open_import_response. `inheritedMeta` carries the landing
- * page's real metadata (MakerWorld's design title/tags/summary/creator/cover image) down through
- * the recursive follow so the final file response can still report it even though the file host
- * itself has none of its own.
+ * Fetches `url`, following HTML landing pages recursively until it reaches the model file.
+ * `inheritedMeta` carries the landing page's metadata down to the final file response.
  */
 export async function openImportResponse(
   url: string,
@@ -325,21 +288,13 @@ export async function openImportResponse(
     host = "";
   }
 
-  // MakerWorld model pages: try resolving straight through api.bambulab.com first (no
-  // Cloudflare, no cookie-gated web session, no HTML scraping -- see makerworldCloudApi.ts).
-  // Only at the top of the chain, so a URL this already resolved down to (e.g. the signed S3
-  // download link) doesn't get reinterpreted as a fresh model page on the recursive call.
-  // Skipped entirely when the caller (the Thingport Grab extension) already resolved the
-  // download URL itself -- this call is one of the only two places that can trip MakerWorld's
-  // CAPTCHA cooloff, so there's no reason to risk it for a resolution we don't need.
+  // Only at depth 0, so a resolved download URL isn't treated as a model page on recursion.
   if (depth === 0 && host.endsWith("makerworld.com") && !body.resolved_download_url) {
     const cloudResolved = await tryMakerworldCloudApi(validatedUrl, body);
     if (cloudResolved) {
       return openImportResponse(cloudResolved.downloadUrl, body, validatedUrl, depth + 1, cloudResolved.meta);
     }
   }
-  // The extension resolved the download *and* sent the page's own design data: nothing left to
-  // ask MakerWorld, so the model page isn't fetched at all.
   if (depth === 0 && host.endsWith("makerworld.com") && body.resolved_download_url) {
     const fromExtension = await makerworldMetaFromExtension(validatedUrl, body);
     if (fromExtension) {
@@ -355,10 +310,6 @@ export async function openImportResponse(
   }
   if (referer) headers.Referer = referer;
 
-  // Paces the actual file/page fetch too -- for a MakerWorld collection batch (the only source
-  // of makerworldPaceMs), this is what follows the design+profile+author calls already paced
-  // inside resolveMakerworldViaCloudApi, keeping the whole per-model sequence evenly spaced
-  // rather than pacing everything except the final (often largest) request.
   await maybeSleep(body.makerworldPaceMs);
   const res = await fetchWithGuard(validatedUrl, headers);
   const finalUrl = res.url || validatedUrl;
@@ -394,9 +345,7 @@ export async function openImportResponse(
       resolvedMeta.author = await completeMakerworldAuthor(extracted.author, body.makerworldPaceMs);
     }
     if (pageHost.endsWith("makerworld.com")) {
-      // Same short-circuit as the cloud API above -- resolveMakerworldDownloadUrl's own
-      // api/v1/design-service and api/v1/models calls are the other place that can trip the
-      // CAPTCHA cooloff, so a client-supplied resolution skips it rather than resolving twice.
+      // Skipped for an extension-resolved URL: these calls can trip the CAPTCHA cooloff.
       if (body.resolved_download_url) {
         downloadUrl = body.resolved_download_url;
         resolvedMeta.makerworldProfile = { instanceId: body.resolved_instance_id ?? null };
@@ -462,8 +411,7 @@ export async function downloadImportToTemp(
   return saveImportResponseToTemp(await openImportResponse(url, body), body);
 }
 
-/** The second half of downloadImportToTemp, split out so a caller can look at the resolved
- *  metadata first and skip downloading the body entirely (see addMakerworldProfileToPrint). */
+/** Split out so a caller can inspect the resolved metadata before downloading the body. */
 async function saveImportResponseToTemp(
   { response, finalUrl, meta }: OpenImportResult,
   body: ImportRequestBody,
@@ -522,13 +470,8 @@ async function fetchImageBytes(url: string): Promise<Buffer | null> {
   }
 }
 
-/** Best-effort: downloads a resolved page's cover photo and remaining gallery photos and stores
- * them as the print's preview images -- the cover first, so it lands at position 0 (the detail
- * page's default/main image) -- and seeds the plate's own thumbnail from the same cover bytes
- * when nothing better (e.g. an embedded .3mf thumbnail extracted during createPrint) already set
- * one. Every image is independent and this never throws: a broken photo shouldn't fail the
- * import, it just means one fewer preview image (the generated-snapshot fallback in
- * POST /plate/:id/thumbnail-generated covers a print that ends up with none at all). */
+/** Best-effort: stores the page's cover (at position 0) and gallery as preview images, and seeds
+ * the plate thumbnail from the cover when nothing better exists. Never throws. */
 export async function attachImportedPreviewImages(
   printId: string | undefined,
   plateId: string | undefined,
@@ -571,14 +514,8 @@ const CATEGORY_SITE_CAT_IDS_FIELD = {
   printables: "printablesCatIds",
 } as const;
 
-/** When the caller didn't pick a category explicitly, checks whether any of the user's categories
- * declared a `*CatIds` list for this source site overlapping the model's own category ids -- if
- * so, the import auto-lands there instead of staying uncategorized. A category can list several
- * ids per site (e.g. a parent category plus a couple of its subcategories -- see
- * routes/categories.ts's parseCatIdsInput), so this is a set-overlap ("hasSome") check, not an
- * equality one. Site-scoped (each site's category ids are an independent namespace) and
- * best-effort: a lookup failure just leaves the print uncategorized rather than failing the
- * import. */
+/** Auto-categorizes an import when a category's `*CatIds` for this site overlap the model's own
+ * category ids. Best-effort. */
 async function resolveCategoryIdByCategory(
   userId: string,
   categorySite: ImportedPageMetadata["categorySite"],
@@ -593,11 +530,7 @@ async function resolveCategoryIdByCategory(
   return category?.id ?? null;
 }
 
-/** Identifies a provider + stable external id for a model URL, when possible -- used to dedup
- * imports (see importPrintFromUrl below) so re-importing the same design, whether pasted again
- * directly or pulled in as part of a different collection's batch import, reuses the existing
- * Print instead of re-downloading a duplicate. A URL that doesn't match any known provider (or
- * isn't from one at all -- a generic file host, say) returns null and is simply never deduped. */
+/** Provider + stable external id for a model URL, used to dedupe imports. Null if unknown. */
 export function identifySourceModel(url: string): { provider: string; externalId: string } | null {
   const makerworld = parseMakerworldModelUrl(url);
   if (makerworld) return { provider: "makerworld", externalId: makerworld.designId };
@@ -608,10 +541,9 @@ export function identifySourceModel(url: string): { provider: string; externalId
   return null;
 }
 
-/** `state` refines already_imported for a MakerWorld URL naming a print profile, where the model
- *  can be in the library without that profile's file: "profile_missing" when every plate on the
- *  print is a known, different profile, "profile_unknown" when some plates predate profile
- *  tracking and might be it. already_imported stays for older extension versions. */
+/** `state` refines already_imported for a MakerWorld URL naming a profile: "profile_missing"
+ *  when every plate is a different profile, "profile_unknown" when some plates predate profile
+ *  tracking. already_imported stays for older extension versions. */
 export type ImportStatus = {
   recognized: boolean;
   already_imported: boolean;
@@ -619,12 +551,8 @@ export type ImportStatus = {
   state: "not_imported" | "imported" | "profile_missing" | "profile_unknown";
 };
 
-/** Cheap "is this page importable, and have I already imported it" check -- unlike
- * inspectImportLink, this never fetches the provider's page itself, so it's safe to call on
- * every page load (the Thingport Grab browser extension's floating-icon visibility check on a
- * single-model page). A URL identifySourceModel doesn't recognize (a collection/Likes listing,
- * or anything not from a known provider) always reports not-already-imported -- dedup only makes
- * sense for a single model, never a listing page. */
+/** Never fetches the provider's page, so it's cheap enough for the extension to call on every
+ * page load. */
 export async function checkImportStatus(userId: string, url: string): Promise<ImportStatus> {
   const source = identifySourceModel(url);
   if (!source) return { recognized: false, already_imported: false, print_id: null, state: "not_imported" };
@@ -633,10 +561,8 @@ export async function checkImportStatus(userId: string, url: string): Promise<Im
     select: { id: true, plates: { select: { sourceInstanceId: true } } },
   });
   if (!print) return { recognized: true, already_imported: false, print_id: null, state: "not_imported" };
-  // A MakerWorld URL naming a specific profile only counts as imported once that profile's file
-  // is on the print (see addMakerworldProfileToPrint). Without a hash there's no way to tell
-  // which profile is meant short of asking MakerWorld -- not worth it on every page view -- so
-  // any imported profile counts.
+  // Without a profile in the URL, any imported profile counts; asking MakerWorld on every page
+  // view isn't worth it.
   const requestedInstanceId = source.provider === "makerworld" ? parseMakerworldModelUrl(url)?.requestedInstanceId : null;
   if (requestedInstanceId && !print.plates.some((plate) => plate.sourceInstanceId === requestedInstanceId)) {
     const state = print.plates.some((plate) => plate.sourceInstanceId == null) ? "profile_unknown" : "profile_missing";
@@ -645,11 +571,7 @@ export async function checkImportStatus(userId: string, url: string): Promise<Im
   return { recognized: true, already_imported: true, print_id: print.id, state: "imported" };
 }
 
-/** The inverse of identifySourceModel above -- rebuilds the original model page URL from the
- * stable provider + external id a Print was imported with (Print.sourceProvider/
- * sourceExternalId), for the "Open in {Provider}" link on the model card/detail menus. No raw
- * URL is stored anywhere; both provider URL shapes are simple and stable enough to reconstruct
- * (mirrors the exact same string-building already done at import time in importJobRunner.ts). */
+/** Inverse of identifySourceModel, for the "Open in {Provider}" link. */
 export function buildImportSourceUrl(provider: string | null, externalId: string | null): string | null {
   if (!provider || !externalId) return null;
   if (provider === "makerworld") return `https://makerworld.com/en/models/${externalId}`;
@@ -682,8 +604,6 @@ async function sha256OfFile(filePath: string): Promise<string> {
   return hash.digest("hex");
 }
 
-/** A plate's stored contentSha256, computing (and storing) it on first use. Null when its file
- *  can't be read. */
 async function plateContentSha256(plate: Plate): Promise<string | null> {
   if (plate.contentSha256) return plate.contentSha256;
   const filePath = resolvePlateFilePath(plate);
@@ -693,15 +613,9 @@ async function plateContentSha256(plate: Plate): Promise<string | null> {
   return sha;
 }
 
-/** Re-import of a MakerWorld design that's already a Print: each print profile has its own 3MF
- * (with its own print settings, so they can't be merged into one file), so a profile not on the
- * print yet is added as another plate rather than treated as a duplicate. The print's own
- * metadata/images are left as they are.
- *
- * Plates without a sourceInstanceId (imported before profiles were tracked, or uploaded by hand)
- * could be any profile, so the downloaded file is compared against them by SHA-256 first: a
- * match tags that plate instead of adding a copy. Once a print's plates are all tagged, this
- * never downloads anything for a profile it already has. */
+/** Re-import of a MakerWorld design: each profile's 3MF has its own settings, so a new profile is
+ * added as another plate. Untagged plates are compared by SHA-256 first so a match is tagged
+ * instead of duplicated. */
 async function addMakerworldProfileToPrint(
   existing: ExistingImportedPrint,
   url: string,
@@ -710,23 +624,18 @@ async function addMakerworldProfileToPrint(
   const alreadyImported = { ...existing, alreadyImported: true };
   const hasProfile = (instanceId: string) => existing.plates.some((plate) => plate.sourceInstanceId === instanceId);
 
-  // Checked before any MakerWorld request: no hash (and no profile from the extension) means
-  // "whichever profile is the default", which can only be told apart from what's already
-  // imported by asking MakerWorld -- and a collection re-import runs this for every design it
-  // already has, where that would mean one extra (CAPTCHA-prone) lookup per design.
+  // Checked before any MakerWorld request: resolving the default profile would cost one
+  // CAPTCHA-prone lookup per design on a collection re-import.
   const wanted = body.resolved_instance_id ?? parseMakerworldModelUrl(url)?.requestedInstanceId ?? null;
   if (!wanted || hasProfile(wanted)) return alreadyImported;
 
-  // A download the extension already resolved in the page is fetched as it is: the model page
-  // the full import path would fetch first only carries metadata the model already has, and one
-  // extra MakerWorld page request per profile is the kind of burst that trips its CAPTCHA.
+  // Fetch the extension-resolved download as is: another page request per profile risks the CAPTCHA.
   const presolved = Boolean(body.resolved_download_url && body.resolved_instance_id);
   const opened = presolved
     ? await openImportResponse(body.resolved_download_url!, { ...body, resolved_download_url: null }, url)
     : await openImportResponse(url, body);
   const instanceId = presolved ? body.resolved_instance_id! : (opened.meta.makerworldProfile?.instanceId ?? null);
-  // Unknown profile (can't dedupe it), or the resolver fell back to one already on the print
-  // (e.g. the hash named a profile this design doesn't have, so it resolved the default).
+  // Unknown profile, or the resolver fell back to one already on the print.
   if (!instanceId || hasProfile(instanceId)) {
     await opened.response.body?.cancel().catch(() => undefined);
     return alreadyImported;
@@ -742,7 +651,7 @@ async function addMakerworldProfileToPrint(
         try {
           await prisma.plate.update({ where: { id: plate.id }, data: { sourceInstanceId: instanceId } });
         } catch (err) {
-          // Race guard: a concurrent import of this same profile tagged/added it first.
+          // Race guard: a concurrent import of this same profile won.
           if (!isUniqueConstraintError(err)) throw err;
         }
         return { ...alreadyImported, plates: await platesOf(existing.print.id) };
@@ -754,7 +663,7 @@ async function addMakerworldProfileToPrint(
         { filename, mime, tempFilePath: tempPath, sourceInstanceId: instanceId },
       ]);
     } catch (err) {
-      // Race guard: a concurrent import of this same profile added it first.
+      // Race guard: a concurrent import of this same profile won.
       if (isUniqueConstraintError(err)) return alreadyImported;
       throw err;
     }
@@ -768,11 +677,7 @@ function platesOf(printId: string): Promise<Plate[]> {
   return prisma.plate.findMany({ where: { printId }, orderBy: { position: "asc" } });
 }
 
-/** Bulk version of findExistingImportedPrint's lookup -- used by the collection/likes ".../entries"
- * routes to flag which entries in a listing the user already has, *before* they pick what to
- * import, instead of only finding out one by one as each import attempt hits the unique
- * constraint. Returns just the set of already-imported external ids (one indexed query), not
- * full Print records -- the entries list only needs a yes/no per item. */
+/** Bulk version of the dedup lookup, for flagging already-imported entries in a listing. */
 export async function findImportedExternalIds(userId: string, provider: string, externalIds: string[]): Promise<Set<string>> {
   if (!externalIds.length) return new Set();
   const prints = await prisma.print.findMany({
@@ -782,19 +687,12 @@ export async function findImportedExternalIds(userId: string, provider: string, 
   return new Set(prints.map((p) => p.sourceExternalId).filter((id): id is string => id !== null));
 }
 
-// Shared by both multi-plate providers (Thingiverse's zip_data.files, Printables' resolved
-// download links) to filter their bundled file list down to actual model files.
 const MULTI_FILE_PLATE_EXTS = new Set([...IMPORT_ALLOWED_EXTS].filter((ext) => ext !== ".zip"));
 
 type PlainDownloadResult = { input: NewPlateInput } | { rateLimited: true } | null;
 
-/** Downloads one plain, unauthenticated file URL (a Thingiverse CDN asset, or a Printables
- * resolved download link -- see thingiverseApi.ts's zip_data.files / printablesApi.ts's
- * resolvePrintablesDownloadLinks) to a temp file. Best-effort: returns null instead of
- * throwing, so one unreachable file among several doesn't fail the whole Thing import -- except
- * a 429 (Cloudflare rate-limit challenge, same as api.thingiverse.com can return -- see
- * ThingiverseRateLimitError), which is reported back distinctly since the caller needs to know
- * *why* every file failed to report that honestly instead of a generic "couldn't be downloaded". */
+/** Best-effort: null on failure so one bad file doesn't fail the whole import, except a 429,
+ * which is reported so the caller can say why. */
 async function downloadPlainFileToTemp(url: string, suggestedName: string): Promise<PlainDownloadResult> {
   try {
     const res = await rawFetch(url, { "User-Agent": IMPORT_USER_AGENT, Accept: "*/*" });
@@ -818,12 +716,7 @@ async function downloadPlainFileToTemp(url: string, suggestedName: string): Prom
   }
 }
 
-/** Thingiverse import path: entirely separate from openImportResponse's generic HTML-scraping
- * flow (see thingiverseApi.ts for why -- www.thingiverse.com is Cloudflare-gated, the official
- * api.thingiverse.com resolves everything needed directly). Every recognized model file bundled
- * with the Thing becomes its own Plate on one Print -- mirrors both a multi-file upload of one
- * model and how a single MakerWorld model (a multi-plate .3mf) already becomes one Print with
- * several plates. */
+/** Every model file bundled with the Thing becomes its own Plate on one Print. */
 async function importThingiverseThing(
   userId: string,
   source: { provider: string; externalId: string },
@@ -842,9 +735,7 @@ async function importThingiverseThing(
     resolved = await resolveThingiverseThing(source.externalId, accessToken);
   } catch (err) {
     if (err instanceof ThingiverseRateLimitError) throw new HttpError(429, err.message);
-    // 400, not 401: this is the server's configured Thingiverse Access Token being rejected, not
-    // the caller's Thingport session -- see the identical reasoning at tryMakerworldCloudApi
-    // above for why 401 specifically would mislead the frontend into logging the user out.
+    // 400, not 401: see tryMakerworldCloudApi.
     if (err instanceof ThingiverseAuthError) throw new HttpError(400, err.message);
     throw err;
   }
@@ -888,8 +779,7 @@ async function importThingiverseThing(
     try {
       result = await createPrint(userId, printMeta, meta.title || `thing-${source.externalId}`, downloaded);
     } catch (err) {
-      // Race guard: another concurrent import of the same source model won between our
-      // dedup check above and this create -- treat it the same as finding it up front.
+      // Race guard: a concurrent import of the same source model won.
       if (isUniqueConstraintError(err)) {
         const existing = await findExistingImportedPrint(userId, source);
         if (existing) return { ...existing, alreadyImported: true };
@@ -912,10 +802,6 @@ async function importThingiverseThing(
   }
 }
 
-/** Printables import path: mirrors importThingiverseThing (own resolver, own multi-plate
- * handling, bypasses openImportResponse's generic HTML-scraping chain entirely -- see
- * printablesApi.ts for why: www.printables.com is Cloudflare-gated, the public
- * api.printables.com GraphQL endpoint resolves everything needed directly, no auth required). */
 async function importPrintablesModel(
   userId: string,
   source: { provider: string; externalId: string },
@@ -964,8 +850,7 @@ async function importPrintablesModel(
     try {
       result = await createPrint(userId, printMeta, meta.title || `printables-${source.externalId}`, downloaded);
     } catch (err) {
-      // Race guard: another concurrent import of the same source model won between our
-      // dedup check above and this create -- treat it the same as finding it up front.
+      // Race guard: a concurrent import of the same source model won.
       if (isUniqueConstraintError(err)) {
         const existing = await findExistingImportedPrint(userId, source);
         if (existing) return { ...existing, alreadyImported: true };
@@ -988,10 +873,8 @@ async function importPrintablesModel(
   }
 }
 
-/** Downloads a URL and creates a Print from it (POST /import) -- one plate for most sources, or
- * several when the source is a Thingiverse Thing (see importThingiverseThing). Returns
- * `alreadyImported: true` (and the existing print, left untouched) instead of re-downloading
- * when this exact source model has already been imported by this user. */
+/** Returns the existing print with `alreadyImported: true` instead of re-downloading a model
+ * this user already imported. */
 export async function importPrintFromUrl(
   userId: string,
   url: string,
@@ -1002,8 +885,7 @@ export async function importPrintFromUrl(
   author: Author | null;
   previewImages: PreviewImage[];
   alreadyImported: boolean;
-  /** Set when an existing MakerWorld print gained another profile's file (see
-   *  addMakerworldProfileToPrint) rather than being created. */
+  /** Set when an existing MakerWorld print gained another profile's file. */
   profileAdded?: boolean;
 }> {
   const source = identifySourceModel(url);
@@ -1042,8 +924,7 @@ export async function importPrintFromUrl(
         { filename, mime, tempFilePath: tempPath, sourceInstanceId: meta.makerworldProfile?.instanceId ?? null },
       ]);
     } catch (err) {
-      // Race guard: another concurrent import of the same source model won between our
-      // dedup check above and this create -- treat it the same as finding it up front.
+      // Race guard: a concurrent import of the same source model won.
       if (source && isUniqueConstraintError(err)) {
         const existing = await findExistingImportedPrint(userId, source);
         if (existing) return { ...existing, alreadyImported: true };

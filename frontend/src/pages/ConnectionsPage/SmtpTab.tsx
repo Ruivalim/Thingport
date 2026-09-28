@@ -18,9 +18,7 @@ type Props = {
 
 const EMPTY: SmtpSettings = { host: null, port: 587, secure: false, user: null, from: "", configured: false };
 
-/** Instance-wide SMTP credentials used to send the account-verification email on registration
- *  (see backend's routes/auth.ts and mailer.ts). Leaving Host blank turns email verification off
- *  entirely -- new accounts are then verified and signed in immediately. */
+/** Leaving Host blank turns email verification off. */
 export default function SmtpTab({ onUnauthorized }: Props) {
   const { t } = useTranslation("app");
   const [settings, setSettings] = React.useState<SmtpSettings>(EMPTY);

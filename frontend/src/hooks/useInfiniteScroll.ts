@@ -1,10 +1,6 @@
 import { useEffect, useRef } from "react";
 
-/** Returns a ref to attach to a sentinel element near the end of a list -- once it scrolls into
- *  view, `onLoadMore` fires automatically, no click needed. `rootMargin` starts the fetch a bit
- *  before the sentinel is actually on screen so the next page is usually ready before the user
- *  reaches the bottom. Re-arms itself after every load (a fresh IntersectionObserver per
- *  dependency change), so scrolling straight through several pages keeps paging in. */
+/** Fires `onLoadMore` when the sentinel nears the viewport, re-arming after every load. */
 export function useInfiniteScroll(onLoadMore: () => void, hasMore: boolean, loading: boolean) {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 

@@ -33,8 +33,6 @@ router.get(
   }),
 );
 
-// Total disk use by models across the whole instance -- shown at the bottom of the Administration
-// hub. See getStorageUsage for exactly what's counted.
 router.get(
   "/admin/storage",
   asyncHandler(async (_req, res) => {
@@ -72,9 +70,7 @@ router.get(
   }),
 );
 
-// Administration > Users > "Invite users" -- only while registrations are closed and SMTP
-// is set up (inviteUser enforces both). Inviting an already-invited address sends a fresh link
-// and retires the old one.
+// Re-inviting an address sends a fresh link and retires the old one.
 const inviteSchema = z.object({ email: z.string().trim().email("Enter a valid email address") });
 router.post(
   "/admin/invitations",
@@ -93,9 +89,7 @@ router.post(
   }),
 );
 
-// The two-part "select a user + type their email to confirm" flow lives entirely on the
-// frontend (TriggersSection.tsx) -- this endpoint just does the (irreversible) deletion once
-// asked, trusting the UI already got explicit confirmation from the admin.
+// Irreversible; the UI handles the confirmation.
 router.post(
   "/admin/users/:id/delete-all-prints",
   asyncHandler(async (req, res) => {
@@ -106,11 +100,6 @@ router.post(
   }),
 );
 
-// Administration > Triggers > "Link missing authors" (see authorLinkingService.ts), across the
-// whole instance. The GET says how many models it could link by name (`linkable`) and how many
-// need their author looked up on their site (`lookup`) -- the trigger is only shown when either
-// is non-zero -- plus the current or last run, which the page polls while it's running. The POST
-// starts a run in the background.
 router.get(
   "/admin/triggers/link-authors",
   asyncHandler(async (_req, res) => {

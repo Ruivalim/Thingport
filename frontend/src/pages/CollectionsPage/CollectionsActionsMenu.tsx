@@ -12,9 +12,6 @@ type Props = {
   onAddCollection: () => void;
 };
 
-/** The Collections page's header "..." menu -- just "Add a collection" today, but a menu (not a
- *  bare button) matches how every other route's header action is presented (ModelActionsMenu,
- *  CollectionActionsMenu). */
 export default function CollectionsActionsMenu({ onAddCollection }: Props) {
   const { t } = useTranslation(["models", "common"]);
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);

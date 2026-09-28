@@ -1,16 +1,11 @@
-// Full-page covers: the guided MakerWorld import's progress overlay (shown on every model page the
-// job drives the tab through) and the collection scan overlay (shown while scrolling a MakerWorld
-// collection to its end). Deliberately cover everything, host page included -- there's nothing
-// useful to do on the page meanwhile other than wait or abort.
+// Full-page overlays for the guided MakerWorld import and the collection scan. They cover the whole
+// page on purpose: there's nothing to do meanwhile but wait or abort.
 
 import type { MakerworldJob } from "../shared/messages";
 import { send } from "../shared/messages";
 import { fillIcons } from "../shared/icon";
 
-// How long the job overlay waits, with no sign the job moved on, before offering the manual
-// "Import next" escape hatch -- long enough to never appear during an ordinary step (page load +
-// import + the job's pacing delay), short enough that a genuinely stuck step (see
-// background/makerworldJob.ts's forceAdvanceJob) doesn't leave someone staring at a frozen bar.
+// Long enough never to show during a normal step, short enough for a stuck one.
 const JOB_STUCK_REVEAL_MS = 20000;
 
 function overlayHtml(title: string, countHtml: string, extra = ""): string {
@@ -45,8 +40,7 @@ export function mountJobOverlay(root: ShadowRoot, job: MakerworldJob): void {
     void send("ABORT_MAKERWORLD_COLLECTION_JOB");
   });
 
-  // Normally never fires: the page navigates on (tearing this script and its timer down) well
-  // before then. Only a step still sitting here after the delay gets the button.
+  // Normally the page navigates on first, tearing this timer down.
   const nextBtn = overlay.querySelector<HTMLButtonElement>("[data-action=next]")!;
   setTimeout(() => {
     nextBtn.hidden = false;
@@ -60,8 +54,6 @@ export function mountJobOverlay(root: ShadowRoot, job: MakerworldJob): void {
 
 export type ScanOverlay = { update(count: number): void; remove(): void };
 
-/** Painted over the icon/panel (same shadow root) while the collection scrolls to its end --
- *  scrolling the page around while a small corner card updates its text is easy to miss. */
 export function mountScanOverlay(root: ShadowRoot): ScanOverlay {
   const overlay = document.createElement("div");
   overlay.className = "tg-overlay";

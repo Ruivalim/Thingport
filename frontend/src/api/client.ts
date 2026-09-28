@@ -1,6 +1,4 @@
-// The frontend always calls the API at same-origin /api/*. In production, the frontend's own
-// nginx container reverse-proxies that to the backend (see nginx.conf); in local dev, Vite's
-// dev server proxy does the same (see vite.config.js).
+// Always same-origin /api/*: nginx proxies it in production, Vite in dev.
 export function apiBase(): string {
   return "/api";
 }
@@ -12,8 +10,6 @@ export class UnauthorizedError extends Error {
   }
 }
 
-// Thrown specifically for the "delete the only remaining plate" 409 so callers
-// can show a clear message instead of a generic failure toast.
 export class LastPlateError extends Error {
   constructor(message = "Cannot remove the only remaining plate. Delete the print instead.") {
     super(message);
@@ -21,8 +17,6 @@ export class LastPlateError extends Error {
   }
 }
 
-// Thrown for /login's 403 EMAIL_NOT_VERIFIED so SignInPanel can show a "resend verification
-// email" affordance instead of a plain error message.
 export class EmailNotVerifiedError extends Error {
   constructor(message = "Please verify your email before signing in.") {
     super(message);
@@ -54,7 +48,6 @@ export async function readErrorMessage(res: Response, fallback: string) {
       return data.detail.trim();
     }
   } catch {
-    // ignore JSON parse errors
   }
   return trimmed;
 }

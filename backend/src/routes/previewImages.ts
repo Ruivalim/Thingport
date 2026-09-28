@@ -13,8 +13,6 @@ import { printOutById } from "../services/printLoader";
 const router = Router();
 router.use(requireAuth);
 
-// ---- POST /print/:id/preview-images (append) --------------------------------------------------
-
 router.post(
   "/print/:id/preview-images",
   thumbnailUpload.array("files"),
@@ -23,16 +21,13 @@ router.post(
     if (!files.length) throw new HttpError(400, "No files uploaded");
     const print = await prisma.print.findFirst({ where: { id: req.params.id, userId: req.userId } });
     if (!print) throw new HttpError(404, "Print not found");
-    // Best-effort, like addGeneratedPreviewImageIfNone -- an undecodable file is silently skipped
-    // rather than failing the whole batch, since the rest may well be valid images.
+    // Undecodable files are skipped rather than failing the batch.
     for (const file of files) {
       await addPreviewImage(print.id, file.buffer);
     }
     res.json({ print: await printOutById(req.userId!, print.id) });
   }),
 );
-
-// ---- DELETE /print/:id/preview-images/:imageId -------------------------------------------------
 
 router.delete(
   "/print/:id/preview-images/:imageId",
@@ -44,8 +39,7 @@ router.delete(
     if (!target) throw new HttpError(404, "Preview image not found");
 
     const remaining = images.filter((img) => img.id !== target.id);
-    // Same two-phase (negative temp position) renumber as plates.ts's delete route, to dodge the
-    // (printId, position) unique index regardless of update ordering.
+    // Two-phase renumber, as in plates.ts, to avoid (printId, position) collisions.
     await prisma.previewImage.delete({ where: { id: target.id } });
     await prisma.$transaction(
       remaining.map((img, idx) => prisma.previewImage.update({ where: { id: img.id }, data: { position: -(idx + 1) } })),
@@ -58,8 +52,6 @@ router.delete(
     res.json({ print: await printOutById(req.userId!, print.id) });
   }),
 );
-
-// ---- POST /print/:id/preview-images/reorder -----------------------------------------------------
 
 const reorderSchema = z.object({ image_ids: z.array(z.string()).min(1) });
 router.post(

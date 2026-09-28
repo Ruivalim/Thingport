@@ -8,19 +8,9 @@ import {
   shouldProxyHost,
 } from "./flaresolverr";
 
-// The official, documented Thingiverse Developer API -- much less aggressively gated than
-// www.thingiverse.com (that domain actively challenges automated requests, including its own
-// legacy `download:{id}` links and the internal `/api/v2/*` endpoints the website's own frontend
-// uses), and it requires its own Access Token (from an app registered at
-// thingiverse.com/apps/create -- NOT a browser session cookie, confirmed by a clean
-// INVALID_ACCESS_TOKEN response when a real logged-in session token was tried against it).
-// BUT it is still sitting behind Cloudflare (`server: cloudflare`, `cf-mitigated: challenge`
-// response headers) and confirmed live to start returning a Cloudflare managed-challenge page
-// (HTTP 429, HTML body) after only a handful of rapid requests -- sticky for a while once
-// tripped, every subsequent request fails the same way. classifyImportFailure/ThingiverseRateLimitError
-// exist to surface that distinctly instead of misreporting it as "not found", and
-// fetchThingiverseApiJson below falls back to FlareSolverr (when configured -- see
-// flaresolverr.ts) to push through a challenge rather than just failing the whole batch.
+// The official API needs an app Access Token (not a session cookie). It's still behind Cloudflare
+// and returns a sticky 429 challenge after a few rapid requests, hence ThingiverseRateLimitError
+// and the FlareSolverr fallback.
 const THINGIVERSE_API_BASE = "https://api.thingiverse.com";
 const THINGIVERSE_API_HOSTNAME = new URL(THINGIVERSE_API_BASE).hostname;
 const API_TIMEOUT_MS = IMPORT_TIMEOUT_SECONDS * 1000;
@@ -40,10 +30,7 @@ export class ThingiverseAuthError extends Error {
   }
 }
 
-/** api.thingiverse.com tripped its Cloudflare bot-management (a "managed challenge" HTML page,
- * HTTP 429) rather than answering the request -- distinct from a genuine 404 (Thing doesn't
- * exist/isn't accessible) or a rejected token, and worth its own bucket since the fix (wait,
- * then retry) is completely different. See classifyImportFailure in importJobRunner.ts. */
+/** Cloudflare's 429 challenge, distinct from a 404 or rejected token: the fix is to wait. */
 export class ThingiverseRateLimitError extends Error {
   constructor() {
     super(
@@ -69,9 +56,6 @@ export function parseThingiverseThingUrl(url: string): { thingId: string } | nul
   return m2 ? { thingId: m2[1] } : null;
 }
 
-/** A user's own "Likes" page (`thingiverse.com/{username}/likes`) is how a lot of people keep a
- * personal collection of prints worth making -- the site's own bookmark/save mechanism. Distinct
- * from parseThingiverseThingUrl above: this identifies the *listing* page, not a single Thing. */
 export function parseThingiverseLikesUrl(url: string): { username: string } | null {
   let parsed: URL;
   try {
@@ -95,16 +79,8 @@ async function rawApiFetch(url: string): Promise<Response> {
   }
 }
 
-/** Same detect-a-Cloudflare-block-then-proxy-through-FlareSolverr pattern as importService.ts's
- * fetchWithGuard (used for Printables/MakerWorld page scraping), adapted for a JSON API instead
- * of an HTML page: once api.thingiverse.com has been seen returning its managed-challenge page
- * for this run, every subsequent call goes straight through FlareSolverr's real headless browser
- * for a while (shouldProxyHost's TTL) instead of wasting a direct request that would just get
- * challenged again. A browser-rendered JSON response comes back as Chrome's own JSON-viewer DOM,
- * not raw text -- extractJsonFromBrowserBody unwraps that. Only ever used for the JSON API calls
- * (GET, no body) -- file downloads from Thingiverse's CDN are a separate, unguarded path (see
- * downloadPlainFileToTemp in importService.ts): FlareSolverr renders pages, it can't relay
- * arbitrary binary bytes back, so it isn't a fit there. */
+/** Once a challenge is seen, calls go straight through FlareSolverr for a while. JSON API calls
+ * only: FlareSolverr can't relay binary file downloads. */
 async function fetchThingiverseApiJson(path: string, accessToken: string): Promise<unknown> {
   const url = `${THINGIVERSE_API_BASE}${path}${path.includes("?") ? "&" : "?"}access_token=${encodeURIComponent(accessToken)}`;
 
@@ -145,14 +121,7 @@ async function fetchThingiverseApiJson(path: string, accessToken: string): Promi
   return data;
 }
 
-/** Called before storing an Access Token pasted into Admin Settings > Thingiverse (see
- * routes/settings.ts' POST /settings/thingiverse), so a mistyped/revoked token is rejected up
- * front instead of only surfacing as a failed import later. Reuses the same fetch path (and its
- * FlareSolverr/rate-limit handling) as every other Thingiverse call here, against /users/me --
- * the official API's own "who am I" endpoint, so a success means the token is genuinely valid,
- * not just well-formed. A transient Cloudflare rate-limit (ThingiverseRateLimitError) is treated
- * the same as an invalid token here: either way this specific check can't confirm the token
- * right now, and the caller's message covers both cases rather than guessing which one it was. */
+/** Checks /users/me. A rate-limit counts as invalid, since the token can't be confirmed. */
 export async function verifyThingiverseAccessToken(accessToken: string): Promise<boolean> {
   try {
     const data = await fetchThingiverseApiJson("/users/me", accessToken);
@@ -167,12 +136,9 @@ export type ThingiverseGalleryImage = { name: string; url: string };
 
 export type ThingiverseThingResolution = {
   meta: Partial<ImportedPageMetadata>;
-  /** Every real file bundled with the Thing (STL/3MF/etc, but also non-model files like PDFs --
-   * callers filter by extension), taken from `zip_data.files`. Direct, public CDN URLs -- no
-   * auth needed to actually fetch the bytes, only to resolve the Thing itself. */
+  /** Every file in `zip_data.files`, including non-model files (callers filter). Public CDN URLs. */
   plateFiles: ThingiversePlateFile[];
-  /** Renders/photos bundled with the Thing, from `zip_data.images` -- fed to
-   * attachImportedPreviewImages as extra gallery images alongside the cover thumbnail. */
+  /** From `zip_data.images`. */
   galleryImages: ThingiverseGalleryImage[];
 };
 
@@ -185,7 +151,6 @@ function extractCreatorAuthor(creator: Record<string, unknown>): { creator: stri
     provider: THINGIVERSE_PROVIDER,
     externalId,
     name,
-    // The official API has no separate handle/username field distinct from the display name.
     handle: name,
     bio: null,
     bioTranslated: null,
@@ -196,11 +161,8 @@ function extractCreatorAuthor(creator: Record<string, unknown>): { creator: stri
   return { creator: name, author };
 }
 
-/** Resolves a Thing's metadata (title, description, tags, author, category, preview) and its
- * real, directly-downloadable file list, all from the official api.thingiverse.com API. Returns
- * null for a Thing that doesn't exist / isn't accessible with this token (404); throws
- * ThingiverseAuthError for a rejected token (401/403) so the caller can surface that distinctly
- * from "this one Thing is unavailable". */
+/** Null for a Thing that doesn't exist or isn't accessible; throws ThingiverseAuthError for a
+ * rejected token. */
 export async function resolveThingiverseThing(thingId: string, accessToken: string): Promise<ThingiverseThingResolution | null> {
   const detail = await fetchThingiverseApiJson(`/things/${thingId}`, accessToken);
   if (!isRecord(detail)) return null;
@@ -227,8 +189,7 @@ export async function resolveThingiverseThing(thingId: string, accessToken: stri
     if (author) meta.author = author;
   }
 
-  // A separate call (per the official API's shape -- categories aren't inlined on the Thing
-  // resource) but cheap and best-effort: category matching just doesn't happen if it fails.
+  // Best-effort: categories aren't inlined on the Thing resource.
   const categoriesUrl = typeof detail.categories_url === "string" ? detail.categories_url : null;
   if (categoriesUrl) {
     try {
@@ -243,8 +204,6 @@ export async function resolveThingiverseThing(thingId: string, accessToken: stri
         }
       }
     } catch {
-      // Categories are a nice-to-have on top of a Thing that already resolved -- never fail
-      // the whole import over this one being unreachable.
     }
   }
 
@@ -268,13 +227,8 @@ export type ThingiverseThingSummary = { thingId: string; title: string; cover: s
 const LISTING_PAGE_SIZE = 30;
 const LISTING_MAX_ENTRIES = 300;
 
-/** Shared pager for any api.thingiverse.com endpoint that returns a plain JSON array of Thing
- * summaries, page by page (`GET .../likes`, `GET /collections/{id}/things`, ... -- confirmed
- * identical item shape for both live). Stops on a short/empty page or maxItems, whichever comes
- * first; maxItems is a safety cap against a pathological/huge list, not a UX limit, mirroring
- * fetchMakerworldCollectionEntries's same cap for MakerWorld collections. List entries carry no
- * zip_data/categories/description -- that's fetched per-item at actual import time via
- * resolveThingiverseThing, same as it already is for a single pasted Thing URL. */
+/** Pages through any endpoint returning a JSON array of Thing summaries. maxItems is a safety cap,
+ * not a UX limit. */
 async function paginateThingiverseThings(
   pathForPage: (page: number) => string,
   accessToken: string,
@@ -313,10 +267,6 @@ export async function fetchThingiverseUserLikes(
   );
 }
 
-/** A user-curated, named "Collection" -- the site's other bookmark mechanism besides the
- * automatic per-account "Likes" list (see fetchThingiverseUserLikes above). Unlike Likes, a
- * Collection has a real user-given name (fetchThingiverseCollectionTitle below), which is what
- * lets the import land in a Thingport Collection named after it instead of a generic bucket. */
 export async function fetchThingiverseCollectionThings(
   collectionId: string,
   accessToken: string,
@@ -334,11 +284,7 @@ export async function fetchThingiverseCollectionTitle(collectionId: string, acce
   return isRecord(data) && typeof data.name === "string" && data.name.trim() ? data.name.trim() : null;
 }
 
-/** A user's own Collection page (`thingiverse.com/{username}/collections/{id}` or
- * `.../collections/{id}/things`) -- distinct from parseThingiverseLikesUrl (the automatic Likes
- * list) and parseThingiverseThingUrl (a single Thing). Only the numeric id is needed for the API
- * calls above; the username in the URL is cosmetic (Thingiverse doesn't validate it matches the
- * collection's actual owner when resolving by id). */
+/** The username in the URL is cosmetic; only the collection id is needed. */
 export function parseThingiverseCollectionUrl(url: string): { collectionId: string } | null {
   let parsed: URL;
   try {

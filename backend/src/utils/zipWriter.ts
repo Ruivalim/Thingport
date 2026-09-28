@@ -2,10 +2,7 @@ import fs from "node:fs";
 import fsp from "node:fs/promises";
 import zlib from "node:zlib";
 
-// Minimal streaming ZIP writer (local header + streamed DEFLATE data + trailing data
-// descriptor + central directory + EOCD). No external zip-writing dependency is available in
-// this project (yauzl, the existing dependency, is read-only), so archive creation for
-// /download/zip and /category/:id/download is implemented directly against node:zlib here.
+// Minimal streaming ZIP writer on node:zlib; yauzl is read-only.
 
 const CRC_TABLE = (() => {
   const table = new Uint32Array(256);
@@ -45,8 +42,7 @@ type CentralRecord = {
   date: number;
 };
 
-/** Streams `entries` into a new zip file at `destPath`. Skips any entry whose source file no
- * longer exists on disk (best-effort, mirrors the caller filtering unresolved files first). */
+/** Skips entries whose source file no longer exists. */
 export async function writeZip(destPath: string, entries: ZipEntryDescriptor[]): Promise<void> {
   const out = fs.createWriteStream(destPath);
   let offset = 0;

@@ -12,9 +12,7 @@ import type { Category, Plate, Print, Prisma } from "@prisma/client";
 
 type PrintWithPlatesAndCategory = Print & { plates: Plate[]; category: Category | null };
 
-/** The filters GET /download/zip, POST /download/zip/summary, and their category/tag/collection
- *  callers all resolve the same way -- see resolvePrintsForDownload. At least one of these must
- *  be set; combining more than one ANDs them together (e.g. category_id + tag). */
+/** At least one must be set; multiple are ANDed. */
 export type DownloadZipFilter = {
   print_ids?: string[];
   tag?: string;
@@ -22,11 +20,8 @@ export type DownloadZipFilter = {
   collection_id?: string;
 };
 
-/** Resolves `filter` (see DownloadZipFilter) to this user's own matching prints, plates included
- *  (needed both to build the zip and to size-estimate it without building one). `tag` is applied
- *  client-side after the DB query, same as GET /tags in prints.ts -- a tag is just a value inside
- *  Print.tags, not a column a `where` can filter on directly. Throws 404 if `collection_id` is
- *  given but doesn't name one of this user's own (real, non-system) collections. */
+/** `tag` is applied in JS since tags aren't a filterable column. Throws 404 for a collection that
+ *  isn't the user's. */
 export async function resolvePrintsForDownload(
   userId: string,
   filter: DownloadZipFilter,
@@ -50,11 +45,7 @@ export async function resolvePrintsForDownload(
   return prints;
 }
 
-/** Sum of every resolved print's plate + supporting-file sizes, straight from their stored
- *  Plate.size/PrintFile.size columns -- no filesystem access and no zip actually built. This is
- *  necessarily an *upper bound* on the real zip's size (DEFLATE only ever shrinks), not the exact
- *  byte count, but it's cheap enough to compute on every "are you sure?" confirmation (see
- *  POST /download/zip/summary) without pregenerating anything. */
+/** An upper bound from stored sizes, without touching the filesystem. */
 export async function estimateDownloadSize(prints: PrintWithPlatesAndCategory[]): Promise<number> {
   const plateBytes = prints.reduce((sum, p) => sum + p.plates.reduce((s, plate) => s + plate.size, 0), 0);
   const printIds = prints.map((p) => p.id);
@@ -67,13 +58,8 @@ export async function estimateDownloadSize(prints: PrintWithPlatesAndCategory[])
 }
 
 /**
- * Builds zip entries for a set of prints: `{category_or_unassigned}/{print.name}/{plate.filename}`
- * for every plate, and `.../supporting/{file.filename}` for each print's supporting files --
- * or, with `flatten: true`, the same without the leading category folder (just
- * `{print.name}/{plate.filename}`). Used for collection/tag downloads, which by nature cut across
- * categories -- nesting under whatever category each model happens to also be in would just be
- * noise there, unlike a plain category download (where every entry shares the same category
- * anyway) or an arbitrary print_ids selection (existing behavior, left unchanged).
+ * `{category}/{print.name}/{plate.filename}`, with supporting files under `.../supporting/`.
+ * `flatten` drops the category folder, for downloads that span categories.
  */
 export async function buildZipEntries(
   prints: PrintWithPlatesAndCategory[],
@@ -110,8 +96,6 @@ export async function buildZipEntries(
   return entries;
 }
 
-/** Builds a zip from `prints` and streams it as the HTTP response, deleting the temp file after.
- *  See buildZipEntries for `flatten`. */
 export async function sendPrintsZip(
   res: Response,
   prints: PrintWithPlatesAndCategory[],

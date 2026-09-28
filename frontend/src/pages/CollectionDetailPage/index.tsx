@@ -181,9 +181,7 @@ export default function CollectionDetailPage({ theme, previewMode, onUnauthorize
                 onDeleted={deletedId => setItems(prev => prev.filter(i => i.id !== deletedId))}
                 onFavoriteChange={updated =>
                   setItems(prev =>
-                    // Viewing the built-in Favourites collection itself: unfavoriting an item here
-                    // should drop it from view immediately, same as any other removal, instead of
-                    // leaving a now-stale entry until the next full reload.
+                    // Unfavoriting inside Favourites drops the item immediately.
                     collection?.system_key === "favorites" && !updated.is_favorite
                       ? prev.filter(i => i.id !== updated.id)
                       : prev.map(i => (i.id === updated.id ? updated : i)),

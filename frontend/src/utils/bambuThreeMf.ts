@@ -1,12 +1,7 @@
-// A Bambu Studio project .3mf is a zip: 3D/3dmodel.model holds <object> elements (either an
-// inline <mesh> or <component p:path="..."> references to per-object files under 3D/Objects/)
-// and a <build> section placing objects on the bed; Metadata/model_settings.config assigns each
-// object to a "plate" (one page of the Bambu Studio build-plate UI, not a Thingport Plate row --
-// a single imported/uploaded 3MF here always stays one Plate, its internal plates are a purely
-// client-side rendering/browsing concept) and to a filament/extruder index; Metadata/
-// project_settings.config carries the filament_colour palette. The coordinate swap in
-// createGeometryFromMesh below already bakes in the Z-up -> Y-up rotateX(-90deg) that Thingport's
-// STL/OBJ/STEP loaders apply as an object rotation, so callers must not rotate this output again.
+// Bambu Studio project .3mf parser. Its "plates" are Bambu Studio build plates, not Thingport Plate
+// rows: an uploaded 3MF stays one Plate. The output is already rotated Z-up -> Y-up, so callers
+// must not rotate it again.
+// Adapted (with modifications) from github.com/maziggy/bambuddy, AGPL-3.0-only.
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
@@ -47,9 +42,7 @@ export type ParsedBambuThreeMF = {
   plates: PlateSummary[];
   filamentColors: string[];
   buildVolume: { x: number; y: number };
-  /** Looks up one plate's thumbnail (the PNG Bambu Studio renders for its build-plate UI)
-   *  straight out of the already-unzipped archive -- no re-unzipping per call, unlike fetching
-   *  the whole model file again for each plate a picker UI wants a thumbnail for. */
+  /** Reads from the already-unzipped archive. */
   getPlateThumbnail: (plateIndex: number) => Promise<string | null>;
 };
 
@@ -83,8 +76,7 @@ const YIELD_EVERY_N_TRIANGLES = 20000;
 function parseTransform3MF(transformStr: string | null): THREE.Matrix4 {
   const matrix = new THREE.Matrix4();
   if (!transformStr) return matrix;
-  // 3MF transform is a 3x4 affine matrix in row-major order:
-  // "m00 m01 m02 m10 m11 m12 m20 m21 m22 m30 m31 m32" -- (m30,m31,m32) is the translation.
+  // 3x4 affine matrix, row-major; (m30, m31, m32) is the translation.
   const values = transformStr.trim().split(/\s+/).map(parseFloat);
   if (values.length >= 12) {
     matrix.set(
@@ -97,9 +89,6 @@ function parseTransform3MF(transformStr: string | null): THREE.Matrix4 {
   return matrix;
 }
 
-/** Document and Element both expose getElementsByTagName; this runs on either -- the whole
- *  3dmodel.model document for top-level objects, or a single <object> element for meshes nested
- *  directly under it (as opposed to referenced via a <component> in another file). */
 type ElementSource = { getElementsByTagName(tag: string): HTMLCollectionOf<Element> };
 
 async function parseMeshFromDoc(doc: ElementSource, defaultExtruder = 0): Promise<MeshData[]> {
@@ -152,8 +141,7 @@ function parsePlateIdFromAttributes(element: Element): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-/** Parses `Metadata/project_settings.config` for the filament color palette and bed size, both
- *  best-effort -- absent/malformed data just falls back to defaults at the call site. */
+/** Best-effort; callers fall back to defaults. */
 function parseProjectSettings(text: string): { filamentColors: string[]; buildVolume: { x: number; y: number } | null } {
   let filamentColors: string[] = [];
   let buildVolume: { x: number; y: number } | null = null;
@@ -169,7 +157,6 @@ function parseProjectSettings(text: string): { filamentColors: string[]; buildVo
       if (match) buildVolume = { x: parseFloat(match[1]), y: parseFloat(match[2]) };
     }
   } catch {
-    // Ignore malformed project_settings.config.
   }
   return { filamentColors, buildVolume };
 }
@@ -188,7 +175,7 @@ async function parse3MF(zipEntries: Record<string, Uint8Array>): Promise<ParsedB
     const normalized = path.startsWith("/") ? path.slice(1) : path;
     return zipEntries[normalized];
   };
-  // Parsed once per part file: a multi-part object references the same file once per part.
+  // A multi-part object references the same part file once per part.
   const modelFileCache = new Map<string, Document | null>();
   const loadModelFile = (path: string): Document | null => {
     if (modelFileCache.has(path)) return modelFileCache.get(path) ?? null;
@@ -282,12 +269,10 @@ async function parse3MF(zipEntries: Record<string, Uint8Array>): Promise<ParsedB
         }
       }
     } catch {
-      // Ignore malformed model_settings.config -- falls back to no plate/extruder awareness.
     }
   }
 
-  // plate_*.json fallback for source-only (unsliced-by-MakerWorld) files: bbox_objects names +
-  // bbox_all bounds, keyed by object *name* rather than id.
+  // Fallback for files MakerWorld didn't slice: plate_N.json keyed by object name.
   const plateAssignmentsByName = new Map<string, number>();
   for (const name of Object.keys(zipEntries)) {
     const match = name.match(/^Metadata\/plate_(\d+)\.json$/);
@@ -309,7 +294,6 @@ async function parse3MF(zipEntries: Record<string, Uint8Array>): Promise<ParsedB
         }
       }
     } catch {
-      // Ignore malformed plate_N.json.
     }
   }
 
@@ -385,15 +369,12 @@ async function parse3MF(zipEntries: Record<string, Uint8Array>): Promise<ParsedB
 
       const partKey = compObjectId ? `${objectId}:${compObjectId}` : null;
       const compExtruder = partKey ? partExtruderMap.get(partKey) ?? defaultExtruder : defaultExtruder;
-      // Only the object this component names: a part file can hold every part of a multi-part
-      // object, each referenced by its own component (same p:path, different objectid) -- taking
-      // the whole file per reference built each part once per sibling, in the siblings' colours.
-      // Mirrors backend/src/services/modelPreviewRender.ts's createPartFileResolver.
+      // A part file can hold every part of a multi-part object, so take only the one this component
+      // names. Mirrors modelPreviewRender.ts's createPartFileResolver.
       const targetEl = compObjectId
         ? Array.from(extDoc.getElementsByTagName("object")).find((el) => el.getAttribute("id") === compObjectId)
         : undefined;
       const targetMeshes = targetEl ? await parseMeshFromDoc(targetEl, compExtruder) : [];
-      // No objectid, one the file doesn't have, or an object that only wraps others: the whole file.
       const extMeshes = targetMeshes.length > 0 ? targetMeshes : await parseMeshFromDoc(extDoc, compExtruder);
       const compTransformStr = compEl.getAttribute("transform");
       const compTransform = parseTransform3MF(compTransformStr);
@@ -450,8 +431,7 @@ async function parse3MF(zipEntries: Record<string, Uint8Array>): Promise<ParsedB
   };
 }
 
-/** Unzips and parses a Bambu Studio project 3MF (or a plain/generic 3MF -- model_settings.config
- *  is optional, everything degrades to "no plate/extruder info" without it). */
+/** Also handles generic 3MFs; without model_settings.config there's no plate/extruder info. */
 export async function parseBambuThreeMF(buffer: ArrayBuffer): Promise<ParsedBambuThreeMF> {
   const { unzipSync } = await import("fflate");
   const zipEntries = unzipSync(new Uint8Array(buffer));
@@ -459,10 +439,7 @@ export async function parseBambuThreeMF(buffer: ArrayBuffer): Promise<ParsedBamb
 }
 
 export type CachedBambuGlb = {
-  /** Already-built scene graph -- one named "plate-{index}" child THREE.Group per plate, each
-   *  holding meshes already merged by extruder (see backend/src/services/modelPreviewCache.ts).
-   *  Unlike parseBambuThreeMF's result, switching the active plate here is just toggling which
-   *  child group is visible -- no client-side geometry work needed. */
+  /** One "plate-{index}" group per plate, so switching plates is a visibility toggle. */
   rootGroup: THREE.Group;
   plates: PlateSummary[];
   filamentColors: string[];
@@ -470,12 +447,8 @@ export type CachedBambuGlb = {
   getPlateThumbnail: (plateIndex: number) => Promise<string | null>;
 };
 
-/** What the server's preview endpoint said, besides a usable GLB. "generating": it's being made,
- *  ask again shortly. "failed": the server couldn't make one (too heavy, hit its limits) -- the
- *  browser mustn't try either, since parsing such a file here is what exhausts its memory.
- *  "fallback": parse the raw file in the browser -- previews turned off by the admin, a 3MF
- *  layout the server doesn't handle, an older backend without these codes, or a cache that
- *  didn't load. */
+/** "failed": the browser mustn't try either, since it would exhaust its memory. "fallback": parse
+ *  the raw file in the browser. */
 export type CachedGlbOutcome =
   | { status: "ready"; glb: CachedBambuGlb }
   | { status: "generating" }
@@ -491,8 +464,6 @@ async function previewErrorCode(res: Response): Promise<string | null> {
   }
 }
 
-/** Loads the server's pre-rendered GLB preview for a 3MF (see
- *  backend/src/services/modelPreviewCache.ts) instead of parsing the raw .3mf -- the fast path. */
 export async function loadCachedBambuGlb(url: string): Promise<CachedGlbOutcome> {
   try {
     const res = await fetch(url);
@@ -540,12 +511,8 @@ export async function loadCachedBambuGlb(url: string): Promise<CachedGlbOutcome>
 
 function createGeometryFromMesh(mesh: MeshData): THREE.BufferGeometry {
   const geometry = new THREE.BufferGeometry();
-  // 3MF: X right, Y back, Z up -> three.js: X right, Y up, Z toward the viewer, i.e.
-  // (x, y, z) -> (x, z, -y): the same rotateX(-90deg) loadObjectFromAsset applies to STL/OBJ/STEP,
-  // baked per-vertex here (loadObjectFromAsset skips 3MF so it isn't applied twice). It must stay
-  // a rotation: a plain Y/Z swap (no sign flip) is a mirror, which reverses every triangle's
-  // winding -- front faces get culled, so models render inside-out/see-through, and mirrored.
-  // Keep identical to backend/src/services/modelPreviewCache.ts's buildGlbGroup.
+  // 3MF Z-up -> three.js Y-up: (x, y, z) -> (x, z, -y). It must be a rotation: a plain Y/Z swap
+  // mirrors the model and reverses triangle winding. Keep identical to modelPreviewRender.ts.
   const positions = new Float32Array(mesh.vertices.length);
   for (let i = 0; i < mesh.vertices.length; i += 3) {
     positions[i] = mesh.vertices[i];
@@ -558,9 +525,7 @@ function createGeometryFromMesh(mesh: MeshData): THREE.BufferGeometry {
   return geometry;
 }
 
-/** Builds the renderable group for one selection: `selectedPlateId` filters to just that plate's
- *  build items (null renders every plate's items together, e.g. for a single-object 3MF with no
- *  plate assignments at all). Each extruder gets its own merged mesh colored from `filamentColors`. */
+/** `selectedPlateId` null renders every plate. Each extruder gets its own merged mesh. */
 export function buildBambuModelGroup(
   parsedData: Parsed3MFData,
   selectedPlateId: number | null,

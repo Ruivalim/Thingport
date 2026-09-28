@@ -16,13 +16,7 @@ type Props = {
   onToggleEntry: (designId: string) => void;
 };
 
-/** The scrollable checkbox list shown in the collection import wizard's "select models" step
- * -- one row per MakerWorld design, with its cover thumbnail so it's recognizable at a glance
- * (unlike ZipEntryList's plain filenames, a collection's entries are only meaningfully told
- * apart by what they look like). Entries already in the user's library (already_imported, from
- * the backend's bulk dedup check -- see findImportedExternalIds) are shown dimmed with their
- * checkbox disabled instead of left selectable: re-importing would just hit the same dedup and
- * do nothing, so there's no point offering it. */
+/** Already-imported entries are dimmed and disabled, since importing them would do nothing. */
 export default function CollectionEntryList({ entries, selected, busy, noEntriesLabel, onToggleEntry }: Props) {
   const { t } = useTranslation("app");
   return (

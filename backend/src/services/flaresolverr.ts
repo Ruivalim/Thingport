@@ -4,9 +4,7 @@ export function isFlaresolverrEnabled(): boolean {
   return Boolean(FLARESOLVERR_URL);
 }
 
-/** True when a response looks like a Cloudflare edge block/challenge rather than an
- * application-level 403 (wrong credentials, missing auth, etc). Only these are worth
- * paying FlareSolverr's solve cost for. */
+/** A Cloudflare edge block rather than an application-level 403. */
 export function looksLikeCloudflareBlock(headers: Headers): boolean {
   const server = (headers.get("server") || "").toLowerCase();
   if (server.includes("cloudflare")) return true;
@@ -26,11 +24,8 @@ function parseCookieHeader(raw: string | null | undefined): Record<string, strin
   return jar;
 }
 
-// Cloudflare's clearance here is bound to the exact browser fingerprint that solved the
-// challenge, so replaying its cookies via our own fetch() does not work (verified against
-// makerworld.com). Once a host is seen blocking us, every request to it is proxied through
-// FlareSolverr's real headless browser instead, for a TTL, rather than re-probing with a
-// wasted direct request each time.
+// Cloudflare's clearance is bound to the solving browser's fingerprint, so its cookies can't be
+// replayed. Once a host blocks us, proxy every request to it for a TTL.
 const proxyHosts = new Map<string, number>();
 
 export function shouldProxyHost(hostname: string): boolean {
@@ -47,9 +42,7 @@ export type FlaresolverrResult = {
   body: string;
 };
 
-/** Loads `url` inside FlareSolverr's real headless browser (passing Cloudflare's JS/managed
- * challenge along the way) and returns the page body it rendered. GET only: FlareSolverr's
- * POST command submits a browser form, not a raw JSON body, so it isn't used here. */
+/** GET only: FlareSolverr's POST submits a browser form, not a raw body. */
 export async function fetchViaFlaresolverr(url: string, cookieHeader?: string | null): Promise<FlaresolverrResult | null> {
   if (!FLARESOLVERR_URL) return null;
   let hostname: string;
@@ -93,15 +86,12 @@ export async function fetchViaFlaresolverr(url: string, cookieHeader?: string | 
   }
 }
 
-/** FlareSolverr's captured body is what the browser rendered, so a JSON API response comes
- * back as Chrome's own JSON-viewer DOM (`<html>...<pre>{...}</pre>...</html>`) rather than
- * raw JSON text. Unwraps that, HTML-entity-decodes it, and parses it. */
+/** JSON comes back wrapped in Chrome's JSON-viewer HTML; unwrap and parse it. */
 export function extractJsonFromBrowserBody(body: string): unknown | null {
   const trimmed = body.trim();
   try {
     return JSON.parse(trimmed);
   } catch {
-    // fall through to unwrap
   }
   const match = trimmed.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
   if (!match) return null;

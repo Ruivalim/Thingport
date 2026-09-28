@@ -21,8 +21,7 @@ import type { PlateSummary } from "../../utils/bambuThreeMf";
 import PreviewToolbar, { DEFAULT_PREVIEW_COLOR } from "./PreviewToolbar";
 import { fileRowText } from "./fileRowText";
 
-// A neutral, theme-independent canvas -- this is a fixed "product shot" style preview, not part
-// of the app's light/dark chrome, so it stays the same regardless of the viewer's theme.
+// Fixed regardless of theme: this is a product-shot style preview.
 const PREVIEW_BG = "#e7e7ea";
 
 type Props = {
@@ -30,11 +29,7 @@ type Props = {
   onClose: () => void;
 };
 
-/** The "3D Preview" modal opened from the model detail page's main image: a fixed neutral canvas
- *  rendering the active plate in a picked flat color (green by default) so it reads as a print
- *  preview rather than a themed UI element, with a plate-switcher overlay always shown on the left
- *  (even for a single plate, so the panel doesn't jump in/out of existence as plates are
- *  added/removed) and the camera/render-style/color/grid/spin toolbar along the bottom. */
+/** The plate list is always shown, even for one plate, so the layout doesn't jump. */
 export default function Model3DPreviewModal({ print, onClose }: Props) {
   const { t } = useTranslation(["models", "library", "common"]);
   const sortedPlates = useMemo(() => print.plates.toSorted((a, b) => a.position - b.position), [print.plates]);
@@ -43,16 +38,12 @@ export default function Model3DPreviewModal({ print, onClose }: Props) {
   const ext = activePlate ? extOf(activePlate.filename) : "";
   const is3d = Boolean(activePlate) && MODEL_EXTS.has(ext);
 
-  // A single uploaded/imported .3mf can itself be a Bambu Studio multi-plate project -- these are
-  // its *internal* plates (detected client-side by the viewer), distinct from sortedPlates above
-  // (separate uploaded files). Reset whenever the active file changes; a stale list from the
-  // previous file would let you pick a plate index that doesn't exist in the new one.
+  // Plates inside the active .3mf, reset when the file changes.
   const [internalPlates, setInternalPlates] = useState<PlateSummary[]>([]);
   const [internalThumbnails, setInternalThumbnails] = useState<Record<number, string | null>>({});
   const [selectedInternalPlateId, setSelectedInternalPlateId] = useState<number | null>(null);
 
-  // Toolbar state lives here rather than in the viewer so it survives switching files (the
-  // viewer remounts per file).
+  // Lives here so it survives the viewer remounting per file.
   const viewerRef = useRef<ModelViewerHandle>(null);
   const [renderStyle, setRenderStyle] = useState<RenderStyle>("solid");
   const [modelColor, setModelColor] = useState<string>(DEFAULT_PREVIEW_COLOR);
@@ -60,15 +51,14 @@ export default function Model3DPreviewModal({ print, onClose }: Props) {
   const [showGrid, setShowGrid] = useState(true);
   const [spin, setSpin] = useState(true);
 
-  // A preset is a fixed viewpoint -- spinning would immediately carry the camera away from it.
+  // Spinning would carry the camera away from the preset.
   const handleCameraView = (view: CameraView) => {
     setSpin(false);
     setCameraView(view);
     viewerRef.current?.setCameraView(view);
   };
 
-  // A lone file that is itself a multi-plate project would otherwise show its one file row above
-  // its real plates -- redundant, since there's no other file to switch to.
+  // A lone multi-plate file doesn't need its own row above its plates.
   const showFileRows = sortedPlates.length > 1 || internalPlates.length === 0;
 
   const handlePlatesDetected = (plates: PlateSummary[], getThumbnail: (index: number) => Promise<string | null>) => {
@@ -81,8 +71,7 @@ export default function Model3DPreviewModal({ print, onClose }: Props) {
   };
 
   const selectPlate = (plateId: string) => {
-    // Re-clicking the open file must not clear its internal plates: the viewer is keyed by file
-    // id, so it won't remount and re-report them, leaving the internal list gone for good.
+    // The viewer won't remount for the same file, so its plates wouldn't be re-reported.
     if (plateId === activePlate?.id) return;
     setActivePlateId(plateId);
     setInternalPlates([]);
@@ -132,9 +121,7 @@ export default function Model3DPreviewModal({ print, onClose }: Props) {
           {showFileRows && (
             <List disablePadding>
               {sortedPlates.map((plate, idx) => (
-                // Named by file, not "Plate N": each row is a separate file (an STL, or e.g. one
-                // MakerWorld print profile's 3MF) -- "plate" is kept for the build plates inside a
-                // 3MF, listed below the divider.
+                // Named by file: "plate" is kept for the build plates inside a 3MF.
                 <ListItemButton
                   key={plate.id}
                   selected={plate.id === activePlate?.id}

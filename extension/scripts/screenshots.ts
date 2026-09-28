@@ -3,9 +3,8 @@
 //   npm run screenshots
 //
 // Opens a visible Chromium window (Printables' Cloudflare check turns headless browsers away) with
-// dist/chrome loaded, and serves a small mock Thingport instance on localhost so the popup and the
-// import panels show realistic data without a real account. The provider pages are the live sites:
-// the first model linked from each site's front page, unless given explicitly, e.g.
+// dist/chrome loaded, and serves a mock Thingport instance on localhost. The provider pages are the
+// live sites: the first model linked from each front page, unless given explicitly, e.g.
 //
 //   npm run screenshots -- --makerworld=https://makerworld.com/en/models/123 --printables=...
 //
@@ -23,7 +22,6 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const EXTENSION_DIR = path.join(ROOT, "dist", "chrome");
 const OUT_DIR = path.join(ROOT, "docs", "screenshots");
 const PAGE_VIEWPORT = { width: 1280, height: 800 };
-// What the popup shows as the instance address; the browser resolves it to the local mock server.
 const DEMO_HOST = "thingport.home.arpa";
 const POPUP_WIDTH = 320;
 
@@ -34,10 +32,7 @@ const PROVIDERS: { name: ProviderName; label: string; home: string; modelLink: R
   { name: "printables", label: "Printables", home: "https://www.printables.com/", modelLink: /^https:\/\/www\.printables\.com\/model\/\d+-[^/?#]+$/ },
 ];
 
-// ---- Mock Thingport instance --------------------------------------------------------------------
-
-/** Just enough of Thingport's API for the popup and the single-model panel. CORS is open, so the
- *  extension reaches it without the host permission a real setup would grant. */
+/** CORS is open, so the extension reaches it without a host permission. */
 type MockState = { inspectTitle: string | null };
 
 function startMockInstance(state: MockState): Promise<{ url: string; close: () => void }> {
@@ -81,8 +76,6 @@ function startMockInstance(state: MockState): Promise<{ url: string; close: () =
   });
 }
 
-// ---- Browser helpers ----------------------------------------------------------------------------
-
 function argValue(name: string): string | undefined {
   const prefix = `--${name}=`;
   return process.argv.find((arg) => arg.startsWith(prefix))?.slice(prefix.length);
@@ -97,7 +90,7 @@ async function launch(mockPort: number): Promise<{ context: BrowserContext; work
     args: [
       `--disable-extensions-except=${EXTENSION_DIR}`,
       `--load-extension=${EXTENSION_DIR}`,
-      // Without this, Cloudflare (Printables) recognizes the automated browser and never lets it in.
+      // Otherwise Cloudflare (Printables) recognizes the automated browser.
       "--disable-blink-features=AutomationControlled",
       `--host-resolver-rules=MAP ${DEMO_HOST}:80 127.0.0.1:${mockPort}`,
     ],
@@ -107,7 +100,6 @@ async function launch(mockPort: number): Promise<{ context: BrowserContext; work
   return { context, worker, extensionId };
 }
 
-/** Best-effort: clicks away a cookie/consent banner so it doesn't cover the screenshot. */
 async function dismissBanners(page: Page): Promise<void> {
   const button = page.getByRole("button", { name: /^(accept( all)?( cookies)?|allow all|agree|i agree|got it|ok)$/i }).first();
   if (await button.isVisible().catch(() => false)) await button.click({ timeout: 2000 }).catch(() => undefined);
@@ -115,14 +107,12 @@ async function dismissBanners(page: Page): Promise<void> {
 
 async function openPage(page: Page, url: string): Promise<void> {
   await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
-  // Room for a Cloudflare check to clear and the page's own client-side render to settle.
   await page.waitForFunction(() => !/just a moment/i.test(document.title), undefined, { timeout: 60000 });
   await page.waitForTimeout(3000);
   await dismissBanners(page);
 }
 
-/** The first `count` distinct model pages linked from the provider's front page -- the first one
- *  replaced by --<provider>=<url> when given. */
+/** The first one is replaced by --<provider>=<url> when given. */
 async function findModelUrls(page: Page, provider: (typeof PROVIDERS)[number], count: number): Promise<string[]> {
   await openPage(page, provider.home);
   const links = await page.$$eval("a[href]", (as) => as.map((a) => (a as HTMLAnchorElement).href.split(/[?#]/)[0]));
@@ -136,9 +126,8 @@ async function findModelUrls(page: Page, provider: (typeof PROVIDERS)[number], c
 type ModelInfo = { url: string; title: string; image: string | null };
 
 async function readModelInfo(page: Page): Promise<ModelInfo> {
-  // The page's <h1> for the name (og:title is stale on Thingiverse and suffixed elsewhere) and its
-  // largest visible image for the thumbnail (og:image is Thingiverse's logo). One expression, no
-  // inner function declarations: tsx would wrap those in a `__name` helper the page doesn't have.
+  // og:title/og:image are unreliable here. No inner function declarations: tsx would wrap them in
+  // a `__name` helper the page doesn't have.
   const meta = await page.evaluate(() => ({
     title: document.querySelector("h1")?.textContent?.trim() || document.title,
     image:
@@ -147,13 +136,11 @@ async function readModelInfo(page: Page): Promise<ModelInfo> {
         .map((img) => ({ src: img.currentSrc, area: img.getBoundingClientRect().width * img.getBoundingClientRect().height }))
         .toSorted((a, b) => b.area - a.area)[0]?.src ?? null,
   }));
-  // MakerWorld has no <h1>, so its name comes from the tab title -- minus the site's own suffix,
-  // matching the clean title the real backend's /import/inspect returns.
+  // MakerWorld has no <h1>, so strip the site's suffix from the tab title.
   const title = meta.title.replace(/\s*-\s*Free 3D Print Model\b.*$/i, "").replace(/\s*[-|]\s*MakerWorld$/i, "");
   return { url: page.url(), title, image: meta.image };
 }
 
-/** The recent-imports strip stores thumbnails as data URLs (see background/recentImports.ts). */
 async function toDataUrl(imageUrl: string | null): Promise<string | null> {
   if (!imageUrl) return null;
   try {
@@ -181,8 +168,6 @@ async function screenshotViewport(page: Page, file: string): Promise<void> {
   await page.screenshot({ path: path.join(OUT_DIR, file), type: "jpeg", quality: 82 });
 }
 
-// ---- Run ----------------------------------------------------------------------------------------
-
 async function main(): Promise<void> {
   await rm(OUT_DIR, { recursive: true, force: true });
   await mkdir(OUT_DIR, { recursive: true });
@@ -194,11 +179,8 @@ async function main(): Promise<void> {
   const page = context.pages()[0] ?? (await context.newPage());
 
   try {
-    // Not configured yet: the setup form, and the grayed-out bubble's dialog on a model page.
     await screenshotPopup(context, extensionId, "popup-setup.png", "light");
 
-    // One model per provider for its panel screenshot, plus a couple more to fill the popup's
-    // recent-imports row (it shows five).
     const models = new Map<ProviderName, ModelInfo>();
     const recentModels: ModelInfo[] = [];
     for (const provider of PROVIDERS) {
@@ -217,7 +199,6 @@ async function main(): Promise<void> {
     await page.locator(".tg-modal").waitFor();
     await screenshotViewport(page, "setup-dialog-makerworld.jpg");
 
-    // Connected, with a few imports behind it.
     const recent = await Promise.all(
       recentModels.slice(0, 5).map(async (model, i) => ({
         printId: `demo-${i}`,
@@ -235,7 +216,6 @@ async function main(): Promise<void> {
     await screenshotPopup(context, extensionId, "popup-connected.png", "light");
     await screenshotPopup(context, extensionId, "popup-connected-dark.png", "dark");
 
-    // The import panel on each provider.
     for (const provider of PROVIDERS) {
       const model = models.get(provider.name)!;
       mockState.inspectTitle = model.title;
@@ -244,9 +224,7 @@ async function main(): Promise<void> {
       await page.locator('.tg-panel [data-action="import"]').waitFor({ timeout: 20000 });
       await screenshotViewport(page, `panel-${provider.name}.jpg`);
 
-      // And the result of clicking Import, once. Printables rather than MakerWorld: a MakerWorld
-      // import first clicks the live page's own Download button to capture the file URL (see
-      // content/makerworld/downloadResolver.ts), which would start a real download here.
+      // Not MakerWorld: its import clicks the page's real Download button.
       if (provider.name === "printables") {
         await page.locator('.tg-panel [data-action="import"]').click();
         await page.getByRole("link", { name: "Open in Thingport" }).waitFor({ timeout: 20000 });

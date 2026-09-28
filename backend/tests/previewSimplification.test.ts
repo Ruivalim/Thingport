@@ -15,8 +15,7 @@ const app = createApp();
 const stamp = Date.now();
 const auth = (token: string) => ({ Authorization: `Bearer ${token}` });
 
-/** An n x n grid of vertices on a gently curved surface: 2(n-1)^2 triangles, all sharing
- *  vertices, like a real 3MF mesh. */
+/** 2(n-1)^2 triangles sharing vertices, like a real 3MF mesh. */
 function gridMeshXml(n: number): string {
   const vertices: string[] = [];
   for (let i = 0; i < n; i++) {
@@ -36,7 +35,6 @@ function gridMeshXml(n: number): string {
 </model>`;
 }
 
-/** The parts of a GLB's JSON chunk the preview reads back. */
 function readGlbJson(file: string): any {
   const buf = fsSync.readFileSync(file);
   return JSON.parse(buf.subarray(20, 20 + buf.readUInt32LE(12)).toString("utf-8"));
@@ -67,7 +65,6 @@ describe("renderModelPreviewGlb with simplification", () => {
     const triangles = glbTriangles(gltf);
     expect(triangles).toBeLessThanOrEqual(5_000);
     expect(triangles).toBeGreaterThan(2_000);
-    // Unused vertices are dropped too, so the file really shrinks.
     const positions = gltf.accessors[gltf.meshes[0].primitives[0].attributes.POSITION].count;
     expect(positions).toBeLessThan(101 * 101 / 2);
     const meta = JSON.parse(gltf.nodes.find((n: any) => n.extras?.thingportPreview).extras.thingportPreview);
@@ -84,7 +81,7 @@ describe("renderModelPreviewGlb with simplification", () => {
   });
 });
 
-/** A GLB holding only a JSON chunk -- all the simplification check reads. */
+/** Holds only a JSON chunk, which is all the simplification check reads. */
 async function writeFakeGlb(file: string, triangles: number, simplified: boolean): Promise<void> {
   const json = Buffer.from(
     JSON.stringify({

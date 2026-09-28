@@ -1,8 +1,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 
-// Lookups are paced to spare the sites (MakerWorld's CAPTCHA especially); not here. config.ts
-// reads these when it loads, so before any import.
+// No pacing in tests. config.ts reads this on load, so it's hoisted.
 vi.hoisted(() => {
   process.env.IMPORT_MAKERWORLD_CALL_DELAY_MS = "0";
   process.env.IMPORT_COLLECTION_DELAY_MS = "0";
@@ -15,9 +14,7 @@ import { runAuthorLinking, type AuthorLinkingRun } from "../src/services/authorL
 import { getThingiverseAccessToken, setThingiverseAccessToken } from "../src/services/settingsService";
 import type { ImportedAuthorInfo } from "../src/services/importResolvers";
 
-// Models imported while their author couldn't be built (MakerWorld, for a while) only know the
-// author by the plain-text `creator`. Once a record for that author exists -- from a later import,
-// or already -- they're linked to it, but only when the match is unambiguous.
+// Name-only models link to an author record, but only when the match is unambiguous.
 
 const app = createApp();
 const stamp = Date.now();
@@ -100,7 +97,6 @@ describe("linking earlier imports to their author", () => {
     const other = await upsertAuthorFromImport(authorInfo("makerworld", "other", `Someone Else ${stamp}`));
     const linked = await unattributedPrint("linked", "makerworld", `Taken${stamp}`);
     await prisma.print.update({ where: { id: linked.id }, data: { authorId: other!.id } });
-    // Author reset clears the creator along with the link (see routes/prints.ts).
     const reset = await unattributedPrint("reset", "makerworld", null);
     await upsertAuthorFromImport(authorInfo("makerworld", "taken", `Taken${stamp}`));
     expect(await authorOf(linked.id)).toBe(other!.id);
@@ -123,8 +119,7 @@ function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 }
 
-/** Answers the listed URLs (by prefix); anything else -- e.g. a lookup for a model some other test
- *  file left behind -- gets a 404, as a model gone from its site would. */
+/** Answers the listed URLs (by prefix); anything else gets a 404. */
 function mockFetch(routes: Record<string, () => Response>) {
   global.fetch = vi.fn<(input: RequestInfo | URL) => Promise<Response>>(async (input) => {
     const url = String(input);
@@ -181,7 +176,7 @@ describe("looking up authors no known author matches", () => {
     const run = newRun();
     await runAuthorLinking(run);
     const authorId = `printables:p-${stamp}`;
-    // The site's display name differs from the name the import stored -- linked anyway, both models.
+    // The site's display name differs from the stored name; linked anyway.
     expect(await authorOf(first.id)).toBe(authorId);
     expect(await authorOf(second.id)).toBe(authorId);
     expect(modelQueries).toBe(1);

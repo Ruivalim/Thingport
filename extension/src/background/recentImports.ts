@@ -1,7 +1,5 @@
-// The popup's "Recent imports" strip: the last few models imported through this extension, in this
-// browser -- kept entirely in extension storage, title and thumbnail included, so the popup never
-// has to ask the instance for anything. The flip side: an entry reflects the model as it was when
-// imported (a later rename or delete in Thingport doesn't show here).
+// The popup's "Recent imports" strip, kept entirely in extension storage. Entries reflect the model
+// as it was when imported.
 
 import type { Print } from "../shared/api";
 import type { RecentImport } from "../shared/messages";
@@ -18,14 +16,11 @@ async function readStored(): Promise<RecentImport[]> {
   return (stored[RECENT_IMPORTS_STORAGE_KEY] as RecentImport[] | undefined) ?? [];
 }
 
-/** `print` is POST /import's response (or just `{ id }` for a zip import, whose job reports only
- *  the id -- `titleHint`, the page's own title, covers that case). Entries are scoped to the
- *  instance + account they were imported into, so switching either shows that one's own list. */
+/** `titleHint` covers zip imports, whose job reports only the id. Scoped to instance + account. */
 export async function recordRecentImport(print: Print, titleHint: string | null): Promise<void> {
   const config = await getStoredConfig();
   if (!isConfigured(config)) return;
   const instanceUrl = normalizeInstanceUrl(config.instanceUrl);
-  // Same cover the web app's model cards use, falling back to the first photo.
   const thumbPath = print.thumb_url || print.preview_images?.[0]?.url || null;
   const entry: RecentImport = {
     printId: print.id,
@@ -35,16 +30,14 @@ export async function recordRecentImport(print: Print, titleHint: string | null)
     instanceUrl,
     email: config.email,
   };
-  // Another MakerWorld print profile of a model already in the list is the same model -- it moves
-  // to the front rather than taking a second slot.
+  // Another profile of a listed model moves it to the front instead of adding a slot.
   const rest = (await readStored()).filter(
     (e) => !(e.printId === entry.printId && e.instanceUrl === instanceUrl && e.email === entry.email),
   );
   await chrome.storage.local.set({ [RECENT_IMPORTS_STORAGE_KEY]: [entry, ...rest].slice(0, RECENT_IMPORTS_KEPT) });
 }
 
-/** Downloads the model's cover once and shrinks it to a small square JPEG data URL (a few KB),
- *  center-cropped the way the popup shows it. */
+/** A small center-cropped square JPEG data URL. */
 async function fetchThumbDataUrl(config: ConfiguredConfig, thumbPath: string): Promise<string | null> {
   const blob = await apiFetchBlob(config, thumbPath);
   if (!blob) return null;

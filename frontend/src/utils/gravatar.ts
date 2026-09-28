@@ -1,6 +1,4 @@
-// Gravatar accepts either MD5 or SHA-256 hashes of the trimmed, lowercased
-// email — SHA-256 lets us use the browser's native crypto.subtle instead of
-// pulling in an MD5 dependency. https://docs.gravatar.com/general/hash/
+// SHA-256 works with crypto.subtle, avoiding an MD5 dependency. https://docs.gravatar.com/general/hash/
 export async function gravatarUrl(email: string, size = 128): Promise<string> {
   const normalized = email.trim().toLowerCase();
   const data = new TextEncoder().encode(normalized);

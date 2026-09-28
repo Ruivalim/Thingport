@@ -1,8 +1,6 @@
 name: Frontend image
 
-# Only runs when frontend/ (or the build workflow) changes — a backend-only commit never
-# triggers a frontend publish, and vice versa (see backend-image.yml). To build+publish either
-# image on demand regardless of what changed, use the "Manual image publish" workflow instead.
+# Runs when frontend/ or the build workflow changes. Use "Manual image publish" to force a build.
 on:
   push:
     branches: [main]

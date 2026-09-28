@@ -1,7 +1,5 @@
-// Background entry point (a service worker in Chrome/Edge, an event page in Firefox -- see
-// scripts/manifest.ts). Owns the extension's config/auth state and every request to the user's
-// Thingport instance; the content script and popup only ever talk to it through the typed
-// messages in shared/messages.ts.
+// Background entry point (service worker in Chrome/Edge, event page in Firefox). Owns config, auth
+// and every request to the Thingport instance.
 
 import { listen, type BackgroundMessages } from "../shared/messages";
 import { apiCall } from "./api";
@@ -13,7 +11,6 @@ import { getRecentImports } from "./recentImports";
 import { openSetup } from "./setup";
 import { setTabIconState } from "./tabIcon";
 
-/** Messages that only make sense from a content script (they act on the sender's tab). */
 function senderTabId(sender: chrome.runtime.MessageSender): number {
   if (!sender.tab?.id) throw new Error("This action is only available from a page");
   return sender.tab.id;
@@ -37,13 +34,9 @@ listen<BackgroundMessages>({
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-  // The moment a tab starts a NEW navigation (including to a site this extension never runs on),
-  // reset its icon to inactive -- a per-tab setIcon override otherwise persists until something
-  // changes it. If the destination is a provider page, its content script re-asserts the right
-  // state a moment later.
+  // Per-tab icon overrides persist, so reset on every new navigation; the content script re-asserts it.
   if (changeInfo.status === "loading") void setTabIconState(tabId, false);
-  // Drives the guided MakerWorld collection import -- "complete" is what wakes the background back
-  // up even if it was suspended between steps.
+  // "complete" wakes a suspended background to drive the guided import.
   if (changeInfo.status === "complete") void advanceJob(tabId);
 });
 

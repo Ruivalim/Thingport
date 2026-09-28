@@ -38,5 +38,5 @@ Thingport runs from pre-built Docker images, so it works on almost anything, fro
 [install guide](/docs/install/) takes you from nothing to a running instance with `docker compose up -d`. There are also
 guides for [Unraid](/docs/install/unraid/), [TrueNAS SCALE](/docs/install/truenas/) and [CasaOS](/docs/install/casaos/).
 
-Thingport is free and open source under the MIT license. If you run into a problem or have an idea,
+Thingport is free and open source under the GNU AGPL-3.0 license. If you run into a problem or have an idea,
 [open an issue on GitHub](https://github.com/TautvydasDerzinskas/Thingport/issues). Pull requests are welcome too.

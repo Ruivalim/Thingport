@@ -29,8 +29,6 @@ const registerSchema = z.object({
   displayName: z.string().trim().min(1, "Display name is required"),
   email: z.string().trim().email("Enter a valid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
-  // From an invitation link (services/invitationService.ts) -- the only way to register while
-  // registrations are closed.
   invite_token: z.string().min(1).optional(),
 });
 
@@ -46,14 +44,11 @@ router.post(
     const body = parseBody(registerSchema, req.body);
     const email = body.email.toLowerCase();
 
-    // The very first account on the instance always becomes admin and may register even if
-    // registrations are otherwise disabled -- an operator can never lock themselves out of
-    // bootstrapping the instance. Once any admin exists, this exception no longer applies.
+    // The first account becomes admin and may always register, so the instance can be bootstrapped.
     const adminExists = (await prisma.user.count({ where: { role: "ADMIN" } })) > 0;
     const bootstrapping = !adminExists;
 
-    // An invitation lets its own email in even while registrations are closed, and only that
-    // email: the token has to match an unexpired invitation *for the address being registered*.
+    // The token must match an unexpired invitation for this exact email.
     const invitation = body.invite_token ? await findValidInvitation(body.invite_token) : null;
     if (body.invite_token && !invitation) {
       throw new HttpError(400, "This invitation link is invalid or has expired. Ask for a new one.");
@@ -71,18 +66,11 @@ router.post(
 
     const passwordHash = await bcrypt.hash(body.password, PASSWORD_HASH_COST);
     const role: Role = bootstrapping ? "ADMIN" : "MEMBER";
-    // Bootstrapping the very first (admin) account always skips verification -- SMTP can't have
-    // been configured yet by an operator who isn't able to sign in until this account exists.
-    // Otherwise, email verification only actually happens when SMTP is configured; unconfigured
-    // instances create fully-verified accounts immediately so this feature is opt-in, not a
-    // requirement that breaks self-hosters who never set up a mail server.
-    // An invited user skips it too: they reached this form through a link sent to that very
-    // address, which already proves they own the mailbox.
+    // Verification only happens when SMTP is configured. The bootstrap admin and invitees (who
+    // reached this via their own mailbox) skip it.
     const smtpConfigured = !bootstrapping && !invitation && (await isSmtpConfigured());
     const verification = smtpConfigured ? newVerificationToken() : null;
 
-    // Wrapped together so an account never ends up missing its starter categories (or vice
-    // versa) because of a failure partway through -- see seedDefaultCategories.
     const user = await prisma.$transaction(async (tx) => {
       const created = await tx.user.create({
         data: {
@@ -96,16 +84,14 @@ router.post(
         },
       });
       await seedDefaultCategories(tx, created.id);
-      // Single use: the invitation goes away with the account it created.
       if (invitation) await tx.invitation.delete({ where: { id: invitation.id } });
       return created;
-    }, { timeout: 15000 }); // seedDefaultCategories is ~80 sequential inserts -- Prisma's 5s default is too tight
+    }, { timeout: 15000 }); // ~80 sequential inserts; Prisma's 5s default is too tight
 
     if (smtpConfigured && verification) {
       try {
         await sendVerificationEmail(user.email, user.displayName, verification.token);
       } catch {
-        // Don't leave an unverifiable account behind if the email never went out.
         await prisma.user.delete({ where: { id: user.id } });
         throw new HttpError(500, "Failed to send verification email. Please try again.");
       }
@@ -121,13 +107,12 @@ router.post(
 router.post(
   "/login",
   asyncHandler(async (req, res) => {
-    // Before the password check, so guessing passwords costs a solved captcha per attempt.
+    // Before the password check, so each guess costs a solved captcha.
     await checkCaptcha(req, "login");
     const body = parseBody(loginSchema, req.body);
     const email = body.email.toLowerCase();
     const user = await prisma.user.findUnique({ where: { email } });
-    // Same generic message whether the email doesn't exist or the password is wrong -- don't
-    // let a login attempt be used to enumerate registered addresses.
+    // Same message for unknown email and wrong password, to prevent enumeration.
     if (!user || !(await bcrypt.compare(body.password, user.passwordHash))) {
       throw new HttpError(401, "Invalid email or password");
     }
@@ -142,8 +127,6 @@ router.post(
   }),
 );
 
-// Backs the invitation link's registration form: confirms the link is still good before the
-// invitee fills anything in. Returns only the invited email, which the link already contains.
 router.get(
   "/invitations/:token",
   asyncHandler(async (req, res) => {
@@ -166,9 +149,7 @@ router.post(
 
     let verified;
     if (user.pendingEmail) {
-      // Confirming an email *change* (Profile > Change email), not a fresh signup -- re-check
-      // for a conflict that may have appeared since the change was requested (someone else
-      // registering that same address in the meantime).
+      // Someone may have registered this address since the change was requested.
       const conflict = await prisma.user.findUnique({ where: { email: user.pendingEmail } });
       if (conflict && conflict.id !== user.id) {
         throw new HttpError(409, "That email is now used by another account. Please request the change again.");
@@ -189,9 +170,7 @@ router.post(
         data: { emailVerified: true, emailVerificationToken: null, emailVerificationExpires: null },
       });
     }
-    // Verifying doubles as signing in -- the user just proved control of the mailbox, and
-    // making them turn around and log in again with a password they only just typed is friction
-    // with no security benefit.
+    // Verifying doubles as signing in.
     const { token, expiresIn } = await issueToken(verified.id, verified.role);
     res.json({ token, expires_in: expiresIn, user: toUserOut(verified) });
     void createLog({ userId: verified.id, action: "user_logged_in", details: { email: verified.email } });
@@ -205,8 +184,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const body = parseBody(resendVerificationSchema, req.body);
     const email = body.email.toLowerCase();
-    // Same response whether the account doesn't exist, is already verified, or SMTP isn't
-    // configured -- don't let this endpoint be used to enumerate registered addresses either.
+    // Same response in every case, to prevent enumeration.
     const user = await prisma.user.findUnique({ where: { email } });
     if (user && !user.emailVerified && (await isSmtpConfigured())) {
       const verification = newVerificationToken();
@@ -232,11 +210,7 @@ const updateProfileSchema = z
   })
   .refine((data) => data.email !== undefined || data.new_password !== undefined, { message: "Nothing to update" });
 
-// Backs Profile's "Change email" and "Change password" pages -- one shared endpoint since both
-// require the same current-password re-confirmation. An email change isn't applied immediately
-// unless SMTP is unconfigured (same skip-verification exception /register uses): otherwise it's
-// stashed in pendingEmail and only takes effect once the emailed link is clicked (POST
-// /verify-email above).
+// Email changes wait in pendingEmail until verified, unless SMTP is unconfigured.
 router.patch(
   "/profile",
   requireAuth,
@@ -245,9 +219,7 @@ router.patch(
     const user = await prisma.user.findUnique({ where: { id: req.userId! } });
     if (!user) throw new HttpError(401, "Invalid or expired token");
     if (!(await bcrypt.compare(body.current_password, user.passwordHash))) {
-      // 403, not 401: this is the submitted current-password field being wrong, not the
-      // session's own token -- the frontend's generic API client treats any 401 as "your
-      // session expired" and force-logs-out, which would be exactly wrong here.
+      // 403, not 401: the frontend treats any 401 as an expired session and logs out.
       throw new HttpError(403, "Current password is incorrect");
     }
 
@@ -297,8 +269,7 @@ router.patch(
   }),
 );
 
-// Logins are stateless JWTs, so there's nothing server-side to invalidate here -- this endpoint
-// exists purely to record the audit-log entry before the frontend clears its local token.
+// JWTs are stateless; this only records the audit-log entry.
 router.post(
   "/logout",
   requireAuth,

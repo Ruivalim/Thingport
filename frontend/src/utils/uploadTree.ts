@@ -134,9 +134,7 @@ export async function uploadEntriesToCategory(
     if (aborted) break;
     if (targetCategoryId === null && segments.length) continue;
     try {
-      // Every leaf of a folder tree (dropped folder or webkitdirectory picker)
-      // is always its own single-plate print, so this is always a one-file
-      // upload -- the separate/multiplate mode never applies here.
+      // Folder-tree leaves are always single-plate prints.
       const result = await printsApi.upload([entry.file], { category_id: targetCategoryId || undefined });
       uploaded += 1;
       uploadedEntries.push(entry);

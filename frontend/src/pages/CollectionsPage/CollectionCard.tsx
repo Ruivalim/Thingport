@@ -26,9 +26,7 @@ type Props = {
 
 const COVER_TILE_LIMIT = 4;
 
-/** One cell of the cover grid (or the single full-bleed cover when there's only one model) --
- *  clicking it goes straight to that model's detail page, independent of the card's own
- *  navigate-to-collection click target on the name bar below. */
+/** Opens that model directly, separate from the card's own click target. */
 function CoverTile({
   print,
   theme,
@@ -71,9 +69,7 @@ function CoverTile({
   );
 }
 
-// Two smaller cards peeking out below the real one, so a collection reads as a stack of models
-// at a glance. Listed back to front: each is inset further from the sides and drops further below
-// the main card's bottom edge (the wrapper's bottom padding makes room for the deepest one).
+// Two cards peeking out below so a collection reads as a stack. Back to front.
 const STACK_LAYERS = [
   { insetPx: 20, dropPx: 12, opacity: 0.55 },
   { insetPx: 10, dropPx: 6, opacity: 0.8 },
@@ -89,8 +85,7 @@ export default function CollectionCard({ collection, theme, previewMode, onUpdat
   const coverItems = collection.cover_items.slice(0, COVER_TILE_LIMIT);
   const extraCount = collection.item_count > COVER_TILE_LIMIT ? collection.item_count - COVER_TILE_LIMIT : 0;
   const displayName = collectionDisplayName(collection, t);
-  // With a single model, opening the collection would just show that one card again -- go
-  // straight to the model instead, same as clicking its cover tile above already does.
+  // With a single model, go straight to it.
   const soleModelId = collection.item_count === 1 ? coverItems[0]?.id : undefined;
   const openTarget = soleModelId ? `/models/${soleModelId}` : `/models/collections/${collection.id}`;
 

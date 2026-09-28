@@ -19,8 +19,7 @@ type Props = {
   onSubmit: (input: CollectionInput) => Promise<void>;
 };
 
-/** Shared create/edit dialog for a Collection -- name, description, tags. Edit mode is just
- *  create mode prefilled from `collection`, per the spec ("Edit brings the creation modal"). */
+/** Edit mode is create mode prefilled from `collection`. */
 export default function CollectionFormModal({ collection, onClose, onSubmit }: Props) {
   const { t } = useTranslation(["models", "common"]);
   const [name, setName] = useState(collection?.name || "");
@@ -60,7 +59,6 @@ export default function CollectionFormModal({ collection, onClose, onSubmit }: P
             onChange={e => setName(e.target.value)}
             disabled={saving}
             fullWidth
-            // Deliberate: focus the name field the moment the dialog opens.
             // oxlint-disable-next-line jsx-a11y/no-autofocus
             autoFocus
             required

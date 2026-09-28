@@ -11,16 +11,11 @@ type Props = {
   collectionId: string;
   bookmarked: boolean;
   onUnauthorized?: () => void;
-  /** Called after a successful toggle so the sidebar's own bookmarked list can refetch. */
   onBookmarksChanged?: () => void;
-  /** Called after a successful toggle with the new state, so a caller that also shows this
-   *  collection's bookmark status elsewhere on the same page (e.g. the "..." menu) can stay in
-   *  sync instead of reading a now-stale `bookmarked` prop. */
+  /** Lets other controls on the page showing this state stay in sync. */
   onToggled?: (bookmarked: boolean) => void;
 };
 
-/** The collection detail page's title-row bookmark toggle -- adds/removes this collection from
- *  the sidebar's quick-access list. Identical optimistic-flip shape to TagBookmarkButton. */
 export default function CollectionBookmarkButton({
   collectionId,
   bookmarked,

@@ -69,7 +69,6 @@ describe("collections routes", () => {
       .send({ name: "Renamed Collection", tags: ["c"] });
     expect(res.status).toBe(200);
     expect(res.body.name).toBe("Renamed Collection");
-    // Tags are stored in canonical casing (see utils/tagNormalization.ts).
     expect(res.body.tags).toEqual(["C"]);
   });
 
@@ -192,11 +191,9 @@ describe("collection/print deletion cascades", () => {
     const deleteRes = await request(app).delete(`/api/print/${printId}`).set(auth());
     expect(deleteRes.status).toBe(200);
 
-    // Gone from the category it was filed under.
     const categoryPrints = await request(app).get("/api/prints").set(auth()).query({ category_id: categoryId });
     expect(categoryPrints.body.some((p: { id: string }) => p.id === printId)).toBe(false);
 
-    // Gone from the collection it was assigned to.
     const afterDelete = await request(app).get(`/api/collection/${collectionId}`).set(auth());
     expect(afterDelete.body.item_count).toBe(0);
     const collectionPrints = await request(app).get("/api/prints").set(auth()).query({ collection_id: collectionId });
@@ -265,7 +262,7 @@ describe("system collections (Favourites / Browsing History)", () => {
     expect(upload.status).toBe(200);
     const [printA, printB] = upload.body.prints.map((p: { id: string }) => p.id);
 
-    // Viewing (GET /print/:id) is what records history -- listing/uploading does not.
+    // Only viewing records history.
     await request(app).get(`/api/print/${printA}`).set(auth());
     await new Promise((resolve) => setTimeout(resolve, 5));
     await request(app).get(`/api/print/${printB}`).set(auth());

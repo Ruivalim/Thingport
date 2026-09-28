@@ -19,18 +19,12 @@ type Props = {
   onClose: () => void;
   printId: string;
   onUnauthorized?: () => void;
-  /** The collection currently being browsed, if any -- toggling it off here also fires
-   *  onRemovedFromCollection so the card can drop out of that grid immediately, mirroring
-   *  ModelActionsMenu's dedicated "Remove from collection" item. */
+  /** Toggling this collection off also fires onRemovedFromCollection so the card leaves the grid. */
   collectionId?: string;
   onRemovedFromCollection?: () => void;
 };
 
-/** Tag-style picker for a model's collection membership: every real (non-system) collection the
- *  user owns as a clickable chip, filled when the model is already in it. Each click toggles that
- *  one collection immediately (no separate save step), matching how TagInput-adjacent pickers
- *  behave elsewhere in the app. Opened from ModelActionsMenu's "Add to collection" item, shared by
- *  the model detail page's title menu and every models grid's per-card "..." menu. */
+/** Each chip click toggles membership immediately; there's no save step. */
 export default function AddToCollectionModal({
   open,
   onClose,

@@ -46,16 +46,10 @@ type Props = {
   onUnauthorized?: () => void;
 };
 
-/** The Administration hub -- the sidebar now links here instead of listing every admin sub-page
- *  itself (see Sidebar's doc comment). Each row just navigates to that sub-page's own route;
- *  those pages' own back buttons return here (see AppLayout's useRouteChrome), and this page's
- *  own back button goes to the Dashboard, same as every other top-level page reachable directly
- *  from the sidebar (Models, Collections, Tags, Downloads). Update Checker lives here (not on
- *  AdminSettingsPage) since it's a hub-level status, not a per-instance setting. */
 export default function AdminPage({ onUnauthorized }: Props) {
   const { t } = useTranslation(["app", "common"]);
   const navigate = useNavigate();
-  // undefined = loading, null = failed (the footer just hides -- it's informational only).
+  // undefined = loading, null = failed (the footer hides).
   const [storage, setStorage] = useState<StorageUsage | null | undefined>(undefined);
 
   useEffect(() => {

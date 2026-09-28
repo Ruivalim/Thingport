@@ -1,11 +1,8 @@
 export type SlicerOption = { id: string; label: string };
 
-// Limited to slicers that register their own URL protocol for opening a remote model directly
-// (e.g. bambustudio://) -- the only ones a future "open in {slicer}" launch could actually use.
-// IDs must match backend's services/slicerPreferenceService.ts SLICER_IDS, and (id !== "other")
-// must equal the exact scheme the slicer registers -- e.g. Creality Print's is "crealityprintlink"
-// (crealityprintlink://open?file=...), not "creality", per its libslic3r/Utils.hpp. Some of these
-// ids don't route through their own scheme at all -- see utils/slicerLaunch.ts's BRIDGED_SLICERS.
+// Slicers that register a URL protocol. IDs must match the backend's SLICER_IDS and (except
+// "other") equal the scheme the slicer registers, e.g. "crealityprintlink". Some are launched via
+// the Bridge instead (see utils/slicerLaunch.ts).
 export const SLICER_OPTIONS: SlicerOption[] = [
   { id: "bambustudio", label: "Bambu Studio" },
   { id: "orcaslicer", label: "OrcaSlicer" },
@@ -18,13 +15,8 @@ export const SLICER_OPTIONS: SlicerOption[] = [
   { id: "other", label: "Other / Manual" },
 ];
 
-/** The user's persisted theme choice -- "system" tracks the OS/browser's prefers-color-scheme
- *  instead of a fixed pick. Never used directly for rendering; see useResolvedTheme, which turns
- *  this into a concrete ResolvedTheme. */
+/** "system" follows prefers-color-scheme; resolve with useResolvedTheme before rendering. */
 export type ThemeSelection = "light" | "dark" | "system";
-/** The actual palette to render -- always a concrete light/dark, even when the user's
- *  ThemeSelection is "system". Every call site that picks an asset variant or palette value
- *  (BrandMark, ModelViewer, theme.ts's buildTheme, ...) wants this, not the raw selection. */
 export type ResolvedTheme = "light" | "dark";
 export type ThemeOption = { id: ThemeSelection; label: string; description: string };
 

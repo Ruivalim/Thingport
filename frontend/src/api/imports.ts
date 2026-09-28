@@ -29,14 +29,10 @@ export type ImportCollectionEntriesResult = {
 
 export type ImportJobType = "COLLECTION" | "ZIP" | "PROFILES";
 
-/** Which of a MakerWorld model's print profiles an import takes -- see the import dialog's "Print
- *  profiles" choice and the backend's selectMakerworldProfiles. */
 export type MakerworldProfileScope = "url" | "designer" | "all";
 export type ImportJobStatus = "RUNNING" | "DONE" | "ERROR";
 
-/** A batch import (MakerWorld collection, or a remote zip's selected entries) running in the
- *  background -- see ImportJobContext, which polls GET /import/jobs/:id for this shape until
- *  status leaves RUNNING. */
+/** Polled by ImportJobContext until status leaves RUNNING. */
 export type ImportJob = {
   id: string;
   type: ImportJobType;
@@ -51,10 +47,7 @@ export type ImportJob = {
   failed_count: number;
   error_message: string | null;
   result_collection_id: string | null;
-  // Set only for a "ZIP" job (a single link that turned out to need the zip-entry picker) that
-  // finished having created exactly one Print -- see the backend's runZipImportJob. Used to
-  // redirect into that print's edit mode, mirroring what a synchronous single-link import
-  // already does (see useUploadImport's openForEditing).
+  // Set when the job created exactly one Print, so the UI can open it.
   result_print_id: string | null;
 };
 
@@ -66,14 +59,12 @@ type ImportLinkPayload = {
   category_id?: string;
   filename?: string;
   makerworld_cookie?: string;
-  // Solved captcha, when Administration > Captcha asks for one on import. Travels with the payload
-  // through every step, and is checked (and used up) by whichever request starts the import.
+  // Solved captcha, checked and consumed by whichever request starts the import.
   captcha_id?: string;
   captcha_answer?: string;
 };
 
-/** What POST /import did -- "profile_added" when a MakerWorld model already in the library
- *  gained another print profile's file instead of a new model being created. */
+/** "profile_added": an existing MakerWorld model gained another profile's file. */
 export type ImportOutcome = "created" | "profile_added" | "already_imported";
 
 export const importsApi = {
@@ -92,7 +83,6 @@ export const importsApi = {
         const data = await res.json();
         if (typeof data?.detail === "string") message = data.detail;
       } catch {
-        // ignore parse errors
       }
       throw new Error(message);
     }
@@ -131,8 +121,7 @@ export const importsApi = {
     return res.json();
   },
 
-  /** Registers a background job for the selected zip entries and returns immediately -- see
-   *  ImportJobContext.startZipImport, which follows up with the actual polling. */
+  /** Returns immediately; ImportJobContext polls the job. */
   zipFromLink: async (payload: ImportLinkPayload & { entries: string[] }): Promise<{ job_id: string }> => {
     const res = await fetch(`${apiBase()}/import/zip`, {
       method: "POST",
@@ -165,8 +154,7 @@ export const importsApi = {
     return res.json();
   },
 
-  /** Several print profiles of one MakerWorld model, as a background job -- see
-   *  ImportJobContext.startMakerworldProfilesImport. ("url" is a plain fromLink import.) */
+  /** ("url" is a plain fromLink import.) */
   fromMakerworldProfiles: async (
     payload: ImportLinkPayload & { scope: Exclude<MakerworldProfileScope, "url"> },
   ): Promise<{ job_id: string }> => {
@@ -180,8 +168,7 @@ export const importsApi = {
     return res.json();
   },
 
-  /** Registers a background job for the selected designs and returns immediately -- see
-   *  ImportJobContext.startCollectionImport, which follows up with the actual polling. */
+  /** Returns immediately; ImportJobContext polls the job. */
   fromCollection: async (payload: ImportLinkPayload & { design_ids: string[] }): Promise<{ job_id: string }> => {
     const res = await fetch(`${apiBase()}/import/collection`, {
       method: "POST",
@@ -214,9 +201,7 @@ export const importsApi = {
     return res.json();
   },
 
-  /** Registers a background job for the selected Things and returns immediately -- see
-   *  ImportJobContext.startThingiverseLikesImport, which follows up with the actual polling.
-   *  Every successful import lands in a shared "Thingiverse Likes" collection. */
+  /** Returns immediately; ImportJobContext polls the job. */
   fromThingiverseLikes: async (payload: ImportLinkPayload & { thing_ids: string[] }): Promise<{ job_id: string }> => {
     const res = await fetch(`${apiBase()}/import/thingiverse-likes`, {
       method: "POST",
@@ -249,10 +234,7 @@ export const importsApi = {
     return res.json();
   },
 
-  /** Registers a background job for the selected Things and returns immediately -- see
-   *  ImportJobContext.startThingiverseCollectionImport, which follows up with the actual
-   *  polling. Every successful import lands in a Thingport Collection named after the real
-   *  Thingiverse Collection name. */
+  /** Returns immediately; ImportJobContext polls the job. */
   fromThingiverseCollection: async (payload: ImportLinkPayload & { thing_ids: string[] }): Promise<{ job_id: string }> => {
     const res = await fetch(`${apiBase()}/import/thingiverse-collection`, {
       method: "POST",
@@ -285,10 +267,7 @@ export const importsApi = {
     return res.json();
   },
 
-  /** Registers a background job for the selected models and returns immediately -- see
-   *  ImportJobContext.startPrintablesCollectionImport, which follows up with the actual polling.
-   *  Every successful import lands in a Thingport Collection named after the real Printables
-   *  Collection name. */
+  /** Returns immediately; ImportJobContext polls the job. */
   fromPrintablesCollection: async (payload: ImportLinkPayload & { model_ids: string[] }): Promise<{ job_id: string }> => {
     const res = await fetch(`${apiBase()}/import/printables-collection`, {
       method: "POST",

@@ -11,7 +11,6 @@ function openZip(filePath: string): Promise<yauzl.ZipFile> {
   });
 }
 
-/** Lists every entry in a zip archive (files and directories) without extracting contents. */
 export async function listZipEntries(filePath: string): Promise<ZipEntryInfo[]> {
   const zipfile = await openZip(filePath);
   return new Promise((resolve, reject) => {
@@ -34,9 +33,7 @@ export async function listZipEntries(filePath: string): Promise<ZipEntryInfo[]> 
 }
 
 /**
- * Reads a single named entry into memory, capped at maxBytes (returns null if the
- * entry doesn't exist, is a directory, or exceeds the cap). Used for small metadata
- * files (thumbnails, slicer metadata) inside .3mf/.zip archives, never whole models.
+ * Null if the entry is missing, a directory, or over maxBytes. For small metadata files only.
  */
 export async function readZipEntry(filePath: string, entryName: string, maxBytes: number): Promise<Buffer | null> {
   const zipfile = await openZip(filePath);
@@ -85,10 +82,7 @@ export async function readZipEntry(filePath: string, entryName: string, maxBytes
 }
 
 /**
- * Streams every requested entry to an `onEntry` callback in one pass over the archive
- * (used to extract many selected entries, or every entry, without reopening the zip
- * per file). `onEntry` receives the entry metadata and a readable stream; it must
- * consume or destroy the stream before returning so the walk can continue.
+ * Streams entries in one pass. `onEntry` must consume or destroy the stream before returning.
  */
 export async function walkZipEntries(
   filePath: string,

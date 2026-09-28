@@ -67,7 +67,7 @@ async function getOrCreateCategory(
 }
 
 /** Recreates the zip's directory structure as nested Categories, returning the leaf category id
- * for one entry's path. Mirrors MakersVault's resolve_zip_folder_id. */
+ * for one entry's path. */
 export async function resolveZipCategoryId(
   userId: string,
   baseCategoryId: string | null,

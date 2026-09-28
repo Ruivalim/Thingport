@@ -2,7 +2,7 @@
   "name": "thingport-web",
   "private": true,
   "version": "0.0.1",
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "type": "module",
   "engines": {
     "node": ">=22.12.0"

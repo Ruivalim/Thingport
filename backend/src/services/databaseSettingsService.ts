@@ -31,19 +31,11 @@ function parseDatabaseUrl(raw: string): ParsedUrl | null {
   }
 }
 
-// Host/port are frozen at process start -- never admin-editable. "Test & Save" below can only
-// repoint at a different database/user/password on the SAME Postgres server this process was
-// started against; reaching a different host/port means changing DATABASE_URL and restarting,
-// same as any other env-derived setting in this app.
+// Host/port are fixed at startup; reaching another server means changing DATABASE_URL.
 const original = parseDatabaseUrl(process.env.DATABASE_URL || "");
 
-// In-memory only, not persisted -- a successful "Test & Save" swap affects this running process
-// for as long as it keeps running, but does NOT survive a restart/redeploy. A restart always
-// boots from DATABASE_URL as configured in the environment, exactly as it did before this
-// feature existed. Persisting the override so it also survived a restart would need to write it
-// into whatever database ends up live, but a fresh boot reads DATABASE_URL before it can know to
-// look anywhere else -- a chicken-and-egg the process can't resolve on its own. If a switch made
-// here should stick, update DATABASE_URL itself.
+// In-memory only: a restart boots from DATABASE_URL again, since there's nowhere to read a
+// persisted override from before connecting. To make a switch stick, update DATABASE_URL.
 let active: PostgresCredentials | null = original
   ? { database: original.database, user: original.user, password: original.password }
   : null;
@@ -73,11 +65,7 @@ function friendlyConnectionError(err: unknown): string {
   return `Could not connect: ${message}`;
 }
 
-/** Tests a candidate database/user/password against the live Postgres server (same host/port
- * this process was started with) before touching anything -- only on success does it hot-swap
- * every `prisma.*` call in the running process over to it. Mirrors youtube-mp3-vault's
- * "Test & Save" Postgres tab; see the module comment above for why the switch is in-memory only,
- * not persisted across a restart. */
+/** Hot-swaps the live connection only after the candidate credentials pass a test. */
 export async function testAndSwitchDatabase(creds: PostgresCredentials): Promise<DatabaseInfo> {
   const url = buildCandidateUrl(creds);
   if (!url) throw new Error("DATABASE_URL is not set for this instance -- nothing to switch relative to.");

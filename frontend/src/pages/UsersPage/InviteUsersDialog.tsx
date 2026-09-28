@@ -16,8 +16,7 @@ type Props = {
   onClose: () => void;
 };
 
-/** Emails an invitation to register while registrations are closed (see RegistrationsPanel).
- *  Stays open after a send, with the field cleared, so several people can be invited in a row. */
+/** Stays open after sending, so several people can be invited in a row. */
 export default function InviteUsersDialog({ open, onClose }: Props) {
   const { t } = useTranslation("app");
   const [email, setEmail] = React.useState("");

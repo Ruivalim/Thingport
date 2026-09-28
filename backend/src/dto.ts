@@ -11,10 +11,7 @@ export type UserOut = {
   email: string;
   display_name: string;
   role: "ADMIN" | "MEMBER";
-  // Set while an email change is awaiting confirmation (see routes/auth.ts's PATCH /profile).
   pending_email: string | null;
-  // Populated by linking an imported Author to this account (see authorService.ts's
-  // linkAuthorToUser) -- shown on this user's own "My models" author page.
   bio: string | null;
   background_url: string | null;
 };
@@ -42,10 +39,7 @@ export type AuthorOut = {
   links: string[];
   avatar_url: string | null;
   background_url: string | null;
-  // Whether ANY Thingport account has claimed this author as themselves (see authorService.ts's
-  // isAuthorLinked) -- doesn't say *who*, just whether the Author page's "It's me!" button should
-  // stay hidden. Defaults to false wherever a caller doesn't look it up (e.g. every Author
-  // embedded in a Print DTO) -- only the standalone GET /author/:id route computes it for real.
+  // Whether any account has claimed this author. Only GET /author/:id computes it; false elsewhere.
   is_linked: boolean;
 };
 
@@ -84,9 +78,7 @@ export type PlateOut = {
   size: number;
   url: string;
   thumb_url: string | null;
-  /** Cached pre-rendered GLB for the interactive 3D preview (see services/modelPreviewCache.ts)
-   *  -- null until background generation finishes (or for non-3MF plates, which never get one).
-   *  The viewer falls back to its live client-side parser whenever this is null. */
+  /** Null until generated, and always for non-3MF plates; the viewer then parses the file itself. */
   preview_glb_url: string | null;
 };
 
@@ -113,9 +105,7 @@ export type PrintOut = {
   author: AuthorOut | null;
   tags: string[];
   category_id: string | null;
-  // Only populated by the single-print detail fetch (printOutById) -- see toPrintOut's `category`
-  // param. Null both when there's no category and when the caller didn't load one (list endpoints
-  // skip the extra join since nothing there renders it).
+  // Only populated by the detail fetch; list endpoints skip the join.
   category_name: string | null;
   created_at: string;
   storage_path: string | null;
@@ -123,8 +113,7 @@ export type PrintOut = {
   preview_images: PreviewImageOut[];
   thumb_url: string | null;
   supporting_file_count: number;
-  /** Bytes on disk across every model file: all plates plus supporting and prepared files.
-   *  Gallery preview images aren't model files and aren't counted. */
+  /** All plates plus supporting and prepared files; gallery images aren't counted. */
   total_size: number;
   prepared_print: PreparedPrintOut | null;
   slicer_url: string | null;
@@ -132,9 +121,7 @@ export type PrintOut = {
   view_count: number;
   print_count: number;
   is_favorite: boolean;
-  // Null for uploads, zip/folder-scan imports, and anything not resolvable to a known provider
-  // -- see importService.ts's identifySourceModel/buildImportSourceUrl. source_url is the
-  // reconstructed original model page, for an "Open in {Provider}" link.
+  // source_url is the reconstructed original model page.
   source_provider: string | null;
   source_url: string | null;
 };
@@ -147,9 +134,7 @@ export type CategoryOut = {
   position: number;
   meta_title: string | null;
   meta_description: string | null;
-  // Semicolon-separated, e.g. "800;71;1001" -- same format the category manager dialog reads
-  // and writes (see routes/categories.ts's parseCatIdsInput), so the frontend can bind the field
-  // straight to a text input with no extra parsing. Empty string when none are set.
+  // Semicolon-separated, e.g. "800;71;1001"; empty when none.
   makerworld_cat_ids: string;
   thingiverse_cat_ids: string;
   printables_cat_ids: string;
@@ -163,10 +148,7 @@ function plateThumbUrl(plateId: string): string | null {
 
 function previewGlbUrl(plate: Plate): string | null {
   if (!modelPreviewGlbExists(plate.id)) {
-    // Still hand out the URL for a 3MF with no (current-version) cache yet: requesting it is
-    // what kicks off generation (see routes/plates.ts's self-heal), and the viewer falls back to
-    // the live parser on the 404. Returning null here would mean nothing ever requests it, so a
-    // plate that predates the cache (or a cache-format bump) would never get one.
+    // Hand out the URL even with no cache yet: requesting it is what triggers generation.
     return plate.filename.toLowerCase().endsWith(".3mf") ? `/plate/${plate.id}/preview.glb` : null;
   }
   const mtime = fs.statSync(modelPreviewGlbPath(plate.id)).mtimeMs;
@@ -217,11 +199,7 @@ function storageParentDir(plates: Plate[]): string | null {
 }
 
 /**
- * Builds the full Print DTO. `plates` must already be sorted by position ascending.
- * `files` is every PrintFile (supporting + prepared) belonging to this print.
- * `preparedFile` is the print's explicit prepared PrintFile row, if any (preparedFileId).
- * `previewImages` must already be sorted by position ascending; position 0 is the default/main
- * gallery image shown on the model detail page.
+ * `plates` and `previewImages` must be sorted by position ascending.
  */
 export function toPrintOut(
   print: Print,
@@ -315,19 +293,13 @@ export type CollectionOut = {
   item_count: number;
   cover_items: PrintOut[];
   created_at: string;
-  /** Set only for the two built-in "Favourites"/"Browsing History" pseudo-collections (see
-   * collectionService.ts's SYSTEM_COLLECTIONS) -- the frontend uses this to pick a translated
-   * display name instead of `name`, and to hide the edit/delete actions those can't support. */
+  /** Set only for the built-in pseudo-collections, which get a translated name and no edit/delete. */
   system_key: SystemCollectionKey | null;
-  /** Whether this user has bookmarked this collection (see services/bookmarkService.ts) -- backs
-   * the Collections grid card's "..." menu and the collection detail page's title-row toggle.
-   * Always false for a system pseudo-collection: there's no real Collection row for a Bookmark to
-   * point at, so those can't be bookmarked (the frontend hides the toggle for them entirely). */
+  /** Always false for a system pseudo-collection, which can't be bookmarked. */
   bookmarked: boolean;
 };
 
-/** `coverPrints` should already be the up-to-4 cover PrintOuts (see collections.ts), ordered by
- * the collection's item position ascending. */
+/** `coverPrints`: up to 4, in item position order. */
 export function toCollectionOut(
   collection: Collection,
   itemCount: number,
@@ -347,10 +319,7 @@ export function toCollectionOut(
   };
 }
 
-/** Builds the CollectionOut for a built-in pseudo-collection -- there's no backing Collection
- * row, so this is assembled directly from the id/key plus the caller's computed item_count and
- * cover prints rather than going through toCollectionOut. `name` is an untranslated fallback
- * only; the frontend always prefers a translated label keyed off `system_key`. */
+/** `name` is an untranslated fallback; the frontend translates via `system_key`. */
 export function toSystemCollectionOut(
   id: string,
   key: SystemCollectionKey,
@@ -404,9 +373,6 @@ export type ImportJobOut = {
   failed_count: number;
   error_message: string | null;
   result_collection_id: string | null;
-  // Set whenever this job finished having created exactly one Print, whatever its type -- see
-  // importJobRunner.ts. Lets the frontend redirect straight into that print's details page instead
-  // of the models grid.
   result_print_id: string | null;
 };
 

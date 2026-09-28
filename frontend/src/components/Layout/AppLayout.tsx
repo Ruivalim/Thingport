@@ -20,9 +20,7 @@ import type { AuthUser } from "../../api/auth";
 
 type AppLayoutProps = {
   muiTheme: Theme;
-  /** The user's raw persisted choice (light/dark/system), for UserMenu's theme submenu to show
-   *  which one is checked -- NOT the resolved light/dark palette, which lives in muiTheme
-   *  instead and has already collapsed "system" into a concrete value by this point. */
+  /** The raw persisted choice, which may be "system". */
   themeSelection: ThemeSelection;
   apiUp: boolean | null;
   categoryId: string | null;
@@ -39,13 +37,8 @@ type AppLayoutProps = {
   children: React.ReactNode;
 };
 
-/** Derives the header title + default back-button destination from the current route -- there's
- *  no per-route config table beyond this since the set of routes is small and each is distinct
- *  chrome-wise. Most routes just retrace browser history (wherever the user drilled in from);
- *  the two top-level list routes (Models, Collections) instead go to a fixed destination since
- *  they're reachable directly from the sidebar with no meaningful "came from" page. A page can
- *  still override this default via usePageHeader's `onBack` -- see ModelsPage, whose back
- *  button clears an active category filter instead of leaving the page while one's selected. */
+/** Title and default back destination per route. Most routes go back in history; Models and
+ *  Collections go to a fixed page. Pages can override via usePageHeader's `onBack`. */
 function useRouteChrome() {
   const { t } = useTranslation(["app", "models", "common"]);
   const location = useLocation();
@@ -62,16 +55,13 @@ function useRouteChrome() {
     title = t("models:collections.pageTitle");
     onBack = () => navigate("/");
   } else if (path.startsWith("/models/collections/")) {
-    // Overridden by CollectionDetailPage's usePageHeader once the collection loads.
     title = t("models:collections.pageTitle");
     onBack = goBack;
   } else if (path === "/models/tags") {
     title = t("models:tags.pageTitle");
     onBack = () => navigate("/");
   } else if (path.startsWith("/models/tags/")) {
-    // The tag name is already known from the URL (unlike a collection, a tag isn't a fetched
-    // entity), so this is set directly rather than waiting on TagDetailPage's usePageHeader --
-    // avoids a "Models" title flash before that effect runs.
+    // Set from the URL directly to avoid a "Models" title flash.
     const tagName = path.slice("/models/tags/".length);
     if (tagName) {
       title = t("models:tags.detail.title", { name: decodeURIComponent(tagName) });
@@ -99,12 +89,9 @@ function useRouteChrome() {
     title = t("profile.title");
     onBack = goBack;
   } else if (path === "/downloads") {
-    // Overridden by DownloadPage's usePageHeader once translations resolve.
     title = t("sidebar.downloads");
     onBack = () => navigate("/");
   } else if (path === "/admin") {
-    // The Administration hub itself -- a top-level page reachable directly from the sidebar,
-    // same as Models/Collections/Tags/Downloads, so its back button goes to the Dashboard.
     title = t("sidebar.administration");
     onBack = () => navigate("/");
   } else if (path.startsWith("/admin-settings")) {
@@ -135,10 +122,7 @@ function useRouteChrome() {
 
 type ShellProps = Omit<AppLayoutProps, "muiTheme">;
 
-/** Sits inside both NotificationsProvider and ImportJobProvider so it can wire a finished
- *  import job to a grid refresh + notification refresh, then renders the actual shell chrome.
- *  Split out from AppLayout because that wiring needs useNotifications(), which only works
- *  below the provider AppLayout itself renders. */
+/** Split out because it needs useNotifications(), which only works below AppLayout's provider. */
 function AppLayoutShell({
   themeSelection,
   apiUp,
@@ -207,8 +191,6 @@ function AppLayoutShell({
   );
 }
 
-/** The persistent app shell: theming, the nav sidebar, and the header row (back button + title,
- *  then the global Add/Notifications/User cluster). `children` is the routed page content. */
 export default function AppLayout({ muiTheme, onUnauthorized, ...shellProps }: AppLayoutProps) {
   return (
     <ThemeProvider theme={muiTheme}>
