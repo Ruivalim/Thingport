@@ -122,4 +122,4 @@ jobs:
       - name: Upload and submit for certification
         run: |
           npx tsx scripts/publish-edge.ts dist/zips/thingport-grab-edge.zip --notes \
-            "Automated update to version ${{ needs.release.outputs.version }}. Changes: https://github.com/TautvydasDerzinskas/Thingport/releases/tag/${{ needs.release.outputs.tag }} -- testing instructions are unchanged from the previous submission; documentation: https://tautvydasderzinskas.github.io/Thingport/docs/grab/"
+            "Automated update to version ${{ needs.release.outputs.version }}. Changes: https://github.com/TautvydasDerzinskas/Thingport/releases/tag/${{ needs.release.outputs.tag }} -- testing instructions are unchanged from the previous submission; documentation: https://thingport.net/docs/grab/"

@@ -4,10 +4,10 @@ import sitemap from "@astrojs/sitemap";
 import { unified } from "@astrojs/markdown-remark";
 import { rehypeRepoLinks } from "./src/lib/rehypeRepoLinks.mjs";
 
-// Defaults to the GitHub Pages project URL. For a custom domain, build with
-// SITE_URL=https://thingport.example.com BASE_PATH=/ (and add public/CNAME).
-const site = process.env.SITE_URL || "https://tautvydasderzinskas.github.io";
-const base = process.env.BASE_PATH || "/Thingport";
+// Defaults to the custom domain set in the repo's Pages settings. SITE_URL and BASE_PATH override them, e.g.
+// SITE_URL=https://tautvydasderzinskas.github.io BASE_PATH=/Thingport for a project-path build.
+const site = process.env.SITE_URL || "https://thingport.net";
+const base = process.env.BASE_PATH || "/";
 
 export default defineConfig({
   site,

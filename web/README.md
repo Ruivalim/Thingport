@@ -7,7 +7,7 @@ plain static HTML. The only JavaScript is the theme toggle.
 ```bash
 cd web
 npm install
-npm run dev      # http://localhost:4321/Thingport/
+npm run dev      # http://localhost:4321/
 npm run build    # static output in dist/
 npm run check    # type-check
 ```
@@ -33,6 +33,6 @@ Requires Node 22.12+ (see `.nvmrc`).
 
 ## URL and custom domain
 
-The site is served from `https://tautvydasderzinskas.github.io/Thingport/`. In CI the URL and base path come from
-GitHub Pages itself, so a custom domain set in the repo's Pages settings needs no code change. Locally, override with
-`SITE_URL=https://example.com BASE_PATH=/ npm run build`.
+The site is served from `https://thingport.net/` (a custom domain set in the repo's Pages settings). In CI the URL
+and base path come from GitHub Pages itself; local and PR builds default to that domain with base `/`. Override with
+`SITE_URL=https://example.com BASE_PATH=/sub-path npm run build`.

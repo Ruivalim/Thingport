@@ -62,7 +62,7 @@ jobs:
           node-version-file: web/.nvmrc
           cache: npm
           cache-dependency-path: web/package-lock.json
-      # Supplies the live Pages URL and base path (/Thingport, or "" with a custom domain).
+      # Supplies the live Pages URL and base path ("" with the thingport.net custom domain).
       # PR builds skip it -- they may come from forks -- and fall back to astro.config.mjs's defaults.
       - id: pages
         if: github.event_name != 'pull_request'

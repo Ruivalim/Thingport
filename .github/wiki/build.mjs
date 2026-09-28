@@ -117,7 +117,7 @@ const sidebar = [
         .map((p) => `- [${p.nav ?? p.name}](${p.name})`)
         .join("\n"),
   ),
-  `\n**Links**\n\n- [Website](https://tautvydasderzinskas.github.io/Thingport/)\n- [Releases](${REPO_URL}/releases)\n- [Issues](${REPO_URL}/issues)`,
+  `\n**Links**\n\n- [Website](https://thingport.net/)\n- [Releases](${REPO_URL}/releases)\n- [Issues](${REPO_URL}/issues)`,
 ].join("\n");
 fs.writeFileSync(path.join(outDir, "_Sidebar.md"), sidebar + "\n");
 fs.writeFileSync(
