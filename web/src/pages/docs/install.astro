@@ -7,6 +7,7 @@ import compose from "../../../../docker-compose.deploy.yml?raw";
 import envExample from "../../../../.env.example?raw";
 
 const headings = [
+  { depth: 2, slug: "quick-install", text: "Quick install" },
   { depth: 2, slug: "requirements", text: "Requirements" },
   { depth: 2, slug: "1-create-the-files", text: "1. Create the files" },
   { depth: 2, slug: "2-start-thingport", text: "2. Start Thingport" },
@@ -29,6 +30,30 @@ const headings = [
       app-data paths and setup screens.
     </p>
   </blockquote>
+
+  <h2 id="quick-install">Quick install</h2>
+  <p>
+    On a Linux or macOS machine with Docker, one command sets everything up in a new <code>thingport</code> folder. It
+    downloads the two files below, fills <code>.env</code> with a random <code>AUTH_SECRET</code> and database password,
+    and starts Thingport:
+  </p>
+  <Code
+    code="curl -fsSL https://thingport.net/install.sh | sh"
+    lang="bash"
+    themes={{ light: "github-light", dark: "github-dark" }}
+    defaultColor={false}
+  />
+  <p>
+    To choose the folder, or to use a port other than 80, pass them to the script. You can also
+    <a href={url("install.sh")}>read the script</a> before running it.
+  </p>
+  <Code
+    code={"curl -fsSL https://thingport.net/install.sh | WEB_PORT=8080 sh -s -- ~/thingport"}
+    lang="bash"
+    themes={{ light: "github-light", dark: "github-dark" }}
+    defaultColor={false}
+  />
+  <p>Then carry on from <a href="#3-sign-up">3. Sign up</a>. To set everything up by hand instead, follow the steps below.</p>
 
   <h2 id="requirements">Requirements</h2>
   <ul>

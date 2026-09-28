@@ -93,6 +93,18 @@ Printables imports work with no setup. MakerWorld and Thingiverse each need a cr
 > Step-by-step guides for Docker Compose, Unraid, TrueNAS SCALE and CasaOS are also on the
 > **[Thingport website](https://thingport.net/docs/)**.
 
+### Quick install
+
+On Linux or macOS with Docker installed, this creates a `thingport` folder with the compose file and an `.env` holding
+freshly generated secrets, then starts Thingport:
+
+```bash
+curl -fsSL https://thingport.net/install.sh | sh
+```
+
+Pass a folder or another port with `curl -fsSL https://thingport.net/install.sh | WEB_PORT=8080 sh -s -- ~/thingport`.
+The script is [install.sh](install.sh) in this repo.
+
 ### Docker Compose
 
 Runs entirely from the pre-built images on GHCR -- no local build, no git clone needed. Works on any Docker host, including a NAS (Synology, QNAP, Unraid, etc).
