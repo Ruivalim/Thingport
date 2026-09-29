@@ -28,7 +28,7 @@ export function buildManifest(target: Target, pkg: { version: string; descriptio
       default_icon: iconSet("dark"),
     },
     background: target === "firefox" ? { scripts: ["background.js"] } : { service_worker: "background.js" },
-    permissions: ["storage", "tabs", "cookies", "downloads"],
+    permissions: ["storage", "cookies", "downloads"],
     // The user's instance origin, requested at setup.
     optional_host_permissions: ["*://*/*"],
     content_scripts: [{ matches: PROVIDER_MATCHES, js: ["content.js"], run_at: "document_idle" }],

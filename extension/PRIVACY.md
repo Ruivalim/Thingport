@@ -1,6 +1,6 @@
 # Thingport Grab privacy policy
 
-_Effective 27 September 2026._
+_Effective 29 September 2026._
 
 Thingport Grab is a browser extension that imports 3D-printing models from MakerWorld, Printables
 and Thingiverse into **your own self-hosted Thingport instance**. It has no servers of its own: the
@@ -62,14 +62,13 @@ model, and the model links listed on collection pages. It doesn't read any other
 
 ## Permissions
 
-| Permission                                       | Why                                                                                                            |
-| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
-| Storage                                          | Keeps the settings and data listed under "What the extension stores".                                          |
-| Tabs                                             | Opens imported models and the setup form, and moves between model pages during a MakerWorld collection import. |
-| Cookies                                          | Reads MakerWorld's session cookie, only on makerworld.com, for MakerWorld imports.                             |
-| Downloads                                        | Reads the link from the MakerWorld download it starts, then cancels and removes that download.                 |
-| Access to MakerWorld, Printables and Thingiverse | Shows the import button on their pages.                                                                        |
-| Access to your Thingport instance                | Requested for that one address when you set the extension up, so it can talk to your instance.                 |
+| Permission                                       | Why                                                                                            |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| Storage                                          | Keeps the settings and data listed under "What the extension stores".                          |
+| Cookies                                          | Reads MakerWorld's session cookie, only on makerworld.com, for MakerWorld imports.             |
+| Downloads                                        | Reads the link from the MakerWorld download it starts, then cancels and removes that download. |
+| Access to MakerWorld, Printables and Thingiverse | Shows the import button on their pages.                                                        |
+| Access to your Thingport instance                | Requested for that one address when you set the extension up, so it can talk to your instance. |
 
 ## Your control over your data
 
