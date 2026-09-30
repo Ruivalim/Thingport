@@ -117,7 +117,8 @@ Secrets and variables > Actions > Variables), so they don't have to be hard-code
 | Product ID         | `8c5f106c-5a45-438f-8e0b-2d0c0584d253` -- repo variable `EDGE_PRODUCT_ID`, used by the publish API |
 | Store ID           | `0RDCKH3TMN7G`                                                                                     |
 
-**Firefox Add-ons** (live; new versions are uploaded by hand for now):
+**Firefox Add-ons** (live; new versions are published by CI, see
+[Publishing to Firefox Add-ons automatically](#publishing-to-firefox-add-ons-automatically)):
 
 |           | Value                                                       |
 | --------- | ----------------------------------------------------------- |
@@ -187,7 +188,8 @@ Polish time**, or whenever you start it (**Actions > Extension store release > R
 `gh workflow run extension-store-release.yml`), it releases whatever changed in the extension since
 the last release, with [semantic-release](https://semantic-release.gitbook.io/) (see below): bumps
 the version, writes `CHANGELOG.md`, commits both to `main`, tags it, creates a GitHub release with
-the store zips, and publishes to Edge Add-ons. If nothing releasable changed, the run just ends.
+the store zips, and publishes to Edge Add-ons and Firefox Add-ons. If nothing releasable changed,
+the run just ends.
 
 ### Versioning: how the next version is picked
 
@@ -241,6 +243,20 @@ npm run zip:edge
 EDGE_PRODUCT_ID=... EDGE_CLIENT_ID=... EDGE_API_KEY=... \
   npx tsx scripts/publish-edge.ts dist/zips/thingport-grab-edge.zip
 ```
+
+### Publishing to Firefox Add-ons automatically
+
+The store release's `publish-firefox` job submits each new version to the public listing on
+addons.mozilla.org with `web-ext sign --channel listed`: it unpacks the exact
+`thingport-grab-firefox.zip` the release built, and attaches `thingport-grab-sources.zip` and a
+note for reviewers on how to rebuild from it. It doesn't wait for approval -- Mozilla can hold a
+version for manual review before the update reaches users.
+
+It uses the same `AMO_JWT_ISSUER` / `AMO_JWT_SECRET` secrets as the per-merge signing (see
+[AMO signing credentials](#one-time-setup-amo-signing-credentials)), and like `publish-edge` it's
+a job of its own, so a failed submission can be retried with **Re-run failed jobs**. The two
+channels never clash over version numbers: per-merge unlisted builds carry the run number as a
+fourth segment, listed releases are the plain `package.json` version.
 
 ### Signing a Firefox build by hand
 

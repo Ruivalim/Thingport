@@ -3,7 +3,8 @@ name: Extension store release
 # Versioned releases of Thingport Grab via semantic-release (extension/.releaserc.json): every
 # Friday at 13:00 Polish time, or on demand. Only commits touching extension/ count; with a
 # releasable one it bumps the version, writes the changelog, tags, creates a GitHub release with
-# the store zips, and publishes to Edge Add-ons. Per-merge builds are in extension-release.yml.
+# the store zips, and publishes to Edge Add-ons and addons.mozilla.org. Per-merge builds are in
+# extension-release.yml.
 on:
   workflow_dispatch: {}
   schedule:
@@ -109,3 +110,47 @@ jobs:
         run: |
           npx tsx scripts/publish-edge.ts dist/zips/thingport-grab-edge.zip --notes \
             "Automated update to version ${{ needs.release.outputs.version }}. Changes: https://github.com/TautvydasDerzinskas/Thingport/releases/tag/${{ needs.release.outputs.tag }} -- testing instructions are unchanged from the previous submission; documentation: https://thingport.net/docs/grab/"
+
+  # Its own job so it can be re-run alone. Same AMO credentials as the per-merge unlisted signing
+  # in extension-release.yml; see extension/CONTRIBUTING.md.
+  publish-firefox:
+    needs: release
+    if: needs.release.outputs.version != ''
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: extension
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: extension/package-lock.json
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: thingport-grab-store-zips
+          path: extension/dist/zips
+      - name: Unpack the build the release made
+        run: unzip -q dist/zips/thingport-grab-firefox.zip -d dist/firefox
+      - name: Notes for Mozilla's reviewers
+        env:
+          VERSION: ${{ needs.release.outputs.version }}
+          TAG: ${{ needs.release.outputs.tag }}
+        run: |
+          jq -n --arg notes "Automated update to version $VERSION. Changes: https://github.com/TautvydasDerzinskas/Thingport/releases/tag/$TAG -- the bundles aren't minified; to rebuild them from the attached source (Node 20+): npm ci && npm run build:firefox, output in dist/firefox. Documentation: https://thingport.net/docs/grab/" \
+            '{version: {approval_notes: $notes}}' > dist/amo-metadata.json
+      # Mozilla may hold a listed version for manual review, so don't wait for the signed file.
+      - name: Submit to addons.mozilla.org
+        env:
+          WEB_EXT_API_KEY: ${{ secrets.AMO_JWT_ISSUER }}
+          WEB_EXT_API_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        run: |
+          npx web-ext sign \
+            --source-dir dist/firefox \
+            --artifacts-dir dist/signed \
+            --upload-source-code dist/zips/thingport-grab-sources.zip \
+            --amo-metadata dist/amo-metadata.json \
+            --channel listed \
+            --approval-timeout 0
