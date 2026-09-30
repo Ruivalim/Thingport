@@ -42,11 +42,14 @@ async function fetchMakerworldApiJson(url: string, nonce: string | null): Promis
 }
 
 /** Matched by text (class names are build hashes), visible elements only. */
-function findDownloadButton(): HTMLElement | null {
+export function isDownloadButton(el: Element): el is HTMLElement {
+  if (!/^download$/i.test((el.textContent || "").trim())) return false;
+  return (el as HTMLElement).offsetParent !== null; // hidden (display:none or detached)
+}
+
+export function findDownloadButton(): HTMLElement | null {
   for (const el of document.querySelectorAll<HTMLElement>("button, a")) {
-    if (!/^download$/i.test((el.textContent || "").trim())) continue;
-    if (el.offsetParent === null) continue; // hidden (display:none or detached)
-    return el;
+    if (isDownloadButton(el)) return el;
   }
   return null;
 }

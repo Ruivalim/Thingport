@@ -6,12 +6,16 @@ Visiting a model, collection, or Thingiverse Likes page shows a floating Thingpo
 opens a small panel to pick what to import (and, for a single model, an optional destination
 collection), then imports it the same way Thingport's own "+ Add > Import" does.
 
+It's useful without Thingport too: on MakerWorld model pages it adds a **Download normalized**
+button that turns the Bambu Studio project into a 3MF that PrusaSlicer, Cura and other slicers open
+with its colors and print settings intact. See [Download normalized](#download-normalized-no-thingport-needed).
+
 **Get it from [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/thingport-grab/) or
 [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/kahfidpmojfocohinlmglnfoaimocbol).**
 The Chrome build is on the [releases page](#install) until its store listing is live.
 
 It talks directly to your Thingport instance's API from the extension's background script -- no
-separate server, no data sent anywhere else. See the [privacy policy](PRIVACY.md) for exactly what
+separate server, no data sent anywhere else -- and converts files in your browser. See the [privacy policy](PRIVACY.md) for exactly what
 it stores and sends.
 
 ## Screenshots
@@ -98,6 +102,26 @@ As a developer-mode "unpacked" extension, until the Chrome Web Store listing is 
 3. Click **Load unpacked** and select the unzipped folder.
 4. Click the new Thingport icon in your toolbar, enter your instance's URL and your Thingport
    login, and save.
+
+## Download normalized (no Thingport needed)
+
+MakerWorld's files are Bambu Studio projects, which PrusaSlicer, Cura, Anycubic Slicer Next,
+Creality Print, Elegoo Slicer and Snapmaker Orca often open without their colors or print settings.
+On a MakerWorld model page, the extension adds a **Download normalized** button next to MakerWorld's
+own Download button. Clicking it downloads the selected print profile's file, converts it, and saves
+a `<name>-normalized.3mf` that keeps painted colors, filament colors, plates and the designer's
+settings (walls, layer height, infill, supports). Multi-part objects may be merged into one,
+per-object overrides and layer color changes are dropped, and you pick your own printer profile.
+Hover the bulb on the button for the same summary.
+
+- **Who sees it:** everyone who hasn't connected the extension to a Thingport instance, and people
+  who have, when their Thingport profile's slicer is one of those above (with Bambu Studio or
+  OrcaSlicer picked, the original file is the right one, so the button stays hidden).
+- **Where it runs:** entirely in your browser, the same conversion Thingport's "Open normalized"
+  does on the server. The file goes nowhere but your downloads folder.
+- **Limits:** you need to be signed in to MakerWorld, as for its own Download button, and files over
+  50 MB are too big to convert in the browser -- the button says so. It's found by its label, so it
+  only appears while MakerWorld is in English.
 
 ## Setup
 

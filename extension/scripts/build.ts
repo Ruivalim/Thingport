@@ -45,6 +45,36 @@ const scssPlugin: esbuild.Plugin = {
   },
 };
 
+/** `?worker` imports compile to that file's bundled source as a string, for a blob: URL worker (a
+ *  content script can't start one from an extension URL). */
+const workerPlugin: esbuild.Plugin = {
+  name: "worker",
+  setup(build) {
+    build.onResolve({ filter: /\?worker$/ }, (args) => {
+      const file = path.resolve(args.resolveDir, `${args.path.replace(/\?worker$/, "")}.ts`);
+      return { path: path.relative(ROOT, file).split(path.sep).join("/"), namespace: "worker" };
+    });
+    build.onLoad({ filter: /.*/, namespace: "worker" }, async (args) => {
+      const result = await esbuild.build({
+        entryPoints: [path.join(ROOT, args.path)],
+        absWorkingDir: ROOT,
+        bundle: true,
+        write: false,
+        metafile: true,
+        format: "iife",
+        target: build.initialOptions.target,
+        minify: false,
+        legalComments: "none",
+      });
+      return {
+        contents: result.outputFiles[0].text,
+        loader: "text",
+        watchFiles: Object.keys(result.metafile.inputs).map((input) => path.join(ROOT, input)),
+      };
+    });
+  },
+};
+
 function staticFilesPlugin(
   target: Target,
   outdir: string,
@@ -88,7 +118,7 @@ async function buildTarget(target: Target, watch: boolean): Promise<void> {
     sourcemap: watch ? "inline" : false,
     legalComments: "none",
     loader: { ".svg": "text" },
-    plugins: [scssPlugin, staticFilesPlugin(target, outdir, pkg)],
+    plugins: [scssPlugin, workerPlugin, staticFilesPlugin(target, outdir, pkg)],
     logLevel: "info",
   };
 

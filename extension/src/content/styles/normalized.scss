@@ -1,0 +1,87 @@
+// The "Download normalized" button next to MakerWorld's own Download button (see
+// makerworld/normalizedDownload.ts). Its own shadow root, so it sits in the page's layout without
+// sharing styles either way. Warning-colored like the web app's "Open normalized" button.
+@use "../../styles/tokens" as t;
+@use "../../styles/mixins" as m;
+
+:host {
+  @include t.theme-vars(t.$palette-light);
+  all: initial;
+  display: inline-flex;
+  vertical-align: middle;
+  margin-left: t.$space-2;
+}
+
+.tg-nd {
+  @include m.isolated(inline-flex);
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 14px 6px 10px;
+  border: 1.5px solid t.c("warning");
+  border-radius: t.$radius-md;
+  background: t.c("surface");
+  color: t.c("warning");
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  @include m.focus-ring;
+
+  &:hover:not(:disabled) {
+    background: t.c("warning-soft");
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.75;
+  }
+
+  &__info {
+    display: inline-flex;
+    width: 18px;
+    height: 18px;
+
+    svg {
+      width: 18px;
+      height: 18px;
+      fill: currentColor;
+    }
+  }
+
+  &__spinner {
+    width: 14px;
+    height: 14px;
+    margin: 2px;
+    box-sizing: border-box;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: tg-nd-spin 0.8s linear infinite;
+  }
+}
+
+.tg-nd-bubble {
+  @include m.isolated;
+  @include m.card(t.$radius-md);
+  position: fixed;
+  z-index: t.$z-top;
+  max-width: 320px;
+  padding: 10px 12px;
+  font-size: t.$font-size-sm;
+  line-height: 1.45;
+
+  &--error {
+    color: t.c("danger");
+  }
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+@keyframes tg-nd-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

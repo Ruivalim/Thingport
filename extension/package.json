@@ -2,7 +2,7 @@
   "name": "thingport-grab",
   "private": true,
   "version": "1.1.2",
-  "description": "One-click import of MakerWorld, Thingiverse, and Printables models into your self-hosted Thingport instance.",
+  "description": "Import MakerWorld, Thingiverse and Printables models into Thingport, and convert MakerWorld 3MFs for PrusaSlicer, Cura and more.",
   "license": "AGPL-3.0-only",
   "type": "module",
   "scripts": {
@@ -32,6 +32,7 @@
     "@types/node": "^20.19.0",
     "esbuild": "^0.28.2",
     "fflate": "^0.8.3",
+    "jszip": "^3.10.2",
     "oxlint": "^1.85.0",
     "playwright": "^1.63.0",
     "sass": "^1.105.0",

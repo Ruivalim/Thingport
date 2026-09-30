@@ -7,6 +7,7 @@ import { CONFIG_CHANGE_KEYS } from "../shared/storage";
 import { classifyUrl } from "../shared/urls";
 import { setContext, type LibraryState } from "./context";
 import { resolveMakerworldDownloadUrl } from "./makerworld/downloadResolver";
+import { offerNormalizedDownload, unmountNormalizedDownload } from "./makerworld/normalizedDownload";
 import { mountJobOverlay } from "./overlays";
 import { loadPanel } from "./panels";
 import { errorHtml } from "./panels/results";
@@ -29,6 +30,7 @@ function reportTabIconState(active: boolean): void {
 
 function unmount(): void {
   closeSetupModal();
+  unmountNormalizedDownload();
   unmountHost();
   setContext(null);
 }
@@ -58,6 +60,10 @@ async function init(): Promise<void> {
   if (!classification) {
     reportTabIconState(false);
     return;
+  }
+
+  if (classification.provider === "makerworld" && classification.kind === "single") {
+    void offerNormalizedDownload(url, stateRes.data.configured, isStale);
   }
 
   // Not set up: still show a grayed-out icon on importable pages so the extension is discoverable.

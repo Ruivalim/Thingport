@@ -33,8 +33,10 @@ src/
   background/   background script -- config/auth, every request to the Thingport instance,
                 imports, the guided MakerWorld collection job, recent imports, toolbar icon
   content/      content script -- the floating icon, its panel flows (panels/), the setup dialog,
-                overlays, MakerWorld page-data and download-URL resolution (makerworld/)
+                overlays, MakerWorld page-data and download-URL resolution, and the injected
+                Download normalized button (makerworld/)
     styles/     its SCSS, compiled into the bundle and injected into its shadow root
+  normalizer/   the Bambu 3MF normalizer and the worker that runs it
   popup/        toolbar popup (popup.html, its script and styles/)
   styles/       SCSS design tokens and mixins shared by the popup and the content UI
   assets/       the Thingport icon SVG (inlined into the bundles)
@@ -45,6 +47,12 @@ scripts/        build.ts, manifest.ts (per-browser manifest), zip.ts, screenshot
 The content script and the popup never call the Thingport instance themselves: they send a
 message to the background script, which owns the credentials and the instance's host permission.
 Every message and its reply is typed in `src/shared/messages.ts`.
+
+`src/normalizer/threeMfNormalizer.ts` is a copy of the backend's
+`backend/src/services/threeMfNormalizer.ts` (the Mozilla source zip can only hold this folder), and
+`src/shared/slicers.ts` mirrors the web app's list of slicers that need it. Change them together.
+The normalizer runs in a worker, bundled into the content script as a string through the build's
+`?worker` imports; where a page's CSP blocks that worker, it runs on the page's main thread instead.
 
 Colors, spacing and type live in `src/styles/_tokens.scss`. Colors are CSS custom properties with a
 light and a dark palette: the popup follows the browser's color scheme, while the in-page UI always
