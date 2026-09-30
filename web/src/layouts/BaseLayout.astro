@@ -4,12 +4,9 @@ import "../styles/global.css";
 import CopyCode from "../components/CopyCode.astro";
 import Footer from "../components/Footer.astro";
 import Header from "../components/Header.astro";
-import { SITE_DESCRIPTION, SITE_NAME } from "../lib/site.mjs";
+import { LINKS, SITE_DESCRIPTION, SITE_NAME } from "../lib/site.mjs";
 import { url } from "../lib/url";
 import defaultOgSource from "../assets/og-default.png";
-import faviconSvg from "../../../frontend/public/favicon.svg?url";
-import favicon32 from "../../../frontend/public/favicon-32x32.png?url";
-import appleTouchIcon from "../../../frontend/public/apple-touch-icon.png?url";
 
 type Props = {
   /** The page's own title; " · Thingport" is appended unless it already is the brand title. */
@@ -28,16 +25,27 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
 const ogImage = await getImage({ src: defaultOgSource, width: 1200, height: 630, format: "png" });
 const ogImageUrl = new URL(ogImage.src, Astro.site);
 
+const home = new URL(url(), Astro.site).href;
+
 const graph = {
   "@context": "https://schema.org",
   "@graph": [
     {
       "@type": "WebSite",
-      "@id": new URL(url(), Astro.site).href + "#website",
-      url: new URL(url(), Astro.site).href,
+      "@id": home + "#website",
+      url: home,
       name: SITE_NAME,
       description: SITE_DESCRIPTION,
       inLanguage: "en",
+      publisher: { "@id": home + "#organization" },
+    },
+    {
+      "@type": "Organization",
+      "@id": home + "#organization",
+      name: SITE_NAME,
+      url: home,
+      logo: new URL(url("icon-512x512.png"), Astro.site).href,
+      sameAs: [LINKS.github],
     },
     ...jsonLd,
   ],
@@ -59,9 +67,11 @@ const graph = {
     <!-- Google Search Console ownership verification; keep it, or the property becomes unverified. -->
     <meta name="google-site-verification" content="y4GVVvIBxmNQEKnAO3zzxa-eARxy0kimDkY0uIiSyHc" />
 
-    <link rel="icon" type="image/svg+xml" href={faviconSvg} />
-    <link rel="icon" type="image/png" sizes="32x32" href={favicon32} />
-    <link rel="apple-touch-icon" sizes="180x180" href={appleTouchIcon} />
+    <link rel="icon" href={url("favicon.ico")} sizes="48x48" />
+    <link rel="icon" type="image/svg+xml" href={url("favicon.svg")} />
+    <link rel="icon" type="image/png" sizes="96x96" href={url("favicon-96x96.png")} />
+    <link rel="apple-touch-icon" sizes="180x180" href={url("apple-touch-icon.png")} />
+    <link rel="manifest" href={url("site.webmanifest")} />
     <link rel="sitemap" href={url("sitemap-index.xml")} />
     <link
       rel="alternate"
