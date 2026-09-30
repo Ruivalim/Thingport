@@ -1,11 +1,11 @@
 import fs from "node:fs/promises";
 import fsSync from "node:fs";
-import { createRequire } from "node:module";
 import path from "node:path";
 import { Worker } from "node:worker_threads";
 import { MODEL_PREVIEWS, MODEL_PREVIEW_MAX_MEMORY_MB, MODEL_PREVIEW_TIMEOUT_SECONDS } from "../config";
 import type { ModelPreviewWorkerInput, ModelPreviewWorkerResult } from "./modelPreviewWorker";
 import { getSimplifyPreviews } from "./settingsService";
+import { workerBootstrap } from "../utils/workerBootstrap";
 
 // Renders run in a worker thread under memory and time limits, so a pathological .3mf can't take
 // down the server.
@@ -57,12 +57,7 @@ function recentlyFailed(plateId: string): boolean {
   }
 }
 
-// Under tsx (dev, vitest) the worker needs tsx's hook registered first: workers don't inherit the
-// parent's loader, and on Node 20 `--import tsx` doesn't apply to the entry file.
-const WORKER_FILE = path.join(__dirname, `modelPreviewWorker${path.extname(__filename)}`);
-const WORKER_BOOTSTRAP = WORKER_FILE.endsWith(".ts")
-  ? `require(${JSON.stringify(createRequire(__filename).resolve("tsx/cjs"))}); require(${JSON.stringify(WORKER_FILE)});`
-  : `require(${JSON.stringify(WORKER_FILE)});`;
+const WORKER_BOOTSTRAP = workerBootstrap(__dirname, "modelPreviewWorker");
 
 const MEMORY_POLL_MS = 250;
 

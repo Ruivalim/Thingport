@@ -447,6 +447,17 @@ export const printsApi = {
     return res.json();
   },
 
+  /** Starts preparing a sanitized copy for "Open sanitized in <slicer>" if needed; poll until "ready". */
+  sanitizePlate: async (printId: string, plateId: string): Promise<{ status: "ready" | "preparing" | "failed" }> => {
+    const res = await fetch(`${apiBase()}/print/${printId}/plate/${plateId}/sanitize`, {
+      method: "POST",
+      headers: authHeaders(),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to prepare sanitized file"));
+    return res.json();
+  },
+
   favorite: async (id: string): Promise<Print> => {
     const res = await fetch(`${apiBase()}/print/${id}/favorite`, { method: "POST", headers: authHeaders() });
     if (res.status === 401) throw new UnauthorizedError();

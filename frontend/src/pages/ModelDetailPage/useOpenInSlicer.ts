@@ -1,13 +1,20 @@
 import { useMemo } from "react";
 import { type Plate, type Print, printsApi } from "../../api/prints";
-import { SLICER_OPTIONS } from "../../constants/settingsOptions";
+import { SANITIZE_3MF_SLICER_IDS, SLICER_OPTIONS } from "../../constants/settingsOptions";
 import { useSlicerPreference } from "../../hooks/useSlicerPreference";
 import { slicerLaunchUrl } from "../../utils/slicerLaunch";
 
 export type SlicerTarget = { key: string; href: string; filename: string; index: number; plate: Plate | null };
 
+/** Sliced .gcode.3mf plates are never sanitized: dropping their G-code would leave nothing to print. */
+function isSanitizable3mf(filename: string): boolean {
+  const lower = filename.toLowerCase();
+  return lower.endsWith(".3mf") && !lower.endsWith(".gcode.3mf");
+}
+
 /** `slicerOption` is null without a usable preference. With several targets, the caller offers a
- *  pick rather than opening the first. */
+ *  pick rather than opening the first. `sanitizedTargets` is empty unless the slicer needs MakerWorld
+ *  3MFs converted. */
 export function useOpenInSlicer(print: Print) {
   const slicerPreference = useSlicerPreference();
   const slicerOption = SLICER_OPTIONS.find((opt) => opt.id === slicerPreference && opt.id !== "other") ?? null;
@@ -30,5 +37,24 @@ export function useOpenInSlicer(print: Print) {
     return out;
   }, [print.plates, print.slicer_url, print.slicer_filename, slicerOption]);
 
-  return { slicerOption, targets };
+  const sanitizedTargets = useMemo<SlicerTarget[]>(() => {
+    if (!slicerOption || !SANITIZE_3MF_SLICER_IDS.has(slicerOption.id) || print.source_provider !== "makerworld") {
+      return [];
+    }
+    // A non-removable prepared print means the plates themselves are the sliced files.
+    if (print.prepared_print && !print.prepared_print.removable) return [];
+    return print.plates
+      .toSorted((a, b) => a.position - b.position)
+      .map((plate, index) => ({ plate, index }))
+      .filter(({ plate }) => isSanitizable3mf(plate.filename))
+      .map(({ plate, index }) => ({
+        key: `sanitized-${plate.id}`,
+        href: slicerLaunchUrl(slicerOption.id, printsApi.fileUrl(`${plate.url}?sanitize=1`), plate.filename),
+        filename: plate.filename,
+        index,
+        plate,
+      }));
+  }, [print.plates, print.source_provider, print.prepared_print, slicerOption]);
+
+  return { slicerOption, targets, sanitizedTargets };
 }

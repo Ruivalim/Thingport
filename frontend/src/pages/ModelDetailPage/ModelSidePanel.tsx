@@ -23,6 +23,8 @@ import { SELF_AUTHOR_ID } from "../../constants/selfAuthor";
 import { useDownloadPrint } from "./useDownloadPrint";
 import { useOpenInSlicer } from "./useOpenInSlicer";
 import SlicerFileMenu from "./SlicerFileMenu";
+import SanitizedOpenButton from "./SanitizedOpenButton";
+import { useSanitizedOpen } from "./useSanitizedOpen";
 import RollingNumber from "../../components/RollingNumber";
 import { formatFileSize } from "../../utils/fileSize";
 import AuthorHoverCard from "../../components/AuthorHoverCard";
@@ -53,8 +55,10 @@ export default function ModelSidePanel({ print, onSelectCategory, onUnauthorized
     recordUse,
   } = useDownloadPrint(print, onUnauthorized, onUpdated);
 
-  const { slicerOption, targets: slicerTargets } = useOpenInSlicer(print);
+  const { slicerOption, targets: slicerTargets, sanitizedTargets } = useOpenInSlicer(print);
   const [slicerMenuAnchor, setSlicerMenuAnchor] = useState<HTMLElement | null>(null);
+  const [sanitizedMenuAnchor, setSanitizedMenuAnchor] = useState<HTMLElement | null>(null);
+  const sanitized = useSanitizedOpen(print.id, recordUse, onUnauthorized);
 
   const goToCategory = () => {
     if (!print.category_id) return;
@@ -209,6 +213,27 @@ export default function ModelSidePanel({ print, onSelectCategory, onUnauthorized
             slicerLabel={slicerOption.label}
             targets={slicerTargets}
             onOpen={recordUse}
+            matchAnchorWidth
+          />
+        )}
+        {slicerOption && sanitizedTargets.length > 0 && (
+          <SanitizedOpenButton
+            targets={sanitizedTargets}
+            slicerLabel={slicerOption.label}
+            stateOf={sanitized.stateOf}
+            open={sanitized.open}
+            onPick={setSanitizedMenuAnchor}
+          />
+        )}
+        {slicerOption && sanitizedTargets.length > 1 && (
+          <SlicerFileMenu
+            anchorEl={sanitizedMenuAnchor}
+            onClose={() => setSanitizedMenuAnchor(null)}
+            slicerLabel={slicerOption.label}
+            title={t("models:detail.openSanitizedInSlicer", { slicer: slicerOption.label })}
+            targets={sanitizedTargets}
+            onOpen={recordUse}
+            sanitized={sanitized}
             matchAnchorWidth
           />
         )}

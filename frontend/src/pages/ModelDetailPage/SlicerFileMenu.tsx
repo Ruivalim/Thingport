@@ -9,6 +9,7 @@ import PrintIcon from "@mui/icons-material/Print";
 import PlateThumbnail from "../../components/media/PlateThumbnail";
 import { fileRowText } from "./fileRowText";
 import type { SlicerTarget } from "./useOpenInSlicer";
+import type { SanitizeState } from "./useSanitizedOpen";
 
 type Props = {
   anchorEl: HTMLElement | null;
@@ -16,6 +17,13 @@ type Props = {
   slicerLabel: string;
   targets: SlicerTarget[];
   onOpen: () => void;
+  /** Heading; defaults to "Open in <slicer>". */
+  title?: string;
+  /** Sanitized picks go through the prepare step instead of being plain links. */
+  sanitized?: {
+    stateOf: (target: SlicerTarget) => SanitizeState;
+    open: (target: SlicerTarget) => Promise<boolean>;
+  };
   /** Opens below the anchor at its exact width, for a full-width button. */
   matchAnchorWidth?: boolean;
 };
@@ -26,6 +34,8 @@ export default function SlicerFileMenu({
   slicerLabel,
   targets,
   onOpen,
+  title,
+  sanitized,
   matchAnchorWidth = false,
 }: Props) {
   const { t } = useTranslation(["models"]);
@@ -42,23 +52,33 @@ export default function SlicerFileMenu({
       slotProps={{ paper: { sx: paperSx } }}
     >
       <ListSubheader sx={{ lineHeight: "32px" }}>
-        {t("models:detail.openInSlicer", { slicer: slicerLabel })}
+        {title ?? t("models:detail.openInSlicer", { slicer: slicerLabel })}
       </ListSubheader>
       {targets.map((target) => {
         const text = target.plate
           ? fileRowText(t, target.filename, target.index)
           : { primary: t("models:detail.preparedPrintFile"), secondary: target.filename };
+        const state = sanitized?.stateOf(target) ?? "idle";
+        if (state === "preparing") text.secondary = t("models:detail.sanitizePreparingShort");
+        if (state === "ready") text.secondary = t("models:detail.sanitizeReadyShort");
+        const action = sanitized
+          ? {
+              disabled: state === "preparing",
+              onClick: () => {
+                // Stays open while preparing, so the row can show progress and then "ready".
+                void sanitized.open(target).then((launched) => launched && onClose());
+              },
+            }
+          : {
+              component: "a" as const,
+              href: target.href,
+              onClick: () => {
+                onOpen();
+                onClose();
+              },
+            };
         return (
-          <MenuItem
-            key={target.key}
-            component="a"
-            href={target.href}
-            title={target.filename}
-            onClick={() => {
-              onOpen();
-              onClose();
-            }}
-          >
+          <MenuItem key={target.key} title={target.filename} {...action}>
             <ListItemIcon sx={{ minWidth: 44 }}>
               {target.plate ? (
                 <PlateThumbnail plate={target.plate} />

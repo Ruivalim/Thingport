@@ -27,6 +27,8 @@ import { importProviderInfo } from "../../constants/importProviders";
 import { useDownloadPrint } from "./useDownloadPrint";
 import { useOpenInSlicer } from "./useOpenInSlicer";
 import SlicerFileMenu from "./SlicerFileMenu";
+import SanitizeInfoIcon from "./SanitizeInfoIcon";
+import { useSanitizedOpen } from "./useSanitizedOpen";
 import DownloadPickerDialog from "./DownloadPickerDialog";
 import AddToCollectionModal from "./AddToCollectionModal";
 import EditModelModal from "./EditModelModal";
@@ -63,6 +65,7 @@ export default function ModelActionsMenu({
   const [searchParams, setSearchParams] = useSearchParams();
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const [slicerMenuAnchor, setSlicerMenuAnchor] = useState<HTMLElement | null>(null);
+  const [sanitizedMenuAnchor, setSanitizedMenuAnchor] = useState<HTMLElement | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [removingFromCollection, setRemovingFromCollection] = useState(false);
   const [addToCollectionOpen, setAddToCollectionOpen] = useState(false);
@@ -145,8 +148,15 @@ export default function ModelActionsMenu({
   };
 
   const providerInfo = importProviderInfo(print.source_provider);
-  const { slicerOption, targets: slicerTargets } = useOpenInSlicer(print);
+  const { slicerOption, targets: slicerTargets, sanitizedTargets } = useOpenInSlicer(print);
   const openInSlicerHref = slicerTargets.length === 1 ? slicerTargets[0].href : undefined;
+  const sanitized = useSanitizedOpen(print.id, recordUse, onUnauthorized);
+  const sanitizedMenuLabel = (slicer: string) => {
+    const state = sanitizedTargets.length === 1 ? sanitized.stateOf(sanitizedTargets[0]) : "idle";
+    if (state === "preparing") return t("models:detail.sanitizePreparing");
+    if (state === "ready") return t("models:detail.sanitizeReady", { slicer });
+    return t("models:detail.openSanitizedInSlicer", { slicer });
+  };
 
   return (
     <>
@@ -233,6 +243,30 @@ export default function ModelActionsMenu({
               : t("models:detail.openInSlicerGeneric")}
           </ListItemText>
         </MenuItem>
+        {slicerOption && sanitizedTargets.length > 0 && (
+          <MenuItem
+            disabled={sanitizedTargets.length === 1 && sanitized.stateOf(sanitizedTargets[0]) === "preparing"}
+            onClick={() => {
+              if (sanitizedTargets.length > 1) {
+                setSanitizedMenuAnchor(anchorEl);
+                closeMenu();
+                return;
+              }
+              // Stays open while preparing, so the item can show progress and then "ready".
+              void sanitized.open(sanitizedTargets[0]).then((launched) => launched && closeMenu());
+            }}
+            sx={{ color: "warning.main" }}
+          >
+            <ListItemIcon sx={{ color: "inherit" }}>
+              {sanitizedTargets.length === 1 && sanitized.stateOf(sanitizedTargets[0]) === "preparing" ? (
+                <CircularProgress size={18} color="inherit" />
+              ) : (
+                <SanitizeInfoIcon slicerLabel={slicerOption.label} />
+              )}
+            </ListItemIcon>
+            <ListItemText>{sanitizedMenuLabel(slicerOption.label)}</ListItemText>
+          </MenuItem>
+        )}
         {providerInfo && print.source_url && (
           <MenuItem component="a" href={print.source_url} target="_blank" rel="noopener noreferrer" onClick={closeMenu}>
             <ListItemIcon>
@@ -243,6 +277,17 @@ export default function ModelActionsMenu({
         )}
       </Menu>
 
+      {slicerOption && sanitizedTargets.length > 1 && (
+        <SlicerFileMenu
+          anchorEl={sanitizedMenuAnchor}
+          onClose={() => setSanitizedMenuAnchor(null)}
+          slicerLabel={slicerOption.label}
+          title={t("models:detail.openSanitizedInSlicer", { slicer: slicerOption.label })}
+          targets={sanitizedTargets}
+          onOpen={recordUse}
+          sanitized={sanitized}
+        />
+      )}
       {slicerOption && slicerTargets.length > 1 && (
         <SlicerFileMenu
           anchorEl={slicerMenuAnchor}

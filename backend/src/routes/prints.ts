@@ -20,6 +20,7 @@ import { RENDERABLE_MODEL_EXTS } from "../config";
 import { estimateDownloadSize, resolvePrintsForDownload, sendPrintsZip } from "../services/downloadZip";
 import { systemCollectionKeyForId } from "../services/collectionService";
 import { createLog } from "../services/auditLog";
+import { isSanitizable3mf, sanitize3mfStatus, sanitized3mfFor } from "../services/sanitized3mfCache";
 import type { Prisma } from "@prisma/client";
 
 const router = Router();
@@ -383,14 +384,37 @@ router.get(
   asyncHandler(async (req, res) => {
     const plate = await prisma.plate.findFirst({
       where: { id: req.params.plateId, printId: req.params.id, print: { userId: req.userId } },
+      include: { print: { select: { preparedMetadata: true } } },
     });
     if (!plate) throw new HttpError(404, "Not found");
-    const filePath = resolvePlateFilePath(plate);
+    let filePath = resolvePlateFilePath(plate);
     if (!filePath) throw new HttpError(404, "Not found");
+    // Only "Open sanitized in <slicer>" asks for it; a plate that is itself a sliced print is never touched.
+    if (req.query.sanitize === "1" && plate.print.preparedMetadata === null && isSanitizable3mf(plate.filename)) {
+      filePath = (await sanitized3mfFor(plate.id, filePath)) ?? filePath;
+    }
     res.setHeader("Content-Type", plate.mime || "application/octet-stream");
     res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(plate.filename)}"`);
     res.setHeader("Cache-Control", "private, max-age=86400");
     res.sendFile(path.resolve(filePath));
+  }),
+);
+
+// Polled by "Open sanitized in <slicer>" until the copy is ready, so no request outlasts a proxy timeout.
+router.post(
+  "/print/:id/plate/:plateId/sanitize",
+  asyncHandler(async (req, res) => {
+    const plate = await prisma.plate.findFirst({
+      where: { id: req.params.plateId, printId: req.params.id, print: { userId: req.userId } },
+      include: { print: { select: { preparedMetadata: true } } },
+    });
+    if (!plate) throw new HttpError(404, "Not found");
+    if (plate.print.preparedMetadata !== null || !isSanitizable3mf(plate.filename)) {
+      throw new HttpError(400, "Only a plain 3MF project can be sanitized.");
+    }
+    const filePath = resolvePlateFilePath(plate);
+    if (!filePath) throw new HttpError(404, "Not found");
+    res.json({ status: await sanitize3mfStatus(plate.id, filePath) });
   }),
 );
 

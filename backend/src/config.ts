@@ -36,6 +36,10 @@ export const THUMBS = path.join(STORAGE, "thumbs");
 export const BUNDLES = path.join(STORAGE, "bundles");
 export const PREVIEWS = path.join(STORAGE, "previews");
 export const MODEL_PREVIEWS = path.join(STORAGE, "model-previews");
+// Slicer-compatible copies of MakerWorld 3MFs, rebuilt when the source plate changes.
+export const SANITIZED_3MFS = path.join(STORAGE, "sanitized-3mf");
+// Large multi-part projects take minutes on a slow CPU; the page waits for it, not the request.
+export const SANITIZE_3MF_TIMEOUT_SECONDS = envInt("SANITIZE_3MF_TIMEOUT_SECONDS", 600);
 // Past either limit the render worker is killed and the plate gets no 3D preview. Memory is a
 // watchdog check, so a fast burst can overshoot it briefly.
 export const MODEL_PREVIEW_MAX_MEMORY_MB = envInt("MODEL_PREVIEW_MAX_MEMORY_MB", defaultPreviewMemoryMb());
