@@ -111,11 +111,6 @@ export default function DownloadPage() {
       { text: t("download.extension.modal.chrome.step4") },
       { text: t("download.extension.modal.chrome.step5") },
     ],
-    firefox: [
-      { text: t("download.extension.modal.firefox.step1") },
-      { text: t("download.extension.modal.firefox.step2") },
-      { text: t("download.extension.modal.firefox.step3") },
-    ],
   };
 
   const installSteps: Record<BridgeDownload["os"], InstallStep[]> = {

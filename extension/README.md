@@ -6,9 +6,9 @@ Visiting a model, collection, or Thingiverse Likes page shows a floating Thingpo
 opens a small panel to pick what to import (and, for a single model, an optional destination
 collection), then imports it the same way Thingport's own "+ Add > Import" does.
 
-**Get it for Edge from [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/kahfidpmojfocohinlmglnfoaimocbol).**
-Chrome and Firefox builds are on the [releases page](#install) until their store listings are
-live.
+**Get it from [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/thingport-grab/) or
+[Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/kahfidpmojfocohinlmglnfoaimocbol).**
+The Chrome build is on the [releases page](#install) until its store listing is live.
 
 It talks directly to your Thingport instance's API from the extension's background script -- no
 separate server, no data sent anywhere else. See the [privacy policy](PRIVACY.md) for exactly what
@@ -40,6 +40,29 @@ it stores and sends.
 </table>
 
 ## Install
+
+### Firefox
+
+Install **[Thingport Grab from Firefox Add-ons](https://addons.mozilla.org/firefox/addon/thingport-grab/)**
+-- click **Add to Firefox**, then click the new Thingport icon in your toolbar (it may be under the
+puzzle-piece Extensions button) and enter your instance's URL and your Thingport login. Firefox
+keeps it up to date from then on.
+
+<details>
+<summary>Alternative: install the Firefox build by hand</summary>
+
+Only needed if you can't use the store, e.g. to try a build before it's been published there.
+Firefox refuses to install _any_ unsigned extension outside of Developer Edition/Nightly, so this
+is a Mozilla-signed `.xpi` rather than a zip -- CI signs one for self-distribution (the "unlisted"
+channel) on every push to `main` (see [Releases](CONTRIBUTING.md#releases-ci) in the development
+guide):
+
+1. Download `thingport-grab-firefox.xpi` from the
+   [`extension-latest` release](https://github.com/TautvydasDerzinskas/Thingport/releases/tag/extension-latest).
+2. Open it directly (double-click, or `File > Open File` in Firefox) -- or drag it onto a Firefox
+   window -- and confirm the install prompt.
+
+</details>
 
 ### Microsoft Edge
 
@@ -75,24 +98,6 @@ As a developer-mode "unpacked" extension, until the Chrome Web Store listing is 
 3. Click **Load unpacked** and select the unzipped folder.
 4. Click the new Thingport icon in your toolbar, enter your instance's URL and your Thingport
    login, and save.
-
-### Firefox
-
-Firefox refuses to install _any_ unsigned extension outside of Developer Edition/Nightly, even for
-local/unpacked use -- so unlike Chrome, this needs an actual Mozilla-signed build, not just a zip.
-CI signs one on every push to `main` (see [Releases](CONTRIBUTING.md#releases-ci) in the
-development guide):
-
-1. Download `thingport-grab-firefox.xpi` from the in-app Download page (or the
-   [`extension-latest` release](https://github.com/TautvydasDerzinskas/Thingport/releases/tag/extension-latest)).
-2. Open it directly (double-click, or `File > Open File` in Firefox) -- or drag it onto a Firefox
-   window -- and confirm the install prompt.
-3. Click the new Thingport icon in your toolbar, enter your instance's URL and your Thingport
-   login, and save.
-
-It's signed for **self-distribution** (the "unlisted" channel) -- signing is still required for
-Firefox to allow the install at all, and it's what lets Firefox treat later versions as updates to
-the same install instead of a fresh add-on. A listing on addons.mozilla.org is in review.
 
 ## Setup
 

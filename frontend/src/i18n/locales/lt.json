@@ -566,7 +566,8 @@
         "intro": "Naršyklės plėtinys, importuojantis MakerWorld, Thingiverse ir Printables modelius tiesiai iš jų puslapių.",
         "name": "Thingport Grab",
         "store": {
-          "edge": "Gauti iš Edge Add-ons"
+          "edge": "Gauti iš Edge Add-ons",
+          "firefox": "Gauti iš Firefox Add-ons"
         },
         "modal": {
           "chrome": {
@@ -576,12 +577,6 @@
             "step3": "Įjunkite Developer mode (viršuje dešinėje).",
             "step4": "Spustelėkite „Load unpacked“ ir pasirinkite išarchyvuotą aplanką.",
             "step5": "Spustelėkite naują Thingport piktogramą įrankių juostoje ir įveskite savo aplinkos URL bei prisijungimo duomenis."
-          },
-          "firefox": {
-            "heading": "Įdiegti Thingport Grab",
-            "step1": "Atidarykite atsisiųstą .xpi failą tiesiogiai arba nutempkite jį į Firefox langą.",
-            "step2": "Firefox diegimo lange spustelėkite „Add“.",
-            "step3": "Spustelėkite naują Thingport piktogramą įrankių juostoje ir įveskite savo aplinkos URL bei prisijungimo duomenis."
           }
         }
       },

@@ -117,6 +117,13 @@ Secrets and variables > Actions > Variables), so they don't have to be hard-code
 | Product ID         | `8c5f106c-5a45-438f-8e0b-2d0c0584d253` -- repo variable `EDGE_PRODUCT_ID`, used by the publish API |
 | Store ID           | `0RDCKH3TMN7G`                                                                                     |
 
+**Firefox Add-ons** (live; new versions are uploaded by hand for now):
+
+|           | Value                                                       |
+| --------- | ----------------------------------------------------------- |
+| Listing   | https://addons.mozilla.org/firefox/addon/thingport-grab/    |
+| Add-on ID | `grab@thingport.app` -- `gecko.id` in `scripts/manifest.ts` |
+
 **Chrome Web Store** (submitted; the listing URL works once review passes):
 
 |              | Value                                                                     |
@@ -171,7 +178,7 @@ Two workflows, for two different jobs.
 touching this folder: typecheck, lint, the Chrome/Edge build, and `web-ext lint` on the Firefox
 build. On a push to `main` it also signs the Firefox build through AMO's unlisted channel and
 publishes `thingport-grab-chrome.zip`, `thingport-grab-edge.zip` and `thingport-grab-firefox.xpi`
-to the `extension-latest` release (the in-app Download page links there for Chrome and Firefox).
+to the `extension-latest` release (the in-app Download page links there for Chrome).
 It never changes the version: AMO rejects a version number it has already signed, so CI signs a
 copy of the built manifest with the run number appended (e.g. `1.1.2.456`).
 
