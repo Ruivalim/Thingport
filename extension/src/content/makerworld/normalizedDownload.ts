@@ -1,11 +1,12 @@
-// "Download normalized" next to MakerWorld's own Download button, for people whose slicer mis-reads
+// "Download normalized" next to MakerWorld's own download/open button, for people whose slicer mis-reads
 // Bambu Studio projects: not linked to a Thingport instance at all, or linked with such a slicer
 // picked. The file is downloaded and converted in this tab; it never goes anywhere else.
 
+import { createIcon } from "../../shared/icon";
 import { NORMALIZE_3MF_SLICERS } from "../../shared/slicers";
 import { api } from "../runtime";
 import css from "../styles/normalized.scss?inline";
-import { findDownloadButton, isDownloadButton, resolveMakerworldDownloadUrl } from "./downloadResolver";
+import { resolveMakerworldDownloadUrl } from "./downloadResolver";
 import { normalizeBambu3mf } from "./normalize";
 
 // Converting holds the file, its unzipped model XML and the result in memory at once.
@@ -32,6 +33,7 @@ function bulbIcon(): Element {
 
 let host: HTMLElement | null = null;
 let observer: MutationObserver | null = null;
+let themeObserver: MutationObserver | null = null;
 let bubbleTimer: ReturnType<typeof setTimeout> | undefined;
 
 function explanation(slicerLabel: string | null): string {
@@ -143,11 +145,13 @@ function buildHost(pageUrl: string, slicerLabel: string | null): HTMLElement {
   const button = element("button", "tg-nd");
   button.type = "button";
   button.setAttribute("aria-describedby", "tg-nd-info");
-  const icon = element("span", "tg-nd__info");
-  icon.append(bulbIcon());
+  const logo = element("span", "tg-nd__logo");
+  logo.append(createIcon());
   const label = element("span", "tg-nd__label");
   label.textContent = LABEL;
-  button.append(icon, label);
+  const icon = element("span", "tg-nd__info");
+  icon.append(bulbIcon());
+  button.append(logo, label, icon);
   const bubble = element("div", "tg-nd-bubble");
   bubble.id = "tg-nd-info";
   bubble.setAttribute("role", "tooltip");
@@ -163,7 +167,9 @@ function buildHost(pageUrl: string, slicerLabel: string | null): HTMLElement {
     const rect = button.getBoundingClientRect();
     const left = Math.min(Math.max(8, rect.left), window.innerWidth - bubble.offsetWidth - 8);
     bubble.style.left = `${left}px`;
-    bubble.style.top = `${rect.bottom + 8}px`;
+    // Above when there's no room below, e.g. in MakerWorld's bottom-stuck action bar.
+    const below = rect.bottom + 8 + bubble.offsetHeight <= window.innerHeight;
+    bubble.style.top = `${below ? rect.bottom + 8 : Math.max(8, rect.top - 8 - bubble.offsetHeight)}px`;
     if (error) bubbleTimer = setTimeout(hideBubble, ERROR_SHOW_MS);
   };
   const hideBubble = () => {
@@ -197,43 +203,100 @@ function buildHost(pageUrl: string, slicerLabel: string | null): HTMLElement {
   return el;
 }
 
-/** Keeps the button right after MakerWorld's, which can render late or be re-rendered away. */
+// MakerWorld's main action, matched by label (class names are build hashes): usually the "Open in
+// Bambu Studio" split button, whose menu holds "Download 3MF" and "Download STL/CAD Files".
+const ACTION_LABELS = [/^open in .+/i, /^download\b/i];
+const MAX_LABEL_LENGTH = 40;
+
+function findActionLabel(): HTMLElement | null {
+  const candidates = [...document.querySelectorAll<HTMLElement>("button, a, span, div")].filter((el) => {
+    if (el.childElementCount > 2 || el.offsetParent === null) return false;
+    const text = (el.textContent || "").trim();
+    return text.length <= MAX_LABEL_LENGTH && ACTION_LABELS.some((label) => label.test(text));
+  });
+  // Innermost, so wrappers repeating the same text don't win.
+  const leaves = candidates.filter((el) => !candidates.some((other) => other !== el && el.contains(other)));
+  for (const label of ACTION_LABELS) {
+    const match = leaves.find((el) => label.test((el.textContent || "").trim()));
+    if (match) return match;
+  }
+  return null;
+}
+
+/** The clickable element around the label, then the outermost wrapper that's still just the
+ *  control (e.g. both halves of the split button). */
+function controlBox(label: HTMLElement): HTMLElement {
+  let box = label.closest<HTMLElement>("button, a, [role=button]") ?? label;
+  // The cursor is inherited, so the control is the outermost element that still has it.
+  while (
+    box.parentElement &&
+    box.parentElement !== document.body &&
+    getComputedStyle(box.parentElement).cursor === "pointer"
+  )
+    box = box.parentElement;
+  const { width, height } = box.getBoundingClientRect();
+  for (let parent = box.parentElement; parent && parent !== document.body; parent = parent.parentElement) {
+    const rect = parent.getBoundingClientRect();
+    // Grows only by the split button's arrow, never by a whole extra row.
+    if (Math.abs(rect.height - height) > 1 || rect.width > width * 1.5) break;
+    box = parent;
+  }
+  return box;
+}
+
+let anchor: HTMLElement | null = null;
+
+/** Keeps the button next to MakerWorld's, which can render late or be re-rendered away. */
 function place(): void {
   if (!host) return;
-  const anchor = host.previousElementSibling;
-  if (host.isConnected && anchor && isDownloadButton(anchor)) return;
-  const button = findDownloadButton();
-  if (!button) {
+  if (host.isConnected && anchor?.isConnected && anchor.offsetParent !== null && host.previousElementSibling === anchor)
+    return;
+  const label = findActionLabel();
+  if (!label) {
     host.remove();
+    anchor = null;
     return;
   }
-  button.after(host);
-  // A flex/grid gap already spaces it; the margin is for plain inline layouts.
-  const gap = getComputedStyle(button.parentElement!).columnGap;
-  host.style.marginLeft = gap && gap !== "normal" && gap !== "0px" ? "0" : "";
+  anchor = controlBox(label);
+  anchor.after(host);
+  // Beside it in a row, otherwise underneath at full width; a gap already spaces it.
+  const parent = getComputedStyle(anchor.parentElement!);
+  const inRow = /flex/.test(parent.display) && parent.flexDirection.startsWith("row");
+  const gap = inRow ? parent.columnGap : parent.rowGap;
+  host.toggleAttribute("data-below", !inRow);
+  host.toggleAttribute("data-gapped", Boolean(gap) && gap !== "normal" && gap !== "0px");
 }
 
 function mount(pageUrl: string, slicerLabel: string | null): void {
   unmountNormalizedDownload();
   host = buildHost(pageUrl, slicerLabel);
   let scheduled = false;
-  observer = new MutationObserver(() => {
+  const schedule = () => {
     if (scheduled) return;
     scheduled = true;
     requestAnimationFrame(() => {
       scheduled = false;
       place();
     });
-  });
+  };
+  observer = new MutationObserver(schedule);
   observer.observe(document.body, { childList: true, subtree: true });
+  // MakerWorld sets its theme as a class on <html>, which the shadow root's CSS can't see.
+  const syncTheme = () => host?.toggleAttribute("data-dark", document.documentElement.classList.contains("dark"));
+  themeObserver = new MutationObserver(syncTheme);
+  themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+  syncTheme();
   place();
 }
 
 export function unmountNormalizedDownload(): void {
   observer?.disconnect();
   observer = null;
+  themeObserver?.disconnect();
+  themeObserver = null;
   host?.remove();
   host = null;
+  anchor = null;
   clearTimeout(bubbleTimer);
 }
 

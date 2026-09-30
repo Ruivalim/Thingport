@@ -5,10 +5,24 @@
 import type { ResolvedDownload } from "../../shared/messages";
 import { send } from "../../shared/messages";
 import { parseMakerworldModelUrl } from "../../shared/urls";
-import { makerworldDesignForImport, pickMakerworldInstanceId, readMakerworldDesignForPage } from "./pageData";
+import {
+  loadMakerworldDesignForPage,
+  makerworldDesignForImport,
+  pickMakerworldInstanceId,
+  readMakerworldDesignForPage,
+  type MakerworldDesign,
+} from "./pageData";
 
 // fetch() has no timeout, and some endpoints hold an interactive challenge open indefinitely.
 const MAKERWORLD_API_FETCH_TIMEOUT_MS = 8000;
+
+// What MakerWorld's own web client sends with its API calls; it answers 403 without them.
+const MAKERWORLD_CLIENT_HEADERS = {
+  "X-BBL-Client-Name": "MakerWorld",
+  "X-BBL-Client-Type": "web",
+  "X-BBL-Client-Version": "00.00.00.01",
+  "X-BBL-App-Source": "makerworld",
+};
 
 /** {url|downloadUrl|download_url}, optionally nested under `data`. */
 function extractDownloadUrl(data: unknown): string | null {
@@ -29,7 +43,7 @@ async function fetchMakerworldApiJson(url: string, nonce: string | null): Promis
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), MAKERWORLD_API_FETCH_TIMEOUT_MS);
   try {
-    const headers: Record<string, string> = { Accept: "application/json" };
+    const headers: Record<string, string> = { Accept: "application/json", ...MAKERWORLD_CLIENT_HEADERS };
     if (nonce) headers["X-Nonce"] = nonce;
     const res = await fetch(url, { headers, signal: controller.signal });
     if (!res.ok) return null;
@@ -42,14 +56,11 @@ async function fetchMakerworldApiJson(url: string, nonce: string | null): Promis
 }
 
 /** Matched by text (class names are build hashes), visible elements only. */
-export function isDownloadButton(el: Element): el is HTMLElement {
-  if (!/^download$/i.test((el.textContent || "").trim())) return false;
-  return (el as HTMLElement).offsetParent !== null; // hidden (display:none or detached)
-}
-
-export function findDownloadButton(): HTMLElement | null {
+function findDownloadButton(): HTMLElement | null {
   for (const el of document.querySelectorAll<HTMLElement>("button, a")) {
-    if (isDownloadButton(el)) return el;
+    if (!/^download$/i.test((el.textContent || "").trim())) continue;
+    if (el.offsetParent === null) continue; // hidden (display:none or detached)
+    return el;
   }
   return null;
 }
@@ -66,19 +77,31 @@ async function captureViaRealClick(): Promise<string | null> {
   return res && res.ok ? res.data : null;
 }
 
-async function fetchInstanceDownloadUrl(instanceId: string, nonce: string | null): Promise<string | null> {
-  const apiUrl = `https://makerworld.com/api/v1/design-service/instance/${instanceId}/f3mf?type=download&fileType=`;
-  return extractDownloadUrl(await fetchMakerworldApiJson(apiUrl, nonce));
+/** The printer the profile was made for, which MakerWorld's own download request names. */
+function instanceDevModelName(design: MakerworldDesign, instanceId: string): string {
+  const instance = design.instances?.find((inst) => inst && String(inst.id) === instanceId) as
+    Record<string, unknown> | undefined;
+  const extension = instance?.extention as { modelInfo?: { compatibility?: { devModelName?: unknown } } } | undefined;
+  const name = extension?.modelInfo?.compatibility?.devModelName;
+  return typeof name === "string" ? name : "";
+}
+
+/** Sent exactly as MakerWorld's own "Download 3MF" sends it. */
+async function fetchInstanceDownloadUrl(design: MakerworldDesign, instanceId: string): Promise<string | null> {
+  const devModelName = encodeURIComponent(instanceDevModelName(design, instanceId));
+  const apiUrl = `https://makerworld.com/api/v1/design-service/instance/${instanceId}/f3mf?type=download&fileType=&devModelName=${devModelName}`;
+  return extractDownloadUrl(await fetchMakerworldApiJson(apiUrl, null));
 }
 
 /** Same two steps as the backend: instance-scoped endpoint, then model-scoped. */
 async function resolveFromPageApi(pageUrl: string): Promise<ResolvedDownload | null> {
-  const page = readMakerworldDesignForPage(pageUrl);
+  // Fetched when the tab's own page data is stale, i.e. after clicking through MakerWorld.
+  const page = await loadMakerworldDesignForPage(pageUrl);
   if (!page) return null; // the backend resolves from the URL
   const { design, nonce } = page;
   const instanceId = pickMakerworldInstanceId(design, page.requestedInstanceId);
   if (instanceId) {
-    const downloadUrl = await fetchInstanceDownloadUrl(instanceId, nonce);
+    const downloadUrl = await fetchInstanceDownloadUrl(design, instanceId);
     if (downloadUrl) return { downloadUrl, instanceId, design: makerworldDesignForImport(design) };
   }
   // Model-level, i.e. the default profile's file.
@@ -111,8 +134,8 @@ export async function resolveMakerworldProfileDownload(
   pageUrl: string,
   instanceId: string,
 ): Promise<ResolvedDownload | null> {
-  const page = readMakerworldDesignForPage(pageUrl);
+  const page = await loadMakerworldDesignForPage(pageUrl);
   if (!page) return null;
-  const downloadUrl = await fetchInstanceDownloadUrl(instanceId, page.nonce).catch(() => null);
+  const downloadUrl = await fetchInstanceDownloadUrl(page.design, instanceId).catch(() => null);
   return downloadUrl ? { downloadUrl, instanceId, design: makerworldDesignForImport(page.design) } : null;
 }

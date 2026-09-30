@@ -107,8 +107,8 @@ As a developer-mode "unpacked" extension, until the Chrome Web Store listing is 
 
 MakerWorld's files are Bambu Studio projects, which PrusaSlicer, Cura, Anycubic Slicer Next,
 Creality Print, Elegoo Slicer and Snapmaker Orca often open without their colors or print settings.
-On a MakerWorld model page, the extension adds a **Download normalized** button next to MakerWorld's
-own Download button. Clicking it downloads the selected print profile's file, converts it, and saves
+On a MakerWorld model page, the extension adds a **Download normalized** button under MakerWorld's
+own "Open in Bambu Studio" (or Download) button. Clicking it downloads the selected print profile's file, converts it, and saves
 a `<name>-normalized.3mf` that keeps painted colors, filament colors, plates and the designer's
 settings (walls, layer height, infill, supports). Multi-part objects may be merged into one,
 per-object overrides and layer color changes are dropped, and you pick your own printer profile.
@@ -120,8 +120,8 @@ Hover the bulb on the button for the same summary.
 - **Where it runs:** entirely in your browser, the same conversion Thingport's "Open normalized"
   does on the server. The file goes nowhere but your downloads folder.
 - **Limits:** you need to be signed in to MakerWorld, as for its own Download button, and files over
-  50 MB are too big to convert in the browser -- the button says so. It's found by its label, so it
-  only appears while MakerWorld is in English.
+  50 MB are too big to convert in the browser -- the button says so. MakerWorld's button is found by
+  its label, so it only appears while MakerWorld is in English.
 
 ## Setup
 

@@ -41,8 +41,6 @@ $palette-light: (
   "hover": rgba(0, 0, 0, 0.06),
   "danger": #d32f2f,
   "danger-soft": rgba(211, 47, 47, 0.08),
-  "warning": #ed6c02,
-  "warning-soft": rgba(237, 108, 2, 0.08),
   "switch-off": #c4c4c4,
   "backdrop": rgba(0, 0, 0, 0.5),
   "backdrop-strong": rgba(0, 0, 0, 0.75),
@@ -64,8 +62,6 @@ $palette-dark: map.merge(
     "hover": rgba(255, 255, 255, 0.08),
     "danger": #ef6b6b,
     "danger-soft": rgba(239, 107, 107, 0.12),
-    "warning": #ffa726,
-    "warning-soft": rgba(255, 167, 38, 0.12),
     "switch-off": #555555,
     "shadow": rgba(0, 0, 0, 0.6),
   )
