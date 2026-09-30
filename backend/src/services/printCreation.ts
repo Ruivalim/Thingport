@@ -16,7 +16,7 @@ import {
   saveThumbFromFile,
 } from "./printService";
 import { generateModelPreviewGlb } from "./modelPreviewCache";
-import { deleteSanitized3mf } from "./sanitized3mfCache";
+import { deleteNormalized3mf } from "./normalized3mfCache";
 import { getPreviewMode } from "./settingsService";
 import { Prisma } from "@prisma/client";
 import type { Plate, Print } from "@prisma/client";
@@ -230,7 +230,7 @@ export async function addPlatesToPrint(
 }
 
 export async function deletePlateFiles(plate: Pick<Plate, "id" | "storagePath">): Promise<void> {
-  await deleteSanitized3mf(plate.id);
+  await deleteNormalized3mf(plate.id);
   const abs = path.join(STORAGE, plate.storagePath);
   try {
     await fs.rm(abs, { force: true });

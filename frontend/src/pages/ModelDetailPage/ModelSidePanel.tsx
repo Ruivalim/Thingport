@@ -23,8 +23,8 @@ import { SELF_AUTHOR_ID } from "../../constants/selfAuthor";
 import { useDownloadPrint } from "./useDownloadPrint";
 import { useOpenInSlicer } from "./useOpenInSlicer";
 import SlicerFileMenu from "./SlicerFileMenu";
-import SanitizedOpenButton from "./SanitizedOpenButton";
-import { useSanitizedOpen } from "./useSanitizedOpen";
+import NormalizedOpenButton from "./NormalizedOpenButton";
+import { useNormalizedOpen } from "./useNormalizedOpen";
 import RollingNumber from "../../components/RollingNumber";
 import { formatFileSize } from "../../utils/fileSize";
 import AuthorHoverCard from "../../components/AuthorHoverCard";
@@ -55,10 +55,10 @@ export default function ModelSidePanel({ print, onSelectCategory, onUnauthorized
     recordUse,
   } = useDownloadPrint(print, onUnauthorized, onUpdated);
 
-  const { slicerOption, targets: slicerTargets, sanitizedTargets } = useOpenInSlicer(print);
+  const { slicerOption, targets: slicerTargets, normalizedTargets } = useOpenInSlicer(print);
   const [slicerMenuAnchor, setSlicerMenuAnchor] = useState<HTMLElement | null>(null);
-  const [sanitizedMenuAnchor, setSanitizedMenuAnchor] = useState<HTMLElement | null>(null);
-  const sanitized = useSanitizedOpen(print.id, recordUse, onUnauthorized);
+  const [normalizedMenuAnchor, setNormalizedMenuAnchor] = useState<HTMLElement | null>(null);
+  const normalized = useNormalizedOpen(print.id, recordUse, onUnauthorized);
 
   const goToCategory = () => {
     if (!print.category_id) return;
@@ -216,24 +216,24 @@ export default function ModelSidePanel({ print, onSelectCategory, onUnauthorized
             matchAnchorWidth
           />
         )}
-        {slicerOption && sanitizedTargets.length > 0 && (
-          <SanitizedOpenButton
-            targets={sanitizedTargets}
+        {slicerOption && normalizedTargets.length > 0 && (
+          <NormalizedOpenButton
+            targets={normalizedTargets}
             slicerLabel={slicerOption.label}
-            stateOf={sanitized.stateOf}
-            open={sanitized.open}
-            onPick={setSanitizedMenuAnchor}
+            stateOf={normalized.stateOf}
+            open={normalized.open}
+            onPick={setNormalizedMenuAnchor}
           />
         )}
-        {slicerOption && sanitizedTargets.length > 1 && (
+        {slicerOption && normalizedTargets.length > 1 && (
           <SlicerFileMenu
-            anchorEl={sanitizedMenuAnchor}
-            onClose={() => setSanitizedMenuAnchor(null)}
+            anchorEl={normalizedMenuAnchor}
+            onClose={() => setNormalizedMenuAnchor(null)}
             slicerLabel={slicerOption.label}
-            title={t("models:detail.openSanitizedInSlicer", { slicer: slicerOption.label })}
-            targets={sanitizedTargets}
+            title={t("models:detail.openNormalizedInSlicer", { slicer: slicerOption.label })}
+            targets={normalizedTargets}
             onOpen={recordUse}
-            sanitized={sanitized}
+            normalized={normalized}
             matchAnchorWidth
           />
         )}

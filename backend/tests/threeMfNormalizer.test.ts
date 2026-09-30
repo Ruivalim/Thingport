@@ -9,10 +9,10 @@ import {
   extractBambuSettings,
   mapSettingsToSlic3r,
   parsePlates,
-  sanitize3mf,
-  sanitizeProjectSettings,
+  normalize3mf,
+  normalizeProjectSettings,
   stateToMaterialIndex,
-} from "../src/services/threeMfSanitizer";
+} from "../src/services/threeMfNormalizer";
 
 // Pure: no database. The cache test points storage at a temp dir before loading config.
 
@@ -105,8 +105,8 @@ async function makeBambuZip(overrides: { rootXml?: string } = {}): Promise<Uint8
   return zip.generateAsync({ type: "uint8array" });
 }
 
-async function sanitizeZip(zip: JSZip) {
-  return sanitize3mf(await zip.generateAsync({ type: "uint8array" }));
+async function normalizeZip(zip: JSZip) {
+  return normalize3mf(await zip.generateAsync({ type: "uint8array" }));
 }
 
 async function readOut(bytes: Uint8Array, name: string): Promise<string> {
@@ -166,9 +166,9 @@ describe("mapSettingsToSlic3r", () => {
   });
 });
 
-describe("sanitizeProjectSettings", () => {
+describe("normalizeProjectSettings", () => {
   it("keeps designer process settings and strips printer, machine and sentinel values", () => {
-    const cleaned = sanitizeProjectSettings({
+    const cleaned = normalizeProjectSettings({
       wall_loops: "3",
       filament_colour: ["#FFFFFF", "#C52C18"],
       extruder_colour: ["#018001"],
@@ -207,9 +207,9 @@ describe("paint state", () => {
   });
 });
 
-describe("sanitize3mf", () => {
+describe("normalize3mf", () => {
   it("flattens the production extension into one core model", async () => {
-    const result = await sanitize3mf(await makeBambuZip());
+    const result = await normalize3mf(await makeBambuZip());
     const out = await JSZip.loadAsync(result.bytes);
     expect(out.file("3D/Objects/object_1.model")).toBeNull();
     const xml = await readOut(result.bytes, "3D/3dmodel.model");
@@ -220,7 +220,7 @@ describe("sanitize3mf", () => {
   });
 
   it("keeps painted faces and filament colors", async () => {
-    const result = await sanitize3mf(await makeBambuZip());
+    const result = await normalize3mf(await makeBambuZip());
     const xml = await readOut(result.bytes, "3D/3dmodel.model");
     expect(xml).toMatch(/paint_color="4"/);
     expect(xml).toMatch(/slic3rpe:mmu_segmentation="8"/);
@@ -232,7 +232,7 @@ describe("sanitize3mf", () => {
   });
 
   it("writes Slic3r settings alongside, not inside, existing metadata", async () => {
-    const result = await sanitize3mf(await makeBambuZip());
+    const result = await normalize3mf(await makeBambuZip());
     const xml = await readOut(result.bytes, "3D/3dmodel.model");
     expect(xml).toMatch(/<metadata name="Title">Test Cube<\/metadata>/);
     expect(xml).toMatch(/<metadata name="slic3r:perimeters">3<\/metadata>/);
@@ -245,7 +245,7 @@ describe("sanitize3mf", () => {
   it("closes an unclosed empty Copyright tag", async () => {
     const head =
       ' <metadata name="Title">Broly</metadata>\n <metadata name="Copyright">\n <metadata name="Designer">MakerWorld</metadata>';
-    const result = await sanitize3mf(await makeBambuZip({ rootXml: modelXml(SINGLE_COMPONENT_ROOT, head) }));
+    const result = await normalize3mf(await makeBambuZip({ rootXml: modelXml(SINGLE_COMPONENT_ROOT, head) }));
     const xml = await readOut(result.bytes, "3D/3dmodel.model");
     expect(xml).toMatch(/<metadata name="Copyright" \/>/);
     expect(xml).toMatch(/<metadata name="Designer">MakerWorld<\/metadata>/);
@@ -253,7 +253,7 @@ describe("sanitize3mf", () => {
   });
 
   it("strips G-code, slice info and the printer profile", async () => {
-    const result = await sanitize3mf(await makeBambuZip());
+    const result = await normalize3mf(await makeBambuZip());
     const out = await JSZip.loadAsync(result.bytes);
     expect(out.file("Metadata/plate_1.gcode")).toBeNull();
     expect(out.file("Metadata/slice_info.config")).toBeNull();
@@ -268,10 +268,10 @@ describe("sanitize3mf", () => {
   it("rejects archives without a model", async () => {
     const zip = new JSZip();
     zip.file("readme.txt", "no model");
-    await expect(sanitizeZip(zip)).rejects.toThrow(/No valid 3D model/);
+    await expect(normalizeZip(zip)).rejects.toThrow(/No valid 3D model/);
   });
 
-  it("still sanitizes an already-flat 3MF", async () => {
+  it("still normalizes an already-flat 3MF", async () => {
     const zip = new JSZip();
     zip.file(
       "3D/3dmodel.model",
@@ -288,7 +288,7 @@ describe("sanitize3mf", () => {
  <build><item objectid="1" transform="1 0 0 0 1 0 0 0 1 0 0 0"/></build>
 </model>`,
     );
-    const result = await sanitizeZip(zip);
+    const result = await normalizeZip(zip);
     expect(result.report).toMatchObject({ triangles: 1, flattened: false });
     expect(await readOut(result.bytes, "3D/3dmodel.model")).toMatch(/pid="/);
   });
@@ -353,7 +353,7 @@ describe("sanitize3mf", () => {
   </object>
 </config>`,
     );
-    const result = await sanitizeZip(zip);
+    const result = await normalizeZip(zip);
     const xml = await readOut(result.bytes, "3D/3dmodel.model");
     expect(xml.match(/<item\b/g)).toHaveLength(1);
     expect(xml).toMatch(/p1="2"/);
@@ -406,7 +406,7 @@ describe("sanitize3mf", () => {
   </plate>
 </config>`,
     );
-    const result = await sanitizeZip(zip);
+    const result = await normalizeZip(zip);
     const xml = await readOut(result.bytes, "3D/3dmodel.model");
     const itemIds = [...xml.matchAll(/<item objectid="(\d+)"/g)].map((m) => m[1]);
     expect(itemIds).toHaveLength(2);
@@ -419,24 +419,24 @@ describe("sanitize3mf", () => {
   });
 });
 
-describe("sanitized3mfFor", () => {
-  it("sanitizes in a worker, caches the copy and falls back to null for a broken file", async () => {
-    const storage = fs.mkdtempSync(path.join(os.tmpdir(), "thingport-sanitize-"));
+describe("normalized3mfFor", () => {
+  it("normalizes in a worker, caches the copy and falls back to null for a broken file", async () => {
+    const storage = fs.mkdtempSync(path.join(os.tmpdir(), "thingport-normalize-"));
     process.env.FILE_STORAGE = storage;
-    const { sanitized3mfFor } = await import("../src/services/sanitized3mfCache");
+    const { normalized3mfFor } = await import("../src/services/normalized3mfCache");
 
     const src = path.join(storage, "model.3mf");
     fs.writeFileSync(src, await makeBambuZip());
-    const first = await sanitized3mfFor("plate-a", src);
+    const first = await normalized3mfFor("plate-a", src);
     expect(first).not.toBeNull();
     expect(await readOut(fs.readFileSync(first!), "3D/3dmodel.model")).toMatch(/Thingport/);
     const mtime = fs.statSync(first!).mtimeMs;
-    expect(await sanitized3mfFor("plate-a", src)).toBe(first);
+    expect(await normalized3mfFor("plate-a", src)).toBe(first);
     expect(fs.statSync(first!).mtimeMs).toBe(mtime);
 
     const broken = path.join(storage, "broken.3mf");
     fs.writeFileSync(broken, "not a zip");
-    expect(await sanitized3mfFor("plate-b", broken)).toBeNull();
+    expect(await normalized3mfFor("plate-b", broken)).toBeNull();
     fs.rmSync(storage, { recursive: true, force: true });
   });
 });

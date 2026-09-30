@@ -45,7 +45,7 @@ async function bambuProject(): Promise<Buffer> {
   return zip.generateAsync({ type: "nodebuffer" });
 }
 
-async function fetchApplication(query = "?sanitize=1"): Promise<string> {
+async function fetchApplication(query = "?normalize=1"): Promise<string> {
   const res = await auth(request(app).get(`/api${fileUrl}${query}`))
     .buffer(true)
     .parse((r, cb) => {
@@ -59,14 +59,14 @@ async function fetchApplication(query = "?sanitize=1"): Promise<string> {
 }
 
 beforeAll(async () => {
-  const email = `sanitize-test-${Date.now()}@example.com`;
+  const email = `normalize-test-${Date.now()}@example.com`;
   const registered = await request(app)
     .post("/api/register")
-    .send({ displayName: "Sanitize Test", email, password: "password123" });
+    .send({ displayName: "Normalize Test", email, password: "password123" });
   if (registered.status !== 200) throw new Error(`register failed: ${registered.status}`);
   token = registered.body.token;
 
-  const file = path.join(os.tmpdir(), `sanitize-${Date.now()}.3mf`);
+  const file = path.join(os.tmpdir(), `normalize-${Date.now()}.3mf`);
   fs.writeFileSync(file, await bambuProject());
   const upload = await auth(request(app).post("/api/upload")).attach("files", file);
   fs.rmSync(file, { force: true });
@@ -79,8 +79,8 @@ afterAll(async () => {
   if (printId) await auth(request(app).delete(`/api/print/${printId}`));
 });
 
-describe("GET plate file with ?sanitize=1", () => {
-  it("serves the sanitized copy when asked", async () => {
+describe("GET plate file with ?normalize=1", () => {
+  it("serves the normalized copy when asked", async () => {
     expect(await fetchApplication()).toBe("Thingport");
   });
 
@@ -89,17 +89,17 @@ describe("GET plate file with ?sanitize=1", () => {
   });
 
   it("ignores other flag values", async () => {
-    expect(await fetchApplication("?sanitize=auto")).toMatch(/^BambuStudio/);
+    expect(await fetchApplication("?normalize=auto")).toMatch(/^BambuStudio/);
   });
 
   it("leaves non-3MF plates untouched", async () => {
-    const file = path.join(os.tmpdir(), `sanitize-${Date.now()}.stl`);
+    const file = path.join(os.tmpdir(), `normalize-${Date.now()}.stl`);
     fs.writeFileSync(file, "solid x endsolid");
     const upload = await auth(request(app).post("/api/upload")).attach("files", file);
     fs.rmSync(file, { force: true });
     const stl = upload.body.prints[0];
     try {
-      const res = await auth(request(app).get(`/api${stl.plates[0].url}?sanitize=1`)).responseType("blob");
+      const res = await auth(request(app).get(`/api${stl.plates[0].url}?normalize=1`)).responseType("blob");
       expect(res.status).toBe(200);
       expect(Buffer.from(res.body as Buffer).toString()).toBe("solid x endsolid");
     } finally {
@@ -108,13 +108,13 @@ describe("GET plate file with ?sanitize=1", () => {
   });
 });
 
-describe("POST plate sanitize status", () => {
-  const sanitizeUrl = () => `/api${fileUrl.replace(/\/file\/[^/]+$/, "/sanitize")}`;
+describe("POST plate normalize status", () => {
+  const normalizeUrl = () => `/api${fileUrl.replace(/\/file\/[^/]+$/, "/normalize")}`;
 
   it("reports ready once the copy exists", async () => {
     let status = "";
     for (let i = 0; i < 50 && status !== "ready"; i++) {
-      const res = await auth(request(app).post(sanitizeUrl()));
+      const res = await auth(request(app).post(normalizeUrl()));
       expect(res.status).toBe(200);
       status = res.body.status;
       expect(["preparing", "ready"]).toContain(status);
@@ -124,13 +124,13 @@ describe("POST plate sanitize status", () => {
   });
 
   it("rejects plates that aren't plain 3MF projects", async () => {
-    const file = path.join(os.tmpdir(), `sanitize-${Date.now()}.stl`);
+    const file = path.join(os.tmpdir(), `normalize-${Date.now()}.stl`);
     fs.writeFileSync(file, "solid x endsolid");
     const upload = await auth(request(app).post("/api/upload")).attach("files", file);
     fs.rmSync(file, { force: true });
     const stl = upload.body.prints[0];
     try {
-      const url = `/api${stl.plates[0].url.replace(/\/file\/[^/]+$/, "/sanitize")}`;
+      const url = `/api${stl.plates[0].url.replace(/\/file\/[^/]+$/, "/normalize")}`;
       expect((await auth(request(app).post(url))).status).toBe(400);
     } finally {
       await auth(request(app).delete(`/api/print/${stl.id}`));
@@ -140,8 +140,8 @@ describe("POST plate sanitize status", () => {
   it("404s for someone else's plate", async () => {
     const other = await request(app)
       .post("/api/register")
-      .send({ displayName: "Other", email: `sanitize-other-${Date.now()}@example.com`, password: "password123" });
-    const res = await request(app).post(sanitizeUrl()).set("Authorization", `Bearer ${other.body.token}`);
+      .send({ displayName: "Other", email: `normalize-other-${Date.now()}@example.com`, password: "password123" });
+    const res = await request(app).post(normalizeUrl()).set("Authorization", `Bearer ${other.body.token}`);
     expect(res.status).toBe(404);
   });
 });

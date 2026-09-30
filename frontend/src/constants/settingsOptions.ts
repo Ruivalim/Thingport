@@ -15,9 +15,9 @@ export const SLICER_OPTIONS: SlicerOption[] = [
   { id: "other", label: "Other / Manual" },
 ];
 
-// Offered "Open sanitized in <slicer>" for MakerWorld 3MFs. They mis-import Bambu projects (lost colors,
+// Offered "Open normalized in <slicer>" for MakerWorld 3MFs. They mis-import Bambu projects (lost colors,
 // settings or parts); Orca forks too, since each copied Bambu's 3MF handling at a different point.
-export const SANITIZE_3MF_SLICER_IDS: ReadonlySet<string> = new Set([
+export const NORMALIZE_3MF_SLICER_IDS: ReadonlySet<string> = new Set([
   "prusaslicer",
   "cura",
   "anycubicslicernext",

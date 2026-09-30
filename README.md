@@ -47,7 +47,7 @@ Instead of having your collection scattered across different websites and your f
 - 🗂️ **Organize and search** — nested categories, collections, tags, favourites and browsing history, with full-text search across names, tags, notes and authors.
 - 👤 **Author pages** — every model you've saved from an author, with a preview card when you hover their name.
 - 🖨️ **Open in your slicer** — Bambu Studio, OrcaSlicer, PrusaSlicer, Cura, Creality Print, Anycubic Slicer Next, Elegoo Slicer and Snapmaker Orca, choosing the file when a model has several.
-- 💡 **Sanitized MakerWorld 3MFs** — slicers that mis-read Bambu Studio projects get an "Open sanitized" option that keeps painted colours, plates and the designer's print settings.
+- 💡 **Normalized MakerWorld 3MFs** — slicers that mis-read Bambu Studio projects get an "Open normalized" option that keeps painted colours, plates and the designer's print settings.
 - 📎 **Everything to print it** — keep instructions, notes and a sliced, ready-to-print file next to the model.
 - 💾 **Plain files on your disk** — choose the folder layout, mount folders you already have, and back up with any tool.
 - 👥 **Multi-user** — a separate library per person, open or invite-only registration, optional email verification and captcha, and admin logs.

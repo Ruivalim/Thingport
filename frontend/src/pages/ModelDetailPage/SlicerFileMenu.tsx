@@ -9,7 +9,7 @@ import PrintIcon from "@mui/icons-material/Print";
 import PlateThumbnail from "../../components/media/PlateThumbnail";
 import { fileRowText } from "./fileRowText";
 import type { SlicerTarget } from "./useOpenInSlicer";
-import type { SanitizeState } from "./useSanitizedOpen";
+import type { NormalizeState } from "./useNormalizedOpen";
 
 type Props = {
   anchorEl: HTMLElement | null;
@@ -19,9 +19,9 @@ type Props = {
   onOpen: () => void;
   /** Heading; defaults to "Open in <slicer>". */
   title?: string;
-  /** Sanitized picks go through the prepare step instead of being plain links. */
-  sanitized?: {
-    stateOf: (target: SlicerTarget) => SanitizeState;
+  /** Normalized picks go through the prepare step instead of being plain links. */
+  normalized?: {
+    stateOf: (target: SlicerTarget) => NormalizeState;
     open: (target: SlicerTarget) => Promise<boolean>;
   };
   /** Opens below the anchor at its exact width, for a full-width button. */
@@ -35,7 +35,7 @@ export default function SlicerFileMenu({
   targets,
   onOpen,
   title,
-  sanitized,
+  normalized,
   matchAnchorWidth = false,
 }: Props) {
   const { t } = useTranslation(["models"]);
@@ -58,15 +58,15 @@ export default function SlicerFileMenu({
         const text = target.plate
           ? fileRowText(t, target.filename, target.index)
           : { primary: t("models:detail.preparedPrintFile"), secondary: target.filename };
-        const state = sanitized?.stateOf(target) ?? "idle";
-        if (state === "preparing") text.secondary = t("models:detail.sanitizePreparingShort");
-        if (state === "ready") text.secondary = t("models:detail.sanitizeReadyShort");
-        const action = sanitized
+        const state = normalized?.stateOf(target) ?? "idle";
+        if (state === "preparing") text.secondary = t("models:detail.normalizePreparingShort");
+        if (state === "ready") text.secondary = t("models:detail.normalizeReadyShort");
+        const action = normalized
           ? {
               disabled: state === "preparing",
               onClick: () => {
                 // Stays open while preparing, so the row can show progress and then "ready".
-                void sanitized.open(target).then((launched) => launched && onClose());
+                void normalized.open(target).then((launched) => launched && onClose());
               },
             }
           : {

@@ -280,7 +280,7 @@ function isSentinelSettingToken(value: unknown): boolean {
   return s === "nil" || s === "-1";
 }
 
-function sanitizeSettingValue(value: unknown): unknown {
+function normalizeSettingValue(value: unknown): unknown {
   if (Array.isArray(value)) {
     if (!value.length || value.some(isSentinelSettingToken)) return undefined;
     return value;
@@ -344,11 +344,11 @@ export function mapSettingsToSlic3r(bambuSettings: Settings): Settings {
   return out;
 }
 
-export function sanitizeProjectSettings(config: Settings): Settings {
+export function normalizeProjectSettings(config: Settings): Settings {
   const out: Settings = {};
   for (const [key, value] of Object.entries(extractBambuSettings(config))) {
     if (shouldStripSettingKey(key) || isUnsetFilamentSlot(key, value)) continue;
-    const cleaned = sanitizeSettingValue(value);
+    const cleaned = normalizeSettingValue(value);
     if (cleaned === undefined) continue;
     out[key] = key === "ensure_vertical_shell_thickness" ? mapVerticalShellThickness(cleaned) : cleaned;
   }
@@ -1136,7 +1136,7 @@ function relsXml(hasThumbnail: boolean): string {
   return rels.join("\n");
 }
 
-export type SanitizeReport = {
+export type NormalizeReport = {
   settings: Settings;
   projectKeys: string[];
   objects: number;
@@ -1149,7 +1149,7 @@ export type SanitizeReport = {
   flattened: boolean;
 };
 
-async function buildSanitizedZip(input: Buffer | Uint8Array): Promise<{ out: JSZip; report: () => SanitizeReport }> {
+async function buildNormalizedZip(input: Buffer | Uint8Array): Promise<{ out: JSZip; report: () => NormalizeReport }> {
   const zip = await JSZip.loadAsync(input);
   const filesByKey = indexZipFiles(zip);
   const rootRec = filesByKey["3d/3dmodel.model"];
@@ -1207,7 +1207,7 @@ async function buildSanitizedZip(input: Buffer | Uint8Array): Promise<{ out: JSZ
   out.file("_rels/.rels", relsXml(Boolean(thumbRec)));
   out.file("3D/3dmodel.model", Readable.from(flattened.modelXml(), { objectMode: false }));
 
-  const cleanedProject = sanitizeProjectSettings(bambuSettings);
+  const cleanedProject = normalizeProjectSettings(bambuSettings);
   if (Object.keys(cleanedProject).length) {
     out.file("Metadata/project_settings.config", JSON.stringify(cleanedProject, null, 2));
   }
@@ -1240,15 +1240,17 @@ async function buildSanitizedZip(input: Buffer | Uint8Array): Promise<{ out: JSZ
 
 const ZIP_OPTIONS = { compression: "DEFLATE", compressionOptions: { level: 6 } } as const;
 
-export async function sanitize3mf(input: Buffer | Uint8Array): Promise<{ bytes: Uint8Array; report: SanitizeReport }> {
-  const { out, report } = await buildSanitizedZip(input);
+export async function normalize3mf(
+  input: Buffer | Uint8Array,
+): Promise<{ bytes: Uint8Array; report: NormalizeReport }> {
+  const { out, report } = await buildNormalizedZip(input);
   const bytes = await out.generateAsync({ type: "uint8array", ...ZIP_OPTIONS });
   return { bytes, report: report() };
 }
 
 /** Streams the result to `destPath`, so a large project is never held in memory as one zip. */
-export async function writeSanitized3mf(input: Buffer | Uint8Array, destPath: string): Promise<SanitizeReport> {
-  const { out, report } = await buildSanitizedZip(input);
+export async function writeNormalized3mf(input: Buffer | Uint8Array, destPath: string): Promise<NormalizeReport> {
+  const { out, report } = await buildNormalizedZip(input);
   await pipeline(
     out.generateNodeStream({ type: "nodebuffer", streamFiles: true, ...ZIP_OPTIONS }),
     createWriteStream(destPath),
