@@ -41,16 +41,18 @@ Instead of having your collection scattered across different websites and your f
 
 ## Features
 
-- 🗂️ **Personal model library** — keep your 3D models in one organized place
-- 🌐 **Import from model websites** — bring models into your library from supported platforms
-- 🔎 **Search & organize** — find models in your collection quickly
-- 🧊 **3D previews** — inspect models directly in the browser
-- 📦 **Archive your models** — keep local copies of the models you want to preserve
-- 🖼️ **Model metadata & previews** — keep useful information together with the files
-- 🔗 **Source links** — retain the original model source
-- 🐳 **Self-hosted** — run your own instance and keep your collection under your control
-- 🌍 **Multi-language ready** — internationalization support built into the frontend
-- ⚡ **Modern web interface** — React + Three.js powered UI
+- 🌐 **Import from MakerWorld, Printables and Thingiverse** — paste a link, or use the Thingport Grab browser extension. Whole collections, likes and MakerWorld print profiles come across with their title, description, tags, photos and author.
+- 📤 **Upload your own files** — STL, 3MF, STEP, OBJ and LightBurn files, or a ZIP to pick files from.
+- 🧊 **3D previews** — STL, 3MF, OBJ and STEP in the browser, with a thumbnail for every plate of a multi-plate 3MF. Very complex models can be simplified for the preview only.
+- 🗂️ **Organize and search** — nested categories, collections, tags, favourites and browsing history, with full-text search across names, tags, notes and authors.
+- 👤 **Author pages** — every model you've saved from an author, with a preview card when you hover their name.
+- 🖨️ **Open in your slicer** — Bambu Studio, OrcaSlicer, PrusaSlicer, Cura, Creality Print, Anycubic Slicer Next, Elegoo Slicer and Snapmaker Orca, choosing the file when a model has several.
+- 💡 **Sanitized MakerWorld 3MFs** — slicers that mis-read Bambu Studio projects get an "Open sanitized" option that keeps painted colours, plates and the designer's print settings.
+- 📎 **Everything to print it** — keep instructions, notes and a sliced, ready-to-print file next to the model.
+- 💾 **Plain files on your disk** — choose the folder layout, mount folders you already have, and back up with any tool.
+- 👥 **Multi-user** — a separate library per person, open or invite-only registration, optional email verification and captcha, and admin logs.
+- 🌍 **Light and dark themes**, in English and Lithuanian.
+- 🐳 **Self-hosted** — runs anywhere Docker does, from a NAS to a spare PC.
 
 ## Screenshots
 
@@ -81,7 +83,7 @@ Instead of having your collection scattered across different websites and your f
 
 Thingport ships two small companion tools, each downloadable from the in-app Download page or GitHub Releases:
 
-- **[Thingport Bridge](bridge/README.md)** — a lightweight desktop helper that makes "Open in {Slicer}" work for slicers (Bambu Studio, PrusaSlicer, Cura) whose own URL-protocol handlers won't accept a link from a self-hosted domain.
+- **[Thingport Bridge](bridge/README.md)** — a lightweight desktop helper that makes "Open in {Slicer}" work for slicers (Bambu Studio, PrusaSlicer, Cura, Anycubic Slicer Next) whose own URL-protocol handlers won't accept a link from a self-hosted domain.
 - **[Thingport Grab](extension/README.md)** — a browser extension for Chrome, Edge and Firefox that imports MakerWorld, Thingiverse, and Printables models straight from their own pages, without leaving the site (see the screenshots above). Get it for Edge from [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/kahfidpmojfocohinlmglnfoaimocbol).
 
 ## Provider Setup

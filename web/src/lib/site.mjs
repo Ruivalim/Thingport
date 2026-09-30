@@ -85,7 +85,8 @@ export const DOCS = [
     group: "Companion apps",
     title: "Thingport Bridge",
     nav: "Thingport Bridge",
-    description: "A small desktop helper that makes “Open in slicer” work for Bambu Studio, PrusaSlicer and Cura.",
+    description:
+      "A small desktop helper that makes “Open in slicer” work for Bambu Studio, PrusaSlicer, Cura and Anycubic Slicer Next.",
   },
   {
     slug: "contributing",
