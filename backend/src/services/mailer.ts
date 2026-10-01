@@ -33,6 +33,16 @@ export async function sendVerificationEmail(to: string, displayName: string, tok
   });
 }
 
+export async function sendPasswordResetEmail(to: string, displayName: string, token: string): Promise<void> {
+  const link = `${PUBLIC_URL}/reset-password?token=${encodeURIComponent(token)}`;
+  await sendMail({
+    to,
+    subject: "Reset your Thingport password",
+    text: `Hi ${displayName},\n\nSomeone asked to reset the password for your Thingport account. To choose a new password, open:\n${link}\n\nThis link expires in 1 hour. If you didn't ask for this, you can ignore this email.`,
+    html: `<p>Hi ${escapeHtml(displayName)},</p><p>Someone asked to reset the password for your Thingport account. To choose a new password, open:</p><p><a href="${link}">${link}</a></p><p>This link expires in 1 hour. If you didn't ask for this, you can ignore this email.</p>`,
+  });
+}
+
 /** `link` is the full registration URL, token included. */
 export async function sendInvitationEmail(
   to: string,

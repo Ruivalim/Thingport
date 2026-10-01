@@ -5,6 +5,7 @@ import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
 import Alert from "@mui/material/Alert";
+import Link from "@mui/material/Link";
 import { authApi, type AuthUser } from "../../api/auth";
 import { EmailNotVerifiedError } from "../../api/client";
 import type { CaptchaAnswer } from "../../api/captcha";
@@ -14,9 +15,11 @@ import ResendVerificationButton from "./ResendVerificationButton";
 
 type Props = {
   onSuccess: (token: string, expires_in: number, user: AuthUser) => void;
+  /** Shown only when set, i.e. when SMTP is configured. Gets whatever email was typed. */
+  onForgotPassword?: (email: string) => void;
 };
 
-export default function SignInPanel({ onSuccess }: Props) {
+export default function SignInPanel({ onSuccess, onForgotPassword }: Props) {
   const { t } = useTranslation("app");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
@@ -75,6 +78,13 @@ export default function SignInPanel({ onSuccess }: Props) {
           fullWidth
           size="small"
         />
+        {onForgotPassword && (
+          <Box sx={{ display: "flex", justifyContent: "flex-end", mt: "4px !important" }}>
+            <Link component="button" type="button" variant="body2" onClick={() => onForgotPassword(email.trim())}>
+              {t("auth.signIn.forgotPassword")}
+            </Link>
+          </Box>
+        )}
         {captchaSettings?.login && <CaptchaField key={captchaKey} onChange={setCaptcha} disabled={loading} />}
         <Button type="submit" variant="contained" disabled={loading} fullWidth size="large">
           {loading ? t("auth.signIn.submitting") : t("auth.signIn.submit")}

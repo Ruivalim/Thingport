@@ -16,7 +16,8 @@
         "passwordLabel": "Slaptažodis",
         "submit": "Prisijungti",
         "submitting": "Jungiamasi...",
-        "failed": "Prisijungti nepavyko"
+        "failed": "Prisijungti nepavyko",
+        "forgotPassword": "Pamiršote slaptažodį?"
       },
       "register": {
         "displayNameLabel": "Rodomas vardas",
@@ -45,6 +46,29 @@
         "verifying": "Patvirtinamas el. paštas…",
         "missingToken": "Šioje patvirtinimo nuorodoje trūksta rakto.",
         "failed": "Ši patvirtinimo nuoroda negalioja arba jos galiojimas baigėsi.",
+        "backToSignIn": "Grįžti į prisijungimą"
+      },
+      "forgotPassword": {
+        "heading": "Slaptažodžio atkūrimas",
+        "body": "Įveskite paskyros el. pašto adresą ir atsiųsime nuorodą naujam slaptažodžiui pasirinkti.",
+        "emailLabel": "El. paštas",
+        "submit": "Siųsti nuorodą",
+        "submitting": "Siunčiama…",
+        "sentHeading": "Patikrinkite savo el. paštą",
+        "sentBody": "Jei adresu {{email}} yra paskyra, išsiuntėme į jį slaptažodžio atkūrimo nuorodą. Nuoroda galioja 1 valandą.",
+        "failed": "Nepavyko išsiųsti laiško. Bandykite dar kartą.",
+        "backToSignIn": "Grįžti į prisijungimą"
+      },
+      "resetPassword": {
+        "heading": "Pasirinkite naują slaptažodį",
+        "forAccount": "Paskyrai {{email}}. Išsaugoję būsite prijungti.",
+        "checking": "Tikrinama nuoroda…",
+        "newPasswordLabel": "Naujas slaptažodis",
+        "confirmPasswordLabel": "Pakartokite naują slaptažodį",
+        "submit": "Išsaugoti ir prisijungti",
+        "submitting": "Išsaugoma…",
+        "missingToken": "Šioje slaptažodžio atkūrimo nuorodoje trūksta rakto.",
+        "failed": "Ši slaptažodžio atkūrimo nuoroda negalioja arba jos galiojimas baigėsi. Paprašykite naujos.",
         "backToSignIn": "Grįžti į prisijungimą"
       }
     },
@@ -532,6 +556,8 @@
         "action": {
           "user_logged_in": "Prisijungė",
           "user_logged_out": "Atsijungė",
+          "password_reset_requested": "Paprašė atkurti slaptažodį",
+          "password_reset": "Atkūrė slaptažodį",
           "user_invited": "Pakvietė naudotoją",
           "model_uploaded": "Modelis įkeltas",
           "model_imported": "Modelis importuotas",

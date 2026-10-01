@@ -72,6 +72,20 @@ export const authApi = {
 
   resendVerification: (email: string): Promise<{ message: string }> => postAuth("/resend-verification", { email }),
 
+  /** Replies the same whether or not the email has an account. */
+  forgotPassword: (email: string): Promise<{ message: string }> => postAuth("/forgot-password", { email }),
+
+  /** The account a reset link is for; throws if the link is invalid or expired. */
+  getPasswordReset: async (token: string): Promise<{ email: string }> => {
+    const res = await fetch(`${apiBase()}/reset-password/${encodeURIComponent(token)}`);
+    if (!res.ok) return readAuthError(res);
+    return res.json();
+  },
+
+  /** Also signs in. */
+  resetPassword: (token: string, newPassword: string): Promise<AuthResult> =>
+    postAuth("/reset-password", { token, new_password: newPassword }),
+
   updateProfile: async (payload: UpdateProfileInput): Promise<{ user: AuthUser }> => {
     const res = await fetch(`${apiBase()}/profile`, {
       method: "PATCH",

@@ -15,6 +15,8 @@ export type AdminUser = {
 export type LogAction =
   | "user_logged_in"
   | "user_logged_out"
+  | "password_reset_requested"
+  | "password_reset"
   | "user_invited"
   | "authors_linked"
   | "model_uploaded"

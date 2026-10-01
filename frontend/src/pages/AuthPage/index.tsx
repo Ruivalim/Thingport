@@ -11,17 +11,21 @@ import type { AuthUser } from "../../api/auth";
 import Wordmark from "../../components/Wordmark";
 import SignInPanel from "./SignInPanel";
 import RegisterPanel, { type Invite } from "./RegisterPanel";
+import ForgotPasswordPanel from "./ForgotPasswordPanel";
 
 type Props = {
   onSuccess: (token: string, expires_in: number, user: AuthUser) => void;
   apiUp: boolean | null;
   allowRegistrations: boolean;
+  passwordResetEnabled: boolean;
   invite?: Invite | null;
 };
 
-export default function AuthPage({ onSuccess, apiUp, allowRegistrations, invite = null }: Props) {
+export default function AuthPage({ onSuccess, apiUp, allowRegistrations, passwordResetEnabled, invite = null }: Props) {
   const { t } = useTranslation("app");
   const [tab, setTab] = React.useState<"signIn" | "register">(invite ? "register" : "signIn");
+  // Set while the forgot-password form replaces the tabs; carries over the typed sign-in email.
+  const [forgotEmail, setForgotEmail] = React.useState<string | null>(null);
   // Closed registrations hide the Register tab unless this visit came from an invitation.
   const canRegister = allowRegistrations || invite !== null;
 
@@ -52,7 +56,7 @@ export default function AuthPage({ onSuccess, apiUp, allowRegistrations, invite 
         </Alert>
       )}
 
-      {canRegister && (
+      {forgotEmail === null && canRegister && (
         <Tabs
           value={tab}
           onChange={(_e, value) => setTab(value)}
@@ -64,10 +68,12 @@ export default function AuthPage({ onSuccess, apiUp, allowRegistrations, invite 
         </Tabs>
       )}
 
-      {tab === "register" && canRegister ? (
+      {forgotEmail !== null ? (
+        <ForgotPasswordPanel initialEmail={forgotEmail} onBack={() => setForgotEmail(null)} />
+      ) : tab === "register" && canRegister ? (
         <RegisterPanel onSuccess={onSuccess} invite={invite} />
       ) : (
-        <SignInPanel onSuccess={onSuccess} />
+        <SignInPanel onSuccess={onSuccess} onForgotPassword={passwordResetEnabled ? setForgotEmail : undefined} />
       )}
     </Paper>
   );

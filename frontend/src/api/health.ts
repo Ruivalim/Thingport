@@ -1,6 +1,11 @@
 import { apiBase } from "./client";
 
-export type HealthInfo = { ok: boolean; auth_required: boolean; allow_registrations: boolean };
+export type HealthInfo = {
+  ok: boolean;
+  auth_required: boolean;
+  allow_registrations: boolean;
+  password_reset_enabled: boolean;
+};
 
 export const healthApi = {
   get: async (): Promise<HealthInfo | null> => {
@@ -12,6 +17,7 @@ export const healthApi = {
         ok: Boolean(data?.ok),
         auth_required: Boolean(data?.auth_required),
         allow_registrations: data?.allow_registrations !== false,
+        password_reset_enabled: data?.password_reset_enabled === true,
       };
     } catch {
       return null;

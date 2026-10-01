@@ -8,7 +8,7 @@ import { HttpError } from "../utils/fileUtils";
 import { parseBody } from "../utils/validate";
 import { asyncHandler } from "../utils/asyncHandler";
 import { getAllowRegistrations, isSmtpConfigured, type CaptchaPlace } from "../services/settingsService";
-import { sendVerificationEmail } from "../services/mailer";
+import { sendPasswordResetEmail, sendVerificationEmail } from "../services/mailer";
 import { findValidInvitation } from "../services/invitationService";
 import { checkCaptcha } from "../services/captchaService";
 import { createLog } from "../services/auditLog";
@@ -20,6 +20,9 @@ const router = Router();
 
 const PASSWORD_HASH_COST = 12;
 const EMAIL_VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
+const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000;
+// Stops the forgot-password form from being used to flood someone's inbox.
+const PASSWORD_RESET_RESEND_MS = 60 * 1000;
 
 function newVerificationToken(): { token: string; expires: Date } {
   return { token: crypto.randomBytes(32).toString("hex"), expires: new Date(Date.now() + EMAIL_VERIFICATION_TTL_MS) };
@@ -202,6 +205,85 @@ router.post(
       }
     }
     res.json({ message: "If that account needs verification, we've sent a new email." });
+  }),
+);
+
+const hashResetToken = (token: string) => crypto.createHash("sha256").update(token).digest("hex");
+
+async function findUserByResetToken(token: string) {
+  const user = await prisma.user.findUnique({ where: { passwordResetTokenHash: hashResetToken(token) } });
+  if (!user || !user.passwordResetExpires || user.passwordResetExpires < new Date()) {
+    throw new HttpError(400, "This password reset link is invalid or has expired. Ask for a new one.");
+  }
+  return user;
+}
+
+const forgotPasswordSchema = z.object({ email: z.string().trim().email("Enter a valid email address") });
+
+router.post(
+  "/forgot-password",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(forgotPasswordSchema, req.body);
+    const email = body.email.toLowerCase();
+    // Same response in every case, to prevent enumeration.
+    const user = await prisma.user.findUnique({ where: { email } });
+    const recentlySent =
+      user?.passwordResetExpires &&
+      user.passwordResetExpires.getTime() - PASSWORD_RESET_TTL_MS > Date.now() - PASSWORD_RESET_RESEND_MS;
+    if (user && !recentlySent && (await isSmtpConfigured())) {
+      const token = crypto.randomBytes(32).toString("hex");
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          passwordResetTokenHash: hashResetToken(token),
+          passwordResetExpires: new Date(Date.now() + PASSWORD_RESET_TTL_MS),
+        },
+      });
+      try {
+        await sendPasswordResetEmail(user.email, user.displayName, token);
+        void createLog({ userId: user.id, action: "password_reset_requested", details: { email: user.email } });
+      } catch (err) {
+        console.error("[auth] Failed to send password reset email:", err);
+      }
+    }
+    res.json({ message: "If an account uses that email, we've sent it a link to reset the password." });
+  }),
+);
+
+// Lets the reset form say which account it's for, and fail before the user types a password.
+router.get(
+  "/reset-password/:token",
+  asyncHandler(async (req, res) => {
+    const user = await findUserByResetToken(req.params.token);
+    res.json({ email: user.email });
+  }),
+);
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(1),
+  new_password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+router.post(
+  "/reset-password",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(resetPasswordSchema, req.body);
+    const user = await findUserByResetToken(body.token);
+    const updated = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash: await bcrypt.hash(body.new_password, PASSWORD_HASH_COST),
+        passwordResetTokenHash: null,
+        passwordResetExpires: null,
+        // The link reached this mailbox, which is all verification proves.
+        emailVerified: true,
+      },
+    });
+    // Resetting doubles as signing in.
+    const { token, expiresIn } = await issueToken(updated.id, updated.role);
+    res.json({ token, expires_in: expiresIn, user: toUserOut(updated) });
+    void createLog({ userId: updated.id, action: "password_reset", details: { email: updated.email } });
+    void createLog({ userId: updated.id, action: "user_logged_in", details: { email: updated.email } });
   }),
 );
 

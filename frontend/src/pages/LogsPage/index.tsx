@@ -30,6 +30,8 @@ type ActionColor = "success" | "error" | "info" | "warning" | "default";
 const ACTION_COLORS: Record<LogAction, ActionColor> = {
   user_logged_in: "success",
   user_logged_out: "default",
+  password_reset_requested: "default",
+  password_reset: "warning",
   user_invited: "info",
   authors_linked: "success",
   model_uploaded: "info",

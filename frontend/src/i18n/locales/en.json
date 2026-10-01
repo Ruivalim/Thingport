@@ -16,7 +16,8 @@
         "passwordLabel": "Password",
         "submit": "Sign in",
         "submitting": "Signing in...",
-        "failed": "Login failed"
+        "failed": "Login failed",
+        "forgotPassword": "Forgot password?"
       },
       "register": {
         "displayNameLabel": "Display Name",
@@ -45,6 +46,29 @@
         "verifying": "Confirming your email…",
         "missingToken": "This verification link is missing its token.",
         "failed": "This verification link is invalid or has expired.",
+        "backToSignIn": "Back to sign in"
+      },
+      "forgotPassword": {
+        "heading": "Reset your password",
+        "body": "Enter your account's email and we'll send you a link to choose a new password.",
+        "emailLabel": "Email",
+        "submit": "Send reset link",
+        "submitting": "Sending…",
+        "sentHeading": "Check your email",
+        "sentBody": "If an account uses {{email}}, we've sent it a link to reset the password. The link expires in 1 hour.",
+        "failed": "Couldn't send the email. Please try again.",
+        "backToSignIn": "Back to sign in"
+      },
+      "resetPassword": {
+        "heading": "Choose a new password",
+        "forAccount": "For {{email}}. You will be signed in once it is saved.",
+        "checking": "Checking your link…",
+        "newPasswordLabel": "New password",
+        "confirmPasswordLabel": "Confirm new password",
+        "submit": "Save and sign in",
+        "submitting": "Saving…",
+        "missingToken": "This password reset link is missing its token.",
+        "failed": "This password reset link is invalid or has expired. Ask for a new one.",
         "backToSignIn": "Back to sign in"
       }
     },
@@ -530,6 +554,8 @@
         "action": {
           "user_logged_in": "Logged in",
           "user_logged_out": "Logged out",
+          "password_reset_requested": "Requested a password reset",
+          "password_reset": "Reset password",
           "user_invited": "Invited a user",
           "model_uploaded": "Model uploaded",
           "model_imported": "Model imported",

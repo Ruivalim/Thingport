@@ -17,6 +17,7 @@ import TagDetailPage from "./pages/TagDetailPage";
 import AuthorPage from "./pages/AuthorPage";
 import AuthPage from "./pages/AuthPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import ProfilePage from "./pages/ProfilePage";
 import ChangeEmailPage from "./pages/ProfilePage/ChangeEmailPage";
 import ChangePasswordPage from "./pages/ProfilePage/ChangePasswordPage";
@@ -371,6 +372,7 @@ export default function App() {
   if (authRequired && !token) {
     // Outside the router, so these pre-login links are matched against window.location.
     const isVerifyEmailPath = typeof window !== "undefined" && window.location.pathname === "/verify-email";
+    const isResetPasswordPath = typeof window !== "undefined" && window.location.pathname === "/reset-password";
     const inviteParams =
       typeof window !== "undefined" && window.location.pathname === "/register"
         ? new URLSearchParams(window.location.search)
@@ -393,11 +395,14 @@ export default function App() {
         >
           {isVerifyEmailPath ? (
             <VerifyEmailPage onSuccess={handleLogin} />
+          ) : isResetPasswordPath ? (
+            <ResetPasswordPage onSuccess={handleLogin} />
           ) : (
             <AuthPage
               onSuccess={handleLogin}
               apiUp={apiUp}
               allowRegistrations={health?.allow_registrations ?? true}
+              passwordResetEnabled={health?.password_reset_enabled ?? false}
               invite={invite}
             />
           )}
