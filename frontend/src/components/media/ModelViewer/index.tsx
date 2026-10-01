@@ -26,11 +26,13 @@ import BrandMark from "../../BrandMark";
 // Partly adapted (with modifications) from github.com/maziggy/bambuddy, AGPL-3.0-only.
 
 export type RenderStyle = "solid" | "wire" | "xray";
-export type CameraView = "top" | "front" | "side";
+export type CameraView = "top" | "front" | "side" | "bottom" | "topFront";
 
 /** A camera preset is a one-off action (clicking "Top" twice re-frames twice), not state. */
 export type ModelViewerHandle = {
   setCameraView: (view: CameraView) => void;
+  /** Scales the camera's distance to the orbit target: below 1 zooms in, above 1 zooms out. */
+  zoom: (factor: number) => void;
 };
 
 type ModelViewerProps = {
@@ -73,16 +75,19 @@ const SERVER_PREVIEW_POLL_MS = 3000;
 const SERVER_PREVIEW_WAIT_MS = 10 * 60 * 1000;
 
 const BAMBU_PLATE_COLOR = 0x00ae42;
+const Y_AXIS = new THREE.Vector3(0, 1, 0);
 
 // Bambu Studio's three-quarter view for multi-plate 3MF; mostly front-on for everything else.
 const BAMBU_VIEW_DIRECTION = new THREE.Vector3(0.7, 0.5, 0.7).normalize();
 const FRONT_VIEW_DIRECTION = new THREE.Vector3(0.9, 0.7, 2.1).normalize();
 
-// Top keeps a hair of +Z so OrbitControls' up vector isn't parallel to the view direction.
+// Top/bottom keep a hair of +Z so OrbitControls' up vector isn't parallel to the view direction.
 const CAMERA_VIEW_DIRECTIONS: Record<CameraView, THREE.Vector3> = {
   top: new THREE.Vector3(0, 1, 0.0001).normalize(),
   front: new THREE.Vector3(0, 0, 1),
   side: new THREE.Vector3(1, 0, 0),
+  bottom: new THREE.Vector3(0, -1, 0.0001).normalize(),
+  topFront: new THREE.Vector3(0, 1, 1).normalize(),
 };
 
 /** Frames the camera on a bounding box using its circumscribed sphere against both vertical and
@@ -135,6 +140,7 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
   const sceneApiRef = useRef<{
     applyAppearance: () => void;
     setCameraView: (view: CameraView) => void;
+    zoom: (factor: number) => void;
   } | null>(null);
   // Lets plate switches rebuild the already-parsed group instead of refetching the file.
   const rebuildBambuPlateRef = useRef<((plateId: number | null) => void) | null>(null);
@@ -177,13 +183,18 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
     const environment = pmrem.fromScene(new RoomEnvironment(), 0.04);
     scene.environment = environment.texture;
 
+    // Direction for the front view; turned with the camera's azimuth each frame so the lighting
+    // stays put relative to the viewer while orbiting or spinning.
+    const KEY_LIGHT_DIRECTION = new THREE.Vector3(60, 260, 90).normalize();
+    let keyLightDistance = 280;
     const keyLight = new THREE.DirectionalLight(0xffffff, 0.9);
-    keyLight.position.set(60, 260, 90);
+    keyLight.position.copy(KEY_LIGHT_DIRECTION).multiplyScalar(keyLightDistance);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.set(2048, 2048);
     keyLight.shadow.bias = -0.0005;
     keyLight.shadow.normalBias = 0.02;
     scene.add(keyLight);
+    scene.add(keyLight.target);
 
     camera.position.set(150, 150, 150);
 
@@ -229,6 +240,7 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
         transparent: true,
         opacity: 0.15,
         side: THREE.DoubleSide,
+        depthWrite: false,
       }),
     );
     plateMesh.rotation.x = -Math.PI / 2;
@@ -237,8 +249,11 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
     scene.add(plateMesh);
     const shadowCatcher = new THREE.Mesh(
       new THREE.PlaneGeometry(buildVolume.x, buildVolume.y),
-      new THREE.ShadowMaterial({ opacity: 0.22 }),
+      new THREE.ShadowMaterial({ opacity: 0.22, depthWrite: false }),
     );
+    // The planes are too close for the depth buffer to separate, so without a fixed draw order and
+    // no depth writes they z-fight and the shadow flickers as the camera moves.
+    shadowCatcher.renderOrder = 1;
     shadowCatcher.rotation.x = -Math.PI / 2;
     shadowCatcher.position.y = -0.49;
     shadowCatcher.receiveShadow = true;
@@ -257,7 +272,9 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
       buildPlateLaidOut = true;
       syncBuildPlateVisibility();
 
-      const shadowExtent = Math.max(buildVolume.x, buildVolume.y) * 0.75;
+      // Covers the plate's diagonal so the rotating shadow frustum never clips it, which flickers.
+      const shadowExtent = Math.hypot(buildVolume.x, buildVolume.y) * 0.55;
+      keyLightDistance = shadowExtent * 3;
       keyLight.shadow.camera.left = -shadowExtent;
       keyLight.shadow.camera.right = shadowExtent;
       keyLight.shadow.camera.top = shadowExtent;
@@ -524,10 +541,40 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
         gizmo.dispose();
       };
 
+      // Eased toward over a few frames so button zooms don't jump.
+      let zoomTargetDistance: number | null = null;
+      const zoomOffset = new THREE.Vector3();
+      const stepZoom = () => {
+        if (zoomTargetDistance === null || !controls) return;
+        zoomOffset.subVectors(camera.position, controls.target);
+        const current = zoomOffset.length();
+        const next = THREE.MathUtils.lerp(current, zoomTargetDistance, 0.25);
+        if (Math.abs(next - zoomTargetDistance) < zoomTargetDistance * 0.001) zoomTargetDistance = null;
+        camera.position.copy(controls.target).addScaledVector(zoomOffset.normalize(), next);
+        // fitCameraToBox sized near/far for the fitted distance; shift them so zooming out doesn't clip.
+        camera.near = Math.max(next / 1000, 0.01);
+        camera.far += next - current;
+        camera.updateProjectionMatrix();
+      };
+      // A drag or wheel zoom takes over from an unfinished button zoom.
+      controls?.addEventListener("start", () => {
+        zoomTargetDistance = null;
+      });
+
       const animate = () => {
         if (disposed) return;
+        stepZoom();
         if (controls) controls.autoRotate = appearanceRef.current.autoRotate;
         controls?.update();
+        if (controls) {
+          // Aim at the plate centre: the shadow frustum is centred on the light's target.
+          keyLight.target.position.set(plateMesh.position.x, 0, plateMesh.position.z);
+          keyLight.position
+            .copy(KEY_LIGHT_DIRECTION)
+            .applyAxisAngle(Y_AXIS, controls.getAzimuthalAngle())
+            .multiplyScalar(keyLightDistance)
+            .add(keyLight.target.position);
+        }
         renderer.render(scene, camera);
         gizmo.render(camera, controls?.target ?? new THREE.Vector3(), width, height);
         requestAnimationFrame(animate);
@@ -539,7 +586,13 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
           applyAppearance(activeObject);
           syncBuildPlateVisibility();
         },
+        zoom: (factor) => {
+          if (!controls) return;
+          const from = zoomTargetDistance ?? camera.position.distanceTo(controls.target);
+          zoomTargetDistance = THREE.MathUtils.clamp(from * factor, controls.minDistance, controls.maxDistance);
+        },
         setCameraView: (view) => {
+          zoomTargetDistance = null;
           presetDirection = CAMERA_VIEW_DIRECTIONS[view];
           if (lastFitBox && controls) {
             fitCameraToBox(camera, controls, lastFitBox, CAMERA_VIEW_DIRECTIONS[view], undefined, bedExtent());
@@ -597,6 +650,7 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
     ref,
     () => ({
       setCameraView: (view) => sceneApiRef.current?.setCameraView(view),
+      zoom: (factor) => sceneApiRef.current?.zoom(factor),
     }),
     [],
   );

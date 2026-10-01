@@ -1,8 +1,10 @@
 import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Dialog from "@mui/material/Dialog";
+import { useTheme } from "@mui/material/styles";
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
+import Stack from "@mui/material/Stack";
 import Divider from "@mui/material/Divider";
 import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";
@@ -12,6 +14,8 @@ import IconButton from "@mui/material/IconButton";
 import Typography from "@mui/material/Typography";
 import LayersIcon from "@mui/icons-material/Layers";
 import CloseIcon from "@mui/icons-material/Close";
+import AddIcon from "@mui/icons-material/Add";
+import RemoveIcon from "@mui/icons-material/Remove";
 import { type Print, printsApi } from "../../api/prints";
 import { MODEL_EXTS } from "../../constants/fileTypes";
 import { extOf } from "../../utils/fileExtensions";
@@ -25,8 +29,16 @@ import type { PlateSummary } from "../../utils/bambuThreeMf";
 import PreviewToolbar, { DEFAULT_PREVIEW_COLOR } from "./PreviewToolbar";
 import { fileRowText } from "./fileRowText";
 
-// Fixed regardless of theme: this is a product-shot style preview.
-const PREVIEW_BG = "#e7e7ea";
+// Light mode keeps a product-shot style grey; dark mode uses the page background so it doesn't glare.
+const LIGHT_PREVIEW_BG = "#e7e7ea";
+
+const ZOOM_STEP = 1.25;
+
+const overlayButtonSx = {
+  bgcolor: "rgba(0, 0, 0, 0.45)",
+  color: "#fff",
+  "&:hover": { bgcolor: "rgba(0, 0, 0, 0.65)" },
+};
 
 type Props = {
   print: Print;
@@ -36,6 +48,9 @@ type Props = {
 /** The plate list is always shown, even for one plate, so the layout doesn't jump. */
 export default function Model3DPreviewModal({ print, onClose }: Props) {
   const { t } = useTranslation(["models", "library", "common"]);
+  const muiTheme = useTheme();
+  const themeMode = muiTheme.palette.mode;
+  const previewBg = themeMode === "dark" ? muiTheme.thingport.pageBackground : LIGHT_PREVIEW_BG;
   const sortedPlates = useMemo(() => print.plates.toSorted((a, b) => a.position - b.position), [print.plates]);
   const [activePlateId, setActivePlateId] = useState<string | null>(sortedPlates[0]?.id ?? null);
   const activePlate = sortedPlates.find((p) => p.id === activePlateId) || sortedPlates[0];
@@ -51,13 +66,11 @@ export default function Model3DPreviewModal({ print, onClose }: Props) {
   const viewerRef = useRef<ModelViewerHandle>(null);
   const [renderStyle, setRenderStyle] = useState<RenderStyle>("solid");
   const [modelColor, setModelColor] = useState<string>(DEFAULT_PREVIEW_COLOR);
-  const [cameraView, setCameraView] = useState<CameraView>("front");
+  const [cameraView, setCameraView] = useState<CameraView>("topFront");
   const [showGrid, setShowGrid] = useState(true);
   const [spin, setSpin] = useState(true);
 
-  // Spinning would carry the camera away from the preset.
   const handleCameraView = (view: CameraView) => {
-    setSpin(false);
     setCameraView(view);
     viewerRef.current?.setCameraView(view);
   };
@@ -89,20 +102,12 @@ export default function Model3DPreviewModal({ print, onClose }: Props) {
       fullWidth
       maxWidth="lg"
       onClose={onClose}
-      slotProps={{ paper: { sx: { height: "85vh", bgcolor: PREVIEW_BG, backgroundImage: "none" } } }}
+      slotProps={{ paper: { sx: { height: "85vh", bgcolor: previewBg, backgroundImage: "none" } } }}
     >
       <IconButton
         onClick={onClose}
         aria-label={t("common:close") ?? undefined}
-        sx={{
-          position: "absolute",
-          top: 10,
-          right: 10,
-          zIndex: 2,
-          bgcolor: "rgba(0, 0, 0, 0.45)",
-          color: "#fff",
-          "&:hover": { bgcolor: "rgba(0, 0, 0, 0.65)" },
-        }}
+        sx={{ position: "absolute", top: 10, right: 10, zIndex: 2, ...overlayButtonSx }}
       >
         <CloseIcon fontSize="small" />
       </IconButton>
@@ -120,6 +125,7 @@ export default function Model3DPreviewModal({ print, onClose }: Props) {
             overflow: "auto",
             p: 1,
             borderRadius: "12px",
+            ...(themeMode === "dark" && { "& .MuiListItemText-primary": { color: "#FFFFFF" } }),
           }}
         >
           {showFileRows && (
@@ -212,7 +218,7 @@ export default function Model3DPreviewModal({ print, onClose }: Props) {
               url={printsApi.fileUrl(activePlate.url)}
               ext={ext}
               initialCameraView={cameraView}
-              theme="light"
+              theme={themeMode}
               colorOverride={modelColor}
               renderStyle={renderStyle}
               showBuildPlate={showGrid}
@@ -228,6 +234,26 @@ export default function Model3DPreviewModal({ print, onClose }: Props) {
             </Box>
           )}
         </Box>
+
+        {is3d && (
+          // Lined up with the close button, just above the viewer's orientation cube (72px, 12px from the corner).
+          <Stack spacing={1} sx={{ position: "absolute", bottom: 92, right: 10, zIndex: 2 }}>
+            <IconButton
+              onClick={() => viewerRef.current?.zoom(1 / ZOOM_STEP)}
+              aria-label={t("models:detail.previewToolbar.zoomIn") ?? undefined}
+              sx={overlayButtonSx}
+            >
+              <AddIcon fontSize="small" />
+            </IconButton>
+            <IconButton
+              onClick={() => viewerRef.current?.zoom(ZOOM_STEP)}
+              aria-label={t("models:detail.previewToolbar.zoomOut") ?? undefined}
+              sx={overlayButtonSx}
+            >
+              <RemoveIcon fontSize="small" />
+            </IconButton>
+          </Stack>
+        )}
 
         {is3d && (
           <PreviewToolbar

@@ -1,10 +1,11 @@
 import { useTranslation } from "react-i18next";
 import ButtonBase from "@mui/material/ButtonBase";
 import Divider from "@mui/material/Divider";
+import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
+import Select from "@mui/material/Select";
 import Stack from "@mui/material/Stack";
 import ToggleButton from "@mui/material/ToggleButton";
-import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Tooltip from "@mui/material/Tooltip";
 import GridOnIcon from "@mui/icons-material/GridOn";
 import ThreeSixtyIcon from "@mui/icons-material/ThreeSixty";
@@ -22,7 +23,7 @@ export const PREVIEW_COLORS = [
 
 export const DEFAULT_PREVIEW_COLOR = "#00b800";
 
-const CAMERA_VIEWS: CameraView[] = ["top", "front", "side"];
+const CAMERA_VIEWS: CameraView[] = ["topFront", "front", "side", "top", "bottom"];
 const RENDER_STYLES: RenderStyle[] = ["solid", "wire", "xray"];
 
 type Props = {
@@ -37,6 +38,8 @@ type Props = {
   spin: boolean;
   onSpinChange: (spin: boolean) => void;
 };
+
+const selectSx = { minWidth: 110, fontSize: 14, "& .MuiSelect-select": { py: 0.5 } };
 
 const sectionDivider = <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />;
 
@@ -74,35 +77,30 @@ export default function PreviewToolbar({
       }}
     >
       <Stack direction="row" alignItems="center" spacing={0.5} sx={{ width: "max-content" }}>
-        {/* Re-clicking the selected preset yields null here -- still re-frame to it, since the
-            camera may have been orbited away since. */}
-        <ToggleButtonGroup
-          size="small"
-          exclusive
-          value={cameraView}
-          onChange={(_, value: CameraView | null) => onCameraView(value ?? cameraView)}
-        >
+        {/* Selecting goes through MenuItem onClick so re-picking the current view still re-frames,
+            since the camera may have been orbited away since. */}
+        <Select size="small" value={cameraView} sx={selectSx}>
           {CAMERA_VIEWS.map((view) => (
-            <ToggleButton key={view} value={view} sx={{ px: 1.25, py: 0.5, textTransform: "none" }}>
+            <MenuItem key={view} value={view} onClick={() => onCameraView(view)}>
               {t(`models:detail.previewToolbar.${view}`)}
-            </ToggleButton>
+            </MenuItem>
           ))}
-        </ToggleButtonGroup>
+        </Select>
 
         {sectionDivider}
 
-        <ToggleButtonGroup
+        <Select
           size="small"
-          exclusive
           value={renderStyle}
-          onChange={(_, value: RenderStyle | null) => value && onRenderStyleChange(value)}
+          onChange={(e) => onRenderStyleChange(e.target.value as RenderStyle)}
+          sx={selectSx}
         >
           {RENDER_STYLES.map((style) => (
-            <ToggleButton key={style} value={style} sx={{ px: 1.25, py: 0.5, textTransform: "none" }}>
+            <MenuItem key={style} value={style}>
               {t(`models:detail.previewToolbar.${style}`)}
-            </ToggleButton>
+            </MenuItem>
           ))}
-        </ToggleButtonGroup>
+        </Select>
 
         {sectionDivider}
 
