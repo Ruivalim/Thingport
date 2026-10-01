@@ -444,6 +444,14 @@
           "import": {
             "label": "Importuojant",
             "help": "Prašoma importavimo lange prieš pradedant importą. Savų failų įkėlimui netaikoma."
+          },
+          "change_password": {
+            "label": "Keičiant slaptažodį",
+            "help": "Prašoma keičiant slaptažodį profilio puslapyje, prieš tikrinant dabartinį slaptažodį."
+          },
+          "change_email": {
+            "label": "Keičiant el. paštą",
+            "help": "Prašoma keičiant el. pašto adresą profilio puslapyje, prieš tikrinant dabartinį slaptažodį."
           }
         },
         "loadFailed": "Nepavyko įkelti captcha nustatymų.",

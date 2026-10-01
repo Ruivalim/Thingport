@@ -11,7 +11,7 @@ export function useCaptchaSettings(): CaptchaSettings | null {
     let active = true;
     cached ??= captchaApi.getSettings().catch(() => {
       cached = null;
-      return { login: false, register: false, import: false };
+      return { login: false, register: false, import: false, change_password: false, change_email: false };
     });
     void cached.then((value) => {
       if (active) setSettings(value);

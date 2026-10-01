@@ -1,4 +1,4 @@
-// Image captchas for login, registration and import. svg-captcha draws characters as outlines,
+// Image captchas for login, registration, import and profile changes. svg-captcha draws characters as outlines,
 // not <text>, so the answer isn't in the markup.
 //
 // Answers live in memory, are single-use, and expire after CAPTCHA_TTL_MS.
@@ -63,8 +63,11 @@ export function isExtensionRequest(req: Request): boolean {
   return req.get("x-thingport-client") === "grab" || EXTENSION_ORIGIN.test(req.get("origin") ?? "");
 }
 
-export async function checkCaptcha(req: Request, place: CaptchaPlace): Promise<void> {
-  if (isExtensionRequest(req) || !(await isCaptchaEnabled(place))) return;
+/** With several places (one request changing several things), one captcha covers whichever are on. */
+export async function checkCaptcha(req: Request, place: CaptchaPlace | CaptchaPlace[]): Promise<void> {
+  if (isExtensionRequest(req)) return;
+  const enabled = await Promise.all((Array.isArray(place) ? place : [place]).map(isCaptchaEnabled));
+  if (!enabled.includes(true)) return;
   const body = (req.body ?? {}) as { captcha_id?: unknown; captcha_answer?: unknown };
   if (typeof body.captcha_answer !== "string" || !body.captcha_answer.trim()) {
     throw new HttpError(400, "Enter the characters shown in the image.", "CAPTCHA_REQUIRED");

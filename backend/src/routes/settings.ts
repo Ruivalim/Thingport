@@ -94,7 +94,15 @@ router.get(
 );
 
 // Reading these is public (routes/captcha.ts): sign-in and register forms need them.
-const captchaSettingsSchema = z.object({ login: z.boolean(), register: z.boolean(), import: z.boolean() }).partial();
+const captchaSettingsSchema = z
+  .object({
+    login: z.boolean(),
+    register: z.boolean(),
+    import: z.boolean(),
+    change_password: z.boolean(),
+    change_email: z.boolean(),
+  })
+  .partial();
 router.patch(
   "/settings/captcha",
   requireAdmin,

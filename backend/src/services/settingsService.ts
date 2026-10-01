@@ -15,9 +15,15 @@ async function setBoolSetting(key: string, value: boolean): Promise<void> {
   });
 }
 
-export type CaptchaPlace = "login" | "register" | "import";
+export type CaptchaPlace = "login" | "register" | "import" | "change_password" | "change_email";
 export type CaptchaSettings = Record<CaptchaPlace, boolean>;
-export const CAPTCHA_PLACES: readonly CaptchaPlace[] = ["login", "register", "import"];
+export const CAPTCHA_PLACES: readonly CaptchaPlace[] = [
+  "login",
+  "register",
+  "import",
+  "change_password",
+  "change_email",
+];
 const captchaKey = (place: CaptchaPlace) => `captcha_${place}`;
 
 export async function getCaptchaSettings(): Promise<CaptchaSettings> {

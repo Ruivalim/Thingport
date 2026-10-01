@@ -442,6 +442,14 @@
           "import": {
             "label": "Import",
             "help": "Asked in the Import dialog before an import starts. Uploading your own files isn't affected."
+          },
+          "change_password": {
+            "label": "Change password",
+            "help": "Asked when changing your password on the profile page, before the current password is checked."
+          },
+          "change_email": {
+            "label": "Change email",
+            "help": "Asked when changing your email on the profile page, before the current password is checked."
           }
         },
         "loadFailed": "Unable to load the captcha settings.",

@@ -2,7 +2,7 @@ import { authHeaders } from "../utils/auth";
 import { apiBase, assertOk, readErrorMessage, UnauthorizedError } from "./client";
 
 /** Where the web app asks for a captcha (Administration > Captcha). */
-export type CaptchaPlace = "login" | "register" | "import";
+export type CaptchaPlace = "login" | "register" | "import" | "change_password" | "change_email";
 export type CaptchaSettings = Record<CaptchaPlace, boolean>;
 
 /** A solved captcha, sent along with the request it guards. */

@@ -9,7 +9,7 @@ const app = createApp();
 const stamp = Date.now();
 const email = (name: string) => `${name}-${stamp}@example.com`;
 const auth = (token: string) => ({ Authorization: `Bearer ${token}` });
-const ALL_OFF = { login: false, register: false, import: false };
+const ALL_OFF = { login: false, register: false, import: false, change_password: false, change_email: false };
 
 let adminToken: string;
 let memberToken: string;
@@ -64,7 +64,7 @@ describe("captcha settings", () => {
     ).toBe(403);
     const res = await request(app).patch("/api/settings/captcha").set(auth(adminToken)).send({ login: true });
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ login: true, register: false, import: false });
+    expect(res.body).toEqual({ ...ALL_OFF, login: true });
   });
 });
 
@@ -175,6 +175,43 @@ describe("captcha on registration", () => {
           .send({ email: email("captcha-member"), password: "password123" })
       ).status,
     ).toBe(200);
+  });
+});
+
+describe("captcha on profile changes", () => {
+  // Unchanged values keep the member's credentials (used by other tests) and skip the verification email.
+  const changePassword = (extra: object = {}) =>
+    request(app)
+      .patch("/api/profile")
+      .set(auth(memberToken))
+      .send({ current_password: "password123", new_password: "password123", ...extra });
+  const changeEmail = (extra: object = {}) =>
+    request(app)
+      .patch("/api/profile")
+      .set(auth(memberToken))
+      .send({ current_password: "password123", email: email("captcha-member"), ...extra });
+
+  it("isn't asked for while turned off", async () => {
+    expect((await changePassword()).status).toBe(200);
+    expect((await changeEmail()).status).toBe(200);
+  });
+
+  it("guards each change only when its own place is on", async () => {
+    await setCaptchaSettings({ change_password: true });
+    expect((await changePassword()).body.code).toBe("CAPTCHA_REQUIRED");
+    expect((await changePassword(solved())).status).toBe(200);
+    expect((await changeEmail()).status).toBe(200);
+
+    await setCaptchaSettings({ change_password: false, change_email: true });
+    expect((await changeEmail()).body.code).toBe("CAPTCHA_REQUIRED");
+    expect((await changeEmail(solved())).status).toBe(200);
+    expect((await changePassword()).status).toBe(200);
+  });
+
+  it("is checked before the current password", async () => {
+    await setCaptchaSettings({ change_password: true });
+    const res = await changePassword({ current_password: "wrong-password" });
+    expect(res.body.code).toBe("CAPTCHA_REQUIRED");
   });
 });
 

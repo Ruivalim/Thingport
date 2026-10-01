@@ -19,7 +19,7 @@ export type UpdateProfileInput = {
   current_password: string;
   email?: string;
   new_password?: string;
-};
+} & Partial<CaptchaAnswer>;
 
 async function readAuthError(res: Response): Promise<never> {
   let message = "Request failed";

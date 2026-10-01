@@ -21,7 +21,7 @@ type Props = {
   onUnauthorized?: () => void;
 };
 
-const PLACES: CaptchaPlace[] = ["login", "register", "import"];
+const PLACES: CaptchaPlace[] = ["login", "register", "import", "change_password", "change_email"];
 
 /** Each box saves as soon as it's ticked. The extension is never asked for a captcha. */
 export default function CaptchaPage({ onUnauthorized }: Props) {

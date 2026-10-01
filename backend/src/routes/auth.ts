@@ -7,7 +7,7 @@ import { prisma } from "../db";
 import { HttpError } from "../utils/fileUtils";
 import { parseBody } from "../utils/validate";
 import { asyncHandler } from "../utils/asyncHandler";
-import { getAllowRegistrations, isSmtpConfigured } from "../services/settingsService";
+import { getAllowRegistrations, isSmtpConfigured, type CaptchaPlace } from "../services/settingsService";
 import { sendVerificationEmail } from "../services/mailer";
 import { findValidInvitation } from "../services/invitationService";
 import { checkCaptcha } from "../services/captchaService";
@@ -219,6 +219,11 @@ router.patch(
   requireAuth,
   asyncHandler(async (req, res) => {
     const body = parseBody(updateProfileSchema, req.body);
+    // Before the password check, so each guess at the current password costs a solved captcha.
+    const captchaPlaces: CaptchaPlace[] = [];
+    if (body.email !== undefined) captchaPlaces.push("change_email");
+    if (body.new_password !== undefined) captchaPlaces.push("change_password");
+    await checkCaptcha(req, captchaPlaces);
     const user = await prisma.user.findUnique({ where: { id: req.userId! } });
     if (!user) throw new HttpError(401, "Invalid or expired token");
     if (!(await bcrypt.compare(body.current_password, user.passwordHash))) {
