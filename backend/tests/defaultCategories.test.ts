@@ -25,12 +25,6 @@ describe("DEFAULT_CATEGORIES", () => {
     expect(DEFAULT_CATEGORIES.length).toBeGreaterThan(0);
   });
 
-  it("never nests more than two levels deep, matching validateParentCategory's limit", () => {
-    for (const { depth } of all) {
-      expect(depth).toBeLessThanOrEqual(1);
-    }
-  });
-
   it("gives every node a non-empty name", () => {
     for (const { node } of all) {
       expect(node.name.trim()).not.toBe("");

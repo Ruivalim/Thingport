@@ -207,10 +207,28 @@ router.delete(
     const category = await prisma.category.findFirst({ where: { id: req.params.id, userId: req.userId } });
     if (!category) throw new HttpError(404, "Not found");
 
-    await prisma.category.updateMany({
+    // Subcategories move up one level, after the deleted category's former siblings.
+    const children = await prisma.category.findMany({
       where: { parentId: category.id, userId: req.userId },
-      data: { parentId: null },
+      orderBy: [{ position: "asc" }, { name: "asc" }],
+      select: { id: true },
     });
+    if (children.length) {
+      const last = await prisma.category.findFirst({
+        where: { userId: req.userId, parentId: category.parentId, id: { not: category.id } },
+        orderBy: { position: "desc" },
+        select: { position: true },
+      });
+      const start = (last?.position ?? -1) + 1;
+      await prisma.$transaction(
+        children.map((child, idx) =>
+          prisma.category.update({
+            where: { id: child.id },
+            data: { parentId: category.parentId, position: start + idx },
+          }),
+        ),
+      );
+    }
 
     const prints = await prisma.print.findMany({ where: { categoryId: category.id, userId: req.userId } });
     for (const print of prints) {

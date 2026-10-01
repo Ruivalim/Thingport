@@ -1446,7 +1446,7 @@
         "addSubcategory": "Pridėti subkategoriją",
         "noCategories": "Kol kas nėra kategorijų. Pridėkite pirmąją.",
         "confirmDeleteCategory": "Ištrinti „{{name}}“? Joje esantys modeliai taps nepriskirti.",
-        "confirmDeleteCategoryWithSub": "Ištrinti „{{name}}“? Jos subkategorijos taps pagrindinėmis kategorijomis, o jose esantys modeliai taps nepriskirti.",
+        "confirmDeleteCategoryWithSub": "Ištrinti „{{name}}“? Jos subkategorijos pakils vienu lygiu aukščiau, o modeliai, esantys tiesiai joje, bus perkelti į „Nepriskirta“.",
         "confirmDeleteSubcategory": "Ištrinti „{{name}}“? Joje esantys modeliai taps nepriskirti.",
         "addDetailsTooltip": "Pridėti informaciją",
         "editDetailsTooltip": "Redaguoti informaciją",
@@ -1458,8 +1458,7 @@
         "printablesCatIdLabel": "Printables kategorijų ID",
         "catIdsPlaceholder": "pvz. 800;71;1001",
         "catIdsHelp": "Kelis ID atskirkite „;“ -- atitiks, jei importo kategorija sutampa su bet kuriuo iš jų",
-        "dragToMove": "Vilkite, kad perkeltumėte",
-        "dropHere": "Numeskite čia"
+        "dragToMove": "Vilkite, kad perkeltumėte"
       }
     }
   }

@@ -12,6 +12,7 @@ import { type PreviewMode } from "../../api/settings";
 import type { AuthUser } from "../../api/auth";
 import { type ResolvedTheme } from "../../constants/settingsOptions";
 import { usePageHeader } from "../../components/Layout/PageHeaderContext";
+import { buildCategoryTree, subtreeIds } from "../../utils/categoryTree";
 import { useInfiniteScroll } from "../../hooks/useInfiniteScroll";
 import CategoriesPanel from "./CategoriesPanel";
 import CategoryBanner from "./CategoryBanner";
@@ -95,13 +96,11 @@ export default function ModelsPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryId]);
 
-  // A root category includes the models in all its subcategories.
+  // A category includes the models at every level beneath it.
   const categoryIdFilter = useMemo(() => {
     if (!categoryId) return undefined;
-    const isRoot = categories.some((f) => f.id === categoryId && !f.parent_id);
-    if (!isRoot) return categoryId;
-    const childIds = categories.filter((f) => f.parent_id === categoryId).map((f) => f.id);
-    return [categoryId, ...childIds];
+    const ids = subtreeIds(buildCategoryTree(categories), categoryId);
+    return ids.length === 1 ? categoryId : ids;
   }, [categoryId, categories]);
 
   const selectedCategory = categoryId ? (categories.find((f) => f.id === categoryId) ?? null) : null;

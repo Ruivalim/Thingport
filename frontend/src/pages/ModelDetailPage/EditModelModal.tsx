@@ -36,6 +36,7 @@ import { useConfirm } from "../../components/ConfirmProvider";
 import { useToast } from "../../components/ToastProvider";
 import TagInput from "../../components/TagInput";
 import { translateCategoryDisplay } from "../../utils/translateCategoryDisplay";
+import { buildCategoryTree, flattenCategoryTree } from "../../utils/categoryTree";
 
 type ImageItem =
   { kind: "existing"; id: string; url: string } | { kind: "new"; localId: string; file: File; previewUrl: string };
@@ -107,24 +108,7 @@ export default function EditModelModal({ print, onClose, onUnauthorized, onUpdat
 
   const markDirty = () => setDirty(true);
 
-  const { roots, childrenByParent } = useMemo(() => {
-    const list = categories ?? [];
-    const childrenMap: Record<string, Category[]> = {};
-    const rootList: Category[] = [];
-    for (const c of list) {
-      if (c.parent_id) {
-        if (!childrenMap[c.parent_id]) childrenMap[c.parent_id] = [];
-        childrenMap[c.parent_id].push(c);
-      } else {
-        rootList.push(c);
-      }
-    }
-    const byPosition = (a: Category, b: Category) => a.position - b.position || a.name.localeCompare(b.name);
-    Object.keys(childrenMap).forEach((key) => {
-      childrenMap[key] = childrenMap[key].toSorted(byPosition);
-    });
-    return { roots: rootList.toSorted(byPosition), childrenByParent: childrenMap };
-  }, [categories]);
+  const flatCategories = useMemo(() => flattenCategoryTree(buildCategoryTree(categories ?? [])), [categories]);
   const categoryName = (c: Category) => translateCategoryDisplay(c, i18n).name;
 
   const onAddImages = (fileList: FileList | null) => {
@@ -323,19 +307,17 @@ export default function EditModelModal({ print, onClose, onUnauthorized, onUpdat
               }}
             >
               <MenuItem value="">{t("models:edit.noCategory")}</MenuItem>
-              {roots.flatMap((root) =>
-                [
-                  // A disabled MenuItem, not ListSubheader: MUI's Select still handles clicks on the latter and
-                  // gets stuck open.
-                  <MenuItem key={`h-${root.id}`} disabled divider sx={{ fontWeight: 700, opacity: "1 !important" }}>
-                    {categoryName(root)}
-                  </MenuItem>,
-                ].concat(
-                  (childrenByParent[root.id] ?? []).map((child) => (
-                    <MenuItem key={child.id} value={child.id} sx={{ pl: 3 }}>
-                      {categoryName(child)}
-                    </MenuItem>
-                  )),
+              {flatCategories.map(({ category, depth }) =>
+                depth === 0 ? (
+                  // Top-level categories are headings. A disabled MenuItem, not ListSubheader: MUI's Select
+                  // still handles clicks on the latter and gets stuck open.
+                  <MenuItem key={category.id} disabled divider sx={{ fontWeight: 700, opacity: "1 !important" }}>
+                    {categoryName(category)}
+                  </MenuItem>
+                ) : (
+                  <MenuItem key={category.id} value={category.id} sx={{ pl: 1 + depth * 2 }}>
+                    {categoryName(category)}
+                  </MenuItem>
                 ),
               )}
             </Select>

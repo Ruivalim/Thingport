@@ -3,7 +3,7 @@ import { prisma } from "../db";
 import { HttpError } from "../utils/fileUtils";
 import { DEFAULT_CATEGORIES, type DefaultCategoryNode } from "../seedData/defaultCategories";
 
-/** Keeps the tree at most two levels deep, which also makes cycles impossible. */
+/** Any depth is allowed; only cycles are rejected (a category under itself or its own descendant). */
 export async function validateParentCategory(
   userId: string,
   parentId: string | null | undefined,
@@ -14,13 +14,20 @@ export async function validateParentCategory(
   if (!parent) throw new HttpError(400, "Parent category not found");
   if (categoryId && parentId === categoryId) throw new HttpError(400, "Category cannot be its own parent");
 
-  if (parent.parentId) {
-    throw new HttpError(400, "Categories can only be nested two levels deep");
-  }
   if (categoryId) {
-    const childCount = await prisma.category.count({ where: { parentId: categoryId, userId } });
-    if (childCount > 0) {
-      throw new HttpError(400, "A category with subcategories cannot be moved under another category");
+    // `visited` guards against a cycle already in the data.
+    const visited = new Set<string>();
+    let ancestorId = parent.parentId;
+    while (ancestorId && !visited.has(ancestorId)) {
+      if (ancestorId === categoryId) {
+        throw new HttpError(400, "A category cannot be moved under one of its own subcategories");
+      }
+      visited.add(ancestorId);
+      const ancestor = await prisma.category.findFirst({
+        where: { id: ancestorId, userId },
+        select: { parentId: true },
+      });
+      ancestorId = ancestor?.parentId ?? null;
     }
   }
 

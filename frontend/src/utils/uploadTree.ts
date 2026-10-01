@@ -98,10 +98,19 @@ export async function uploadEntriesToCategory(
   const categoryCache = new Map<string, string>();
   const baseKey = parentCategoryId || "root";
 
+  // Folders reuse a same-named category in the same place, so uploading a tree twice doesn't duplicate it.
+  let existingCategories: Awaited<ReturnType<typeof categoriesApi.list>> | null = null;
+
   const getOrCreateCategory = async (parentId: string | null, parentKey: string, name: string) => {
     const key = `${parentKey}/${name}`;
-    const existing = categoryCache.get(key);
-    if (existing) return existing;
+    const cached = categoryCache.get(key);
+    if (cached) return cached;
+    existingCategories ??= await categoriesApi.list();
+    const match = existingCategories.find((c) => (c.parent_id ?? null) === parentId && c.name === name);
+    if (match) {
+      categoryCache.set(key, match.id);
+      return match.id;
+    }
     const created = await categoriesApi.create(name, [], parentId || undefined);
     const categoryId = (created as { id: string }).id;
     categoryCache.set(key, categoryId);

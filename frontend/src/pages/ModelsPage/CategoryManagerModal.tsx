@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { Fragment, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
@@ -14,6 +14,7 @@ import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import CircularProgress from "@mui/material/CircularProgress";
 import Divider from "@mui/material/Divider";
+import Paper from "@mui/material/Paper";
 import Tooltip from "@mui/material/Tooltip";
 import CloseIcon from "@mui/icons-material/Close";
 import AddIcon from "@mui/icons-material/Add";
@@ -24,20 +25,19 @@ import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
-import Paper from "@mui/material/Paper";
 import {
   DndContext,
   DragOverlay,
   KeyboardSensor,
+  MeasuringStrategy,
   PointerSensor,
-  closestCorners,
-  useDroppable,
+  closestCenter,
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragMoveEvent,
   type DragOverEvent,
   type DragStartEvent,
-  type UniqueIdentifier,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -49,7 +49,12 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import type { Category, CategoryMetaInput } from "../../api/categories";
 import { useConfirm } from "../../components/ConfirmProvider";
+import { buildCategoryTree, flattenCategoryTree } from "../../utils/categoryTree";
 import CategoryMetaDialog from "./CategoryMetaDialog";
+
+// One nesting level. Also how far a row must be dragged sideways to change its level.
+const INDENT_PX = 24;
+const ACTION_BUTTON_PX = 30;
 
 type Props = {
   categories: Category[];
@@ -72,40 +77,67 @@ function hasMeta(category: Category): boolean {
   );
 }
 
-/** Subcategory ids per top-level category id, in display order. */
-type Containers = Record<string, string[]>;
+type FlatItem = { id: string; parentId: string | null; depth: number };
+type Projection = { depth: number; parentId: string | null };
+
+/**
+ * Where the dragged row would land: its vertical position comes from the row it's over, its level
+ * from how far it was dragged sideways, kept within what the neighbours allow. Null when there's
+ * no valid level, e.g. above the first top-level category, since dragging never makes a top-level one.
+ */
+function getProjection(items: FlatItem[], activeId: string, overId: string, offsetX: number): Projection | null {
+  const activeIndex = items.findIndex((i) => i.id === activeId);
+  const overIndex = items.findIndex((i) => i.id === overId);
+  if (activeIndex === -1 || overIndex === -1) return null;
+  const newItems = arrayMove(items, activeIndex, overIndex);
+  const previous = newItems[overIndex - 1];
+  const next = newItems[overIndex + 1];
+  const maxDepth = previous ? previous.depth + 1 : 0;
+  // Can't slip in above `next` at a shallower level than it: that would steal it as a child.
+  const minDepth = Math.max(next ? next.depth : 0, 1);
+  if (!previous || maxDepth < minDepth) return null;
+  const wanted = items[activeIndex].depth + Math.round(offsetX / INDENT_PX);
+  const depth = Math.min(Math.max(wanted, minDepth), maxDepth);
+
+  let parentId: string | null;
+  if (depth === previous.depth) parentId = previous.parentId;
+  else if (depth > previous.depth) parentId = previous.id;
+  else parentId = newItems.slice(0, overIndex).findLast((i) => i.depth === depth)?.parentId ?? null;
+  return { depth, parentId };
+}
 
 type MoveButtons = { canMoveUp: boolean; canMoveDown: boolean; onMoveUp: () => void; onMoveDown: () => void };
 
-/** What a sortable row needs from useSortable. */
-type SortableBinding = { setNodeRef: (node: HTMLElement | null) => void; style: CSSProperties; handle: ReactNode };
-
 function CategoryRow({
   name,
-  indent,
-  bold,
+  depth,
   busy,
   move,
-  sortable,
+  dragHandle,
+  nodeRef,
+  style,
   metaTitle,
   metaDescription,
   hasDetails,
   onOpenMeta,
+  onAddChild,
   onRename,
   onDelete,
 }: {
   name: string;
-  indent: number;
-  bold?: boolean;
+  depth: number;
   busy: boolean;
   /** Up/down arrows; top-level categories only. */
   move?: MoveButtons;
   /** Subcategories are dragged instead. */
-  sortable?: SortableBinding;
+  dragHandle?: ReactNode;
+  nodeRef: (node: HTMLElement | null) => void;
+  style: CSSProperties;
   metaTitle: string | null;
   metaDescription: string | null;
   hasDetails: boolean;
   onOpenMeta: () => void;
+  onAddChild: () => void;
   onRename: (name: string) => Promise<void>;
   onDelete: () => void;
 }) {
@@ -113,6 +145,7 @@ function CategoryRow({
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(name);
   const [saving, setSaving] = useState(false);
+  const indent = `${depth * INDENT_PX}px`;
 
   const startEdit = () => {
     setValue(name);
@@ -141,7 +174,7 @@ function CategoryRow({
 
   if (editing) {
     return (
-      <ListItem ref={sortable?.setNodeRef} style={sortable?.style} disableGutters sx={{ pl: indent, py: 0.5 }}>
+      <ListItem ref={nodeRef} style={style} disableGutters sx={{ pl: indent, py: 0.5 }}>
         <Stack direction="row" spacing={0.5} alignItems="center" sx={{ width: "100%" }}>
           <TextField
             size="small"
@@ -166,10 +199,11 @@ function CategoryRow({
     );
   }
 
+  const actionCount = move ? 6 : 4;
   return (
     <ListItem
-      ref={sortable?.setNodeRef}
-      style={sortable?.style}
+      ref={nodeRef}
+      style={style}
       disableGutters
       sx={{ pl: indent, py: 0.5 }}
       secondaryAction={
@@ -194,6 +228,18 @@ function CategoryRow({
               </IconButton>
             </>
           )}
+          <Tooltip title={t("models:categories.manager.addSubcategory")}>
+            <span>
+              <IconButton
+                size="small"
+                onClick={onAddChild}
+                disabled={busy}
+                aria-label={t("models:categories.manager.addSubcategory") ?? undefined}
+              >
+                <AddIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
           <Tooltip
             title={
               hasDetails ? (
@@ -244,8 +290,13 @@ function CategoryRow({
         </Stack>
       }
     >
-      {sortable?.handle}
-      <Typography variant="body2" fontWeight={bold ? 600 : 400} noWrap sx={{ pr: move ? 19 : 12 }}>
+      {dragHandle}
+      <Typography
+        variant="body2"
+        fontWeight={depth === 0 ? 600 : 400}
+        noWrap
+        sx={{ pr: `${actionCount * ACTION_BUTTON_PX + 8}px` }}
+      >
         {name}
       </Typography>
     </ListItem>
@@ -280,72 +331,81 @@ function DragHandle({
   );
 }
 
-function SortableSubcategoryRow({
+/** Every row is in the sortable list so the others can be placed around it; only subcategories drag. */
+function TreeRow({
   id,
+  depth,
   ...rowProps
-}: { id: string } & Omit<Parameters<typeof CategoryRow>[0], "sortable" | "move">) {
+}: { id: string; depth: number } & Omit<Parameters<typeof CategoryRow>[0], "nodeRef" | "style" | "dragHandle">) {
+  const isRoot = depth === 0;
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id,
+    disabled: isRoot,
   });
   return (
     <CategoryRow
       {...rowProps}
-      sortable={{
-        setNodeRef,
-        // The DragOverlay shows the dragged row; this one stays as a faint placeholder.
-        style: { transform: CSS.Translate.toString(transform), transition, opacity: isDragging ? 0.35 : 1 },
-        handle: <DragHandle setActivatorNodeRef={setActivatorNodeRef} attributes={attributes} listeners={listeners} />,
-      }}
+      depth={depth}
+      nodeRef={setNodeRef}
+      // The DragOverlay shows the dragged row; this one stays as a faint placeholder at the projected level.
+      style={{ transform: CSS.Translate.toString(transform), transition, opacity: isDragging ? 0.35 : 1 }}
+      dragHandle={
+        isRoot ? undefined : (
+          <DragHandle setActivatorNodeRef={setActivatorNodeRef} attributes={attributes} listeners={listeners} />
+        )
+      }
     />
   );
 }
 
-/** A drop target even when empty, so subcategories can be dragged into a category without any. */
-function SubcategoryList({
-  parentId,
-  ids,
-  dragging,
-  children,
+/** Opened from a row's + button; sits after that category's existing subcategories. */
+function InlineAddRow({
+  depth,
+  busy,
+  onAdd,
+  onCancel,
 }: {
-  parentId: string;
-  ids: string[];
-  dragging: boolean;
-  children: ReactNode;
+  depth: number;
+  busy: boolean;
+  onAdd: (name: string) => Promise<void>;
+  onCancel: () => void;
 }) {
   const { t } = useTranslation("models");
-  const { setNodeRef } = useDroppable({ id: parentId });
+  const [value, setValue] = useState("");
+  const submit = async () => {
+    const trimmed = value.trim();
+    if (trimmed) await onAdd(trimmed);
+  };
   return (
-    <SortableContext id={parentId} items={ids} strategy={verticalListSortingStrategy}>
-      <List ref={setNodeRef} disablePadding>
-        {children}
-        {dragging && ids.length === 0 && (
-          <Box
-            sx={{
-              ml: 3,
-              py: 0.75,
-              border: "1px dashed",
-              borderColor: "divider",
-              borderRadius: 1,
-              textAlign: "center",
-            }}
-          >
-            <Typography variant="caption" color="text.secondary">
-              {t("categories.manager.dropHere")}
-            </Typography>
-          </Box>
-        )}
-      </List>
-    </SortableContext>
+    <Stack direction="row" spacing={0.5} alignItems="center" sx={{ pl: `${depth * INDENT_PX}px`, py: 0.5 }}>
+      <TextField
+        size="small"
+        fullWidth
+        placeholder={t("categories.manager.addSubcategory")}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") submit();
+          if (e.key === "Escape") onCancel();
+        }}
+        // oxlint-disable-next-line jsx-a11y/no-autofocus
+        autoFocus
+      />
+      <IconButton size="small" onClick={submit} disabled={busy || !value.trim()}>
+        {busy ? <CircularProgress size={16} /> : <CheckIcon fontSize="small" />}
+      </IconButton>
+      <IconButton size="small" onClick={onCancel} disabled={busy}>
+        <CloseIcon fontSize="small" />
+      </IconButton>
+    </Stack>
   );
 }
 
 function AddRow({
-  indent,
   placeholder,
   busy,
   onAdd,
 }: {
-  indent: number;
   placeholder: string;
   busy: boolean;
   onAdd: (name: string) => Promise<void>;
@@ -371,7 +431,6 @@ function AddRow({
           setAdding(true);
           setTimeout(() => inputRef.current?.focus(), 0);
         }}
-        sx={{ ml: `${indent * 8}px` }}
       >
         {placeholder}
       </Button>
@@ -379,7 +438,7 @@ function AddRow({
   }
 
   return (
-    <Stack direction="row" spacing={0.5} alignItems="center" sx={{ pl: `${indent * 8}px`, py: 0.5 }}>
+    <Stack direction="row" spacing={0.5} alignItems="center" sx={{ py: 0.5 }}>
       <TextField
         inputRef={inputRef}
         size="small"
@@ -426,86 +485,29 @@ export default function CategoryManagerModal({
   const confirmDialog = useConfirm();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [metaCategory, setMetaCategory] = useState<Category | null>(null);
+  const [addingUnderId, setAddingUnderId] = useState<string | null>(null);
 
-  const { roots, childrenByParent } = useMemo(() => {
-    const childrenMap: Record<string, Category[]> = {};
-    const rootList: Category[] = [];
-    categories.forEach((f) => {
-      if (f.parent_id) {
-        if (!childrenMap[f.parent_id]) childrenMap[f.parent_id] = [];
-        childrenMap[f.parent_id].push(f);
-      } else {
-        rootList.push(f);
-      }
-    });
-    const byPosition = (a: Category, b: Category) => a.position - b.position || a.name.localeCompare(b.name);
-    Object.keys(childrenMap).forEach((key) => {
-      childrenMap[key] = childrenMap[key].toSorted(byPosition);
-    });
-    return {
-      roots: rootList.toSorted(byPosition),
-      childrenByParent: childrenMap,
-    };
-  }, [categories]);
+  // A drop shows right away and stays until `categories` is refetched (which happens on failure too).
+  const [optimistic, setOptimistic] = useState<{ base: Category[]; list: Category[] } | null>(null);
+  const shown = optimistic?.base === categories ? optimistic.list : categories;
+  const tree = useMemo(() => buildCategoryTree(shown), [shown]);
 
-  const untitledLabel = t("models:categories.untitled");
-
-  const handleDeleteCategory = async (category: Category) => {
-    const hasChildren = (childrenByParent[category.id] || []).length > 0;
-    const message = hasChildren
-      ? t("models:categories.manager.confirmDeleteCategoryWithSub", { name: category.name || untitledLabel })
-      : t("models:categories.manager.confirmDeleteCategory", { name: category.name || untitledLabel });
-    if (!(await confirmDialog({ message, destructive: true }))) return;
-    setBusyId(category.id);
-    try {
-      await onDelete(category.id);
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const handleDeleteSubcategory = async (category: Category) => {
-    const message = t("models:categories.manager.confirmDeleteSubcategory", { name: category.name || untitledLabel });
-    if (!(await confirmDialog({ message, destructive: true }))) return;
-    setBusyId(category.id);
-    try {
-      await onDelete(category.id);
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const swapAndReorder = async (siblingIds: string[], index: number, direction: -1 | 1, busyKey: string) => {
-    const swapIndex = index + direction;
-    if (swapIndex < 0 || swapIndex >= siblingIds.length) return;
-    const reordered = siblingIds.slice();
-    [reordered[index], reordered[swapIndex]] = [reordered[swapIndex], reordered[index]];
-    setBusyId(busyKey);
-    try {
-      await onReorder(reordered);
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const moveRoot = (index: number, direction: -1 | 1) =>
-    swapAndReorder(
-      roots.map((r) => r.id),
-      index,
-      direction,
-      roots[index].id,
-    );
-
-  const categoryById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
-  const propContainers = useMemo<Containers>(
-    () => Object.fromEntries(roots.map((root) => [root.id, (childrenByParent[root.id] || []).map((c) => c.id)])),
-    [roots, childrenByParent],
-  );
-  // The order mid-drag and after a drop, until `categories` is refetched (which happens on failure too).
-  const [optimistic, setOptimistic] = useState<{ base: Category[]; containers: Containers } | null>(null);
-  const containers = optimistic?.base === categories ? optimistic.containers : propContainers;
   const [activeId, setActiveId] = useState<string | null>(null);
-  const dragOrigin = useRef<{ parentId: string; ids: string[] } | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+  const [offsetX, setOffsetX] = useState(0);
+
+  // While dragging, the dragged category's subtree is folded into it.
+  const flat = useMemo(() => flattenCategoryTree(tree, activeId ? new Set([activeId]) : undefined), [tree, activeId]);
+  const items = useMemo<FlatItem[]>(
+    () =>
+      flat.map(({ category, depth }) => ({
+        id: category.id,
+        parentId: category.parent_id && tree.byId.has(category.parent_id) ? category.parent_id : null,
+        depth,
+      })),
+    [flat, tree],
+  );
+  const projection = activeId && overId ? getProjection(items, activeId, overId, offsetX) : null;
 
   const sensors = useSensors(
     // A few pixels of travel before dragging, so clicks on the handle don't start one.
@@ -513,80 +515,103 @@ export default function CategoryManagerModal({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  /** Over ids are either a subcategory or a (possibly empty) top-level category's list. */
-  const containerOf = (id: UniqueIdentifier): string | null => {
-    const key = String(id);
-    if (key in containers) return key;
-    return Object.keys(containers).find((parentId) => containers[parentId].includes(key)) ?? null;
-  };
+  const untitledLabel = t("models:categories.untitled");
 
-  const handleDragStart = ({ active }: DragStartEvent) => {
-    const parentId = containerOf(active.id);
-    if (!parentId) return;
-    setActiveId(String(active.id));
-    dragOrigin.current = { parentId, ids: containers[parentId] };
-    setOptimistic({ base: categories, containers });
-  };
-
-  // Crossing into another category moves the row there right away, so that list opens a gap for it.
-  const handleDragOver = ({ active, over }: DragOverEvent) => {
-    if (!over) return;
-    const from = containerOf(active.id);
-    const to = containerOf(over.id);
-    if (!from || !to || from === to) return;
-    const id = String(active.id);
-    const target = containers[to];
-    const overIndex = target.indexOf(String(over.id));
-    const insertAt = overIndex === -1 ? target.length : overIndex;
-    setOptimistic({
-      base: categories,
-      containers: {
-        ...containers,
-        [from]: containers[from].filter((c) => c !== id),
-        [to]: [...target.slice(0, insertAt), id, ...target.slice(insertAt)],
-      },
-    });
-  };
-
-  const resetDrag = () => {
-    setActiveId(null);
-    dragOrigin.current = null;
-  };
-
-  const handleDragCancel = () => {
-    setOptimistic(null);
-    resetDrag();
-  };
-
-  const handleDragEnd = async ({ active, over }: DragEndEvent) => {
-    const origin = dragOrigin.current;
-    const to = over ? containerOf(over.id) : null;
-    resetDrag();
-    if (!origin || !to) {
-      setOptimistic(null);
-      return;
-    }
-    const id = String(active.id);
-    const fromIndex = containers[to].indexOf(id);
-    const overIndex = containers[to].indexOf(String(over!.id));
-    const ids = overIndex === -1 ? containers[to] : arrayMove(containers[to], fromIndex, overIndex);
-    setOptimistic({ base: categories, containers: { ...containers, [to]: ids } });
-
-    setBusyId(id);
+  const handleDelete = async (category: Category) => {
+    const name = category.name || untitledLabel;
+    const message = tree.childrenByParent[category.id]?.length
+      ? t("models:categories.manager.confirmDeleteCategoryWithSub", { name })
+      : t("models:categories.manager.confirmDeleteCategory", { name });
+    if (!(await confirmDialog({ message, destructive: true }))) return;
+    setBusyId(category.id);
     try {
-      if (to !== origin.parentId) {
-        await onMove(id, to, ids.indexOf(id));
-      } else if (ids.some((c, i) => c !== origin.ids[i])) {
-        await onReorder(ids);
-      } else {
-        setOptimistic(null);
-      }
+      await onDelete(category.id);
     } finally {
       setBusyId(null);
     }
   };
 
-  const activeCategory = activeId ? categoryById.get(activeId) : undefined;
+  const moveRoot = async (index: number, direction: -1 | 1) => {
+    const ids = tree.roots.map((r) => r.id);
+    const swapIndex = index + direction;
+    if (swapIndex < 0 || swapIndex >= ids.length) return;
+    [ids[index], ids[swapIndex]] = [ids[swapIndex], ids[index]];
+    setBusyId(ids[swapIndex]);
+    try {
+      await onReorder(ids);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const resetDrag = () => {
+    setActiveId(null);
+    setOverId(null);
+    setOffsetX(0);
+  };
+
+  const handleDragStart = ({ active }: DragStartEvent) => {
+    setActiveId(String(active.id));
+    setOverId(String(active.id));
+    setOffsetX(0);
+    setAddingUnderId(null);
+  };
+
+  const handleDragMove = ({ delta }: DragMoveEvent) => setOffsetX(delta.x);
+
+  const handleDragOver = ({ over }: DragOverEvent) => setOverId(over ? String(over.id) : null);
+
+  const handleDragEnd = async ({ active, over }: DragEndEvent) => {
+    const target = projection;
+    resetDrag();
+    if (!target || !over) return;
+    const id = String(active.id);
+    const moved = arrayMove(
+      items,
+      items.findIndex((i) => i.id === id),
+      items.findIndex((i) => i.id === over.id),
+    );
+    const siblingIds = moved
+      .filter((i) => (i.id === id ? target.parentId : i.parentId) === target.parentId)
+      .map((i) => i.id);
+    const position = siblingIds.indexOf(id);
+
+    const original = tree.byId.get(id);
+    const originalParentId = original?.parent_id ?? null;
+    const sameParent = originalParentId === target.parentId;
+    const originalSiblingIds = (originalParentId ? tree.childrenByParent[originalParentId] : tree.roots)?.map(
+      (c) => c.id,
+    );
+    if (sameParent && siblingIds.every((c, i) => c === originalSiblingIds?.[i])) return;
+
+    const list: Category[] = [];
+    for (const c of shown) {
+      const idx = siblingIds.indexOf(c.id);
+      if (c.id === id) list.push({ ...c, parent_id: target.parentId, position });
+      else list.push(idx === -1 ? c : { ...c, position: idx });
+    }
+    setOptimistic({ base: categories, list });
+    setBusyId(id);
+    try {
+      if (sameParent) await onReorder(siblingIds);
+      else await onMove(id, target.parentId, position);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  // The add-subcategory input goes after the category's last descendant.
+  const addAfterId = useMemo(() => {
+    if (!addingUnderId) return null;
+    const start = flat.findIndex((f) => f.category.id === addingUnderId);
+    if (start === -1) return null;
+    let end = start;
+    while (flat[end + 1] && flat[end + 1].depth > flat[start].depth) end += 1;
+    return flat[end].category.id;
+  }, [flat, addingUnderId]);
+  const addingDepth = addingUnderId ? (flat.find((f) => f.category.id === addingUnderId)?.depth ?? 0) + 1 : 0;
+
+  const activeCategory = activeId ? tree.byId.get(activeId) : undefined;
 
   return (
     <>
@@ -600,81 +625,72 @@ export default function CategoryManagerModal({
         <DialogContent dividers>
           <DndContext
             sensors={sensors}
-            collisionDetection={closestCorners}
+            collisionDetection={closestCenter}
+            // Folding the dragged subtree shifts the rows below, so keep re-measuring.
+            measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
             onDragStart={handleDragStart}
+            onDragMove={handleDragMove}
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
-            onDragCancel={handleDragCancel}
+            onDragCancel={resetDrag}
           >
-            <List disablePadding>
-              {roots.map((root, rootIndex) => {
-                const childIds = containers[root.id] || [];
-                return (
-                  <Box key={root.id} sx={{ mb: 1.5 }}>
-                    <CategoryRow
-                      name={root.name || untitledLabel}
-                      indent={0}
-                      bold
-                      busy={busyId === root.id}
-                      move={{
-                        canMoveUp: rootIndex > 0,
-                        canMoveDown: rootIndex < roots.length - 1,
-                        onMoveUp: () => moveRoot(rootIndex, -1),
-                        onMoveDown: () => moveRoot(rootIndex, 1),
-                      }}
-                      metaTitle={root.meta_title}
-                      metaDescription={root.meta_description}
-                      hasDetails={hasMeta(root)}
-                      onOpenMeta={() => setMetaCategory(root)}
-                      onRename={(name) => onRename(root.id, name)}
-                      onDelete={() => handleDeleteCategory(root)}
-                    />
-                    <SubcategoryList parentId={root.id} ids={childIds} dragging={activeId !== null}>
-                      {childIds.map((childId) => {
-                        const child = categoryById.get(childId);
-                        if (!child) return null;
-                        return (
-                          <SortableSubcategoryRow
-                            key={child.id}
-                            id={child.id}
-                            name={child.name || untitledLabel}
-                            indent={3}
-                            busy={busyId === child.id}
-                            metaTitle={child.meta_title}
-                            metaDescription={child.meta_description}
-                            hasDetails={hasMeta(child)}
-                            onOpenMeta={() => setMetaCategory(child)}
-                            onRename={(name) => onRename(child.id, name)}
-                            onDelete={() => handleDeleteSubcategory(child)}
-                          />
-                        );
-                      })}
-                    </SubcategoryList>
-                    <Box sx={{ pl: 0.5 }}>
-                      <AddRow
-                        indent={3}
-                        placeholder={t("models:categories.manager.addSubcategory")}
-                        busy={busyId === `new-sub-${root.id}`}
-                        onAdd={async (name) => {
-                          setBusyId(`new-sub-${root.id}`);
-                          try {
-                            await onCreate(name, root.id);
-                          } finally {
-                            setBusyId(null);
-                          }
-                        }}
+            <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+              <List disablePadding>
+                {flat.map(({ category, depth }) => {
+                  const rootIndex = depth === 0 ? tree.roots.findIndex((r) => r.id === category.id) : -1;
+                  return (
+                    <Fragment key={category.id}>
+                      {rootIndex > 0 && <Box sx={{ height: 12 }} />}
+                      <TreeRow
+                        id={category.id}
+                        depth={category.id === activeId && projection ? projection.depth : depth}
+                        name={category.name || untitledLabel}
+                        busy={busyId === category.id}
+                        move={
+                          depth === 0
+                            ? {
+                                canMoveUp: rootIndex > 0,
+                                canMoveDown: rootIndex < tree.roots.length - 1,
+                                onMoveUp: () => moveRoot(rootIndex, -1),
+                                onMoveDown: () => moveRoot(rootIndex, 1),
+                              }
+                            : undefined
+                        }
+                        metaTitle={category.meta_title}
+                        metaDescription={category.meta_description}
+                        hasDetails={hasMeta(category)}
+                        onOpenMeta={() => setMetaCategory(category)}
+                        onAddChild={() => setAddingUnderId(category.id)}
+                        onRename={(name) => onRename(category.id, name)}
+                        onDelete={() => handleDelete(category)}
                       />
-                    </Box>
-                  </Box>
-                );
-              })}
+                      {addAfterId === category.id && addingUnderId && (
+                        <InlineAddRow
+                          depth={addingDepth}
+                          busy={busyId === `new-sub-${addingUnderId}`}
+                          onCancel={() => setAddingUnderId(null)}
+                          onAdd={async (name) => {
+                            setBusyId(`new-sub-${addingUnderId}`);
+                            try {
+                              await onCreate(name, addingUnderId);
+                              setAddingUnderId(null);
+                            } finally {
+                              setBusyId(null);
+                            }
+                          }}
+                        />
+                      )}
+                    </Fragment>
+                  );
+                })}
 
-              {!roots.length && (
-                <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
-                  {t("models:categories.manager.noCategories")}
-                </Typography>
-              )}
-            </List>
+                {!tree.roots.length && (
+                  <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
+                    {t("models:categories.manager.noCategories")}
+                  </Typography>
+                )}
+              </List>
+            </SortableContext>
             <DragOverlay>
               {activeCategory && (
                 <Paper
@@ -693,7 +709,6 @@ export default function CategoryManagerModal({
           <Divider sx={{ my: 1.5 }} />
 
           <AddRow
-            indent={0}
             placeholder={t("models:categories.manager.addCategory")}
             busy={busyId === "new-root"}
             onAdd={async (name) => {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Theme } from "@mui/material/styles";
 import Paper from "@mui/material/Paper";
@@ -16,6 +16,7 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import type { Category, CategoryMetaInput } from "../../api/categories";
 import { translateCategoryDisplay } from "../../utils/translateCategoryDisplay";
 import { dividerBorderColor } from "../../theme";
+import { ancestorPath, buildCategoryTree } from "../../utils/categoryTree";
 import CategoryManagerModal from "./CategoryManagerModal";
 
 type Props = {
@@ -58,7 +59,7 @@ function rowTextSx(active: boolean, extra?: object) {
   };
 }
 
-/** A two-level tree: a root selects all its subcategories' models; one root is expanded at a time. */
+/** Any depth; a category selects the models at every level beneath it. Only the selected path is open. */
 export default function CategoriesPanel({
   categories,
   loading,
@@ -72,45 +73,58 @@ export default function CategoriesPanel({
   onUpdateMeta,
 }: Props) {
   const { t, i18n } = useTranslation(["models", "common"]);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [managerOpen, setManagerOpen] = useState(false);
   const displayName = (category: Category) => translateCategoryDisplay(category, i18n).name;
 
   const untitledLabel = t("models:categories.untitled");
 
-  // Expand the selected child's root when the selection comes from outside (URL, back/forward), or
-  // the child never renders.
-  useEffect(() => {
-    if (!selectedId) return;
-    const selected = categories.find((c) => c.id === selectedId);
-    if (!selected) return;
-    setExpandedId(selected.parent_id || selected.id);
-  }, [selectedId, categories]);
+  const tree = useMemo(() => buildCategoryTree(categories), [categories]);
+  // The selected category and its ancestors are open, so a selection from the URL is always visible.
+  const openIds = useMemo(
+    () => new Set(selectedId && tree.byId.has(selectedId) ? ancestorPath(tree, selectedId) : []),
+    [tree, selectedId],
+  );
 
-  const { roots, childrenByParent } = useMemo(() => {
-    const childrenMap: Record<string, Category[]> = {};
-    const rootList: Category[] = [];
-    categories.forEach((f) => {
-      if (f.parent_id) {
-        if (!childrenMap[f.parent_id]) childrenMap[f.parent_id] = [];
-        childrenMap[f.parent_id].push(f);
-      } else {
-        rootList.push(f);
-      }
-    });
-    const byPosition = (a: Category, b: Category) => a.position - b.position || a.name.localeCompare(b.name);
-    Object.keys(childrenMap).forEach((key) => {
-      childrenMap[key] = childrenMap[key].toSorted(byPosition);
-    });
-    return {
-      roots: rootList.toSorted(byPosition),
-      childrenByParent: childrenMap,
-    };
-  }, [categories]);
-
-  const handleRootClick = (id: string) => {
-    setExpandedId(id);
-    onSelect(id);
+  const renderCategory = (category: Category, depth: number) => {
+    const children = tree.childrenByParent[category.id] ?? [];
+    const isRoot = depth === 0;
+    const isOpen = openIds.has(category.id);
+    const isSelected = selectedId === category.id;
+    return (
+      <Stack key={category.id}>
+        <ListItemButton onClick={() => onSelect(category.id)} sx={{ pl: 1 + depth * 2, ...rowSx(isSelected) }}>
+          <ListItemText
+            primary={displayName(category) || untitledLabel}
+            primaryTypographyProps={rowTextSx(
+              isSelected,
+              isRoot ? { fontWeight: 600 } : isSelected ? { fontWeight: 700 } : undefined,
+            )}
+          />
+          {(isRoot || children.length > 0) && (
+            <ChevronRightIcon
+              fontSize="small"
+              sx={{
+                ml: 0.5,
+                flexShrink: 0,
+                transform: isOpen ? "rotate(90deg)" : "none",
+                transition: "transform 0.15s",
+                color: (theme) => (isSelected ? theme.thingport.selectedNavText : theme.thingport.navInactiveText),
+              }}
+            />
+          )}
+        </ListItemButton>
+        <Collapse in={isOpen} timeout="auto" unmountOnExit>
+          <List component="div" disablePadding>
+            {children.map((child) => renderCategory(child, depth + 1))}
+            {isRoot && !children.length && (
+              <Typography variant="caption" color="text.secondary" sx={{ pl: 4, display: "block", py: 0.5 }}>
+                {t("models:categories.noSubcategories")}
+              </Typography>
+            )}
+          </List>
+        </Collapse>
+      </Stack>
+    );
   };
 
   return (
@@ -156,62 +170,9 @@ export default function CategoriesPanel({
             </Stack>
           )}
 
-          {!loading &&
-            roots.map((root) => {
-              const children = childrenByParent[root.id] || [];
-              const isOpen = expandedId === root.id;
-              const isRootActive = isOpen && selectedId === root.id;
-              return (
-                <Stack key={root.id}>
-                  <ListItemButton onClick={() => handleRootClick(root.id)} sx={rowSx(isRootActive)}>
-                    <ListItemText
-                      primary={displayName(root) || untitledLabel}
-                      primaryTypographyProps={rowTextSx(isRootActive, { fontWeight: 600 })}
-                    />
-                    <ChevronRightIcon
-                      fontSize="small"
-                      sx={{
-                        ml: 0.5,
-                        flexShrink: 0,
-                        transform: isOpen ? "rotate(90deg)" : "none",
-                        transition: "transform 0.15s",
-                        color: (theme) =>
-                          isRootActive ? theme.thingport.selectedNavText : theme.thingport.navInactiveText,
-                      }}
-                    />
-                  </ListItemButton>
-                  <Collapse in={isOpen} timeout="auto" unmountOnExit>
-                    <List component="div" disablePadding>
-                      {children.map((child) => {
-                        const isChildSelected = selectedId === child.id;
-                        return (
-                          <ListItemButton
-                            key={child.id}
-                            onClick={() => onSelect(child.id)}
-                            sx={{ pl: 4, ...rowSx(isChildSelected) }}
-                          >
-                            <ListItemText
-                              primary={displayName(child) || untitledLabel}
-                              primaryTypographyProps={rowTextSx(
-                                isChildSelected,
-                                isChildSelected ? { fontWeight: 700 } : undefined,
-                              )}
-                            />
-                          </ListItemButton>
-                        );
-                      })}
-                      {!children.length && (
-                        <Typography variant="caption" color="text.secondary" sx={{ pl: 4, display: "block", py: 0.5 }}>
-                          {t("models:categories.noSubcategories")}
-                        </Typography>
-                      )}
-                    </List>
-                  </Collapse>
-                </Stack>
-              );
-            })}
+          {!loading && tree.roots.map((root) => renderCategory(root, 0))}
 
-          {!loading && !roots.length && (
+          {!loading && !tree.roots.length && (
             <Typography variant="body2" color="text.secondary" sx={{ px: 1, py: 1 }}>
               {t("models:categories.empty")}
             </Typography>

@@ -89,12 +89,31 @@ describe("POST /api/category/:id/move", () => {
     expect(await childNames(empty)).toEqual(["a1"]);
   });
 
-  it("keeps the tree two levels deep", async () => {
-    // Under a subcategory: would be a third level.
-    expect((await move(subs.a1, subs.b1, 0)).status).toBe(400);
-    // A category with subcategories can't become one.
-    expect((await move(rootA, rootB, 0)).status).toBe(400);
+  it("nests to any depth, whole subtrees included", async () => {
+    expect((await move(subs.a1, subs.b1, 0)).status).toBe(200);
+    expect((await move(subs.b1, subs.a2, 0)).status).toBe(200);
+    expect(await childNames(subs.a2)).toEqual(["b1"]);
+    expect(await childNames(subs.b1)).toEqual(["a1"]);
+    // A category with subcategories can itself become one.
+    expect((await move(rootB, rootA, 0)).status).toBe(200);
+    expect((await childNames(rootA))[0]).toMatch(/^Root B/);
+  });
+
+  it("rejects cycles", async () => {
     expect((await move(subs.a1, subs.a1, 0)).status).toBe(400);
+    // Under its own child, and under its own grandchild.
+    expect((await move(rootA, subs.a1, 0)).status).toBe(400);
+    const grandchild = await create("a1-child", subs.a1);
+    expect((await move(rootA, grandchild, 0)).status).toBe(400);
+  });
+
+  it("moves subcategories up one level when their category is deleted", async () => {
+    await create("a2-child-1", subs.a2);
+    await create("a2-child-2", subs.a2);
+    expect((await request(app).delete(`/api/category/${subs.a2}`).set(auth(token))).status).toBe(200);
+    const names = await childNames(rootA);
+    expect(names.slice(0, 2)).toEqual(["a1", "a3"]);
+    expect(names.slice(2).toSorted()).toEqual(["a2-child-1", "a2-child-2"]);
   });
 
   it("only touches the user's own categories", async () => {

@@ -1,5 +1,5 @@
 /** Starter category tree modeled on MakerWorld's, with matching Thingiverse and Printables ids so
- * imports are auto-categorized from the start. At most two levels deep. */
+ * imports are auto-categorized from the start. */
 export type DefaultCategoryNode = {
   name: string;
   tags?: string[];
