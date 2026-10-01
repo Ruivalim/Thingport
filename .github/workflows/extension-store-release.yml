@@ -3,7 +3,7 @@ name: Extension store release
 # Versioned releases of Thingport Grab via semantic-release (extension/.releaserc.json): every
 # Friday at 13:00 Polish time, or on demand. Only commits touching extension/ count; with a
 # releasable one it bumps the version, writes the changelog, tags, creates a GitHub release with
-# the store zips, and publishes to Edge Add-ons and addons.mozilla.org. Per-merge builds are in
+# the store zips, and publishes to the Chrome Web Store, Edge Add-ons and addons.mozilla.org. Per-merge builds are in
 # extension-release.yml.
 on:
   workflow_dispatch: {}
@@ -79,6 +79,47 @@ jobs:
           name: thingport-grab-store-zips
           path: extension/dist/zips/*.zip
           if-no-files-found: error
+
+  # Its own job so it can be re-run alone. Signs in as the publisher's service account; see
+  # extension/CONTRIBUTING.md.
+  publish-chrome:
+    needs: release
+    if: needs.release.outputs.version != ''
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: extension
+    env:
+      CHROME_EXTENSION_ID: ${{ vars.CHROME_EXTENSION_ID }}
+      CWS_PUBLISHER_ID: ${{ secrets.CWS_PUBLISHER_ID }}
+      CWS_SERVICE_ACCOUNT_KEY: ${{ secrets.CWS_SERVICE_ACCOUNT_KEY }}
+    steps:
+      - name: Credentials set up?
+        id: creds
+        run: |
+          if [ -z "$CWS_SERVICE_ACCOUNT_KEY" ] || [ -z "$CWS_PUBLISHER_ID" ]; then
+            echo "::notice::CWS_SERVICE_ACCOUNT_KEY / CWS_PUBLISHER_ID aren't set -- skipping the Chrome Web Store (see extension/CONTRIBUTING.md)."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          fi
+        working-directory: .
+      - uses: actions/checkout@v4
+        if: steps.creds.outputs.ok != 'false'
+      - uses: actions/setup-node@v4
+        if: steps.creds.outputs.ok != 'false'
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: extension/package-lock.json
+      - if: steps.creds.outputs.ok != 'false'
+        run: npm ci
+      - uses: actions/download-artifact@v4
+        if: steps.creds.outputs.ok != 'false'
+        with:
+          name: thingport-grab-store-zips
+          path: extension/dist/zips
+      - name: Upload and submit for review
+        if: steps.creds.outputs.ok != 'false'
+        run: npx tsx scripts/publish-chrome.ts dist/zips/thingport-grab-chrome.zip
 
   # Its own job so it can be re-run alone: Edge takes one submission at a time and fails with
   # InProgressSubmission while the previous one is in certification. Credentials: see

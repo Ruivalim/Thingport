@@ -135,6 +135,10 @@ jobs:
 
             See `extension/README.md` for install instructions:
 
+            - **Chrome / other Chromium browsers**: install it from the
+              [Chrome Web Store](https://chromewebstore.google.com/detail/nmblahmglpbplmfcggghdgohohlaeiee),
+              which keeps it up to date. `thingport-grab-chrome.zip` here is a build of this commit,
+              for loading by hand (`chrome://extensions` → **Developer mode** → **Load unpacked**).
             - **Firefox**: install it from
               [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/thingport-grab/), which keeps
               it up to date. `thingport-grab-firefox.xpi` here is a Mozilla-signed build of this
@@ -143,9 +147,6 @@ jobs:
               [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/kahfidpmojfocohinlmglnfoaimocbol),
               which keeps it up to date. `thingport-grab-edge.zip` here is the same build, for
               loading by hand (`edge://extensions` → **Developer mode** → **Load unpacked**).
-            - **Chrome / other Chromium browsers**: unzip `thingport-grab-chrome.zip`, then
-              `chrome://extensions` → enable **Developer mode** → **Load unpacked** → select the
-              unzipped folder.
           files: |
             dist/thingport-grab-chrome.zip
             dist/thingport-grab-edge.zip

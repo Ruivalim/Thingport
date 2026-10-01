@@ -18,12 +18,7 @@ import TerminalIcon from "@mui/icons-material/Terminal";
 import CableIcon from "@mui/icons-material/Cable";
 import { usePageHeader } from "../../components/Layout/PageHeaderContext";
 import { BRIDGE_DOWNLOADS, bridgeDownloadUrl, type BridgeDownload } from "../../constants/bridge";
-import {
-  EXTENSION_DOWNLOADS,
-  extensionDownloadUrl,
-  type ExtensionDownload,
-  type ExtensionFileBrowser,
-} from "../../constants/extension";
+import { EXTENSION_DOWNLOADS, type ExtensionDownload } from "../../constants/extension";
 import extensionIcon from "../../assets/logos/thingport-icon-color.svg";
 // Official browser logos (github.com/alrra/browser-logos), shown only to mark which browser each
 // extension download is for.
@@ -101,17 +96,6 @@ export default function DownloadPage() {
   usePageHeader({ title: t("sidebar.downloads") });
 
   const [installOs, setInstallOs] = useState<BridgeDownload["os"] | null>(null);
-  const [extensionInstallBrowser, setExtensionInstallBrowser] = useState<ExtensionFileBrowser | null>(null);
-
-  const extensionInstallSteps: Record<ExtensionFileBrowser, InstallStep[]> = {
-    chrome: [
-      { text: t("download.extension.modal.chrome.step1") },
-      { text: t("download.extension.modal.chrome.step2") },
-      { text: t("download.extension.modal.chrome.step3") },
-      { text: t("download.extension.modal.chrome.step4") },
-      { text: t("download.extension.modal.chrome.step5") },
-    ],
-  };
 
   const installSteps: Record<BridgeDownload["os"], InstallStep[]> = {
     windows: [{ text: t("download.modal.windows.step1") }],
@@ -168,30 +152,17 @@ export default function DownloadPage() {
                 <Typography variant="subtitle2" fontWeight={600}>
                   {t("download.extension.name")} ({item.label})
                 </Typography>
-                {item.kind === "store" ? (
-                  <Button
-                    component="a"
-                    href={item.storeUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    variant="outlined"
-                    size="small"
-                    startIcon={<OpenInNewIcon fontSize="small" />}
-                  >
-                    {t(`download.extension.store.${item.browser}`)}
-                  </Button>
-                ) : (
-                  <Button
-                    component="a"
-                    href={extensionDownloadUrl(item.asset)}
-                    variant="outlined"
-                    size="small"
-                    startIcon={<DownloadIcon fontSize="small" />}
-                    onClick={() => setExtensionInstallBrowser(item.browser)}
-                  >
-                    {t("common:download")}
-                  </Button>
-                )}
+                <Button
+                  component="a"
+                  href={item.storeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  variant="outlined"
+                  size="small"
+                  startIcon={<OpenInNewIcon fontSize="small" />}
+                >
+                  {t(`download.extension.store.${item.browser}`)}
+                </Button>
               </Stack>
             </Paper>
           ))}
@@ -256,28 +227,6 @@ export default function DownloadPage() {
             </DialogContent>
             <DialogActions>
               <Button onClick={() => setInstallOs(null)}>{t("common:close")}</Button>
-            </DialogActions>
-          </>
-        )}
-      </Dialog>
-
-      <Dialog
-        open={extensionInstallBrowser !== null}
-        onClose={() => setExtensionInstallBrowser(null)}
-        maxWidth="xs"
-        fullWidth
-      >
-        {extensionInstallBrowser && (
-          <>
-            <DialogTitle>{t(`download.extension.modal.${extensionInstallBrowser}.heading`)}</DialogTitle>
-            <DialogContent>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
-                {t("download.modal.startedNote")}
-              </Typography>
-              <InstallSteps steps={extensionInstallSteps[extensionInstallBrowser]} />
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setExtensionInstallBrowser(null)}>{t("common:close")}</Button>
             </DialogActions>
           </>
         )}

@@ -10,9 +10,9 @@ It's useful without Thingport too: on MakerWorld model pages it adds a **Downloa
 button that turns the Bambu Studio project into a 3MF that PrusaSlicer, Cura and other slicers open
 with its colors and print settings intact. See [Download normalized](#download-normalized-no-thingport-needed).
 
-**Get it from [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/thingport-grab/) or
+**Get it from the [Chrome Web Store](https://chromewebstore.google.com/detail/nmblahmglpbplmfcggghdgohohlaeiee),
+[Firefox Add-ons](https://addons.mozilla.org/firefox/addon/thingport-grab/) or
 [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/kahfidpmojfocohinlmglnfoaimocbol).**
-The Chrome build is on the [releases page](#install) until its store listing is live.
 
 It talks directly to your Thingport instance's API from the extension's background script -- no
 separate server, no data sent anywhere else -- and converts files in your browser. See the [privacy policy](PRIVACY.md) for exactly what
@@ -44,6 +44,29 @@ it stores and sends.
 </table>
 
 ## Install
+
+### Chrome / other Chromium browsers
+
+Install **[Thingport Grab from the Chrome Web Store](https://chromewebstore.google.com/detail/nmblahmglpbplmfcggghdgohohlaeiee)**
+-- click **Add to Chrome**, then click the new Thingport icon in your toolbar (it may be under the
+puzzle-piece Extensions button) and enter your instance's URL and your Thingport login. Chrome
+keeps it up to date from then on. Other Chromium browsers that install from the Chrome Web Store
+(Brave, Vivaldi, Opera with its Chrome extensions add-on) work the same way.
+
+<details>
+<summary>Alternative: install the Chrome build by hand</summary>
+
+Only needed if you can't use the store, e.g. to try a build before it's been published there:
+
+1. Download `thingport-grab-chrome.zip` from the
+   [`extension-latest` release](https://github.com/TautvydasDerzinskas/Thingport/releases/tag/extension-latest)
+   and unzip it somewhere permanent (the browser loads the extension from that folder every time it
+   starts, so don't delete it).
+2. Open `chrome://extensions` and turn on **Developer mode** (top right).
+3. Click **Load unpacked** and select the unzipped folder.
+
+A hand-installed copy doesn't update itself -- repeat these steps for a newer version.
+</details>
 
 ### Firefox
 
@@ -89,19 +112,6 @@ Only needed if you can't use the store, e.g. to try a build before it's been pub
 
 A hand-installed copy doesn't update itself -- repeat these steps for a newer version.
 </details>
-
-### Chrome / other Chromium browsers
-
-As a developer-mode "unpacked" extension, until the Chrome Web Store listing is live:
-
-1. Download `thingport-grab-chrome.zip` from the in-app Download page (or the
-   [`extension-latest` release](https://github.com/TautvydasDerzinskas/Thingport/releases/tag/extension-latest))
-   and unzip it somewhere permanent (don't delete the folder afterwards -- the browser loads the
-   extension from it every time it starts).
-2. Open `chrome://extensions` and turn on **Developer mode** (top right).
-3. Click **Load unpacked** and select the unzipped folder.
-4. Click the new Thingport icon in your toolbar, enter your instance's URL and your Thingport
-   login, and save.
 
 ## Download normalized (no Thingport needed)
 

@@ -133,16 +133,14 @@ Secrets and variables > Actions > Variables), so they don't have to be hard-code
 | Listing   | https://addons.mozilla.org/firefox/addon/thingport-grab/    |
 | Add-on ID | `grab@thingport.app` -- `gecko.id` in `scripts/manifest.ts` |
 
-**Chrome Web Store** (submitted; the listing URL works once review passes):
+**Chrome Web Store** (live; new versions are published by CI, see
+[Publishing to the Chrome Web Store automatically](#publishing-to-the-chrome-web-store-automatically)):
 
 |              | Value                                                                     |
 | ------------ | ------------------------------------------------------------------------- |
 | Listing      | https://chromewebstore.google.com/detail/nmblahmglpbplmfcggghdgohohlaeiee |
 | Extension ID | `nmblahmglpbplmfcggghdgohohlaeiee` -- repo variable `CHROME_EXTENSION_ID` |
-
-Publishing to Chrome from CI (not set up yet) needs a Google Cloud OAuth client for the
-[Chrome Web Store API](https://developer.chrome.com/docs/webstore/using-api), as repo secrets:
-`CHROME_CLIENT_ID`, `CHROME_CLIENT_SECRET` and `CHROME_REFRESH_TOKEN`.
+| Publisher ID | repo secret `CWS_PUBLISHER_ID`, used by the publish API                   |
 
 Edge also issued a public key for the listing. Don't add it to the manifest (`key`) of the store
 builds -- the stores set that themselves. It's only useful for giving an unpacked development build
@@ -187,7 +185,8 @@ Two workflows, for two different jobs.
 touching this folder: typecheck, lint, the Chrome/Edge build, and `web-ext lint` on the Firefox
 build. On a push to `main` it also signs the Firefox build through AMO's unlisted channel and
 publishes `thingport-grab-chrome.zip`, `thingport-grab-edge.zip` and `thingport-grab-firefox.xpi`
-to the `extension-latest` release (the in-app Download page links there for Chrome).
+to the `extension-latest` release, for installing by hand (the in-app Download page links the
+store listings instead).
 It never changes the version: AMO rejects a version number it has already signed, so CI signs a
 copy of the built manifest with the run number appended (e.g. `1.1.2.456`).
 
@@ -196,7 +195,8 @@ Polish time**, or whenever you start it (**Actions > Extension store release > R
 `gh workflow run extension-store-release.yml`), it releases whatever changed in the extension since
 the last release, with [semantic-release](https://semantic-release.gitbook.io/) (see below): bumps
 the version, writes `CHANGELOG.md`, commits both to `main`, tags it, creates a GitHub release with
-the store zips, and publishes to Edge Add-ons and Firefox Add-ons. If nothing releasable changed,
+the store zips, and publishes to the Chrome Web Store, Edge Add-ons and Firefox Add-ons. If nothing
+releasable changed,
 the run just ends.
 
 ### Versioning: how the next version is picked
@@ -229,6 +229,24 @@ To see what the next release would be, without releasing anything (needs Node 22
 
 ```bash
 npm run release:dry-run
+```
+
+### Publishing to the Chrome Web Store automatically
+
+The store release's `publish-chrome` job publishes each new version to the Chrome Web Store,
+through the [Chrome Web Store API v2](https://developer.chrome.com/docs/webstore/using-api)
+(`scripts/publish-chrome.ts`): it signs in as the publisher's service account, uploads the exact
+`thingport-grab-chrome.zip` the release built, waits for Google to process it, and submits it for
+review. The update reaches users once Google's review passes, usually within a few days.
+
+Like the other publish jobs it can be retried on its own with **Re-run failed jobs**, and it skips
+itself (with a notice in the run) until the credentials below exist. To test the script by hand:
+
+```bash
+npm run zip:chrome
+CHROME_EXTENSION_ID=nmblahmglpbplmfcggghdgohohlaeiee CWS_PUBLISHER_ID=... \
+  CWS_SERVICE_ACCOUNT_KEY="$(cat path/to/key.json)" \
+  npx tsx scripts/publish-chrome.ts dist/zips/thingport-grab-chrome.zip
 ```
 
 ### Publishing to Edge automatically
@@ -276,6 +294,32 @@ npm run build:firefox
 npx web-ext sign --source-dir dist/firefox --channel unlisted \
   --api-key "$AMO_JWT_ISSUER" --api-secret "$AMO_JWT_SECRET"
 ```
+
+### One-time setup: Chrome Web Store publishing credentials
+
+The job signs in as a Google Cloud service account that's linked to the store's publisher account:
+
+1. In the [Google Cloud Console](https://console.cloud.google.com/), pick (or create) a project and
+   enable the **Chrome Web Store API** (search for it in the top bar).
+2. **IAM & Admin > Service Accounts > Create service account.** It needs no roles or permissions.
+3. Open the service account, go to **Keys > Add key > Create new key > JSON**. The browser
+   downloads the key file; Google keeps no copy, so if it's lost, create a new key and delete the
+   old one on the same page.
+4. In the [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole),
+   open **Account** and add the service account's email (`...@<project>.iam.gserviceaccount.com`,
+   also the key file's `client_email`). A publisher can only have one service account.
+5. Add the key file and the publisher ID (shown in the dashboard's publisher settings) as repo
+   secrets, then delete the local key file:
+
+   ```bash
+   gh secret set CWS_SERVICE_ACCOUNT_KEY < path/to/key.json
+   gh secret set CWS_PUBLISHER_ID # paste the publisher ID when prompted
+   ```
+
+6. `CHROME_EXTENSION_ID` is already a repo **variable** (see [Store listings](#store-listings)).
+
+Service account keys don't expire, but an organization policy can block creating them
+(`iam.disableServiceAccountKeyCreation`) -- a personal Google account isn't affected.
 
 ### One-time setup: Edge publishing credentials
 
