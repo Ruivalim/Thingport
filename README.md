@@ -17,8 +17,7 @@ from the places where you discover them.
 </p>
 
 <p>
-  <a href="https://thingport.net/"><img src="https://img.shields.io/badge/website-thingport-00b800?logo=googlechrome&logoColor=white" alt="Website"></a>
-  <img src="https://github.com/TautvydasDerzinskas/Thingport/actions/workflows/web-pages.yml/badge.svg" alt="Website build">
+  <a href="https://thingport.net/"><img src="https://github.com/TautvydasDerzinskas/Thingport/actions/workflows/web-pages.yml/badge.svg" alt="Website build"></a>
   <img src="https://github.com/TautvydasDerzinskas/Thingport/actions/workflows/frontend-image.yml/badge.svg" alt="Frontend">
   <img src="https://github.com/TautvydasDerzinskas/Thingport/actions/workflows/backend-image.yml/badge.svg" alt="Backend">
   <img src="https://github.com/TautvydasDerzinskas/Thingport/actions/workflows/bridge-release.yml/badge.svg" alt="Slicer Bridge">
@@ -274,15 +273,6 @@ If Thingport is useful to you, consider supporting its development:
 
 ## License
 
-Copyright (C) 2026 Tautvydas Deržinskas
-
 Thingport is free software: you can redistribute it and/or modify it under the terms of the
 [GNU Affero General Public License, version 3](LICENSE) (AGPL-3.0-only), as published by the Free
 Software Foundation.
-
-Thingport is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even
-the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero
-General Public License for more details.
-
-If you run a modified version of Thingport as a network service, the AGPL requires you to offer its
-users the corresponding source code.
