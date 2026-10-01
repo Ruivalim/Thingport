@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import type { Theme } from "@mui/material/styles";
@@ -14,6 +14,7 @@ import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import Divider from "@mui/material/Divider";
 import Tooltip from "@mui/material/Tooltip";
+import Paper from "@mui/material/Paper";
 import SpaceDashboardIcon from "@mui/icons-material/SpaceDashboard";
 import ViewInArIcon from "@mui/icons-material/ViewInAr";
 import CollectionsIcon from "@mui/icons-material/Collections";
@@ -24,6 +25,24 @@ import DownloadIcon from "@mui/icons-material/Download";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import {
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import Wordmark from "../../Wordmark";
 import { type BookmarkEntry, bookmarksApi } from "../../../api/bookmarks";
 
@@ -90,6 +109,49 @@ function bookmarkTarget(entry: BookmarkEntry): { href: string; label: string } {
     : { href: `/models/collections/${entry.collection_id}`, label: entry.name };
 }
 
+// A click that ends a drag (pointer or Space key) must not also navigate.
+const POST_DRAG_CLICK_GUARD_MS = 250;
+
+/** The whole row drags; a few pixels of travel tell a drag from a click. */
+function SortableBookmarkRow({
+  id,
+  label,
+  selected,
+  onNavigate,
+}: {
+  id: string;
+  label: string;
+  selected: boolean;
+  onNavigate: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  return (
+    <ListItemButton
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      selected={selected}
+      onClick={onNavigate}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
+      sx={{
+        borderRadius: 1,
+        mb: 0.5,
+        cursor: "grab",
+        touchAction: "none",
+        // The DragOverlay shows the dragged row; this one stays as a faint placeholder.
+        opacity: isDragging ? 0.4 : 1,
+        ...navRowSx(selected),
+      }}
+    >
+      <ListItemIcon sx={{ minWidth: 30 }}>
+        <BookmarkIcon fontSize="small" />
+      </ListItemIcon>
+      <ListItemText primary={label} primaryTypographyProps={{ variant: "body2", noWrap: true }} />
+      <DragIndicatorIcon fontSize="small" sx={{ ml: "auto", flexShrink: 0, color: "text.disabled" }} />
+    </ListItemButton>
+  );
+}
+
 export default function Sidebar({ isAdmin, onSelectCategory, bookmarksVersion }: Props) {
   const { t } = useTranslation(["app", "common"]);
   const location = useLocation();
@@ -100,8 +162,22 @@ export default function Sidebar({ isAdmin, onSelectCategory, bookmarksVersion }:
   });
   const [bookmarks, setBookmarks] = useState<BookmarkEntry[]>([]);
   const [draggingId, setDraggingId] = useState<string | null>(null);
-  // Tracked on dragover: dragenter/dragleave fire unreliably across child elements.
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const suppressClickRef = useRef(false);
+  const endDrag = () => {
+    setDraggingId(null);
+    suppressClickRef.current = true;
+    window.setTimeout(() => {
+      suppressClickRef.current = false;
+    }, POST_DRAG_CLICK_GUARD_MS);
+  };
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    // Space only: Enter keeps opening the bookmark.
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+      keyboardCodes: { start: ["Space"], cancel: ["Escape"], end: ["Space", "Enter"] },
+    }),
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -120,51 +196,30 @@ export default function Sidebar({ isAdmin, onSelectCategory, bookmarksVersion }:
   }, [bookmarksVersion]);
 
   // Optimistic reorder; a failed save refetches the server's order.
-  const handleDrop = (draggedId: string, targetId: string) => {
-    if (draggedId === targetId) return;
-    setBookmarks((prev) => {
-      const from = prev.findIndex((b) => b.id === draggedId);
-      const to = prev.findIndex((b) => b.id === targetId);
-      if (from === -1 || to === -1) return prev;
-      const next = prev.slice();
-      const [moved] = next.splice(from, 1);
-      next.splice(to, 0, moved);
-      bookmarksApi.reorder(next.map((b) => b.id)).catch(() => {
-        bookmarksApi
-          .list()
-          .then(setBookmarks)
-          .catch(() => {
-            /* leave the optimistic order as-is */
-          });
-      });
-      return next;
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    endDrag();
+    if (!over || active.id === over.id) return;
+    const from = bookmarks.findIndex((b) => b.id === active.id);
+    const to = bookmarks.findIndex((b) => b.id === over.id);
+    if (from === -1 || to === -1) return;
+    const next = arrayMove(bookmarks, from, to);
+    setBookmarks(next);
+    bookmarksApi.reorder(next.map((b) => b.id)).catch(() => {
+      bookmarksApi
+        .list()
+        .then(setBookmarks)
+        .catch(() => {
+          /* leave the optimistic order as-is */
+        });
     });
   };
 
-  // The default drag image is the whole full-width row, which looks like neighbours are moving
-  // too, so use a small off-screen label instead. setDragImage snapshots it synchronously.
-  const handleDragStart = (e: React.DragEvent<HTMLElement>, id: string, label: string) => {
-    setDraggingId(id);
-    const preview = document.createElement("div");
-    preview.textContent = label;
-    Object.assign(preview.style, {
-      position: "fixed",
-      top: "-1000px",
-      left: "-1000px",
-      padding: "4px 10px",
-      borderRadius: "6px",
-      background: "#1f2430",
-      color: "#fff",
-      fontSize: "13px",
-      fontFamily: "inherit",
-      whiteSpace: "nowrap",
-      boxShadow: "0 2px 8px rgba(0,0,0,.25)",
-    });
-    document.body.appendChild(preview);
-    e.dataTransfer.setDragImage(preview, 12, 14);
-    e.dataTransfer.effectAllowed = "move";
-    requestAnimationFrame(() => preview.remove());
+  const navigateUnlessDragged = (href: string) => {
+    if (draggingId || suppressClickRef.current) return;
+    navigate(href);
   };
+
+  const draggingBookmark = draggingId ? bookmarks.find((b) => b.id === draggingId) : undefined;
 
   const onDashboard = location.pathname === "/";
   const onCollections = location.pathname.startsWith("/models/collections");
@@ -354,57 +409,56 @@ export default function Sidebar({ isAdmin, onSelectCategory, bookmarksVersion }:
                   {t("sidebar.bookmarks")}
                 </Typography>
               )}
-              {bookmarks.map((entry) => {
-                const { href, label } = bookmarkTarget(entry);
-                const selected = location.pathname === href;
-                return collapsed ? (
-                  <CollapsedNavIcon
-                    key={entry.id}
-                    icon={<BookmarkIcon fontSize="small" />}
-                    label={label}
-                    selected={selected}
-                    onClick={() => navigate(href)}
-                  />
-                ) : (
-                  <ListItemButton
-                    key={entry.id}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, entry.id, label)}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      if (draggingId && draggingId !== entry.id) setDragOverId(entry.id);
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      if (draggingId) handleDrop(draggingId, entry.id);
-                      setDraggingId(null);
-                      setDragOverId(null);
-                    }}
-                    onDragEnd={() => {
-                      setDraggingId(null);
-                      setDragOverId(null);
-                    }}
-                    selected={selected}
-                    onClick={() => navigate(href)}
-                    sx={{
-                      borderRadius: 1,
-                      mb: 0.5,
-                      cursor: "grab",
-                      opacity: draggingId === entry.id ? 0.4 : 1,
-                      ...(dragOverId === entry.id && draggingId !== entry.id
-                        ? { outline: "2px solid", outlineColor: "primary.main", outlineOffset: "-2px" }
-                        : {}),
-                      ...navRowSx(selected),
-                    }}
-                  >
-                    <ListItemIcon sx={{ minWidth: 30 }}>
-                      <BookmarkIcon fontSize="small" />
-                    </ListItemIcon>
-                    <ListItemText primary={label} primaryTypographyProps={{ variant: "body2", noWrap: true }} />
-                    <DragIndicatorIcon fontSize="small" sx={{ ml: "auto", flexShrink: 0, color: "text.disabled" }} />
-                  </ListItemButton>
-                );
-              })}
+              {collapsed ? (
+                bookmarks.map((entry) => {
+                  const { href, label } = bookmarkTarget(entry);
+                  return (
+                    <CollapsedNavIcon
+                      key={entry.id}
+                      icon={<BookmarkIcon fontSize="small" />}
+                      label={label}
+                      selected={location.pathname === href}
+                      onClick={() => navigate(href)}
+                    />
+                  );
+                })
+              ) : (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragStart={({ active }) => setDraggingId(String(active.id))}
+                  onDragEnd={handleDragEnd}
+                  onDragCancel={endDrag}
+                >
+                  <SortableContext items={bookmarks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
+                    {bookmarks.map((entry) => {
+                      const { href, label } = bookmarkTarget(entry);
+                      return (
+                        <SortableBookmarkRow
+                          key={entry.id}
+                          id={entry.id}
+                          label={label}
+                          selected={location.pathname === href}
+                          onNavigate={() => navigateUnlessDragged(href)}
+                        />
+                      );
+                    })}
+                  </SortableContext>
+                  <DragOverlay>
+                    {draggingBookmark && (
+                      <Paper
+                        elevation={6}
+                        sx={{ display: "flex", alignItems: "center", gap: 1, px: 1.5, py: 0.75, cursor: "grabbing" }}
+                      >
+                        <BookmarkIcon fontSize="small" />
+                        <Typography variant="body2" noWrap>
+                          {bookmarkTarget(draggingBookmark).label}
+                        </Typography>
+                      </Paper>
+                    )}
+                  </DragOverlay>
+                </DndContext>
+              )}
             </>
           )}
 

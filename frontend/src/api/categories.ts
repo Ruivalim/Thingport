@@ -87,6 +87,18 @@ export const categoriesApi = {
     return res.json();
   },
 
+  /** Puts a category under `parentId` (null for top level) at `position` among its new siblings. */
+  move: async (id: string, parentId: string | null, position: number) => {
+    const res = await fetch(`${apiBase()}/category/${id}/move`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ parent_id: parentId, position }),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Move category failed"));
+    return res.json();
+  },
+
   downloadZip: async (category_id: string) => {
     const res = await fetch(`${apiBase()}/category/${category_id}/download`, { headers: authHeaders() });
     assertOk(res, "Category download failed");

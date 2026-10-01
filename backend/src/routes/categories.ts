@@ -60,6 +60,58 @@ router.post(
   }),
 );
 
+const moveSchema = z.object({
+  parent_id: z.string().nullable(),
+  // Index among the new siblings; past the end appends.
+  position: z.number().int().min(0),
+});
+
+// Reparents and positions in one step, so dragging a subcategory into another category is one request.
+router.post(
+  "/category/:id/move",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(moveSchema, req.body);
+    const category = await prisma.category.findFirst({ where: { id: req.params.id, userId: req.userId } });
+    if (!category) throw new HttpError(404, "Not found");
+    const parentId = await validateParentCategory(req.userId!, body.parent_id, category.id);
+    const siblingOrder: Prisma.CategoryOrderByWithRelationInput[] = [{ position: "asc" }, { name: "asc" }];
+
+    const moved = await prisma.$transaction(async (tx) => {
+      const renumber = async (ids: string[]) => {
+        for (const [idx, id] of ids.entries()) {
+          if (id !== category.id) await tx.category.update({ where: { id }, data: { position: idx } });
+        }
+      };
+
+      if (category.parentId !== parentId) {
+        // Close the gap left behind.
+        const oldSiblings = await tx.category.findMany({
+          where: { userId: req.userId, parentId: category.parentId, id: { not: category.id } },
+          orderBy: siblingOrder,
+          select: { id: true },
+        });
+        await renumber(oldSiblings.map((c) => c.id));
+      }
+      const siblings = await tx.category.findMany({
+        where: { userId: req.userId, parentId, id: { not: category.id } },
+        orderBy: siblingOrder,
+        select: { id: true },
+      });
+      const ids = siblings.map((c) => c.id);
+      ids.splice(Math.min(body.position, ids.length), 0, category.id);
+      await renumber(ids);
+      return tx.category.update({
+        where: { id: category.id },
+        data: { parentId, position: ids.indexOf(category.id) },
+      });
+    });
+
+    // Managed storage paths include the category path.
+    if (category.parentId !== parentId) await reorganizeManagedPrints(undefined, req.userId);
+    res.json(toCategoryOut(moved));
+  }),
+);
+
 router.post(
   "/categories",
   asyncHandler(async (req, res) => {

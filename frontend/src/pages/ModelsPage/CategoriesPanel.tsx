@@ -27,6 +27,7 @@ type Props = {
   onRename: (id: string, name: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onReorder: (categoryIds: string[]) => Promise<void>;
+  onMove: (id: string, parentId: string | null, position: number) => Promise<void>;
   onUpdateMeta: (id: string, meta: CategoryMetaInput) => Promise<void>;
 };
 
@@ -67,6 +68,7 @@ export default function CategoriesPanel({
   onRename,
   onDelete,
   onReorder,
+  onMove,
   onUpdateMeta,
 }: Props) {
   const { t, i18n } = useTranslation(["models", "common"]);
@@ -225,6 +227,7 @@ export default function CategoriesPanel({
           onRename={onRename}
           onDelete={onDelete}
           onReorder={onReorder}
+          onMove={onMove}
           onUpdateMeta={onUpdateMeta}
         />
       )}

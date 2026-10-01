@@ -208,12 +208,24 @@ export default function ModelsPage({
     }
   };
 
+  // Refetch even on failure: the manager shows the drop optimistically until fresh categories arrive.
   const reorderCategories = async (categoryIds: string[]) => {
     try {
       await categoriesApi.reorder(categoryIds);
-      onCategoriesChanged();
     } catch (err) {
       handleError(err, t("models:errors.reorderCategoryFailed"));
+    } finally {
+      onCategoriesChanged();
+    }
+  };
+
+  const moveCategory = async (id: string, parentId: string | null, position: number) => {
+    try {
+      await categoriesApi.move(id, parentId, position);
+    } catch (err) {
+      handleError(err, t("models:errors.moveCategoryFailed"));
+    } finally {
+      onCategoriesChanged();
     }
   };
 
@@ -243,6 +255,7 @@ export default function ModelsPage({
           onRename={renameCategory}
           onDelete={deleteCategory}
           onReorder={reorderCategories}
+          onMove={moveCategory}
           onUpdateMeta={updateCategoryMeta}
         />
         <Box sx={{ flex: 1, minWidth: 0 }}>
