@@ -38,6 +38,7 @@ const ACTION_COLORS: Record<LogAction, ActionColor> = {
   model_imported: "info",
   import_completed: "info",
   model_edited: "warning",
+  model_reimported: "info",
   model_deleted: "error",
   collection_created: "success",
   collection_edited: "warning",
@@ -114,6 +115,8 @@ export default function LogsPage({ onUnauthorized }: Props) {
         return t("adminSettings.logs.authorsLinked", { count: typeof d.linked === "number" ? d.linked : 0 });
       case "model_edited":
         return typeof d.field === "string" ? t("adminSettings.logs.editedField", { field: d.field }) : "";
+      case "model_reimported":
+        return typeof d.source_url === "string" ? d.source_url : "";
       case "import_completed": {
         const provider = typeof d.provider === "string" ? d.provider : "";
         const label = typeof d.sourceLabel === "string" && d.sourceLabel ? d.sourceLabel : provider;

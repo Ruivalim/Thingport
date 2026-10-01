@@ -12,6 +12,7 @@ export type LogAction =
   | "model_imported"
   | "import_completed"
   | "model_edited"
+  | "model_reimported"
   | "model_deleted"
   | "collection_created"
   | "collection_edited"

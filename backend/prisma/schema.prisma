@@ -203,6 +203,7 @@ enum ImportJobType {
   COLLECTION
   ZIP
   PROFILES
+  LINKS
 }
 
 enum ImportJobStatus {
@@ -230,10 +231,34 @@ model ImportJob {
   resultCollectionId String?
   // Set when the job created exactly one Print, so the frontend can open it directly.
   resultPrintId      String?
+  // The LINKS job's shared request body (never the MakerWorld cookie), so a retry can rerun it.
+  payload            Json?
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
+  items              ImportJobItem[]
 
   @@index([userId, status])
+}
+
+enum ImportJobItemStatus {
+  PENDING
+  DONE
+  FAILED
+}
+
+/// One queued URL of a LINKS job, kept so failed links can be retried after a LINKS run.
+model ImportJobItem {
+  id           String              @id @default(cuid())
+  jobId        String
+  job          ImportJob           @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  url          String
+  status       ImportJobItemStatus @default(PENDING)
+  attempts     Int                 @default(0)
+  errorMessage String?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@index([jobId, status])
 }
 
 model Notification {

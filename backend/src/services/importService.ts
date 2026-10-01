@@ -169,7 +169,7 @@ async function fetchWithGuard(url: string, headers: Record<string, string>): Pro
     return res;
   } catch (err) {
     if (err instanceof HttpError) throw err;
-    throw new HttpError(400, "Failed to reach the provided URL");
+    throw new HttpError(400, "Failed to reach the provided URL", undefined, true);
   }
 }
 
@@ -541,7 +541,7 @@ const CATEGORY_SITE_CAT_IDS_FIELD = {
 
 /** Auto-categorizes an import when a category's `*CatIds` for this site overlap the model's own
  * category ids. Best-effort. */
-async function resolveCategoryIdByCategory(
+export async function resolveCategoryIdByCategory(
   userId: string,
   categorySite: ImportedPageMetadata["categorySite"],
   siteCategoryIds: number[],
@@ -625,13 +625,13 @@ async function findExistingImportedPrint(
 
 type ExistingImportedPrint = NonNullable<Awaited<ReturnType<typeof findExistingImportedPrint>>>;
 
-async function sha256OfFile(filePath: string): Promise<string> {
+export async function sha256OfFile(filePath: string): Promise<string> {
   const hash = crypto.createHash("sha256");
   for await (const chunk of fsSync.createReadStream(filePath)) hash.update(chunk as Buffer);
   return hash.digest("hex");
 }
 
-async function plateContentSha256(plate: Plate): Promise<string | null> {
+export async function plateContentSha256(plate: Plate): Promise<string | null> {
   if (plate.contentSha256) return plate.contentSha256;
   const filePath = resolvePlateFilePath(plate);
   if (!filePath || !fsSync.existsSync(filePath)) return null;
@@ -718,13 +718,13 @@ export async function findImportedExternalIds(
   return new Set(prints.map((p) => p.sourceExternalId).filter((id): id is string => id !== null));
 }
 
-const MULTI_FILE_PLATE_EXTS = new Set([...IMPORT_ALLOWED_EXTS].filter((ext) => ext !== ".zip"));
+export const MULTI_FILE_PLATE_EXTS = new Set([...IMPORT_ALLOWED_EXTS].filter((ext) => ext !== ".zip"));
 
-type PlainDownloadResult = { input: NewPlateInput } | { rateLimited: true } | null;
+export type PlainDownloadResult = { input: NewPlateInput } | { rateLimited: true } | null;
 
 /** Best-effort: null on failure so one bad file doesn't fail the whole import, except a 429,
  * which is reported so the caller can say why. */
-async function downloadPlainFileToTemp(url: string, suggestedName: string): Promise<PlainDownloadResult> {
+export async function downloadPlainFileToTemp(url: string, suggestedName: string): Promise<PlainDownloadResult> {
   try {
     const res = await rawFetch(url, { "User-Agent": IMPORT_USER_AGENT, Accept: "*/*" });
     if (res.status === 429) {

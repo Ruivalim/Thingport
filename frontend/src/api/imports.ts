@@ -27,7 +27,7 @@ export type ImportCollectionEntriesResult = {
   entries: ImportCollectionEntry[];
 };
 
-export type ImportJobType = "COLLECTION" | "ZIP" | "PROFILES";
+export type ImportJobType = "COLLECTION" | "ZIP" | "PROFILES" | "LINKS";
 
 export type MakerworldProfileScope = "url" | "designer" | "all";
 export type ImportJobStatus = "RUNNING" | "DONE" | "ERROR";
@@ -164,6 +164,32 @@ export const importsApi = {
     });
     if (res.status === 401) throw new UnauthorizedError();
     if (!res.ok) throw new Error(await readErrorMessage(res, "Import failed"));
+    return res.json();
+  },
+
+  /** Returns immediately; ImportJobContext polls the job. A pasted list of links, imported one at
+   *  a time; what fails can be rerun with retryImportJob. */
+  fromLinks: async (
+    payload: Omit<ImportLinkPayload, "url"> & { urls: string[]; scope?: MakerworldProfileScope },
+  ): Promise<{ job_id: string }> => {
+    const res = await fetch(`${apiBase()}/import/links`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Import failed"));
+    return res.json();
+  },
+
+  /** Reruns just a link-list job's failed links. */
+  retryImportJob: async (jobId: string): Promise<{ job_id: string }> => {
+    const res = await fetch(`${apiBase()}/import/jobs/${jobId}/retry`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Retry failed"));
     return res.json();
   },
 

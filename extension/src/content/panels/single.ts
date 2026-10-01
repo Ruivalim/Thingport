@@ -65,6 +65,7 @@ export async function loadSingleItem(): Promise<void> {
   if (ctx().library) {
     renderPanel(addProfileHtml(await profilesPickerHtml()));
     onPanelAction("import", () => void runDirectImport());
+    onPanelAction("reimport", () => void runReimport());
     return;
   }
   renderPanel(statusHtml("Checking link…"));
@@ -123,8 +124,24 @@ function addProfileHtml(profilesPicker: string): string {
     <div class="tg-hint">${hint}</div>
     ${profilesPicker}
     <button class="tg-btn" type="button" data-action="import">Add profile</button>
+    <button class="tg-btn tg-btn--secondary" type="button" data-action="reimport">Update model in Thingport</button>
     <a class="tg-btn tg-btn--secondary" href="${escapeHtml(modelLink)}" target="_blank" rel="noopener noreferrer">Open model in Thingport</a>
   `;
+}
+
+/** Refreshes the library model from this page's source: fills empty metadata and images, and adds
+ *  whatever files (e.g. print profiles) it doesn't hold yet. Nothing edited by hand is touched. */
+async function runReimport(): Promise<void> {
+  const { library, instanceUrl } = ctx();
+  if (!library?.printId) return;
+  renderPanel(statusHtml("Updating model in Thingport…"));
+  try {
+    await api("POST", `/print/${library.printId}/reimport`, { metadata: true, files: true, images: true });
+    const link = `${instanceUrl}/models/${library.printId}`;
+    renderPanel(successHtml(link, "Filled in what the model in your library was missing.", "Model updated"));
+  } catch (err) {
+    renderPanel(errorHtml(err));
+  }
 }
 
 async function loadZipEntries(): Promise<void> {

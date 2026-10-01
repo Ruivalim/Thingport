@@ -39,17 +39,20 @@ import { fetchPrintablesCollectionEntries, parsePrintablesCollectionUrl } from "
 import { getThingiverseAccessToken } from "../services/settingsService";
 import { getUserMakerworldCookie } from "../services/makerworldCookieService";
 import { listZipEntries } from "../services/zipService";
-import { createJob, getActiveJob, getJob } from "../services/importJobService";
+import { createJob, createJobItems, getActiveJob, getJob, resetFailedItems, updateJob } from "../services/importJobService";
 import {
   runCollectionImportJob,
+  runLinksImportJob,
   runMakerworldProfilesImportJob,
   runPrintablesCollectionImportJob,
   runThingiverseCollectionImportJob,
   runThingiverseLikesImportJob,
   runZipImportJob,
+  type LinksImportJobBody,
 } from "../services/importJobRunner";
 import { createLog } from "../services/auditLog";
 import { toImportJobOut, toPrintOut } from "../dto";
+import type { Prisma } from "@prisma/client";
 
 const router = Router();
 router.use(requireAuth);
@@ -424,6 +427,73 @@ router.get(
   asyncHandler(async (req, res) => {
     const job = await getActiveJob(req.userId!);
     res.json(job ? toImportJobOut(job) : null);
+  }),
+);
+
+const linksImportRequestSchema = importRequestSchema.extend({
+  // The queue carries its own urls; this one is only there so the shared body shape still fits.
+  url: z.string().optional(),
+  urls: z.array(z.string()).min(1).max(500),
+  scope: z.enum(["url", "designer", "all"]).default("url"),
+});
+
+/** The shared request body a LINKS job reruns on a retry -- never the cookie or the captcha. */
+function linksJobPayload(body: z.infer<typeof linksImportRequestSchema>): Prisma.InputJsonValue {
+  return {
+    notes: body.notes ?? null,
+    tags: body.tags,
+    category_id: body.category_id ?? null,
+    scope: body.scope,
+  };
+}
+
+router.post(
+  "/import/links",
+  requireCaptcha("import"),
+  asyncHandler(async (req, res) => {
+    const body = await withStoredMakerworldCookie(req.userId!, parseBody(linksImportRequestSchema, req.body));
+    await assertNoActiveJob(req.userId!);
+    const urls: string[] = [];
+    for (const raw of body.urls) {
+      const url = await normalizeImportUrl(raw.trim());
+      if (url && !urls.includes(url)) urls.push(url);
+    }
+    if (!urls.length) throw new HttpError(400, "No links to import");
+    const job = await createJob(req.userId!, "LINKS", {
+      sourceUrl: urls[0],
+      total: urls.length,
+      payload: linksJobPayload(body),
+    });
+    await createJobItems(job.id, urls);
+    void runLinksImportJob(job.id, req.userId!, { ...body, url: urls[0] });
+    res.status(202).json({ job_id: job.id });
+  }),
+);
+
+/** Reruns just the links that failed, so a CAPTCHA cooloff or a cookie fix is enough to finish a
+ * batch. */
+router.post(
+  "/import/jobs/:id/retry",
+  requireCaptcha("import"),
+  asyncHandler(async (req, res) => {
+    const job = await getJob(req.params.id, req.userId!);
+    if (!job) throw new HttpError(404, "Import job not found");
+    if (job.type !== "LINKS") throw new HttpError(400, "Only a link-list import can be retried");
+    const failed = await resetFailedItems(job.id);
+    if (!failed) throw new HttpError(400, "This import has no failed links to retry");
+    await assertNoActiveJob(req.userId!);
+    await updateJob(job.id, { status: "RUNNING", errorMessage: null });
+    const payload = (job.payload ?? {}) as Record<string, unknown>;
+    const retryBody: LinksImportJobBody = {
+      url: job.sourceUrl,
+      notes: (payload.notes as string | null) ?? null,
+      tags: Array.isArray(payload.tags) ? (payload.tags as string[]) : [],
+      category_id: (payload.category_id as string | null) ?? null,
+      scope: payload.scope === "designer" || payload.scope === "all" ? payload.scope : "url",
+    };
+    const body = await withStoredMakerworldCookie(req.userId!, retryBody);
+    void runLinksImportJob(job.id, req.userId!, body);
+    res.status(202).json({ job_id: job.id });
   }),
 );
 

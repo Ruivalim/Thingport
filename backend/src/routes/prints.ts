@@ -20,6 +20,7 @@ import { RENDERABLE_MODEL_EXTS } from "../config";
 import { estimateDownloadSize, resolvePrintsForDownload, sendPrintsZip } from "../services/downloadZip";
 import { systemCollectionKeyForId } from "../services/collectionService";
 import { createLog } from "../services/auditLog";
+import { reimportPrint } from "../services/reimportService";
 import { isNormalizable3mf, normalize3mfStatus, normalized3mfFor } from "../services/normalized3mfCache";
 import type { Prisma } from "@prisma/client";
 
@@ -582,6 +583,30 @@ router.delete(
       action: "model_deleted",
       targetId: req.params.id,
       details: { name: full.print.name },
+    });
+  }),
+);
+
+const reimportRequestSchema = z.object({
+  metadata: z.boolean().default(true),
+  files: z.boolean().default(true),
+  images: z.boolean().default(true),
+});
+
+/** Refreshes a model from its source: fills empty metadata, brings in files still missing (for
+ *  MakerWorld, the print profiles that aren't on it yet) and fills an empty image slot. Nothing a
+ *  user edited by hand is overwritten. */
+router.post(
+  "/print/:id/reimport",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(reimportRequestSchema, req.body ?? {});
+    const result = await reimportPrint(req.userId!, req.params.id, body);
+    res.json(result);
+    void createLog({
+      userId: req.userId!,
+      action: "model_reimported",
+      targetId: req.params.id,
+      details: { source_url: result.source_url, files_added: result.files_added, tags_added: result.tags_added },
     });
   }),
 );
