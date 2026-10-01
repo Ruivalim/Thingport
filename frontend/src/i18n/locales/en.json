@@ -247,7 +247,7 @@
       },
       "topPrinted": {
         "title": "Top Printed Models",
-        "empty": "Nothing printed yet — models you mark as printed will show up here."
+        "empty": "Nothing printed yet — models you download or open in a slicer will show up here."
       },
       "topAuthors": {
         "title": "Top Authors",
@@ -297,7 +297,7 @@
         "examplePathsHeading": "Example paths (two plates of one print)",
         "examplePathsEmpty": "Enter a template to preview its path",
         "reorganizeLabel": "Reorganize existing managed files now",
-        "reorganizeHint": "Mounted no-copy files are skipped. Existing URLs continue to use stable print IDs.",
+        "reorganizeHint": "Links to models keep working, since they use the model's ID rather than its file path.",
         "save": "Save storage structure",
         "saving": "Saving…",
         "savedApplied": "Saved. Moved {{moved}} file(s){{skippedSuffix}}.",

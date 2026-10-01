@@ -41,16 +41,18 @@ Instead of having your collection scattered across different websites and your f
 
 ## Features
 
-- 🌐 **Import from MakerWorld, Printables and Thingiverse** — paste a link, or use the Thingport Grab browser extension. Whole collections, likes and MakerWorld print profiles come across with their title, description, tags, photos and author.
-- 📤 **Upload your own files** — STL, 3MF, STEP, OBJ and LightBurn files, or a ZIP to pick files from.
+- 🌐 **Import from MakerWorld, Printables and Thingiverse** — paste a link, or use the Thingport Grab browser extension. Whole collections, likes and MakerWorld print profiles come across with their title, description, tags, photos and author. Big imports run in the background and notify you when they finish, and a model you already have is never imported twice.
+- 📤 **Upload your own files** — STL, 3MF, STEP, OBJ and LightBurn files, or a ZIP to pick files from, with its folders recreated as categories.
 - 🧊 **3D previews** — STL, 3MF, OBJ and STEP in the browser, with a thumbnail for every plate of a multi-plate 3MF. Very complex models can be simplified for the preview only.
-- 🗂️ **Organize and search** — nested categories, collections, tags, favourites and browsing history, with full-text search across names, tags, notes and authors.
+- 🗂️ **Organize and search** — nested categories, collections, tags, favourites and browsing history, with full-text search across names, tags, notes and authors. Pin the collections and tags you use most to the sidebar.
+- 📊 **Dashboard** — library stats, recently added models, your most viewed and most used models, and top authors.
 - 👤 **Author pages** — every model you've saved from an author, with a preview card when you hover their name.
 - 🖨️ **Open in your slicer** — Bambu Studio, OrcaSlicer, PrusaSlicer, Cura, Creality Print, Anycubic Slicer Next, Elegoo Slicer and Snapmaker Orca, choosing the file when a model has several.
 - 💡 **Normalized MakerWorld 3MFs** — slicers that mis-read Bambu Studio projects get an "Open normalized" option that keeps painted colours, plates and the designer's print settings.
 - 📎 **Everything to print it** — keep instructions, notes and a sliced, ready-to-print file next to the model.
-- 💾 **Plain files on your disk** — choose the folder layout, mount folders you already have, and back up with any tool.
-- 👥 **Multi-user** — a separate library per person, open or invite-only registration, optional email verification and captcha, and admin logs.
+- 📦 **Download as ZIP** — a model's files, or a whole category, tag or collection in one archive.
+- 💾 **Plain files on your disk** — choose the folder layout (existing files are reorganized when you change it) and back up with any tool.
+- 👥 **Multi-user** — a separate library per person, open or invite-only registration, optional email verification and captcha, admin logs, and an update check that tells you when new Thingport images are out.
 - 🌍 **Light and dark themes**, in English and Lithuanian.
 - 🐳 **Self-hosted** — runs anywhere Docker does, from a NAS to a spare PC.
 

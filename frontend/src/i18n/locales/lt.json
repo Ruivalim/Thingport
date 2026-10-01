@@ -247,7 +247,7 @@
       },
       "topPrinted": {
         "title": "Dažniausiai spausdinami modeliai",
-        "empty": "Dar nieko neišspausdinta — pažymėti kaip išspausdinti modeliai atsiras čia."
+        "empty": "Dar nieko neišspausdinta — modeliai, kuriuos atsisiunčiate ar atveriate pjaustyklėje, atsiras čia."
       },
       "topAuthors": {
         "title": "Populiariausi autoriai",
@@ -298,7 +298,7 @@
         "examplePathsHeading": "Kelių pavyzdžiai (dvi vieno modelio plokštės)",
         "examplePathsEmpty": "Įveskite šabloną, kad pamatytumėte kelio pavyzdį",
         "reorganizeLabel": "Pertvarkyti esamus valdomus failus dabar",
-        "reorganizeHint": "Prijungti be kopijavimo failai praleidžiami. Esami adresai toliau naudoja stabilius modelio ID.",
+        "reorganizeHint": "Nuorodos į modelius ir toliau veiks, nes jos naudoja modelio ID, o ne failo kelią.",
         "save": "Išsaugoti saugojimo struktūrą",
         "saving": "Saugoma…",
         "savedApplied": "Išsaugota. Perkelta {{moved}} failų{{skippedSuffix}}.",
