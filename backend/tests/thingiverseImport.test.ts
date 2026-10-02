@@ -121,7 +121,13 @@ describe("importPrintFromUrl -- Thingiverse", () => {
     await setThingiverseAccessToken(ACCESS_TOKEN);
     // Several category ids, only one matching: any overlap should match.
     const category = await prisma.category.create({
-      data: { userId, name: "Thingiverse Tests", tags: [], thingiverseCatIds: [999001, CATEGORY_ID, 999002] },
+      data: {
+        userId,
+        name: "Thingiverse Tests",
+        kind: "category",
+        tags: [],
+        thingiverseCatIds: [999001, CATEGORY_ID, 999002],
+      },
     });
 
     global.fetch = mockThingiverseFetch();

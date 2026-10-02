@@ -22,6 +22,7 @@ import Alert from "@mui/material/Alert";
 import Typography from "@mui/material/Typography";
 import AddIcon from "@mui/icons-material/Add";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
+import DriveFolderUploadIcon from "@mui/icons-material/DriveFolderUpload";
 import LinkIcon from "@mui/icons-material/Link";
 import { useUploadImport } from "../uploads/useUploadImport";
 import { useImportJob } from "./ImportJobContext";
@@ -70,6 +71,11 @@ export default function AddMenu({ categoryId, makerworldCookie, onUploaded, onUn
     upload.triggerUpload();
   };
 
+  const handleFolderUpload = () => {
+    closeMenu();
+    upload.triggerFolderUpload();
+  };
+
   const openImport = () => {
     closeMenu();
     setLinkValue("");
@@ -94,6 +100,7 @@ export default function AddMenu({ categoryId, makerworldCookie, onUploaded, onUn
   return (
     <>
       {upload.fileInput}
+      {upload.folderInput}
       <Tooltip title={isImporting ? t("addMenu.disabledWhileImporting") : ""}>
         <span>
           <Button
@@ -112,7 +119,13 @@ export default function AddMenu({ categoryId, makerworldCookie, onUploaded, onUn
           <ListItemIcon>
             <UploadFileIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText>{t("common:upload")}</ListItemText>
+          <ListItemText>{t("addMenu.uploadFiles")}</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={handleFolderUpload}>
+          <ListItemIcon>
+            <DriveFolderUploadIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>{t("addMenu.uploadFolder")}</ListItemText>
         </MenuItem>
         <MenuItem onClick={openImport}>
           <ListItemIcon>

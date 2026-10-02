@@ -549,7 +549,8 @@ async function resolveCategoryIdByCategory(
   if (!categorySite || !siteCategoryIds.length) return null;
   const field = CATEGORY_SITE_CAT_IDS_FIELD[categorySite];
   const category = await prisma.category.findFirst({
-    where: { userId, [field]: { hasSome: siteCategoryIds } },
+    // Folders are the user's own tree; only categories take imports by site category id.
+    where: { userId, kind: "category", [field]: { hasSome: siteCategoryIds } },
     orderBy: { position: "asc" },
   });
   return category?.id ?? null;

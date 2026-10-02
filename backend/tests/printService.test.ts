@@ -15,15 +15,22 @@ describe("validateStorageTemplate", () => {
   });
 
   it("rejects a template missing {filename}", () => {
-    expect(() => validateStorageTemplate("{category}/{model}")).toThrow(/exactly once/);
+    expect(() => validateStorageTemplate("{category-or-folder}/{model}")).toThrow(/exactly once/);
   });
 
   it("rejects an unknown token", () => {
-    expect(() => validateStorageTemplate("{category}/{bogus}/{filename}")).toThrow(/Unknown storage token/);
+    expect(() => validateStorageTemplate("{category-or-folder}/{bogus}/{filename}")).toThrow(/Unknown storage token/);
   });
 
   it("rejects {filename} outside the final segment", () => {
     expect(() => validateStorageTemplate("{filename}/{model}")).toThrow(/final path segment/);
+  });
+
+  it("rewrites a saved {category} to {category-or-folder}", () => {
+    expect(validateStorageTemplate("Library/{category}/{model}/{filename}")).toBe(
+      "Library/{category-or-folder}/{model}/{filename}",
+    );
+    expect(samplePlateStoragePaths("{category}/{filename}")[0]).toBe("Props/Workshop/Base.3mf");
   });
 
   it("accepts the new {plate} token", () => {

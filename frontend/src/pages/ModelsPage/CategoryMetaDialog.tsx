@@ -13,13 +13,15 @@ import type { Category, CategoryMetaInput } from "../../api/categories";
 
 type Props = {
   category: Category;
+  /** Folders hold the user's own tree, so imports aren't sorted into them by site category id. */
+  showSiteCatIds: boolean;
   onClose: () => void;
   onSave: (meta: CategoryMetaInput) => Promise<void>;
 };
 
 /** Blank fields clear the metadata. Imports whose site category id matches any listed id
  *  (";"-separated) land in this category. Validation errors show inline and keep the edits. */
-export default function CategoryMetaDialog({ category, onClose, onSave }: Props) {
+export default function CategoryMetaDialog({ category, showSiteCatIds, onClose, onSave }: Props) {
   const { t } = useTranslation(["models", "common"]);
   const untitledLabel = t("models:categories.untitled");
   const [title, setTitle] = useState(category.meta_title ?? "");
@@ -74,35 +76,37 @@ export default function CategoryMetaDialog({ category, onClose, onSave }: Props)
             onChange={(e) => setDescription(e.target.value)}
             disabled={saving}
           />
-          <Stack direction="row" spacing={2}>
-            <TextField
-              label={t("models:categories.manager.makerworldCatIdLabel")}
-              placeholder={t("models:categories.manager.catIdsPlaceholder") ?? undefined}
-              helperText={t("models:categories.manager.catIdsHelp")}
-              fullWidth
-              value={makerworldCatIds}
-              onChange={(e) => setMakerworldCatIds(e.target.value)}
-              disabled={saving}
-            />
-            <TextField
-              label={t("models:categories.manager.thingiverseCatIdLabel")}
-              placeholder={t("models:categories.manager.catIdsPlaceholder") ?? undefined}
-              helperText={t("models:categories.manager.catIdsHelp")}
-              fullWidth
-              value={thingiverseCatIds}
-              onChange={(e) => setThingiverseCatIds(e.target.value)}
-              disabled={saving}
-            />
-            <TextField
-              label={t("models:categories.manager.printablesCatIdLabel")}
-              placeholder={t("models:categories.manager.catIdsPlaceholder") ?? undefined}
-              helperText={t("models:categories.manager.catIdsHelp")}
-              fullWidth
-              value={printablesCatIds}
-              onChange={(e) => setPrintablesCatIds(e.target.value)}
-              disabled={saving}
-            />
-          </Stack>
+          {showSiteCatIds && (
+            <Stack direction="row" spacing={2}>
+              <TextField
+                label={t("models:categories.manager.makerworldCatIdLabel")}
+                placeholder={t("models:categories.manager.catIdsPlaceholder") ?? undefined}
+                helperText={t("models:categories.manager.catIdsHelp")}
+                fullWidth
+                value={makerworldCatIds}
+                onChange={(e) => setMakerworldCatIds(e.target.value)}
+                disabled={saving}
+              />
+              <TextField
+                label={t("models:categories.manager.thingiverseCatIdLabel")}
+                placeholder={t("models:categories.manager.catIdsPlaceholder") ?? undefined}
+                helperText={t("models:categories.manager.catIdsHelp")}
+                fullWidth
+                value={thingiverseCatIds}
+                onChange={(e) => setThingiverseCatIds(e.target.value)}
+                disabled={saving}
+              />
+              <TextField
+                label={t("models:categories.manager.printablesCatIdLabel")}
+                placeholder={t("models:categories.manager.catIdsPlaceholder") ?? undefined}
+                helperText={t("models:categories.manager.catIdsHelp")}
+                fullWidth
+                value={printablesCatIds}
+                onChange={(e) => setPrintablesCatIds(e.target.value)}
+                disabled={saving}
+              />
+            </Stack>
+          )}
           {error && <Alert severity="error">{error}</Alert>}
         </Stack>
       </DialogContent>

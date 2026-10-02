@@ -8,6 +8,7 @@ import { printsApi, type Print } from "../../api/prints";
 import {
   entriesFromFileList,
   hasModelFolders,
+  isSystemFile,
   uploadEntriesToCategory,
   uploadFoldersAsModels,
 } from "../../utils/uploadTree";
@@ -16,6 +17,7 @@ import { useZipImportPrompt } from "./ZipImportModal";
 import { useCollectionImportPrompt } from "./CollectionImportModal";
 import { useImportModePrompt, type ImportMode } from "./ImportModeModal";
 import { useImportJob } from "../Layout/ImportJobContext";
+import { UPLOAD_EXTS } from "../../constants/fileTypes";
 import { useToast } from "../ToastProvider";
 import {
   isMakerworldModelUrl,
@@ -45,6 +47,7 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
   const showToast = useToast();
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const folderInputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
   const [importing, setImporting] = useState(false);
   const zipPrompt = useZipImportPrompt();
@@ -181,7 +184,14 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
     if (inputRef.current) inputRef.current.value = "";
   };
 
+  const onFolderPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const entries = entriesFromFileList(e.target.files || []).filter((entry) => !isSystemFile(entry.file.name));
+    if (entries.length) await uploadEntries(entries);
+    if (folderInputRef.current) folderInputRef.current.value = "";
+  };
+
   const triggerUpload = () => inputRef.current?.click();
+  const triggerFolderUpload = () => folderInputRef.current?.click();
 
   const fileInput = (
     <input
@@ -189,7 +199,21 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
       type="file"
       onChange={onFilePick}
       multiple
-      accept=".png,.jpg,.jpeg,.webp,.bmp,.gif,.svg,.stl,.step,.stp,.3mf,.obj,.f3d,.lbrn,.lbrn2,.zip"
+      accept={UPLOAD_EXTS.map((ext) => `.${ext}`).join(",")}
+      hidden
+    />
+  );
+
+  // One picker can't take both files and folders: `webkitdirectory` makes it folder-only. React has no
+  // typed prop for it, so it's set on the element.
+  const folderInput = (
+    <input
+      ref={(el) => {
+        folderInputRef.current = el;
+        el?.setAttribute("webkitdirectory", "");
+      }}
+      type="file"
+      onChange={onFolderPick}
       hidden
     />
   );
@@ -387,10 +411,12 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
 
   return {
     fileInput,
+    folderInput,
     uploading,
     importing,
     isBusy,
     triggerUpload,
+    triggerFolderUpload,
     submitImport,
     modals: (
       <>

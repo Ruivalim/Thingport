@@ -732,6 +732,7 @@ export default function CategoryManagerModal({
       {metaCategory && (
         <CategoryMetaDialog
           category={metaCategory}
+          showSiteCatIds={kind === "category"}
           onClose={() => setMetaCategory(null)}
           onSave={(meta) => onUpdateMeta(metaCategory.id, meta)}
         />

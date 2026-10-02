@@ -20,7 +20,7 @@ type Props = {
 // Two plates of one print, showing that siblings share the {model} directory.
 const PLATE_PREVIEW_VALUES: Record<string, string>[] = [
   {
-    category: "Props/Workshop",
+    "category-or-folder": "Props/Workshop",
     collection: "Tabletop",
     tags: "Print in place + Useful",
     creator: "Example creator",
@@ -30,7 +30,7 @@ const PLATE_PREVIEW_VALUES: Record<string, string>[] = [
     plate: "1",
   },
   {
-    category: "Props/Workshop",
+    "category-or-folder": "Props/Workshop",
     collection: "Tabletop",
     tags: "Print in place + Useful",
     creator: "Example creator",
@@ -41,7 +41,7 @@ const PLATE_PREVIEW_VALUES: Record<string, string>[] = [
   },
 ];
 
-const DEFAULT_TEMPLATE = "{category}/{model}/{filename}";
+const DEFAULT_TEMPLATE = "{category-or-folder}/{model}/{filename}";
 
 export default function StorageSection({ onUnauthorized }: Props) {
   const { t } = useTranslation("app");

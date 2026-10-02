@@ -102,7 +102,7 @@ describe("importPrintFromUrl -- Printables", () => {
 
   it("imports a model's files as plates, matches category, and attaches metadata + images", async () => {
     const category = await prisma.category.create({
-      data: { userId, name: "Printables Tests", tags: [], printablesCatIds: [1, CATEGORY_ID, 2] },
+      data: { userId, name: "Printables Tests", kind: "category", tags: [], printablesCatIds: [1, CATEGORY_ID, 2] },
     });
 
     global.fetch = mockPrintablesFetch();

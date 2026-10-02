@@ -9,7 +9,7 @@ import { listZipEntries, readZipEntry } from "../utils/zipReader";
 import type { Category, Plate, Print } from "@prisma/client";
 
 export const STORAGE_TEMPLATE_TOKENS = [
-  "category",
+  "category-or-folder",
   "collection",
   "tags",
   "creator",
@@ -21,18 +21,20 @@ export const STORAGE_TEMPLATE_TOKENS = [
 
 // Older names still accepted in a saved template, and rewritten to the current one whenever the
 // template is validated -- so the admin page shows (and the next save stores) the new name.
-// {name} was always the same value as {model}.
+// {name} was always the same value as {model}; {category} became {category-or-folder} when folders
+// were split out of categories.
 const LEGACY_TOKEN_ALIASES: Record<string, (typeof STORAGE_TEMPLATE_TOKENS)[number]> = {
   name: "model",
+  category: "category-or-folder",
 };
 
 /** The {collection} folder for a model in no collection, and for one in more than one. */
 export const NO_COLLECTION_FOLDER = "Uncollected";
 export const MULTIPLE_COLLECTIONS_FOLDER = "Multiple collections";
 
-export const DEFAULT_STORAGE_TEMPLATE = "{category}/{model}/{filename}";
+export const DEFAULT_STORAGE_TEMPLATE = "{category-or-folder}/{model}/{filename}";
 
-const TOKEN_RE = /\{([a-z_]+)\}/g;
+const TOKEN_RE = /\{([a-z_-]+)\}/g;
 // oxlint-disable-next-line no-control-regex -- stripping control chars is the point here.
 const INVALID_SEGMENT_RE = /[<>:"|?*\x00-\x1f]/g;
 
@@ -152,7 +154,7 @@ async function printTemplateValues(print: PrintLike, template: string): Promise<
       .filter(Boolean)
       .join(" + ") || "Untagged";
   return {
-    category: templateUses(template, "category")
+    "category-or-folder": templateUses(template, "category-or-folder")
       ? (await categorySegments(print.userId, print.categoryId)).join("/")
       : "",
     collection: templateUses(template, "collection")
@@ -204,7 +206,7 @@ export async function renderPlateStoragePath(
 export function samplePlateStoragePaths(template: string): [string, string] {
   const safeTemplate = validateStorageTemplate(template);
   const base = {
-    category: "Props/Workshop",
+    "category-or-folder": "Props/Workshop",
     collection: "Tabletop",
     tags: "Print in place + Useful",
     creator: "Example creator",
@@ -338,7 +340,7 @@ export async function relocatePrint(print: PrintLike, plates: Plate[], template?
 
 /** Moves the given prints' files after a change that only matters when the storage template
  * uses `token` -- a collection membership change, say, moves nothing under the default
- * {category}/{model}/{filename}. Best-effort per print, like reorganizeManagedPrints: the change
+ * {category-or-folder}/{model}/{filename}. Best-effort per print, like reorganizeManagedPrints: the change
  * itself has already been saved, and one print's file collision shouldn't undo it or block the
  * others. */
 export async function relocatePrintsForToken(

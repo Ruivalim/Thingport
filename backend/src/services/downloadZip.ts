@@ -58,7 +58,7 @@ export async function estimateDownloadSize(prints: PrintWithPlatesAndCategory[])
 }
 
 /**
- * `{category}/{print.name}/{plate.filename}`, with supporting files under `.../supporting/`.
+ * `{category-or-folder}/{print.name}/{plate.filename}`, with supporting files under `.../supporting/`.
  * `flatten` drops the category folder, for downloads that span categories.
  */
 export async function buildZipEntries(

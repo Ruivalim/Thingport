@@ -1,7 +1,7 @@
 import { UnauthorizedError } from "../api/client";
 import { categoriesApi, type Category } from "../api/categories";
 import { printsApi, type Print } from "../api/prints";
-import { MODEL_EXTS } from "../constants/fileTypes";
+import { MODEL_EXTS, UPLOAD_EXTS } from "../constants/fileTypes";
 
 export type UploadEntry = {
   file: File;
@@ -136,6 +136,13 @@ function isModelFile(name: string) {
 const PREVIEW_IMAGE_EXTS = new Set(["png", "jpg", "jpeg", "webp", "bmp"]);
 const PREVIEW_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
 
+// OS metadata a folder pick drags along, never meant as content.
+const SYSTEM_FILES = new Set(["thumbs.db", "desktop.ini"]);
+
+export function isSystemFile(name: string) {
+  return name.startsWith(".") || SYSTEM_FILES.has(name.toLowerCase());
+}
+
 function isPreviewImage(file: File) {
   return PREVIEW_IMAGE_EXTS.has(extOf(file.name)) && file.size <= PREVIEW_IMAGE_MAX_BYTES;
 }
@@ -171,7 +178,8 @@ async function uploadEach(
   const uploadedEntries: UploadEntry[] = [];
   const prints: Print[] = [];
 
-  for (const entry of entries) {
+  // A folder pick isn't filtered by the file picker, so skip what couldn't become a model on its own.
+  for (const entry of entries.filter((e) => UPLOAD_EXTS.includes(extOf(e.file.name)))) {
     try {
       const segments = splitPath(entry);
       let categoryId: string | null;

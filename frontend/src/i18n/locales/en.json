@@ -203,6 +203,8 @@
       }
     },
     "addMenu": {
+      "uploadFiles": "Upload files",
+      "uploadFolder": "Upload folder",
       "importTitle": "Import from link",
       "disabledWhileImporting": "Wait for the current import to finish before starting another",
       "exampleLinksFor": "Example {{provider}} links",
@@ -271,7 +273,7 @@
         "label": "Unique authors"
       },
       "categoryCount": {
-        "label": "Categories"
+        "label": "Categories & folders"
       },
       "topViewed": {
         "title": "Top Viewed Models",
@@ -325,7 +327,7 @@
         "templateHeading": "Path template",
         "templateDesc": "The model name is unique inside its Thingport category. Renaming a model also renames its file while preserving the extension.",
         "templateLabel": "Template",
-        "templatePlaceholder": "{category}/{model}/{filename}",
+        "templatePlaceholder": "{category-or-folder}/{model}/{filename}",
         "examplePathsHeading": "Example paths (two plates of one print)",
         "examplePathsEmpty": "Enter a template to preview its path",
         "reorganizeLabel": "Reorganize existing managed files now",
@@ -337,7 +339,7 @@
         "savedNoApply": "Storage structure saved for new and updated models.",
         "failed": "Failed to save storage settings.",
         "tokens": {
-          "category": "The model's category, with parent categories as parent folders",
+          "category-or-folder": "The model's category or folder, with parent ones as parent folders",
           "collection": "The collection the model is in. Models in no collection go to \"Uncollected\", models in several go to \"Multiple collections\"",
           "tags": "The model's tags, joined with \" + \"",
           "creator": "The author shown on the model page; a user's own uploads use their display name",
@@ -1317,6 +1319,7 @@
       "title": "Edit model",
       "titleLabel": "Title",
       "noCategory": "No category",
+      "categoryOrFolder": "Category / Folder",
       "resetAuthor": "Reset author",
       "undoResetAuthor": "Undo",
       "authorWillBeYou": "You (after Update)",

@@ -203,6 +203,8 @@
       }
     },
     "addMenu": {
+      "uploadFiles": "Įkelti failus",
+      "uploadFolder": "Įkelti aplanką",
       "importTitle": "Importuoti iš nuorodos",
       "disabledWhileImporting": "Palaukite, kol baigsis dabartinis importas, prieš pradėdami kitą",
       "exampleLinksFor": "Pavyzdinės {{provider}} nuorodos",
@@ -271,7 +273,7 @@
         "label": "Unikalūs autoriai"
       },
       "categoryCount": {
-        "label": "Kategorijos"
+        "label": "Kategorijos ir aplankai"
       },
       "topViewed": {
         "title": "Dažniausiai žiūrimi modeliai",
@@ -326,7 +328,7 @@
         "templateHeading": "Kelio šablonas",
         "templateDesc": "Modelio pavadinimas yra unikalus jo Thingport kategorijoje. Modelio pervadinimas taip pat pervadina jo failą, išsaugant plėtinį.",
         "templateLabel": "Šablonas",
-        "templatePlaceholder": "{category}/{model}/{filename}",
+        "templatePlaceholder": "{category-or-folder}/{model}/{filename}",
         "examplePathsHeading": "Kelių pavyzdžiai (dvi vieno modelio plokštės)",
         "examplePathsEmpty": "Įveskite šabloną, kad pamatytumėte kelio pavyzdį",
         "reorganizeLabel": "Pertvarkyti esamus valdomus failus dabar",
@@ -338,7 +340,7 @@
         "savedNoApply": "Saugojimo struktūra išsaugota naujiems ir atnaujintiems modeliams.",
         "failed": "Nepavyko išsaugoti saugojimo nustatymų.",
         "tokens": {
-          "category": "Modelio kategorija; tėvinės kategorijos tampa tėviniais aplankais",
+          "category-or-folder": "Modelio kategorija arba aplankas; tėviniai tampa tėviniais aplankais",
           "collection": "Kolekcija, kuriai priklauso modelis. Modeliai be kolekcijos patenka į „Uncollected“, o esantys keliose – į „Multiple collections“",
           "tags": "Modelio žymos, sujungtos „ + “",
           "creator": "Modelio puslapyje rodomas autorius; naudotojo įkeltiems modeliams naudojamas jo rodomas vardas",
@@ -1320,6 +1322,7 @@
       "title": "Redaguoti modelį",
       "titleLabel": "Pavadinimas",
       "noCategory": "Be kategorijos",
+      "categoryOrFolder": "Kategorija / Aplankas",
       "resetAuthor": "Atstatyti autorių",
       "undoResetAuthor": "Anuliuoti",
       "authorWillBeYou": "Jūs (po atnaujinimo)",

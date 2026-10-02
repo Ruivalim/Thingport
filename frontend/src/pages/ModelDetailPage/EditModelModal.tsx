@@ -108,7 +108,14 @@ export default function EditModelModal({ print, onClose, onUnauthorized, onUpdat
 
   const markDirty = () => setDirty(true);
 
-  const flatCategories = useMemo(() => flattenCategoryTree(buildCategoryTree(categories ?? [])), [categories]);
+  // Each kind is ordered on its own, as in its box on the models page; categories come first.
+  const [flatCategories, flatFolders] = useMemo(
+    () =>
+      (["category", "folder"] as const).map((kind) =>
+        flattenCategoryTree(buildCategoryTree((categories ?? []).filter((c) => c.kind === kind))),
+      ),
+    [categories],
+  );
   const categoryName = (c: Category) => translateCategoryDisplay(c, i18n).name;
 
   const onAddImages = (fileList: FileList | null) => {
@@ -296,10 +303,10 @@ export default function EditModelModal({ print, onClose, onUnauthorized, onUpdat
           />
 
           <FormControl fullWidth disabled={saving || !categories}>
-            <InputLabel id="edit-model-category-label">{t("models:detail.category")}</InputLabel>
+            <InputLabel id="edit-model-category-label">{t("models:edit.categoryOrFolder")}</InputLabel>
             <Select
               labelId="edit-model-category-label"
-              label={t("models:detail.category")}
+              label={t("models:edit.categoryOrFolder")}
               value={categoryId ?? ""}
               onChange={(e) => {
                 setCategoryId(e.target.value || null);
@@ -320,6 +327,17 @@ export default function EditModelModal({ print, onClose, onUnauthorized, onUpdat
                   </MenuItem>
                 ),
               )}
+              {flatFolders.length > 0 && (
+                <MenuItem disabled divider sx={{ fontWeight: 700, opacity: "1 !important" }}>
+                  {t("models:folders.title")}
+                </MenuItem>
+              )}
+              {/* Unlike a top-level category, a top-level folder holds models itself (uploads land there). */}
+              {flatFolders.map(({ category, depth }) => (
+                <MenuItem key={category.id} value={category.id} sx={{ pl: 2 + depth * 2 }}>
+                  {categoryName(category) || t("models:categories.untitled")}
+                </MenuItem>
+              ))}
             </Select>
           </FormControl>
 
