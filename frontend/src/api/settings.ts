@@ -16,6 +16,19 @@ export type CategoriesView = "categories" | "folders";
 
 export type PreviewMode = "automatic" | "on-demand" | "disabled";
 
+/** Kept in sync by hand with the backend's CONSUME_MODES. */
+export type ConsumeMode = "separate" | "folder";
+
+export type ConsumeSettings = {
+  /** False when nothing is mounted at `path`, so nothing is watched. */
+  available: boolean;
+  path: string;
+  not_imported_dir: string;
+  mode: ConsumeMode;
+  /** Whose library consumed models go to. */
+  user_id: string | null;
+};
+
 export type RenderingSettings = { simplify_previews: boolean };
 
 export type AuthSettings = {
@@ -299,6 +312,23 @@ export const settingsApi = {
     });
     if (res.status === 401) throw new UnauthorizedError();
     if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to update the categories view setting"));
+    return res.json();
+  },
+
+  getConsume: async (): Promise<ConsumeSettings> => {
+    const res = await fetch(`${apiBase()}/settings/consume`, { headers: authHeaders() });
+    assertOk(res, "Failed to load consume folder settings");
+    return res.json();
+  },
+
+  updateConsume: async (patch: { mode?: ConsumeMode; user_id?: string }): Promise<ConsumeSettings> => {
+    const res = await fetch(`${apiBase()}/settings/consume`, {
+      method: "PATCH",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(patch),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to update consume folder settings"));
     return res.json();
   },
 

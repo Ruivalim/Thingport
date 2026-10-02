@@ -350,6 +350,23 @@
           "plate": "Failo eilės numeris modelyje, pradedant nuo 1"
         }
       },
+      "consume": {
+        "heading": "Importavimo aplankas",
+        "subtitle": "Importuokite viską, kas įdedama į stebimą aplanką: failus, aplankų struktūras ir ZIP archyvus.",
+        "notSetUpTitle": "Importavimo aplankas nenustatytas",
+        "notSetUpBody": "Kelyje {{path}} niekas neprijungta, todėl joks aplankas nestebimas. Norėdami jį naudoti, docker-compose.yml faile backend paslaugai pridėkite tomą, pvz. \"- /kelias/serveryje:/app/consume\", ir dar kartą paleiskite \"docker compose up -d\". Žemiau esančius nustatymus galite pasirinkti jau dabar.",
+        "activeBody": "Stebimas {{path}}. Failai importuojami praėjus kelioms sekundėms po to, kai nustoja keistis, ir perkeliami į saugyklą, todėl aplankas išsivalo pats. Aplankai tampa aplankais, o ZIP archyvai išpakuojami tarsi aplankai. Tai, ko nepavyksta importuoti, perkeliama į „{{notImported}}“ tame aplanke.",
+        "userLabel": "Importuoti į biblioteką naudotojo",
+        "modeLabel": "Importavimo būdas",
+        "modeSeparateTitle": "Kiekvienas modelio failas – atskiras modelis",
+        "modeSeparateDesc": "Kiekvienas STL, 3MF, STEP ar OBJ failas tampa atskiru modeliu.",
+        "modeFolderTitle": "Kiekvienas aplankas – vienas modelis",
+        "modeFolderDesc": "Aplankas su modelio failais tampa vienu modeliu, pavadintu aplanko vardu. Jo modelio failai pridedami kaip plokštės, paveikslėliai tampa peržiūros paveikslėliais, o kiti failai prisegami.",
+        "save": "Išsaugoti importavimo nustatymus",
+        "saving": "Saugoma…",
+        "saved": "Importavimo nustatymai išsaugoti.",
+        "failed": "Nepavyko išsaugoti importavimo nustatymų."
+      },
       "registrations": {
         "allowLabel": "Leisti naujas registracijas",
         "openHelp": "Bet kas, pasiekiantis šį serverį, gali susikurti paskyrą prisijungimo puslapyje.",

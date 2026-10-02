@@ -1,6 +1,7 @@
 import { createApp } from "./app";
 import { API_PORT } from "./config";
 import { prisma } from "./db"; // also ensures storage directories exist before we start serving
+import { startConsumeWatcher } from "./services/consumeService";
 
 const app = createApp();
 
@@ -14,4 +15,5 @@ prisma.importJob
 
 app.listen(API_PORT, () => {
   console.log(`Thingport API listening on port ${API_PORT}`);
+  startConsumeWatcher();
 });

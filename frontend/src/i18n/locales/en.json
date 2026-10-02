@@ -349,6 +349,23 @@
           "plate": "The file's position in the model, starting at 1"
         }
       },
+      "consume": {
+        "heading": "Consume Folder",
+        "subtitle": "Import anything dropped into a watched folder: files, folder structures and ZIPs.",
+        "notSetUpTitle": "No consume folder is set up",
+        "notSetUpBody": "Nothing is mounted at {{path}}, so no folder is being watched. To use one, add a volume to the backend service in docker-compose.yml, e.g. \"- /path/on/host:/app/consume\", and run \"docker compose up -d\" again. The settings below can be chosen in the meantime.",
+        "activeBody": "Watching {{path}}. Files are imported a few seconds after they stop changing and moved into storage, so the folder empties itself. Folders become folders, and ZIPs are unpacked as if they were folders. Anything that can't be imported is moved to \"{{notImported}}\" in that folder.",
+        "userLabel": "Import into the library of",
+        "modeLabel": "Import mode",
+        "modeSeparateTitle": "Each model file is a separate model",
+        "modeSeparateDesc": "Every STL, 3MF, STEP or OBJ file becomes its own model.",
+        "modeFolderTitle": "Each folder is one model",
+        "modeFolderDesc": "A folder containing model files becomes a single model named after the folder. Its model files are added as plates, its images become preview images, and other files are attached.",
+        "save": "Save consume settings",
+        "saving": "Saving…",
+        "saved": "Consume settings saved.",
+        "failed": "Failed to save consume settings."
+      },
       "registrations": {
         "allowLabel": "Allow new registrations",
         "openHelp": "Anyone who can reach this instance can create an account from the sign-in page.",

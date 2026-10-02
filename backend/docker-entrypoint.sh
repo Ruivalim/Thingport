@@ -28,6 +28,11 @@ else
   chown "$PUID":"$PGID" /app/storage /app/data 2> /dev/null || true
 fi
 
+# The optional consume folder is only there when mounted; consumed files are moved out of it.
+if [ -d /app/consume ]; then
+  chown "$PUID":"$PGID" /app/consume 2> /dev/null || true
+fi
+
 # Managed migrations: apply any pending Prisma migrations before the app starts.
 npx prisma migrate deploy
 

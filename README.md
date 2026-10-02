@@ -42,6 +42,7 @@ Instead of having your collection scattered across different websites and your f
 
 - 🌐 **Import from MakerWorld, Printables and Thingiverse** — paste a link, or use the Thingport Grab browser extension. Whole collections, likes and MakerWorld print profiles come across with their title, description, tags, photos and author. Big imports run in the background and notify you when they finish, and a model you already have is never imported twice.
 - 📤 **Upload your own files** — STL, 3MF, STEP, OBJ and LightBurn files, or a ZIP to pick files from, with its folders recreated as categories.
+- 📥 **Consume folder** — mount a folder and anything dropped into it (files, folder trees, ZIPs) is imported and moved into the library, with a notification once it's done.
 - 🧊 **3D previews** — STL, 3MF, OBJ and STEP in the browser, with a thumbnail for every plate of a multi-plate 3MF. Very complex models can be simplified for the preview only.
 - 🗂️ **Organize and search** — nested categories, collections, tags, favourites and browsing history, with full-text search across names, tags, notes and authors. Pin the collections and tags you use most to the sidebar.
 - 📊 **Dashboard** — library stats, recently added models, your most viewed and most used models, and top authors.
@@ -169,6 +170,9 @@ services:
         condition: service_started
     volumes:
       - thingport_storage:/app/storage
+      # Optional consume folder: files and folders dropped in it are imported automatically
+      # (Administration -> Settings -> Consume Folder). Uncomment and point it at a host folder.
+      # - /path/to/consume:/app/consume
     networks:
       - app-net
 
@@ -257,6 +261,24 @@ docker compose up -d
 This builds the images locally rather than pulling from GHCR.
 
 </details>
+
+### Consume folder
+
+To have Thingport import whatever you drop into a folder, uncomment the consume volume in `docker-compose.yml`
+and point it at a folder on the host, then run `docker compose up -d` again:
+
+```yaml
+volumes:
+  - thingport_storage:/app/storage
+  - /path/to/consume:/app/consume
+```
+
+Files and folder structures dropped there are picked up within a few seconds of the copy finishing, turned into
+models, and moved into Thingport's storage, so the folder empties itself. Folders become folders in Thingport and
+ZIPs are unpacked as if they were folders. In **Administration → Settings → Consume Folder**, choose whose library the
+models go to and whether each model file becomes its own model (the default) or each folder of model files becomes one
+model. Anything that can't be imported is moved to a `Not imported` folder inside the consume folder. Files are moved
+out as the backend's user, so `PUID`/`PGID` need write access to the folder.
 
 ## Contributing
 

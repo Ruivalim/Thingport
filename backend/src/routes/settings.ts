@@ -35,6 +35,15 @@ import { type MakerworldCookieCheck, verifyMakerworldCookie } from "../services/
 import { verifyThingiverseAccessToken } from "../services/thingiverseApi";
 import { SLICER_IDS, getUserSlicer, setUserSlicer } from "../services/slicerPreferenceService";
 import { CATEGORIES_VIEWS, getCategoriesView, setCategoriesView } from "../services/categoriesViewService";
+import {
+  CONSUME_MODES,
+  NOT_IMPORTED_DIR,
+  consumeAvailable,
+  getConsumeMode,
+  getConsumeUserId,
+  setConsumeSettings,
+} from "../services/consumeService";
+import { CONSUME_DIR } from "../config";
 import { THEME_SELECTIONS, getUserTheme, setUserTheme } from "../services/themePreferenceService";
 import { getUserAuthorPreviewEnabled, setUserAuthorPreviewEnabled } from "../services/authorPreviewPreferenceService";
 import { checkForUpdates } from "../services/versionService";
@@ -369,6 +378,35 @@ router.patch(
     const body = parseBody(themeSettingsSchema, req.body);
     const theme = await setUserTheme(req.userId!, body.theme);
     res.json({ theme });
+  }),
+);
+
+async function consumeSettingsOut() {
+  return {
+    available: consumeAvailable(),
+    path: CONSUME_DIR,
+    not_imported_dir: NOT_IMPORTED_DIR,
+    mode: await getConsumeMode(),
+    user_id: await getConsumeUserId(),
+  };
+}
+
+router.get(
+  "/settings/consume",
+  requireAdmin,
+  asyncHandler(async (_req, res) => {
+    res.json(await consumeSettingsOut());
+  }),
+);
+
+const consumeSchema = z.object({ mode: z.enum(CONSUME_MODES).optional(), user_id: z.string().optional() });
+router.patch(
+  "/settings/consume",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const body = parseBody(consumeSchema, req.body);
+    await setConsumeSettings({ mode: body.mode, userId: body.user_id });
+    res.json(await consumeSettingsOut());
   }),
 );
 

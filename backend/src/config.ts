@@ -32,6 +32,8 @@ function defaultPreviewMemoryMb(): number {
 }
 
 export const STORAGE = path.resolve(process.env.FILE_STORAGE || "./storage");
+// Watched only while it exists, i.e. when the Docker setup mounts a host folder there.
+export const CONSUME_DIR = path.resolve(process.env.CONSUME_DIR || "/app/consume");
 export const THUMBS = path.join(STORAGE, "thumbs");
 export const BUNDLES = path.join(STORAGE, "bundles");
 export const PREVIEWS = path.join(STORAGE, "previews");
@@ -54,6 +56,25 @@ export const AUTH_ALGO = "HS256" as const;
 export const IMPORT_ALLOWED_EXTS = new Set([".stl", ".3mf", ".step", ".stp", ".obj", ".lbrn", ".lbrn2", ".zip"]);
 // Mirrors frontend's MODEL_EXTS. Other files in a multi-file upload become SUPPORTING files.
 export const RENDERABLE_MODEL_EXTS = new Set([".stl", ".3mf", ".step", ".stp", ".obj"]);
+// Mirrors frontend's UPLOAD_EXTS: what becomes a model on its own.
+export const UPLOADABLE_EXTS = new Set([
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".webp",
+  ".bmp",
+  ".gif",
+  ".svg",
+  ".stl",
+  ".step",
+  ".stp",
+  ".3mf",
+  ".obj",
+  ".f3d",
+  ".lbrn",
+  ".lbrn2",
+  ".zip",
+]);
 export const IMPORT_EXT_PRIORITY = [".3mf", ".stl", ".step", ".stp", ".lbrn2", ".lbrn", ".zip"];
 export const IMPORT_BLOCKED_EXTS = new Set([
   ".jpg",

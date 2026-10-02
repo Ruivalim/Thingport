@@ -11,6 +11,7 @@ import {
   availablePlateFilename,
   ensurePlateThumbnail,
   managedPlatePath,
+  plateThumbPath,
   pruneEmptyStorageDirs,
   renderPlateStoragePath,
   saveThumbFromFile,
@@ -185,29 +186,51 @@ export async function createPrint(
     },
   });
 
-  const plates: Plate[] = [];
-  let firstEffectivePath: string | null = null;
-  let firstFilename = "";
-  for (let i = 0; i < plateInputs.length; i++) {
-    const { record, effectivePath } = await createPlateAtPosition(print, plateInputs[i], i);
-    plates.push(record);
-    if (i === 0) {
-      firstEffectivePath = effectivePath;
-      firstFilename = record.filename;
+  try {
+    const plates: Plate[] = [];
+    let firstEffectivePath: string | null = null;
+    let firstFilename = "";
+    for (let i = 0; i < plateInputs.length; i++) {
+      const { record, effectivePath } = await createPlateAtPosition(print, plateInputs[i], i);
+      plates.push(record);
+      if (i === 0) {
+        firstEffectivePath = effectivePath;
+        firstFilename = record.filename;
+      }
     }
-  }
 
-  if (firstEffectivePath) {
-    const sniffed = await inspectPreparedPrint(firstEffectivePath, firstFilename);
-    if (sniffed) {
-      await prisma.print.update({
-        where: { id: print.id },
-        data: { preparedMetadata: sniffed as unknown as Prisma.InputJsonValue },
-      });
+    if (firstEffectivePath) {
+      const sniffed = await inspectPreparedPrint(firstEffectivePath, firstFilename);
+      if (sniffed) {
+        await prisma.print.update({
+          where: { id: print.id },
+          data: { preparedMetadata: sniffed as unknown as Prisma.InputJsonValue },
+        });
+      }
     }
-  }
 
-  return { print, plates };
+    return { print, plates };
+  } catch (err) {
+    await discardPrint(print.id);
+    throw err;
+  }
+}
+
+/** Undoes a half-created print, so a failure doesn't leave a model with only some of its plates. */
+async function discardPrint(printId: string): Promise<void> {
+  try {
+    const plates = await prisma.plate.findMany({ where: { printId } });
+    await prisma.print.delete({ where: { id: printId } });
+    for (const plate of plates) {
+      await fs.rm(plateThumbPath(plate.id), { force: true });
+      if (plate.sourcePath) continue;
+      const managed = managedPlatePath(plate);
+      await fs.rm(managed, { force: true });
+      await pruneEmptyStorageDirs(path.dirname(managed));
+    }
+  } catch (err) {
+    console.error("Failed to discard half-created print", printId, err);
+  }
 }
 
 export async function addPlatesToPrint(

@@ -71,6 +71,9 @@ services:
         condition: service_started
     volumes:
       - /mnt/user/appdata/thingport/storage:/app/storage
+      # Optional consume folder: files and folders dropped in it are imported automatically
+      # (Administration -> Settings -> Consume Folder). Uncomment and point it at a host folder.
+      # - /mnt/user/appdata/thingport/consume:/app/consume
     networks:
       - app-net
     labels:
