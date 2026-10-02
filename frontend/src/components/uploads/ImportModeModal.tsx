@@ -16,6 +16,8 @@ export type ImportMode = "separate" | "multiplate";
 type ImportModePromptConfig = {
   label: string;
   count: number;
+  /** "folders": an uploaded folder tree, where the choice is per folder rather than for the whole set. */
+  variant?: "files" | "folders";
   onChoose: (mode: ImportMode) => Promise<void>;
 };
 
@@ -30,6 +32,7 @@ function errorMessage(err: unknown, fallback: string) {
 
 /**
  * For a flat multi-file selection: import each file as its own print, or all as plates of one.
+ * For a folder tree: each file as its own print, or each folder of model files as one print.
  */
 export function useImportModePrompt() {
   const { t } = useTranslation("app");
@@ -77,6 +80,7 @@ export function useImportModePrompt() {
     <ImportModeModal
       label={state.config.label}
       count={state.config.count}
+      variant={state.config.variant ?? "files"}
       busy={busy}
       error={error}
       onChoose={choose}
@@ -90,6 +94,7 @@ export function useImportModePrompt() {
 function ImportModeModal({
   label,
   count,
+  variant,
   busy,
   error,
   onChoose,
@@ -97,18 +102,20 @@ function ImportModeModal({
 }: {
   label: string;
   count: number;
+  variant: "files" | "folders";
   busy: boolean;
   error: string | null;
   onChoose: (mode: ImportMode) => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation("app");
+  const text = variant === "folders" ? "importMode.folders" : "importMode";
   return (
     <Dialog open onClose={busy ? undefined : onClose} maxWidth="sm" fullWidth>
       <DialogTitle sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 2 }}>
         <Box>
           <Typography variant="h6" component="div">
-            {t("importMode.title", { count })}
+            {t(`${text}.title`, { count })}
           </Typography>
           <Typography variant="body2" color="text.secondary">
             {label}
@@ -120,7 +127,7 @@ function ImportModeModal({
       </DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2}>
-          <Typography variant="body2">{t("importMode.prompt")}</Typography>
+          <Typography variant="body2">{t(`${text}.prompt`)}</Typography>
           <Stack spacing={1.5}>
             <ButtonBase
               onClick={() => onChoose("separate")}
@@ -136,9 +143,9 @@ function ImportModeModal({
                 "&:hover": { boxShadow: 1 },
               }}
             >
-              <Typography variant="subtitle2">{t("importMode.separateTitle")}</Typography>
+              <Typography variant="subtitle2">{t(`${text}.separateTitle`)}</Typography>
               <Typography variant="body2" color="text.secondary">
-                {t("importMode.separateDesc")}
+                {t(`${text}.separateDesc`)}
               </Typography>
             </ButtonBase>
             <ButtonBase
@@ -155,9 +162,9 @@ function ImportModeModal({
                 "&:hover": { boxShadow: 1 },
               }}
             >
-              <Typography variant="subtitle2">{t("importMode.multiplateTitle")}</Typography>
+              <Typography variant="subtitle2">{t(`${text}.multiplateTitle`)}</Typography>
               <Typography variant="body2" color="text.secondary">
-                {t("importMode.multiplateDesc")}
+                {t(`${text}.multiplateDesc`)}
               </Typography>
             </ButtonBase>
           </Stack>

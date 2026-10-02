@@ -6,7 +6,7 @@ import { HttpError } from "../utils/fileUtils";
 import { normalizeTags } from "../utils/tagNormalization";
 import { parseBody } from "../utils/validate";
 import { asyncHandler } from "../utils/asyncHandler";
-import { validateParentCategory } from "../services/categoryService";
+import { CATEGORY_KINDS, kindUnder, setSubtreeKind, validateParentCategory } from "../services/categoryService";
 import { availableModelName, reorganizeManagedPrints } from "../services/printService";
 import { toCategoryOut } from "../dto";
 import { sendPrintsZip } from "../services/downloadZip";
@@ -19,6 +19,8 @@ const categorySchema = z.object({
   name: z.string().min(1),
   tags: z.array(z.string()).default([]),
   parent_id: z.string().nullable().optional(),
+  // Only for a top-level category; a subcategory always takes its parent's kind.
+  kind: z.enum(CATEGORY_KINDS).optional(),
 });
 
 router.get(
@@ -48,8 +50,12 @@ router.post(
     if (parentIds.size > 1) {
       throw new HttpError(400, "category_ids must all share the same parent category");
     }
+    const kinds = new Set(categories.map((f) => f.kind));
+    if (kinds.size > 1) throw new HttpError(400, "category_ids must all be the same kind");
     const [parentId] = parentIds;
-    const siblings = await prisma.category.findMany({ where: { userId: req.userId, parentId } });
+    const [kind] = kinds;
+    // Categories and folders share the top level but are shown and ordered apart.
+    const siblings = await prisma.category.findMany({ where: { userId: req.userId, parentId, kind } });
     if (siblings.length !== body.category_ids.length) {
       throw new HttpError(400, "category_ids must contain exactly this category's current siblings");
     }
@@ -75,6 +81,7 @@ router.post(
     if (!category) throw new HttpError(404, "Not found");
     const parentId = await validateParentCategory(req.userId!, body.parent_id, category.id);
     const siblingOrder: Prisma.CategoryOrderByWithRelationInput[] = [{ position: "asc" }, { name: "asc" }];
+    const kind = await kindUnder(req.userId!, parentId, category.kind);
 
     const moved = await prisma.$transaction(async (tx) => {
       const renumber = async (ids: string[]) => {
@@ -86,14 +93,14 @@ router.post(
       if (category.parentId !== parentId) {
         // Close the gap left behind.
         const oldSiblings = await tx.category.findMany({
-          where: { userId: req.userId, parentId: category.parentId, id: { not: category.id } },
+          where: { userId: req.userId, parentId: category.parentId, kind: category.kind, id: { not: category.id } },
           orderBy: siblingOrder,
           select: { id: true },
         });
         await renumber(oldSiblings.map((c) => c.id));
       }
       const siblings = await tx.category.findMany({
-        where: { userId: req.userId, parentId, id: { not: category.id } },
+        where: { userId: req.userId, parentId, kind, id: { not: category.id } },
         orderBy: siblingOrder,
         select: { id: true },
       });
@@ -106,9 +113,10 @@ router.post(
       });
     });
 
+    if (kind !== category.kind) await setSubtreeKind(req.userId!, category.id, kind);
     // Managed storage paths include the category path.
     if (category.parentId !== parentId) await reorganizeManagedPrints(undefined, req.userId);
-    res.json(toCategoryOut(moved));
+    res.json(toCategoryOut({ ...moved, kind }));
   }),
 );
 
@@ -117,8 +125,9 @@ router.post(
   asyncHandler(async (req, res) => {
     const body = parseBody(categorySchema, req.body);
     const parentId = await validateParentCategory(req.userId!, body.parent_id ?? null);
+    const kind = await kindUnder(req.userId!, parentId, body.kind ?? "folder");
     const category = await prisma.category.create({
-      data: { userId: req.userId!, name: body.name, tags: normalizeTags(body.tags), parentId },
+      data: { userId: req.userId!, name: body.name, tags: normalizeTags(body.tags), parentId, kind },
     });
     res.json(toCategoryOut(category));
   }),
@@ -135,6 +144,8 @@ router.patch(
       where: { id: category.id },
       data: { name: body.name, tags: normalizeTags(body.tags), parentId },
     });
+    const kind = await kindUnder(req.userId!, parentId, category.kind);
+    if (kind !== category.kind) await setSubtreeKind(req.userId!, category.id, kind);
     await reorganizeManagedPrints(undefined, req.userId);
     res.json(toCategoryOut(updated));
   }),

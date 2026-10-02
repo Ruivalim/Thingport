@@ -34,6 +34,7 @@ import { getUserMakerworldCookie, setUserMakerworldCookie } from "../services/ma
 import { type MakerworldCookieCheck, verifyMakerworldCookie } from "../services/makerworldCloudApi";
 import { verifyThingiverseAccessToken } from "../services/thingiverseApi";
 import { SLICER_IDS, getUserSlicer, setUserSlicer } from "../services/slicerPreferenceService";
+import { CATEGORIES_VIEWS, getCategoriesView, setCategoriesView } from "../services/categoriesViewService";
 import { THEME_SELECTIONS, getUserTheme, setUserTheme } from "../services/themePreferenceService";
 import { getUserAuthorPreviewEnabled, setUserAuthorPreviewEnabled } from "../services/authorPreviewPreferenceService";
 import { checkForUpdates } from "../services/versionService";
@@ -368,6 +369,22 @@ router.patch(
     const body = parseBody(themeSettingsSchema, req.body);
     const theme = await setUserTheme(req.userId!, body.theme);
     res.json({ theme });
+  }),
+);
+
+router.get(
+  "/settings/categories-view",
+  asyncHandler(async (req, res) => {
+    res.json({ view: await getCategoriesView(req.userId!) });
+  }),
+);
+
+const categoriesViewSchema = z.object({ view: z.enum(CATEGORIES_VIEWS) });
+router.patch(
+  "/settings/categories-view",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(categoriesViewSchema, req.body);
+    res.json({ view: await setCategoriesView(req.userId!, body.view) });
   }),
 );
 

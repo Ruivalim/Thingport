@@ -47,7 +47,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { Category, CategoryMetaInput } from "../../api/categories";
+import type { Category, CategoryKind, CategoryMetaInput } from "../../api/categories";
 import { useConfirm } from "../../components/ConfirmProvider";
 import { buildCategoryTree, flattenCategoryTree } from "../../utils/categoryTree";
 import CategoryMetaDialog from "./CategoryMetaDialog";
@@ -57,6 +57,8 @@ const INDENT_PX = 24;
 const ACTION_BUTTON_PX = 30;
 
 type Props = {
+  /** Only the trees of this kind; it also picks the labels. */
+  kind: CategoryKind;
   categories: Category[];
   onClose: () => void;
   onCreate: (name: string, parentId: string | null) => Promise<void>;
@@ -121,6 +123,7 @@ function CategoryRow({
   hasDetails,
   onOpenMeta,
   onAddChild,
+  addChildLabel,
   onRename,
   onDelete,
 }: {
@@ -138,6 +141,7 @@ function CategoryRow({
   hasDetails: boolean;
   onOpenMeta: () => void;
   onAddChild: () => void;
+  addChildLabel: string;
   onRename: (name: string) => Promise<void>;
   onDelete: () => void;
 }) {
@@ -228,14 +232,9 @@ function CategoryRow({
               </IconButton>
             </>
           )}
-          <Tooltip title={t("models:categories.manager.addSubcategory")}>
+          <Tooltip title={addChildLabel}>
             <span>
-              <IconButton
-                size="small"
-                onClick={onAddChild}
-                disabled={busy}
-                aria-label={t("models:categories.manager.addSubcategory") ?? undefined}
-              >
+              <IconButton size="small" onClick={onAddChild} disabled={busy} aria-label={addChildLabel}>
                 <AddIcon fontSize="small" />
               </IconButton>
             </span>
@@ -362,15 +361,16 @@ function TreeRow({
 function InlineAddRow({
   depth,
   busy,
+  placeholder,
   onAdd,
   onCancel,
 }: {
   depth: number;
   busy: boolean;
+  placeholder: string;
   onAdd: (name: string) => Promise<void>;
   onCancel: () => void;
 }) {
-  const { t } = useTranslation("models");
   const [value, setValue] = useState("");
   const submit = async () => {
     const trimmed = value.trim();
@@ -381,7 +381,7 @@ function InlineAddRow({
       <TextField
         size="small"
         fullWidth
-        placeholder={t("categories.manager.addSubcategory")}
+        placeholder={placeholder}
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={(e) => {
@@ -472,6 +472,7 @@ function AddRow({
 }
 
 export default function CategoryManagerModal({
+  kind,
   categories,
   onClose,
   onCreate,
@@ -516,6 +517,7 @@ export default function CategoryManagerModal({
   );
 
   const untitledLabel = t("models:categories.untitled");
+  const labels = kind === "folder" ? "models:folders.manager" : "models:categories.manager";
 
   const handleDelete = async (category: Category) => {
     const name = category.name || untitledLabel;
@@ -617,7 +619,7 @@ export default function CategoryManagerModal({
     <>
       <Dialog open onClose={onClose} fullWidth maxWidth="sm">
         <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          {t("models:categories.manager.title")}
+          {t(`${labels}.title`)}
           <IconButton size="small" onClick={onClose} aria-label={t("common:close") ?? undefined}>
             <CloseIcon fontSize="small" />
           </IconButton>
@@ -661,6 +663,7 @@ export default function CategoryManagerModal({
                         hasDetails={hasMeta(category)}
                         onOpenMeta={() => setMetaCategory(category)}
                         onAddChild={() => setAddingUnderId(category.id)}
+                        addChildLabel={t(`${labels}.addSubcategory`)}
                         onRename={(name) => onRename(category.id, name)}
                         onDelete={() => handleDelete(category)}
                       />
@@ -668,6 +671,7 @@ export default function CategoryManagerModal({
                         <InlineAddRow
                           depth={addingDepth}
                           busy={busyId === `new-sub-${addingUnderId}`}
+                          placeholder={t(`${labels}.addSubcategory`)}
                           onCancel={() => setAddingUnderId(null)}
                           onAdd={async (name) => {
                             setBusyId(`new-sub-${addingUnderId}`);
@@ -686,7 +690,7 @@ export default function CategoryManagerModal({
 
                 {!tree.roots.length && (
                   <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
-                    {t("models:categories.manager.noCategories")}
+                    {t(`${labels}.noCategories`)}
                   </Typography>
                 )}
               </List>
@@ -709,7 +713,7 @@ export default function CategoryManagerModal({
           <Divider sx={{ my: 1.5 }} />
 
           <AddRow
-            placeholder={t("models:categories.manager.addCategory")}
+            placeholder={t(`${labels}.addCategory`)}
             busy={busyId === "new-root"}
             onAdd={async (name) => {
               setBusyId("new-root");

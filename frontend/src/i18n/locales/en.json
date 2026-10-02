@@ -140,7 +140,15 @@
       "multiplateDesc": "All files are added to a single new model, in the order selected.",
       "importing": "Importing…",
       "close": "Close",
-      "importError": "Import failed"
+      "importError": "Import failed",
+      "folders": {
+        "title": "Import folders ({{count}} files)",
+        "prompt": "How should the models in these folders be imported?",
+        "separateTitle": "Each model file is a separate model",
+        "separateDesc": "Every STL, 3MF, STEP or OBJ file becomes its own model. Each folder becomes a folder.",
+        "multiplateTitle": "Each folder is one model",
+        "multiplateDesc": "A folder containing model files becomes a single model named after the folder. Its model files are added as plates, its images become preview images, and other files are attached."
+      }
     },
     "tagInput": {
       "removeTag": "Remove {{tag}}"
@@ -1454,6 +1462,24 @@
         "catIdsPlaceholder": "e.g. 800;71;1001",
         "catIdsHelp": "Separate multiple IDs with \";\" -- matches if an import's category is any of these",
         "dragToMove": "Drag to move"
+      }
+    },
+    "view": {
+      "label": "Show categories or folders",
+      "categories": "Categories",
+      "folders": "Folders"
+    },
+    "folders": {
+      "title": "Folders",
+      "subtitle": "Folder",
+      "empty": "No folders yet",
+      "noSubfolders": "No subfolders yet",
+      "manageTooltip": "Manage folders",
+      "manager": {
+        "title": "Manage Folders",
+        "addCategory": "Add folder",
+        "addSubcategory": "Add subfolder",
+        "noCategories": "No folders yet. Add one, or upload a folder of models."
       }
     }
   }

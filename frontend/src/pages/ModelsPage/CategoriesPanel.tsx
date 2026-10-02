@@ -13,13 +13,15 @@ import Collapse from "@mui/material/Collapse";
 import CircularProgress from "@mui/material/CircularProgress";
 import SettingsIcon from "@mui/icons-material/Settings";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import type { Category, CategoryMetaInput } from "../../api/categories";
+import type { Category, CategoryKind, CategoryMetaInput } from "../../api/categories";
 import { translateCategoryDisplay } from "../../utils/translateCategoryDisplay";
 import { dividerBorderColor } from "../../theme";
 import { ancestorPath, buildCategoryTree } from "../../utils/categoryTree";
 import CategoryManagerModal from "./CategoryManagerModal";
 
 type Props = {
+  /** Which box this is; `categories` holds only that kind. */
+  kind: CategoryKind;
   categories: Category[];
   loading: boolean;
   selectedId: string | null;
@@ -61,6 +63,7 @@ function rowTextSx(active: boolean, extra?: object) {
 
 /** Any depth; a category selects the models at every level beneath it. Only the selected path is open. */
 export default function CategoriesPanel({
+  kind,
   categories,
   loading,
   selectedId,
@@ -77,6 +80,7 @@ export default function CategoriesPanel({
   const displayName = (category: Category) => translateCategoryDisplay(category, i18n).name;
 
   const untitledLabel = t("models:categories.untitled");
+  const labels = kind === "folder" ? "models:folders" : "models:categories";
 
   const tree = useMemo(() => buildCategoryTree(categories), [categories]);
   // The selected category and its ancestors are open, so a selection from the URL is always visible.
@@ -118,7 +122,7 @@ export default function CategoriesPanel({
             {children.map((child) => renderCategory(child, depth + 1))}
             {isRoot && !children.length && (
               <Typography variant="caption" color="text.secondary" sx={{ pl: 4, display: "block", py: 0.5 }}>
-                {t("models:categories.noSubcategories")}
+                {t(kind === "folder" ? "models:folders.noSubfolders" : "models:categories.noSubcategories")}
               </Typography>
             )}
           </List>
@@ -143,13 +147,13 @@ export default function CategoriesPanel({
       >
         <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 0.5, pb: 1 }}>
           <Typography variant="subtitle1" fontWeight={700}>
-            {t("models:categories.title")}
+            {t(`${labels}.title`)}
           </Typography>
-          <Tooltip title={t("models:categories.manageTooltip") ?? ""}>
+          <Tooltip title={t(`${labels}.manageTooltip`) ?? ""}>
             <IconButton
               size="small"
               onClick={() => setManagerOpen(true)}
-              aria-label={t("models:categories.manageTooltip") ?? undefined}
+              aria-label={t(`${labels}.manageTooltip`) ?? undefined}
             >
               <SettingsIcon fontSize="small" />
             </IconButton>
@@ -174,7 +178,7 @@ export default function CategoriesPanel({
 
           {!loading && !tree.roots.length && (
             <Typography variant="body2" color="text.secondary" sx={{ px: 1, py: 1 }}>
-              {t("models:categories.empty")}
+              {t(`${labels}.empty`)}
             </Typography>
           )}
         </List>
@@ -182,6 +186,7 @@ export default function CategoriesPanel({
 
       {managerOpen && (
         <CategoryManagerModal
+          kind={kind}
           categories={categories}
           onClose={() => setManagerOpen(false)}
           onCreate={onCreate}

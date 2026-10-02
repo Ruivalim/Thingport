@@ -5,7 +5,12 @@ import { useNavigate } from "react-router-dom";
 import { UnauthorizedError } from "../../api/client";
 import { importsApi, type ImportOutcome, type MakerworldProfileScope } from "../../api/imports";
 import { printsApi, type Print } from "../../api/prints";
-import { entriesFromFileList, uploadEntriesToCategory } from "../../utils/uploadTree";
+import {
+  entriesFromFileList,
+  hasModelFolders,
+  uploadEntriesToCategory,
+  uploadFoldersAsModels,
+} from "../../utils/uploadTree";
 import { buildUploadEntriesFromZip, isZipFile, readZipEntries } from "../../utils/zipUtils";
 import { useZipImportPrompt } from "./ZipImportModal";
 import { useCollectionImportPrompt } from "./CollectionImportModal";
@@ -109,6 +114,18 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
             } else {
               applyResult(await uploadEntriesToCategory(normalEntries, categoryId || null, onUnauthorized));
             }
+          },
+        });
+      } else if (hasModelFolders(normalEntries)) {
+        // Libraries often keep one model per folder, split into several files with its photos alongside.
+        const roots = [...new Set(normalEntries.map((entry) => entry.relativePath.split("/")[0]))];
+        await importModePrompt.prompt({
+          label: roots.join(", "),
+          count: normalEntries.length,
+          variant: "folders",
+          onChoose: async (mode: ImportMode) => {
+            const upload = mode === "multiplate" ? uploadFoldersAsModels : uploadEntriesToCategory;
+            applyResult(await upload(normalEntries, categoryId || null, onUnauthorized));
           },
         });
       } else {

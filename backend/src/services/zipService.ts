@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import { kindUnder } from "./categoryService";
 import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -56,12 +57,14 @@ async function getOrCreateCategory(
   const key = `${parentKey}/${name}`;
   const cached = cache.get(key);
   if (cached) return cached;
-  const existing = await prisma.category.findFirst({ where: { userId, parentId, name } });
+  // At the top level only a folder is reused: a zip's folders shouldn't merge into a starter category.
+  const kind = await kindUnder(userId, parentId, "folder");
+  const existing = await prisma.category.findFirst({ where: { userId, parentId, name, kind } });
   if (existing) {
     cache.set(key, existing.id);
     return existing.id;
   }
-  const category = await prisma.category.create({ data: { userId, name, parentId, tags: [] } });
+  const category = await prisma.category.create({ data: { userId, name, parentId, kind, tags: [] } });
   cache.set(key, category.id);
   return category.id;
 }

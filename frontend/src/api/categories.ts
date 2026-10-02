@@ -1,11 +1,16 @@
 import { authHeaders } from "../utils/auth";
 import { apiBase, assertOk, readErrorMessage, UnauthorizedError } from "./client";
 
+/** "category": the starter categories imports sort into. "folder": the user's own tree. */
+export type CategoryKind = "category" | "folder";
+
 export type Category = {
   id: string;
   name: string;
   tags: string[];
   parent_id?: string | null;
+  /** Always the same as the top-level ancestor's. */
+  kind: CategoryKind;
   position: number;
   meta_title: string | null;
   meta_description: string | null;
@@ -30,11 +35,12 @@ export const categoriesApi = {
     return res.json();
   },
 
-  create: async (name: string, tags: string[] = [], parent_id?: string | null) => {
+  /** `kind` only applies at the top level; a subcategory takes its parent's. The server defaults to folder. */
+  create: async (name: string, tags: string[] = [], parent_id?: string | null, kind?: CategoryKind) => {
     const res = await fetch(`${apiBase()}/categories`, {
       method: "POST",
       headers: authHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ name, tags, parent_id }),
+      body: JSON.stringify({ name, tags, parent_id, kind }),
     });
     assertOk(res, "Create category failed");
     return res.json();

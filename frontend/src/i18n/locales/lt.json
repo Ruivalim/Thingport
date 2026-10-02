@@ -140,7 +140,15 @@
       "multiplateDesc": "Visi failai bus pridėti prie vieno naujo modelio pasirinkta tvarka.",
       "importing": "Importuojama…",
       "close": "Uždaryti",
-      "importError": "Importuoti nepavyko"
+      "importError": "Importuoti nepavyko",
+      "folders": {
+        "title": "Importuoti aplankus ({{count}} failų)",
+        "prompt": "Kaip turėtų būti importuojami šiuose aplankuose esantys modeliai?",
+        "separateTitle": "Kiekvienas modelio failas – atskiras modelis",
+        "separateDesc": "Kiekvienas STL, 3MF, STEP ar OBJ failas taps atskiru modeliu. Kiekvienas aplankas taps aplanku.",
+        "multiplateTitle": "Kiekvienas aplankas – vienas modelis",
+        "multiplateDesc": "Aplankas su modelio failais taps vienu modeliu, pavadintu aplanko vardu. Jo modelio failai bus pridėti kaip plokštės, paveikslėliai taps peržiūros paveikslėliais, o kiti failai bus prisegti."
+      }
     },
     "tagInput": {
       "removeTag": "Pašalinti {{tag}}"
@@ -1459,6 +1467,24 @@
         "catIdsPlaceholder": "pvz. 800;71;1001",
         "catIdsHelp": "Kelis ID atskirkite „;“ -- atitiks, jei importo kategorija sutampa su bet kuriuo iš jų",
         "dragToMove": "Vilkite, kad perkeltumėte"
+      }
+    },
+    "view": {
+      "label": "Rodyti kategorijas arba aplankus",
+      "categories": "Kategorijos",
+      "folders": "Aplankai"
+    },
+    "folders": {
+      "title": "Aplankai",
+      "subtitle": "Aplankas",
+      "empty": "Kol kas nėra aplankų",
+      "noSubfolders": "Kol kas nėra poaplankių",
+      "manageTooltip": "Tvarkyti aplankus",
+      "manager": {
+        "title": "Tvarkyti aplankus",
+        "addCategory": "Pridėti aplanką",
+        "addSubcategory": "Pridėti poaplankį",
+        "noCategories": "Kol kas nėra aplankų. Pridėkite arba įkelkite modelių aplanką."
       }
     }
   }

@@ -142,6 +142,7 @@ export type CategoryOut = {
   name: string;
   tags: string[];
   parent_id: string | null;
+  kind: string;
   position: number;
   meta_title: string | null;
   meta_description: string | null;
@@ -360,6 +361,7 @@ export function toCategoryOut(category: Category): CategoryOut {
     name: category.name,
     tags: category.tags,
     parent_id: category.parentId,
+    kind: category.kind,
     position: category.position,
     meta_title: category.metaTitle,
     meta_description: category.metaDescription,

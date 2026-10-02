@@ -8,13 +8,15 @@ import CircularProgress from "@mui/material/CircularProgress";
 import { UnauthorizedError } from "../../api/client";
 import { type Print, type PrintSortMode, printsApi } from "../../api/prints";
 import { type Category, type CategoryMetaInput, categoriesApi } from "../../api/categories";
-import { type PreviewMode } from "../../api/settings";
+import { type CategoriesView, type PreviewMode } from "../../api/settings";
 import type { AuthUser } from "../../api/auth";
 import { type ResolvedTheme } from "../../constants/settingsOptions";
 import { usePageHeader } from "../../components/Layout/PageHeaderContext";
 import { buildCategoryTree, subtreeIds } from "../../utils/categoryTree";
 import { useInfiniteScroll } from "../../hooks/useInfiniteScroll";
+import { useCategoriesView } from "../../hooks/useCategoriesView";
 import CategoriesPanel from "./CategoriesPanel";
+import CategoriesViewToggle from "./CategoriesViewToggle";
 import CategoryBanner from "./CategoryBanner";
 import ModelCard from "./ModelCard";
 import SortTabs from "./SortTabs";
@@ -54,6 +56,9 @@ export default function ModelsPage({
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
+  const [categoriesView, setCategoriesView] = useCategoriesView();
+  const panelKind = categoriesView === "folders" ? "folder" : "category";
+  const panelCategories = useMemo(() => categories.filter((c) => c.kind === panelKind), [categories, panelKind]);
   const sortModeParam = searchParams.get("orderBy");
   const sortMode: PrintSortMode =
     sortModeParam === "popular" || sortModeParam === "downloads" ? sortModeParam : "newest";
@@ -106,7 +111,9 @@ export default function ModelsPage({
   const selectedCategory = categoryId ? (categories.find((f) => f.id === categoryId) ?? null) : null;
   usePageHeader({
     title: selectedCategory ? selectedCategory.name || t("models:categories.untitled") : undefined,
-    subtitle: selectedCategory ? t("models:categories.subtitle") : undefined,
+    subtitle: selectedCategory
+      ? t(selectedCategory.kind === "folder" ? "models:folders.subtitle" : "models:categories.subtitle")
+      : undefined,
     onBack: categoryId ? () => onSelectCategory(null) : undefined,
   });
 
@@ -180,7 +187,7 @@ export default function ModelsPage({
 
   const createCategory = async (name: string, parentId: string | null) => {
     try {
-      await categoriesApi.create(name, [], parentId || undefined);
+      await categoriesApi.create(name, [], parentId || undefined, panelKind);
       onCategoriesChanged();
     } catch (err) {
       handleError(err, t("models:errors.createCategoryFailed"));
@@ -228,6 +235,14 @@ export default function ModelsPage({
     }
   };
 
+  // A selection from the other box would be invisible after the switch.
+  const switchCategoriesView = (view: CategoriesView) => {
+    setCategoriesView(view);
+    if (selectedCategory && selectedCategory.kind !== (view === "folders" ? "folder" : "category")) {
+      onSelectCategory(null);
+    }
+  };
+
   const updateCategoryMeta = async (id: string, meta: CategoryMetaInput) => {
     try {
       await categoriesApi.updateMeta(id, meta);
@@ -241,13 +256,15 @@ export default function ModelsPage({
 
   return (
     <Stack spacing={2} sx={{ maxWidth: "1920px", mx: "auto" }}>
-      <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
+        <CategoriesViewToggle value={categoriesView} onChange={switchCategoriesView} />
         <SortTabs value={sortMode} onChange={setSortMode} />
       </Box>
       <Stack direction="row" spacing={2} alignItems="flex-start">
         <CategoriesPanel
-          categories={categories}
-          loading={categoriesLoading}
+          kind={panelKind}
+          categories={panelCategories}
+          loading={categoriesLoading || categoriesView === null}
           selectedId={categoryId}
           onSelect={onSelectCategory}
           onCreate={createCategory}

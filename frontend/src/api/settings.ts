@@ -11,6 +11,9 @@ export type StorageSettings = {
   skipped: number;
 };
 
+/** Which tree the models page shows. Kept in sync by hand with the backend's CATEGORIES_VIEWS. */
+export type CategoriesView = "categories" | "folders";
+
 export type PreviewMode = "automatic" | "on-demand" | "disabled";
 
 export type RenderingSettings = { simplify_previews: boolean };
@@ -279,6 +282,23 @@ export const settingsApi = {
     if (!res.ok) {
       throw new Error(await readErrorMessage(res, "Failed to update theme setting"));
     }
+    return res.json();
+  },
+
+  getCategoriesView: async (): Promise<{ view: CategoriesView }> => {
+    const res = await fetch(`${apiBase()}/settings/categories-view`, { headers: authHeaders() });
+    assertOk(res, "Failed to load the categories view setting");
+    return res.json();
+  },
+
+  updateCategoriesView: async (view: CategoriesView): Promise<{ view: CategoriesView }> => {
+    const res = await fetch(`${apiBase()}/settings/categories-view`, {
+      method: "PATCH",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ view }),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to update the categories view setting"));
     return res.json();
   },
 

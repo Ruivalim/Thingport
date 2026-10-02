@@ -32,6 +32,8 @@ model User {
   slicer                   String?
   // "light" | "dark" | "system"; null means never set.
   themePreference          String?
+  // Which tree the models page shows: "categories" | "folders"; null means categories.
+  categoriesView           String?
   authorPreviewEnabled     Boolean        @default(true)
   // Filled from the first linked Author with this data; later links never overwrite it.
   bio                      String?
@@ -67,6 +69,9 @@ model Category {
   user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   name              String
   tags              String[]   @default([])
+  // "category" (the starter categories imports sort into) or "folder" (the user's own tree, e.g.
+  // from uploading folders). Always the same as the top-level ancestor's.
+  kind              String     @default("folder")
   parentId          String?
   parent            Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
   children          Category[] @relation("CategoryTree")
