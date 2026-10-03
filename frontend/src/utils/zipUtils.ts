@@ -1,4 +1,4 @@
-import type { UploadEntry } from "./uploadTree";
+import { isSystemFile, type UploadEntry } from "./uploadTree";
 
 export type ZipEntry = {
   path: string;
@@ -41,6 +41,12 @@ export function guessMimeType(name: string) {
   return MIME_BY_EXT[ext] || "";
 }
 
+// macOS zips carry resource forks under __MACOSX/, plus the same OS metadata a folder pick drops.
+function isArchiveJunk(path: string) {
+  const parts = path.split("/");
+  return parts.includes("__MACOSX") || isSystemFile(parts[parts.length - 1]);
+}
+
 export function isZipFile(name: string) {
   return (name || "").toLowerCase().endsWith(".zip");
 }
@@ -52,7 +58,7 @@ export async function readZipEntries(file: File): Promise<{ entries: ZipEntry[];
   const data: Record<string, Uint8Array> = {};
   for (const [rawPath, content] of Object.entries(zipEntries)) {
     const normalized = normalizeZipPath(rawPath);
-    if (!normalized) continue;
+    if (!normalized || isArchiveJunk(normalized)) continue;
     data[normalized] = content;
   }
   const entries = Object.keys(data)

@@ -73,6 +73,14 @@ describe("admin user management", () => {
     expect(res.status).toBe(403);
   });
 
+  // The admin router's guards once ran for every /api route mounted after it.
+  it("doesn't apply the admin check outside admin routes", async () => {
+    for (const url of ["/api/dashboard/summary", "/api/dashboard/top-viewed"]) {
+      const res = await request(app).get(url).set(auth(memberToken));
+      expect({ url, status: res.status }).toEqual({ url, status: 200 });
+    }
+  });
+
   it("lists users with their print counts", async () => {
     await request(app)
       .post("/api/upload")

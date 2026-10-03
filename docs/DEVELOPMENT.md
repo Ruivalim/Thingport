@@ -136,6 +136,29 @@ mutate the same global `Setting` rows, and parallel workers race each other. See
 There are no frontend tests yet. `npm run test:run` uses `--passWithNoTests`, so it succeeds
 against an empty suite. New tests are welcome.
 
+### Regression pack
+
+Playwright scenarios in `regression/` that drive the real app in Chromium: sign-up, sign-in,
+uploading (single and multiple files, zips, folder trees), the consume folder, collections, and the
+sidebar (navigation, the admin-only route, bookmarks and their drag-to-reorder, collapsing). Upload
+fixtures are generated in `tests/fixtures.ts` rather than checked in. The consume folder is
+`regression/consume/`, bind-mounted into the backend for the run. `run.sh` builds the backend and
+frontend images from your checkout, starts them with Postgres on port 8090, runs the scenarios, and
+then removes the stack. The database and storage live on tmpfs, so every run starts empty and leaves nothing behind.
+It never touches your development database. It needs Docker.
+
+```bash
+cd regression
+npm install
+npx playwright install chromium
+./run.sh                      # whole pack
+./run.sh tests/models.spec.ts # extra arguments go to `playwright test`
+```
+
+CI runs it every Saturday at 00:00 UTC (`.github/workflows/regression.yml`). You can also start it
+from the Actions tab. When it fails, the HTML report, traces and container logs are uploaded as the
+`regression-report` artifact.
+
 ## Quality checks
 
 | Command                               | What it runs                     |

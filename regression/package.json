@@ -1,0 +1,14 @@
+{
+  "name": "thingport-regression",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "scripts": {
+    "test": "./run.sh",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^20.14.0",
+    "fflate": "^0.8.3"
+  }
+}

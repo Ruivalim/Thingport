@@ -1,0 +1,41 @@
+name: Regression pack
+
+# End-to-end scenarios against the whole stack built from main, in a browser. The database is
+# thrown away after every run. Cron is UTC: 00:00 on Saturday.
+on:
+  schedule:
+    - cron: "0 0 * * 6"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: regression
+  cancel-in-progress: false
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: regression
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: regression/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: ./run.sh
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: regression-report
+          path: |
+            regression/playwright-report/
+            regression/test-results/
+          retention-days: 14

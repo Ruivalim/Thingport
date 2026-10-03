@@ -1,0 +1,57 @@
+# The regression pack's own stack, built from this checkout. Postgres and storage live on tmpfs, so
+# `docker compose down` leaves nothing behind. Run it through run.sh, which always tears it down.
+name: thingport-regression
+
+services:
+  db:
+    image: postgres:16-alpine # same as ../docker-compose.yml
+    environment:
+      - POSTGRES_USER=thingport
+      - POSTGRES_PASSWORD=thingport
+      - POSTGRES_DB=thingport_regression
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U thingport -d thingport_regression"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    environment:
+      - FILE_STORAGE=/app/storage
+      - DATABASE_URL=postgresql://thingport:thingport@db:5432/thingport_regression?schema=public
+      - AUTH_SECRET=regression-secret
+      # Unset SMTP skips email verification; unset FlareSolverr keeps the run offline.
+      - SMTP_HOST=
+      - FLARESOLVERR_URL=
+      # Low, so the consume folder's size cap is testable with a small file.
+      - IMPORT_MAX_MB=1
+      # The host user, so the backend can empty the bind-mounted consume folder (set by run.sh).
+      - PUID=${REGRESSION_PUID:-1000}
+      - PGID=${REGRESSION_PGID:-1000}
+    tmpfs:
+      - /app/storage
+    volumes:
+      - ./consume:/app/consume
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8000/api/health || exit 1"]
+      interval: 2s
+      timeout: 5s
+      retries: 60
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    ports:
+      - "${REGRESSION_PORT:-8090}:80"
+    depends_on:
+      backend:
+        condition: service_healthy

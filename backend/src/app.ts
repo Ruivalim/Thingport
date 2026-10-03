@@ -53,7 +53,8 @@ export function createApp(): Express {
   app.use("/api", bookmarksRoutes);
   app.use("/api", searchRoutes);
   app.use("/api", notificationsRoutes);
-  app.use("/api", adminRoutes);
+  // Own prefix: on bare /api, its requireAdmin would also run for every route mounted after it.
+  app.use("/api/admin", adminRoutes);
   app.use("/api", dashboardRoutes);
 
   app.use((_req: Request, res: Response) => {

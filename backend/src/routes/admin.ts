@@ -10,12 +10,13 @@ import { createLog } from "../services/auditLog";
 import { INVITATION_TTL_DAYS, inviteUser } from "../services/invitationService";
 import { authorLinkingSummary, currentAuthorLinkingRun, startAuthorLinking } from "../services/authorLinkingService";
 
+// Mounted at /api/admin (app.ts), so these guards only see admin routes.
 const router = Router();
 router.use(requireAuth);
 router.use(requireAdmin);
 
 router.get(
-  "/admin/users",
+  "/users",
   asyncHandler(async (_req, res) => {
     const users = await listUsersWithPrintCounts();
     res.json(
@@ -34,7 +35,7 @@ router.get(
 );
 
 router.get(
-  "/admin/storage",
+  "/storage",
   asyncHandler(async (_req, res) => {
     const usage = await getStorageUsage();
     res.json({ model_bytes: usage.modelBytes, model_count: usage.modelCount });
@@ -49,7 +50,7 @@ function parseDateParam(raw: unknown): Date | undefined {
 }
 
 router.get(
-  "/admin/logs",
+  "/logs",
   asyncHandler(async (req, res) => {
     const userId = typeof req.query.user_id === "string" && req.query.user_id ? req.query.user_id : undefined;
     const from = parseDateParam(req.query.from);
@@ -73,7 +74,7 @@ router.get(
 // Re-inviting an address sends a fresh link and retires the old one.
 const inviteSchema = z.object({ email: z.string().trim().email("Enter a valid email address") });
 router.post(
-  "/admin/invitations",
+  "/invitations",
   asyncHandler(async (req, res) => {
     const body = parseBody(inviteSchema, req.body);
     const admin = await prisma.user.findUnique({ where: { id: req.userId! } });
@@ -91,7 +92,7 @@ router.post(
 
 // Irreversible; the UI handles the confirmation.
 router.post(
-  "/admin/users/:id/delete-all-prints",
+  "/users/:id/delete-all-prints",
   asyncHandler(async (req, res) => {
     const user = await prisma.user.findUnique({ where: { id: req.params.id } });
     if (!user) throw new HttpError(404, "User not found");
@@ -101,14 +102,14 @@ router.post(
 );
 
 router.get(
-  "/admin/triggers/link-authors",
+  "/triggers/link-authors",
   asyncHandler(async (_req, res) => {
     res.json({ ...(await authorLinkingSummary()), run: currentAuthorLinkingRun() });
   }),
 );
 
 router.post(
-  "/admin/triggers/link-authors",
+  "/triggers/link-authors",
   asyncHandler(async (req, res) => {
     const run = startAuthorLinking(req.userId!);
     if (!run) throw new HttpError(409, "Linking is already running");

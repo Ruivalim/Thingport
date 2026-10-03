@@ -57,6 +57,9 @@ path-filtered, so only the parts you touched run:
 | `extension/**` | oxlint, `tsc --noEmit`, the Chrome/Edge/Firefox builds, and `web-ext lint` on the Firefox build |
 | `bridge/**`    | `go test ./...` and a build for Windows, Linux and macOS                                        |
 
+The [regression pack](docs/DEVELOPMENT.md#regression-pack), which runs end-to-end browser scenarios
+against the full stack, isn't run on pull requests. It runs weekly on `main`.
+
 Nothing is published from a pull request -- images are built to prove they build, but only pushes
 to `main` publish anything.
 

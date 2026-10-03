@@ -32,3 +32,9 @@ Thumbs.db
 *.tmp
 *.temp
 *.log
+
+# Regression pack (Playwright) output
+regression/.auth/
+regression/test-results/
+regression/playwright-report/
+regression/consume/
