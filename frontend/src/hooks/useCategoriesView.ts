@@ -9,10 +9,11 @@ const listeners = new Set<(value: CategoriesView) => void>();
 
 function load(): Promise<CategoriesView> {
   if (cached !== undefined) return Promise.resolve(cached);
+  // A switch made while this is in flight is newer than the server's answer, so it wins.
   inFlight ??= settingsApi
     .getCategoriesView()
-    .then((res) => (cached = res.view))
-    .catch((): CategoriesView => "categories")
+    .then((res) => (cached ??= res.view))
+    .catch((): CategoriesView => cached ?? "categories")
     .finally(() => {
       inFlight = null;
     });
@@ -31,7 +32,7 @@ export function useCategoriesView(): [CategoriesView | null, (view: CategoriesVi
   useEffect(() => {
     let cancelled = false;
     void load().then((v) => {
-      if (!cancelled) setValue(v);
+      if (!cancelled) setValue(cached ?? v);
     });
     listeners.add(setValue);
     return () => {
