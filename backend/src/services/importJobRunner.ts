@@ -601,11 +601,7 @@ function failureMessage(err: unknown): string {
 
 /** One queued link. A MakerWorld model with a multi-profile scope imports each wanted profile onto
  *  one print, like the PROFILES job; anything else is a plain single import. */
-async function importOneLink(
-  userId: string,
-  url: string,
-  body: LinksImportJobBody,
-): Promise<ProfileImportTotals> {
+async function importOneLink(userId: string, url: string, body: LinksImportJobBody): Promise<ProfileImportTotals> {
   const parsed = parseMakerworldModelUrl(url);
   if (parsed && body.scope && body.scope !== "url") {
     const design = await fetchMakerworldDesignForImport(
@@ -642,7 +638,8 @@ export async function runLinksImportJob(jobId: string, userId: string, body: Lin
     const job = await getJob(jobId, userId);
     if (!job) throw new HttpError(404, "Import job not found");
     const items = (await listJobItems(jobId)).filter((item) => item.status === "PENDING");
-    const total = await countJobItems(jobId, { in: ["PENDING", "DONE", "FAILED"] });
+    const total = await countJobItems(jobId, { in: ["PENDING", "RUNNING", "DONE", "FAILED"] });
+    console.log(`[import] job ${jobId}: running ${items.length} of ${total} links`);
 
     let imported = 0;
     let alreadyInLibrary = 0;
@@ -651,6 +648,7 @@ export async function runLinksImportJob(jobId: string, userId: string, body: Lin
     let processed = (await countJobItems(jobId, "DONE")) + (await countJobItems(jobId, "FAILED"));
 
     for (const item of items) {
+      await updateJobItem(item.id, { status: "RUNNING" }).catch(() => undefined);
       let attempts = item.attempts;
       let itemError: string | null = null;
       let settled = false;
@@ -692,10 +690,15 @@ export async function runLinksImportJob(jobId: string, userId: string, body: Lin
           if (!isTransientImportFailure(err) || attempts >= LINKS_MAX_ATTEMPTS) {
             settled = true;
           } else {
+            console.warn(
+              `[import] job ${jobId}: ${item.url} failed (${itemError}), retrying (attempt ${attempts + 1} of ${LINKS_MAX_ATTEMPTS})`,
+            );
             await sleep(LINKS_RETRY_DELAY_MS * attempts);
           }
         }
       }
+      if (itemError) console.error(`[import] job ${jobId}: ${item.url} failed: ${itemError}`);
+      else console.log(`[import] job ${jobId}: ${item.url} imported`);
       await updateJobItem(item.id, {
         status: itemError ? "FAILED" : "DONE",
         attempts,
@@ -712,6 +715,9 @@ export async function runLinksImportJob(jobId: string, userId: string, body: Lin
 
     const totalImported = job.imported + imported;
     const failedCount = await countJobItems(jobId, "FAILED");
+    console.log(
+      `[import] job ${jobId}: done, ${totalImported} imported, ${job.alreadyInLibrary + alreadyInLibrary} already in library, ${failedCount} failed`,
+    );
     await updateJob(jobId, {
       status: "DONE",
       processed,
@@ -734,7 +740,9 @@ export async function runLinksImportJob(jobId: string, userId: string, body: Lin
         `the rest blocked by a MakerWorld CAPTCHA challenge — this usually clears in 1-4 hours, then retry the failed links`,
       );
     } else if (stopReason === "auth") {
-      bodyParts.push(`the rest failed because your MakerWorld session expired — update the cookie in Settings, then retry`);
+      bodyParts.push(
+        `the rest failed because your MakerWorld session expired — update the cookie in Settings, then retry`,
+      );
     } else if (failedCount) {
       bodyParts.push(`${failedCount} failed — retry them from the import's progress bar`);
     }
@@ -742,7 +750,8 @@ export async function runLinksImportJob(jobId: string, userId: string, body: Lin
       title: `Imported ${totalImported} of ${total} links`,
       body: bodyParts.length ? `${bodyParts.join(", ")}.` : null,
       externalUrl: job.sourceUrl,
-      internalPath: totalImported === 1 && (printId ?? job.resultPrintId) ? `/models/${printId ?? job.resultPrintId}` : null,
+      internalPath:
+        totalImported === 1 && (printId ?? job.resultPrintId) ? `/models/${printId ?? job.resultPrintId}` : null,
     });
   } catch (err) {
     await markJobFailed(jobId, err);

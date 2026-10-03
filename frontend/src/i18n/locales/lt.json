@@ -259,10 +259,19 @@
     "importProgress": {
       "starting": "Pradedamas importas…",
       "label": "Importuojama… {{processed}} iš {{total}}",
-      "tooltip": "{{imported}} importuota, {{alreadyInLibrary}} jau bibliotekoje, {{failedCount}} nepavyko",
-      "doneWithFailures": "Importuota {{imported}}, {{alreadyInLibrary}} jau bibliotekoje, {{failedCount}} nepavyko",
+      "tooltip": "{{imported}} importuota, {{alreadyInLibrary}} jau bibliotekoje, {{failedCount}} nepavyko. Spustelėkite, kad pamatytumėte eilę.",
+      "done": "Importuota {{imported}}, {{alreadyInLibrary}} jau bibliotekoje. Spustelėkite, kad pamatytumėte eilę.",
+      "doneWithFailures": "Importuota {{imported}}, {{alreadyInLibrary}} jau bibliotekoje, {{failedCount}} nepavyko. Spustelėkite, kad pamatytumėte, kurios ir kodėl.",
+      "tooltipFailed": "{{failedCount}} nuorodos nepavyko. Spustelėkite, kad pamatytumėte, kurios ir kodėl.",
       "retryFailed": "Pakartoti nepavykusius",
-      "dismiss": "Uždaryti"
+      "dismiss": "Uždaryti",
+      "queueTitle": "Importo eilė",
+      "queueEmpty": "Šioje eilėje nėra nuorodų.",
+      "queueClose": "Uždaryti",
+      "itemPending": "laukiama",
+      "itemRunning": "importuojama",
+      "itemDone": "importuota",
+      "itemFailed": "nepavyko"
     },
     "dashboard": {
       "loadError": "Nepavyko įkelti valdymo skydo.",

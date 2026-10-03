@@ -90,7 +90,7 @@ function mockFetch() {
 
 async function waitJob(jobId: string) {
   let job = (await request(app).get(`/api/import/jobs/${jobId}`).set(auth())).body;
-  for (let i = 0; i <150 && job.status === "RUNNING"; i++) {
+  for (let i = 0; i < 150 && job.status === "RUNNING"; i++) {
     await new Promise((resolve) => setTimeout(resolve, 100));
     job = (await request(app).get(`/api/import/jobs/${jobId}`).set(auth())).body;
   }
@@ -115,10 +115,7 @@ describe("the links import queue", () => {
       });
     token = res.body.token;
     // The retry route takes the cookie from the user's saved settings, never from a stored payload.
-    await request(app)
-      .patch("/api/settings/makerworld")
-      .set(auth())
-      .send({ cookie: "token=test-bearer" });
+    await request(app).patch("/api/settings/makerworld").set(auth()).send({ cookie: "token=test-bearer" });
     mockFetch();
   });
 
@@ -130,7 +127,7 @@ describe("the links import queue", () => {
   });
 
   it("imports every pasted link as one job, with an item per link", async () => {
-    const ids = [String(stamp % 1_000_000_000), String(stamp % 1_000_000_000 + 1)];
+    const ids = [String(stamp % 1_000_000_000), String((stamp % 1_000_000_000) + 1)];
     const start = await startLinks(ids.map((id) => `https://makerworld.com/en/models/${id}-phoenix`));
     expect(start.status).toBe(202);
 
@@ -156,7 +153,7 @@ describe("the links import queue", () => {
   });
 
   it("collapses repeated links into one queue item", async () => {
-    const id = String(stamp % 1_000_000_000 + 2);
+    const id = String((stamp % 1_000_000_000) + 2);
     const start = await startLinks([
       `https://makerworld.com/en/models/${id}-phoenix`,
       `https://makerworld.com/en/models/${id}-phoenix`,
@@ -167,8 +164,8 @@ describe("the links import queue", () => {
   });
 
   it("keeps importing when one link fails, then a retry reruns just the failed one", async () => {
-    const goodId = String(stamp % 1_000_000_000 + 3);
-    const badId = String(stamp % 1_000_000_000 + 4);
+    const goodId = String((stamp % 1_000_000_000) + 3);
+    const badId = String((stamp % 1_000_000_000) + 4);
     behavior.set(badId, "gone");
 
     const start = await startLinks([
@@ -201,7 +198,7 @@ describe("the links import queue", () => {
   });
 
   it("retries a transient network failure on its own", async () => {
-    const id = String(stamp % 1_000_000_000 + 5);
+    const id = String((stamp % 1_000_000_000) + 5);
     behavior.set(id, "fail-once");
 
     const start = await startLinks([`https://makerworld.com/en/models/${id}-phoenix`]);
@@ -217,7 +214,7 @@ describe("the links import queue", () => {
   });
 
   it("does not retry a provider's own 4xx answer", async () => {
-    const id = String(stamp % 1_000_000_000 + 6);
+    const id = String((stamp % 1_000_000_000) + 6);
     behavior.set(id, "gone");
 
     const start = await startLinks([`https://makerworld.com/en/models/${id}-phoenix`]);
@@ -230,7 +227,7 @@ describe("the links import queue", () => {
   });
 
   it("imports every wanted profile of a MakerWorld link onto one model", async () => {
-    const id = String(stamp % 1_000_000_000 + 7);
+    const id = String((stamp % 1_000_000_000) + 7);
     const start = await startLinks([`https://makerworld.com/en/models/${id}-phoenix`], { scope: "all" });
     const job = await waitJob(start.body.job_id);
     expect(job.status).toBe("DONE");
@@ -247,8 +244,28 @@ describe("the links import queue", () => {
     expect(print!.plates).toHaveLength(2);
   });
 
+  it("lists each link with its status and failure reason", async () => {
+    const goodId = String((stamp % 1_000_000_000) + 9);
+    const badId = String((stamp % 1_000_000_000) + 10);
+    behavior.set(badId, "gone");
+
+    const start = await startLinks([
+      `https://makerworld.com/en/models/${goodId}-phoenix`,
+      `https://makerworld.com/en/models/${badId}-phoenix`,
+    ]);
+    const job = await waitJob(start.body.job_id);
+
+    const res = await request(app).get(`/api/import/jobs/${job.id}/items`).set(auth());
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(2);
+    expect(res.body[0]).toMatchObject({ status: "DONE", attempts: 1, error_message: null });
+    expect(res.body[1].status).toBe("FAILED");
+    expect(res.body[1].error_message).toBeTruthy();
+    expect(res.body[1].url).toContain(badId);
+  });
+
   it("refuses a retry with nothing failed", async () => {
-    const id = String(stamp % 1_000_000_000 + 8);
+    const id = String((stamp % 1_000_000_000) + 8);
     const start = await startLinks([`https://makerworld.com/en/models/${id}-phoenix`]);
     const job = await waitJob(start.body.job_id);
     expect(job.failed_count).toBe(0);

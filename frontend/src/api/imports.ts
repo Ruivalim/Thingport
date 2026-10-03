@@ -51,6 +51,15 @@ export type ImportJob = {
   result_print_id: string | null;
 };
 
+/** One queued link of a LINKS job. Polled alongside the job to show the queue's detail. */
+export type ImportJobItem = {
+  id: string;
+  url: string;
+  status: "PENDING" | "RUNNING" | "DONE" | "FAILED";
+  attempts: number;
+  error_message: string | null;
+};
+
 type ImportLinkPayload = {
   url: string;
   title?: string;
@@ -324,6 +333,14 @@ export const importsApi = {
     const res = await fetch(`${apiBase()}/import/jobs/${jobId}`, { headers: authHeaders() });
     if (res.status === 401) throw new UnauthorizedError();
     if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to load import progress"));
+    return res.json();
+  },
+
+  /** Per-link state of a queue job, for the progress bar's detail view. */
+  getImportJobItems: async (jobId: string): Promise<ImportJobItem[]> => {
+    const res = await fetch(`${apiBase()}/import/jobs/${jobId}/items`, { headers: authHeaders() });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to load the import queue"));
     return res.json();
   },
 };

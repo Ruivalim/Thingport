@@ -242,6 +242,7 @@ model ImportJob {
 
 enum ImportJobItemStatus {
   PENDING
+  RUNNING
   DONE
   FAILED
 }

@@ -63,14 +63,25 @@ export default function AddMenu({ categoryId, makerworldCookie, onUploaded, onUn
   const [captcha, setCaptcha] = React.useState<CaptchaAnswer | null>(null);
   const needsCaptcha = Boolean(captchaSettings?.import);
 
-  const detectedProvider = detectImportProvider(linkValue);
   // A pasted block of links becomes one queue job; a single link keeps the existing flows
   // (collection pickers, zip inspection, immediate import).
   const links = React.useMemo(
-    () => linkValue.split(/\s+/).map((s) => s.trim()).filter(Boolean),
+    () =>
+      linkValue
+        .split(/\s+/)
+        .map((s) => s.trim())
+        .filter(Boolean),
     [linkValue],
   );
   const isBatch = links.length > 1;
+  const detectedProviders = React.useMemo(() => {
+    const found = new Set<ImportProviderKey>();
+    for (const link of links) {
+      const key = detectImportProvider(link);
+      if (key) found.add(key);
+    }
+    return found;
+  }, [links]);
   const isBlockedCollection = isBatch
     ? links.some(
         (link) =>
@@ -164,7 +175,7 @@ export default function AddMenu({ categoryId, makerworldCookie, onUploaded, onUn
           <Stack direction="row" spacing={1} sx={{ mb: 1.5 }}>
             {IMPORT_PROVIDERS.map((key) => {
               const info = IMPORT_PROVIDER_INFO[key];
-              const active = detectedProvider === key;
+              const active = detectedProviders.has(key);
               return (
                 <Chip
                   key={key}

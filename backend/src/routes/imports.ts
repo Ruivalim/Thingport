@@ -39,7 +39,15 @@ import { fetchPrintablesCollectionEntries, parsePrintablesCollectionUrl } from "
 import { getThingiverseAccessToken } from "../services/settingsService";
 import { getUserMakerworldCookie } from "../services/makerworldCookieService";
 import { listZipEntries } from "../services/zipService";
-import { createJob, createJobItems, getActiveJob, getJob, resetFailedItems, updateJob } from "../services/importJobService";
+import {
+  createJob,
+  createJobItems,
+  getActiveJob,
+  getJob,
+  listJobItems,
+  resetFailedItems,
+  updateJob,
+} from "../services/importJobService";
 import {
   runCollectionImportJob,
   runLinksImportJob,
@@ -51,7 +59,7 @@ import {
   type LinksImportJobBody,
 } from "../services/importJobRunner";
 import { createLog } from "../services/auditLog";
-import { toImportJobOut, toPrintOut } from "../dto";
+import { toImportJobItemOut, toImportJobOut, toPrintOut } from "../dto";
 import type { Prisma } from "@prisma/client";
 
 const router = Router();
@@ -494,6 +502,15 @@ router.post(
     const body = await withStoredMakerworldCookie(req.userId!, retryBody);
     void runLinksImportJob(job.id, req.userId!, body);
     res.status(202).json({ job_id: job.id });
+  }),
+);
+
+router.get(
+  "/import/jobs/:id/items",
+  asyncHandler(async (req, res) => {
+    const job = await getJob(req.params.id, req.userId!);
+    if (!job) throw new HttpError(404, "Import job not found");
+    res.json((await listJobItems(job.id)).map(toImportJobItemOut));
   }),
 );
 

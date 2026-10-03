@@ -4,6 +4,7 @@ import type {
   Collection,
   Category,
   ImportJob,
+  ImportJobItem,
   Notification,
   Plate,
   PreviewImage,
@@ -387,6 +388,25 @@ export type ImportJobOut = {
   result_collection_id: string | null;
   result_print_id: string | null;
 };
+
+/** The queue's per-link state, so the progress bar can show what's importing and what failed. */
+export type ImportJobItemOut = {
+  id: string;
+  url: string;
+  status: "PENDING" | "RUNNING" | "DONE" | "FAILED";
+  attempts: number;
+  error_message: string | null;
+};
+
+export function toImportJobItemOut(item: ImportJobItem): ImportJobItemOut {
+  return {
+    id: item.id,
+    url: item.url,
+    status: item.status,
+    attempts: item.attempts,
+    error_message: item.errorMessage,
+  };
+}
 
 export function toImportJobOut(job: ImportJob): ImportJobOut {
   return {
