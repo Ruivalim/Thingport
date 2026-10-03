@@ -72,11 +72,12 @@ test("each folder becomes one model: model files as plates, images as previews, 
   // The tree is browsable from the Models page.
   await page.goto("/models");
   const main = page.getByRole("main");
-  // The saved view loads asynchronously; switching before it lands gets overwritten.
-  await expect(main.getByRole("button", { name: "All", exact: true })).toBeVisible();
   const folders = main.getByRole("button", { name: "Folders", exact: true });
-  await folders.click();
-  await expect(folders).toHaveAttribute("aria-pressed", "true");
+  // A late-loading saved view can flip the toggle back, so retry until the folder panel shows.
+  await expect(async () => {
+    await folders.click();
+    await expect(main.getByRole("heading", { name: "Folders", level: 6 })).toBeVisible({ timeout: 1000 });
+  }).toPass();
   await main.getByRole("button", { name: "Fold Library", exact: true }).click();
   await expect(main.getByText("Fold Robot", { exact: true })).toBeVisible();
   await expect(main.getByText("Fold Vase", { exact: true })).toBeVisible();

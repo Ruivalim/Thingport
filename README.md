@@ -41,8 +41,8 @@ Instead of having your collection scattered across different websites and your f
 ## Features
 
 - 🌐 **Import from MakerWorld, Printables and Thingiverse** — paste a link, or use the Thingport Grab browser extension. Whole collections, likes and MakerWorld print profiles come across with their title, description, tags, photos and author. Big imports run in the background and notify you when they finish, and a model you already have is never imported twice.
-- 📤 **Upload your own files** — STL, 3MF, STEP, OBJ and LightBurn files, or a ZIP to pick files from, with its folders recreated as categories.
-- 📥 **Consume folder** — mount a folder and anything dropped into it (files, folder trees, ZIPs) is imported and moved into the library, with a notification once it's done.
+- 📂 **Bring your existing library** — upload STL, 3MF, STEP, OBJ and LightBurn files, whole folder trees or ZIPs from the browser, and your folders come across as folders. Choose whether each file is a model, or each folder is one model with its images as photos and its manuals and notes attached. See [how to bring in your library](docs/guides/existing-library.md).
+- 📥 **Consume folder** — for big libraries and NAS shares: mount a folder, copy your files, folder trees and ZIPs into it, and Thingport imports everything and empties it, with a notification once it's done. Anything it can't import is set aside, never lost.
 - 🧊 **3D previews** — STL, 3MF, OBJ and STEP in the browser, with a thumbnail for every plate of a multi-plate 3MF. Very complex models can be simplified for the preview only.
 - 🗂️ **Organize and search** — nested categories, collections, tags, favourites and browsing history, with full-text search across names, tags, notes and authors. Pin the collections and tags you use most to the sidebar.
 - 📊 **Dashboard** — library stats, recently added models, your most viewed and most used models, and top authors.
@@ -91,6 +91,16 @@ Thingport ships two small companion tools, each downloadable from the in-app Dow
 ## Provider Setup
 
 Printables imports work with no setup. MakerWorld and Thingiverse each need a credential from your own account first -- see **[docs/PROVIDER_SETUP.md](docs/PROVIDER_SETUP.md)** for how to create a Thingiverse Access Token and how to grab a MakerWorld session cookie.
+
+## Bring Your Existing Library
+
+Already have folders of STLs, 3MF projects and ZIPs? You don't have to add them one at a time:
+
+- **[Upload files and ZIPs](docs/guides/upload-files.md)** — a few models at a time, with ZIPs unpacked into models and folders.
+- **[Upload a folder](docs/guides/upload-folders.md)** — a whole folder tree from the browser, kept as folders, as one model per file or one model per folder.
+- **[Consume folder](docs/guides/consume-folder.md)** — copy a large library into a folder on the server and Thingport imports it on its own.
+
+[Which one should I use?](docs/guides/existing-library.md)
 
 ## Installation
 
@@ -278,7 +288,8 @@ models, and moved into Thingport's storage, so the folder empties itself. Folder
 ZIPs are unpacked as if they were folders. In **Administration → Settings → Consume Folder**, choose whose library the
 models go to and whether each model file becomes its own model (the default) or each folder of model files becomes one
 model. Anything that can't be imported is moved to a `Not imported` folder inside the consume folder. Files are moved
-out as the backend's user, so `PUID`/`PGID` need write access to the folder.
+out as the backend's user, so `PUID`/`PGID` need write access to the folder. The
+[consume folder guide](docs/guides/consume-folder.md) walks through importing a whole library this way.
 
 ## Contributing
 

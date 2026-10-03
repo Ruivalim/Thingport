@@ -10,6 +10,7 @@ import downloads from "../../../frontend/src/assets/screenshots/07_downloads.png
 import myModels from "../../../frontend/src/assets/screenshots/08_my_models.png";
 import grabMakerworld from "../../../extension/docs/screenshots/panel-makerworld.jpg";
 import grabImported from "../../../extension/docs/screenshots/imported-printables.jpg";
+import folderImport from "../../../docs/guides/images/folder-import-mode.png";
 
 const SECTIONS = [
   {
@@ -24,12 +25,28 @@ const SECTIONS = [
       "A model you already have is never imported twice, so running a collection import again only brings in what's new.",
       "Bring in a MakerWorld model's print profiles too: the designer's own, or all of them.",
       "Title, description, tags, photos, author and source link come with the files.",
-      "Upload your own STL, 3MF, STEP, OBJ and LightBurn files, or a ZIP to pick files from, with its folders recreated as categories.",
       "Printables works with no setup. MakerWorld and Thingiverse need a credential from your own account (see provider setup).",
     ],
     link: { label: "Provider setup", href: url("docs/providers/") },
     image: grabMakerworld,
     alt: "Thingport Grab's import panel on a MakerWorld model page",
+  },
+  {
+    id: "library",
+    short: "Your library",
+    icon: "library",
+    title: "Bring the library you already have",
+    intro: "Years of STLs, 3MF projects and ZIPs don't have to be added one at a time.",
+    points: [
+      "Upload STL, 3MF, STEP, OBJ and LightBurn files, or a whole folder tree, straight from the browser. Your folders come across as folders, however deeply nested.",
+      "Choose what counts as a model: every file on its own, or each folder as one model, with its images as photos and its manuals and notes attached.",
+      "Unpack ZIPs into models and folders, picking which files to keep, or store an archive as it is.",
+      "For big libraries and NAS shares, mount a consume folder and copy your library in. Thingport imports files, folder trees and ZIPs on its own, then empties the folder.",
+      "Anything that can't be imported is set aside rather than lost, and a notification tells you what went in.",
+    ],
+    link: { label: "Bring your existing library", href: url("docs/guides/existing-library/") },
+    image: folderImport,
+    alt: "Choosing whether each model file or each folder becomes a model when uploading a folder",
   },
   {
     id: "grab",
@@ -137,7 +154,7 @@ const SECTIONS = [
 
 <BaseLayout
   title="Features"
-  description="Everything Thingport can do: import from MakerWorld, Printables and Thingiverse, preview STL, 3MF, STEP and OBJ in 3D, organize with categories and tags, and send files to your slicer."
+  description="Everything Thingport can do: import from MakerWorld, Printables and Thingiverse, bring in your existing folders and ZIPs, preview STL, 3MF, STEP and OBJ in 3D, organize with categories and tags, and send files to your slicer."
 >
   <div class="container page-head">
     <span class="eyebrow">Features</span>

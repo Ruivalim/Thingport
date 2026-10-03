@@ -39,6 +39,41 @@ export const DOCS = [
     description: "Connect MakerWorld and Thingiverse so Thingport can import from them. Printables needs no setup.",
   },
   {
+    slug: "guides/existing-library",
+    source: "docs/guides/existing-library.md",
+    group: "Add your library",
+    title: "Bring your existing model library",
+    nav: "Bring your library",
+    description:
+      "Already have folders of STLs, 3MFs and ZIPs? Choose between uploading files, uploading folders and the consume folder.",
+  },
+  {
+    slug: "guides/upload-files",
+    source: "docs/guides/upload-files.md",
+    group: "Add your library",
+    title: "Upload files and ZIPs",
+    nav: "Upload files and ZIPs",
+    description: "Add models from your computer one by one or many at once, and unpack ZIPs into models and folders.",
+  },
+  {
+    slug: "guides/upload-folders",
+    source: "docs/guides/upload-folders.md",
+    group: "Add your library",
+    title: "Upload a folder",
+    nav: "Upload a folder",
+    description:
+      "Upload a whole folder tree from the browser, with each file or each folder becoming a model and the tree kept.",
+  },
+  {
+    slug: "guides/consume-folder",
+    source: "docs/guides/consume-folder.md",
+    group: "Add your library",
+    title: "Import a library with the consume folder",
+    nav: "Consume folder",
+    description:
+      "Mount a folder on your server and copy your library into it. Thingport imports everything and empties it.",
+  },
+  {
     slug: "install/unraid",
     source: "docs/install/unraid/README.md",
     group: "Platform guides",
