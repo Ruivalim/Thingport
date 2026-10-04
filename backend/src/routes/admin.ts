@@ -8,6 +8,21 @@ import { parseBody } from "../utils/validate";
 import { deleteAllPrintsForUser, getStorageUsage, listLogs, listUsersWithPrintCounts } from "../services/adminService";
 import { createLog } from "../services/auditLog";
 import { INVITATION_TTL_DAYS, inviteUser } from "../services/invitationService";
+import { listJobItems } from "../services/importJobService";
+import {
+  bulkRunState,
+  clearFinishedJobs,
+  deleteQueueJob,
+  getQueueJob,
+  listQueueJobs,
+  pauseAll,
+  pauseLinksJob,
+  removeQueueItem,
+  retryAllFailed,
+  startAllPaused,
+  startLinksJob,
+} from "../services/importQueueService";
+import { toAdminImportJobOut, toImportJobItemOut } from "../dto";
 import { authorLinkingSummary, currentAuthorLinkingRun, startAuthorLinking } from "../services/authorLinkingService";
 
 // Mounted at /api/admin (app.ts), so these guards only see admin routes.
@@ -114,6 +129,92 @@ router.post(
     const run = startAuthorLinking(req.userId!);
     if (!run) throw new HttpError(409, "Linking is already running");
     res.json({ run });
+  }),
+);
+
+// ---- Import queue: every user's batch imports. Start/retry run as the job's owner, with the
+// owner's saved MakerWorld cookie. ----
+
+router.get(
+  "/import-queue",
+  asyncHandler(async (_req, res) => {
+    const jobs = await listQueueJobs();
+    res.json({ jobs: jobs.map(toAdminImportJobOut), bulk: bulkRunState() });
+  }),
+);
+
+router.get(
+  "/import-queue/jobs/:id/items",
+  asyncHandler(async (req, res) => {
+    const job = await getQueueJob(req.params.id);
+    res.json((await listJobItems(job.id)).map(toImportJobItemOut));
+  }),
+);
+
+router.post(
+  "/import-queue/jobs/:id/start",
+  asyncHandler(async (req, res) => {
+    await startLinksJob(await getQueueJob(req.params.id));
+    res.status(202).json({ ok: true });
+  }),
+);
+
+router.post(
+  "/import-queue/jobs/:id/retry",
+  asyncHandler(async (req, res) => {
+    await startLinksJob(await getQueueJob(req.params.id), { retryFailed: true });
+    res.status(202).json({ ok: true });
+  }),
+);
+
+router.post(
+  "/import-queue/jobs/:id/pause",
+  asyncHandler(async (req, res) => {
+    await pauseLinksJob(await getQueueJob(req.params.id));
+    res.json({ ok: true });
+  }),
+);
+
+router.delete(
+  "/import-queue/jobs/:id",
+  asyncHandler(async (req, res) => {
+    await deleteQueueJob(req.params.id);
+    res.json({ ok: true });
+  }),
+);
+
+router.delete(
+  "/import-queue/items/:id",
+  asyncHandler(async (req, res) => {
+    res.json(await removeQueueItem(req.params.id));
+  }),
+);
+
+router.post(
+  "/import-queue/start-all",
+  asyncHandler(async (_req, res) => {
+    res.status(202).json({ queued: await startAllPaused(), bulk: bulkRunState() });
+  }),
+);
+
+router.post(
+  "/import-queue/retry-failed",
+  asyncHandler(async (_req, res) => {
+    res.status(202).json({ queued: await retryAllFailed(), bulk: bulkRunState() });
+  }),
+);
+
+router.post(
+  "/import-queue/pause-all",
+  asyncHandler(async (_req, res) => {
+    res.json({ paused: await pauseAll(), bulk: bulkRunState() });
+  }),
+);
+
+router.post(
+  "/import-queue/clear-finished",
+  asyncHandler(async (_req, res) => {
+    res.json({ deleted: await clearFinishedJobs() });
   }),
 );
 

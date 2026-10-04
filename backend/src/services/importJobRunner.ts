@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { mapWithConcurrency, sleep } from "../utils/concurrency";
 import { IMPORT_COLLECTION_DELAY_MS, IMPORT_MAKERWORLD_CALL_DELAY_MS } from "../config";
-import { countJobItems, getJob, listJobItems, updateJob, updateJobItem } from "./importJobService";
+import { countJobItems, getJob, getJobStatus, listJobItems, updateJob, updateJobItem } from "./importJobService";
 import { createNotification } from "./notificationService";
 import { addPrintsToCollection, findOrCreateCollectionByName } from "./collectionService";
 import { resolveMakerworldCookie } from "./importResolvers";
@@ -27,6 +27,7 @@ import { getThingiverseAccessToken } from "./settingsService";
 import { fetchPrintablesCollectionTitle } from "./printablesApi";
 import { createLog } from "./auditLog";
 import { HttpError } from "../utils/fileUtils";
+import { prisma } from "../db";
 
 // Sequential on purpose: parallel bursts of api.bambulab.com calls trip MakerWorld's CAPTCHA.
 const COLLECTION_IMPORT_CONCURRENCY = 1;
@@ -587,6 +588,37 @@ export async function runZipImportJob(jobId: string, userId: string, body: ZipIm
 
 export type LinksImportJobBody = ImportRequestBody & { scope?: MakerworldProfileScope };
 
+/** What a link sent from the extension's "send to queue" carries on its own item, over the job's
+ *  shared body: the panel's collection and profile scope, and the page title for the queue page. */
+export type QueuedLinkOptions = {
+  collection_id?: string | null;
+  scope?: MakerworldProfileScope;
+  title?: string | null;
+};
+
+export function parseQueuedLinkOptions(payload: unknown): QueuedLinkOptions {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return {};
+  const p = payload as Record<string, unknown>;
+  return {
+    collection_id: typeof p.collection_id === "string" && p.collection_id ? p.collection_id : null,
+    scope: p.scope === "designer" || p.scope === "all" || p.scope === "url" ? p.scope : undefined,
+    title: typeof p.title === "string" && p.title ? p.title : null,
+  };
+}
+
+// Runners alive in this process, by job. A PAUSED job's runner may still be finishing its current
+// link, and a DONE one its notification; starting the job again before then would run it twice.
+const liveRunners = new Map<string, Promise<void>>();
+
+export function isRunnerLive(jobId: string): boolean {
+  return liveRunners.has(jobId);
+}
+
+/** Settles when the job's runner stops, or right away when none is alive. */
+export function runnerSettled(jobId: string): Promise<void> {
+  return liveRunners.get(jobId) ?? Promise.resolve();
+}
+
 // Three tries for a network-ish failure; a provider's own 4xx answer won't change on a retry.
 const LINKS_MAX_ATTEMPTS = 3;
 const LINKS_RETRY_DELAY_MS = 2000;
@@ -633,7 +665,19 @@ async function importOneLink(userId: string, url: string, body: LinksImportJobBo
  *  A transient failure is retried in place; what still fails stays FAILED on its item so
  *  POST /import/jobs/:id/retry can rerun just those. Also rerun by that route after a CAPTCHA
  *  cooloff or a cookie update. */
-export async function runLinksImportJob(jobId: string, userId: string, body: LinksImportJobBody): Promise<void> {
+export function runLinksImportJob(jobId: string, userId: string, body: LinksImportJobBody): Promise<void> {
+  if (liveRunners.has(jobId)) {
+    console.warn(`[import] job ${jobId}: a runner is already working on it, not starting another`);
+    return Promise.resolve();
+  }
+  const run = runLinks(jobId, userId, body).finally(() => {
+    if (liveRunners.get(jobId) === run) liveRunners.delete(jobId);
+  });
+  liveRunners.set(jobId, run);
+  return run;
+}
+
+async function runLinks(jobId: string, userId: string, body: LinksImportJobBody): Promise<void> {
   try {
     const job = await getJob(jobId, userId);
     if (!job) throw new HttpError(404, "Import job not found");
@@ -648,6 +692,13 @@ export async function runLinksImportJob(jobId: string, userId: string, body: Lin
     let processed = (await countJobItems(jobId, "DONE")) + (await countJobItems(jobId, "FAILED"));
 
     for (const item of items) {
+      // Pausing only flips the status; the link that's importing finishes and the rest wait.
+      if ((await getJobStatus(jobId)) === "PAUSED") {
+        console.log(`[import] job ${jobId}: paused, ${processed} of ${total} links processed`);
+        return;
+      }
+      const options = parseQueuedLinkOptions(item.payload);
+      const itemBody: LinksImportJobBody = options.scope ? { ...body, scope: options.scope } : body;
       await updateJobItem(item.id, { status: "RUNNING" }).catch(() => undefined);
       let attempts = item.attempts;
       let itemError: string | null = null;
@@ -663,10 +714,13 @@ export async function runLinksImportJob(jobId: string, userId: string, body: Lin
           break;
         }
         try {
-          const result = await importOneLink(userId, item.url, body);
+          const result = await importOneLink(userId, item.url, itemBody);
           imported += result.imported;
           alreadyInLibrary += result.alreadyInLibrary;
           if (result.printId) printId = result.printId;
+          if (result.printId && options.collection_id) {
+            await fileIntoCollection(userId, options.collection_id, result.printId);
+          }
           if (result.failed) {
             // Some of the model's profiles got in; the rest are a manual retry's job, since
             // rerunning right away would only re-meet the same CAPTCHA.
@@ -755,5 +809,16 @@ export async function runLinksImportJob(jobId: string, userId: string, body: Lin
     });
   } catch (err) {
     await markJobFailed(jobId, err);
+  }
+}
+
+/** The collection picked in the extension's panel. Checked against the owner at run time, since
+ *  it may have been deleted while the link waited in the queue; a miss doesn't fail the link. */
+async function fileIntoCollection(userId: string, collectionId: string, printId: string): Promise<void> {
+  try {
+    const collection = await prisma.collection.findFirst({ where: { id: collectionId, userId } });
+    if (collection) await addPrintsToCollection(collection.id, [printId]);
+  } catch (err) {
+    console.warn(`[import] couldn't add ${printId} to collection ${collectionId}:`, err);
   }
 }

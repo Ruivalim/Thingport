@@ -63,6 +63,11 @@ export function ImportJobProvider({
           return;
         }
         stopPolling();
+        // Paused from the admin import queue: nothing finished, so don't navigate anywhere.
+        if (job.status === "PAUSED") {
+          setActiveJob(null);
+          return;
+        }
         onJobCompletedRef.current?.();
         // A link queue with failures stays on screen so they can be retried or dismissed.
         if (job.type === "LINKS" && (job.failed_count > 0 || job.status === "ERROR")) {

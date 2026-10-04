@@ -5,6 +5,12 @@ export async function getActiveJob(userId: string): Promise<ImportJob | null> {
   return prisma.importJob.findFirst({ where: { userId, status: "RUNNING" } });
 }
 
+/** Read fresh on every link, so a runner sees a pause made while it works. */
+export async function getJobStatus(id: string): Promise<ImportJob["status"] | null> {
+  const job = await prisma.importJob.findUnique({ where: { id }, select: { status: true } });
+  return job?.status ?? null;
+}
+
 export async function getJob(id: string, userId: string): Promise<ImportJob | null> {
   return prisma.importJob.findFirst({ where: { id, userId } });
 }

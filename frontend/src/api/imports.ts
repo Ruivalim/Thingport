@@ -30,7 +30,8 @@ export type ImportCollectionEntriesResult = {
 export type ImportJobType = "COLLECTION" | "ZIP" | "PROFILES" | "LINKS";
 
 export type MakerworldProfileScope = "url" | "designer" | "all";
-export type ImportJobStatus = "RUNNING" | "DONE" | "ERROR";
+// PAUSED: a link queue waiting to be started from the admin import queue.
+export type ImportJobStatus = "RUNNING" | "DONE" | "ERROR" | "PAUSED";
 
 /** Polled by ImportJobContext until status leaves RUNNING. */
 export type ImportJob = {
@@ -58,6 +59,10 @@ export type ImportJobItem = {
   status: "PENDING" | "RUNNING" | "DONE" | "FAILED";
   attempts: number;
   error_message: string | null;
+  /** Set on links sent from the extension's "send to queue". */
+  title: string | null;
+  collection_id: string | null;
+  scope: MakerworldProfileScope | null;
 };
 
 type ImportLinkPayload = {

@@ -632,6 +632,77 @@
           "loadFailed": "Nepavyko įkelti atvaizdavimo nustatymų.",
           "saveFailed": "Nepavyko išsaugoti atvaizdavimo nustatymų."
         }
+      },
+      "importQueue": {
+        "heading": "Importavimo eilė",
+        "loadFailed": "Nepavyko įkelti importavimo eilės.",
+        "empty": "Eilė tuščia. Nuorodos, išsiųstos iš Thingport Grab su įjungtu „Siųsti į eilę“, laukia čia, kol jas paleisite.",
+        "emptyFilter": "Nėra importų pagal šį filtrą.",
+        "startAll": "Paleisti visus ({{count}})",
+        "retryAll": "Kartoti visus nepavykusius ({{count}})",
+        "pauseAll": "Pristabdyti visus",
+        "clearFinished": "Išvalyti baigtus",
+        "startedAll": "Paleista importų: {{count}}. Jie vykdomi po vieną.",
+        "retriedAll": "Kartojama importų: {{count}}, po vieną.",
+        "cleared": "Išvalyta baigtų importų: {{count}}.",
+        "bulkRunning": "Importai vykdomi po vieną, dar laukia: {{count}}.",
+        "filter": {
+          "all": "Visi",
+          "paused": "Pristabdyti",
+          "running": "Vykdomi",
+          "failed": "Su klaidomis",
+          "done": "Baigti"
+        },
+        "columnSource": "Importas",
+        "columnUser": "Naudotojas",
+        "columnStatus": "Būsena",
+        "columnProgress": "Eiga",
+        "columnCreated": "Sukurta",
+        "columnActions": "Veiksmai",
+        "progress": "{{processed}} iš {{total}}, importuota {{imported}}, nepavyko {{failed}}",
+        "type": {
+          "LINKS": "Nuorodos",
+          "COLLECTION": "Kolekcija",
+          "ZIP": "ZIP",
+          "PROFILES": "Spausdinimo profiliai"
+        },
+        "status": {
+          "paused": "Pristabdytas",
+          "pausing": "Stabdomas",
+          "running": "Vykdomas",
+          "stalled": "Įstrigęs",
+          "error": "Klaida",
+          "done": "Baigtas",
+          "doneWithFailures": "Baigtas su klaidomis"
+        },
+        "statusHint": {
+          "paused": "Laukia paleidimo.",
+          "pausing": "Baigia dabartinę nuorodą ir sustoja.",
+          "running": "Dabar importuojama.",
+          "stalled": "Nutrauktas paleidus serverį iš naujo. Pristabdykite ir paleiskite vėl, kad užbaigtumėte.",
+          "error": "Importas nepavyko.",
+          "done": "Visos nuorodos importuotos.",
+          "doneWithFailures": "Baigta, bet kai kurios nuorodos nepavyko. Pakartokite jas, kai priežastis bus pašalinta."
+        },
+        "start": "Paleisti",
+        "pause": "Pristabdyti po dabartinės nuorodos",
+        "retry": "Kartoti nepavykusias ({{count}})",
+        "delete": "Ištrinti",
+        "deleteTitle": "Ištrinti šį importą?",
+        "deleteMessage": "Jo nuorodos ({{count}}) pašalinamos iš eilės. Jau importuoti modeliai lieka bibliotekoje.",
+        "showLinks": "Rodyti nuorodas",
+        "hideLinks": "Slėpti nuorodas",
+        "removeLink": "Pašalinti iš eilės",
+        "itemStatus": {
+          "PENDING": "laukia",
+          "RUNNING": "importuojama",
+          "DONE": "importuota",
+          "FAILED": "nepavyko"
+        },
+        "scope": {
+          "designer": "Visi dizainerio spausdinimo profiliai",
+          "all": "Dizainerio ir bendruomenės spausdinimo profiliai"
+        }
       }
     },
     "download": {

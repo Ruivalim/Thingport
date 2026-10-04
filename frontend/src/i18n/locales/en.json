@@ -630,6 +630,77 @@
           "loadFailed": "Failed to load rendering settings.",
           "saveFailed": "Failed to save rendering settings."
         }
+      },
+      "importQueue": {
+        "heading": "Import queue",
+        "loadFailed": "Unable to load the import queue.",
+        "empty": "Nothing in the queue. Links sent from Thingport Grab with \"Send to queue\" on wait here until you start them.",
+        "emptyFilter": "No imports match this filter.",
+        "startAll": "Start all ({{count}})",
+        "retryAll": "Retry all failed ({{count}})",
+        "pauseAll": "Pause all",
+        "clearFinished": "Clear finished",
+        "startedAll": "Started {{count}} import(s). They run one at a time.",
+        "retriedAll": "Retrying {{count}} import(s), one at a time.",
+        "cleared": "Cleared {{count}} finished import(s).",
+        "bulkRunning": "Running imports one at a time, {{count}} more waiting.",
+        "filter": {
+          "all": "All",
+          "paused": "Paused",
+          "running": "Running",
+          "failed": "With failures",
+          "done": "Finished"
+        },
+        "columnSource": "Import",
+        "columnUser": "User",
+        "columnStatus": "Status",
+        "columnProgress": "Progress",
+        "columnCreated": "Created",
+        "columnActions": "Actions",
+        "progress": "{{processed}} of {{total}}, {{imported}} imported, {{failed}} failed",
+        "type": {
+          "LINKS": "Links",
+          "COLLECTION": "Collection",
+          "ZIP": "ZIP",
+          "PROFILES": "Print profiles"
+        },
+        "status": {
+          "paused": "Paused",
+          "pausing": "Pausing",
+          "running": "Running",
+          "stalled": "Stalled",
+          "error": "Error",
+          "done": "Done",
+          "doneWithFailures": "Done, with failures"
+        },
+        "statusHint": {
+          "paused": "Waiting to be started.",
+          "pausing": "Finishing the link it's on, then it stops.",
+          "running": "Importing now.",
+          "stalled": "Cut off by a restart. Pause it, then start it again to finish.",
+          "error": "The import failed.",
+          "done": "Every link imported.",
+          "doneWithFailures": "Finished, but some links failed. Retry them once the cause is fixed."
+        },
+        "start": "Start",
+        "pause": "Pause after the current link",
+        "retry": "Retry {{count}} failed",
+        "delete": "Delete",
+        "deleteTitle": "Delete this import?",
+        "deleteMessage": "Its {{count}} link(s) are removed from the queue. Models already imported stay in the library.",
+        "showLinks": "Show links",
+        "hideLinks": "Hide links",
+        "removeLink": "Remove from queue",
+        "itemStatus": {
+          "PENDING": "waiting",
+          "RUNNING": "importing",
+          "DONE": "imported",
+          "FAILED": "failed"
+        },
+        "scope": {
+          "designer": "All designer print profiles",
+          "all": "Designer and community print profiles"
+        }
       }
     },
     "download": {

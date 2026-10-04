@@ -39,15 +39,8 @@ import { fetchPrintablesCollectionEntries, parsePrintablesCollectionUrl } from "
 import { getThingiverseAccessToken } from "../services/settingsService";
 import { getUserMakerworldCookie } from "../services/makerworldCookieService";
 import { listZipEntries } from "../services/zipService";
-import {
-  createJob,
-  createJobItems,
-  getActiveJob,
-  getJob,
-  listJobItems,
-  resetFailedItems,
-  updateJob,
-} from "../services/importJobService";
+import { createJob, createJobItems, getActiveJob, getJob, listJobItems } from "../services/importJobService";
+import { queueLink, startLinksJob } from "../services/importQueueService";
 import {
   runCollectionImportJob,
   runLinksImportJob,
@@ -56,7 +49,6 @@ import {
   runThingiverseCollectionImportJob,
   runThingiverseLikesImportJob,
   runZipImportJob,
-  type LinksImportJobBody,
 } from "../services/importJobRunner";
 import { createLog } from "../services/auditLog";
 import { toImportJobItemOut, toImportJobOut, toPrintOut } from "../dto";
@@ -486,22 +478,38 @@ router.post(
   asyncHandler(async (req, res) => {
     const job = await getJob(req.params.id, req.userId!);
     if (!job) throw new HttpError(404, "Import job not found");
-    if (job.type !== "LINKS") throw new HttpError(400, "Only a link-list import can be retried");
-    const failed = await resetFailedItems(job.id);
-    if (!failed) throw new HttpError(400, "This import has no failed links to retry");
-    await assertNoActiveJob(req.userId!);
-    await updateJob(job.id, { status: "RUNNING", errorMessage: null });
-    const payload = (job.payload ?? {}) as Record<string, unknown>;
-    const retryBody: LinksImportJobBody = {
-      url: job.sourceUrl,
-      notes: (payload.notes as string | null) ?? null,
-      tags: Array.isArray(payload.tags) ? (payload.tags as string[]) : [],
-      category_id: (payload.category_id as string | null) ?? null,
-      scope: payload.scope === "designer" || payload.scope === "all" ? payload.scope : "url",
-    };
-    const body = await withStoredMakerworldCookie(req.userId!, retryBody);
-    void runLinksImportJob(job.id, req.userId!, body);
+    await startLinksJob(job, { retryFailed: true });
     res.status(202).json({ job_id: job.id });
+  }),
+);
+
+const queueLinkRequestSchema = z.object({
+  url: z.string().min(1),
+  collection_id: z.string().nullable().optional(),
+  scope: z.enum(["url", "designer", "all"]).optional(),
+  title: z.string().max(500).nullable().optional(),
+});
+
+/** The extension's "send to queue": the link waits, paused, in the user's queue until it's started
+ *  from the admin import queue. Nothing is fetched now, so this is quick and never trips a CAPTCHA. */
+router.post(
+  "/import/queue",
+  requireCaptcha("import"),
+  asyncHandler(async (req, res) => {
+    const body = parseBody(queueLinkRequestSchema, req.body);
+    const url = await normalizeImportUrl(body.url.trim());
+    if (!url) throw new HttpError(400, "No link to queue");
+    const result = await queueLink(req.userId!, url, {
+      collection_id: body.collection_id ?? null,
+      scope: body.scope,
+      title: body.title?.trim() || null,
+    });
+    res.status(result.duplicate ? 200 : 201).json({
+      job_id: result.job.id,
+      item_id: result.itemId,
+      duplicate: result.duplicate,
+      waiting: result.waiting,
+    });
   }),
 );
 

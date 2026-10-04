@@ -20,6 +20,7 @@ import CableIcon from "@mui/icons-material/Cable";
 import PublicIcon from "@mui/icons-material/Public";
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
 import ViewInArIcon from "@mui/icons-material/ViewInAr";
+import QueueIcon from "@mui/icons-material/Queue";
 import UpdateCheckSection from "./UpdateCheckSection";
 import { adminApi, type StorageUsage } from "../../api/admin";
 import { UnauthorizedError } from "../../api/client";
@@ -36,6 +37,7 @@ const SECTIONS: Section[] = [
   { path: "/admin-settings", icon: <SettingsIcon fontSize="small" />, labelKey: "common:settings" },
   { path: "/admin-rendering", icon: <ViewInArIcon fontSize="small" />, labelKey: "adminSettings.rendering.heading" },
   { path: "/admin-users", icon: <PeopleIcon fontSize="small" />, labelKey: "adminSettings.users.heading" },
+  { path: "/admin-queue", icon: <QueueIcon fontSize="small" />, labelKey: "adminSettings.importQueue.heading" },
   { path: "/admin-logs", icon: <HistoryIcon fontSize="small" />, labelKey: "adminSettings.logs.heading" },
   { path: "/admin-triggers", icon: <BoltIcon fontSize="small" />, labelKey: "adminSettings.triggers.heading" },
   { path: "/admin-connections", icon: <CableIcon fontSize="small" />, labelKey: "adminSettings.connections.heading" },

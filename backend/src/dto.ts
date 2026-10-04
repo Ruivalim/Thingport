@@ -17,6 +17,8 @@ import { previewImageExists, previewImagePath } from "./services/previewImageSer
 import { preparedFilename } from "./services/preparedPrint";
 import { modelPreviewGlbExists, modelPreviewGlbPath } from "./services/modelPreviewCache";
 import { buildImportSourceUrl } from "./services/importService";
+import { parseQueuedLinkOptions } from "./services/importJobRunner";
+import type { QueueJobRow } from "./services/importQueueService";
 
 export type UserOut = {
   id: string;
@@ -375,7 +377,7 @@ export function toCategoryOut(category: Category): CategoryOut {
 export type ImportJobOut = {
   id: string;
   type: "COLLECTION" | "ZIP" | "PROFILES" | "LINKS";
-  status: "RUNNING" | "DONE" | "ERROR";
+  status: "RUNNING" | "DONE" | "ERROR" | "PAUSED";
   source_url: string;
   source_label: string | null;
   provider: string | null;
@@ -396,15 +398,23 @@ export type ImportJobItemOut = {
   status: "PENDING" | "RUNNING" | "DONE" | "FAILED";
   attempts: number;
   error_message: string | null;
+  /** Page title, collection and profile scope of a link sent from the extension's queue. */
+  title: string | null;
+  collection_id: string | null;
+  scope: "url" | "designer" | "all" | null;
 };
 
 export function toImportJobItemOut(item: ImportJobItem): ImportJobItemOut {
+  const options = parseQueuedLinkOptions(item.payload);
   return {
     id: item.id,
     url: item.url,
     status: item.status,
     attempts: item.attempts,
     error_message: item.errorMessage,
+    title: options.title ?? null,
+    collection_id: options.collection_id ?? null,
+    scope: options.scope ?? null,
   };
 }
 
@@ -424,6 +434,33 @@ export function toImportJobOut(job: ImportJob): ImportJobOut {
     error_message: job.errorMessage,
     result_collection_id: job.resultCollectionId,
     result_print_id: job.resultPrintId,
+  };
+}
+
+/** A row of the admin import queue: any user's job, with its links counted by status. */
+export type AdminImportJobOut = ImportJobOut & {
+  owner: { id: string; display_name: string; email: string };
+  pending_count: number;
+  running_count: number;
+  done_count: number;
+  failed_items_count: number;
+  /** False on a RUNNING job means its runner is gone (a restart): pause it, then start it again. */
+  runner_live: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export function toAdminImportJobOut(row: QueueJobRow): AdminImportJobOut {
+  return {
+    ...toImportJobOut(row),
+    owner: { id: row.user.id, display_name: row.user.displayName, email: row.user.email },
+    pending_count: row.counts.pending,
+    running_count: row.counts.running,
+    done_count: row.counts.done,
+    failed_items_count: row.counts.failed,
+    runner_live: row.runnerLive,
+    created_at: row.createdAt.toISOString(),
+    updated_at: row.updatedAt.toISOString(),
   };
 }
 

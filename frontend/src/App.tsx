@@ -29,6 +29,7 @@ import LogsPage from "./pages/LogsPage";
 import TriggersPage from "./pages/TriggersPage";
 import ConnectionsPage from "./pages/ConnectionsPage";
 import CaptchaPage from "./pages/CaptchaPage";
+import ImportQueuePage from "./pages/ImportQueuePage";
 import RenderingPage from "./pages/RenderingPage";
 import { healthApi, type HealthInfo } from "./api/health";
 import { authApi, type AuthUser } from "./api/auth";
@@ -246,6 +247,10 @@ function AppShell({
         <Route
           path="/admin-connections"
           element={isAdmin ? <ConnectionsPage onUnauthorized={onUnauthorized} /> : <Navigate to="/" replace />}
+        />
+        <Route
+          path="/admin-queue"
+          element={isAdmin ? <ImportQueuePage onUnauthorized={onUnauthorized} /> : <Navigate to="/" replace />}
         />
         <Route
           path="/admin-captcha"
