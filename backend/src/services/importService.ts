@@ -67,8 +67,8 @@ import {
   type NewPlateInput,
   type PrintMetaInput,
 } from "./printCreation";
-import { plateThumbExists, saveThumbFromBytes } from "./printService";
-import { addPreviewImage } from "./previewImageService";
+import { plateThumbReplaceable, saveThumbFromBytes } from "./printService";
+import { addPreviewImage, removeGeneratedPreviewImages } from "./previewImageService";
 import { prisma } from "../db";
 import { Prisma } from "@prisma/client";
 import type { Author, Plate, PreviewImage, Print } from "@prisma/client";
@@ -496,7 +496,8 @@ async function fetchImageBytes(url: string): Promise<Buffer | null> {
 }
 
 /** Best-effort: stores the page's cover (at position 0) and gallery as preview images, and seeds
- * the plate thumbnail from the cover when nothing better exists. Never throws. */
+ * the plate thumbnail from the cover when nothing better exists. A 3D render the app made while
+ * the import ran (the model is browsable from creation) gives way to them. Never throws. */
 export async function attachImportedPreviewImages(
   printId: string | undefined,
   plateId: string | undefined,
@@ -517,18 +518,18 @@ export async function attachImportedPreviewImages(
     orderedUrls.push(image.url);
   }
 
-  let platesThumbSeeded = false;
+  let firstAdded = false;
   const urls = orderedUrls.slice(0, PREVIEW_IMAGE_MAX_COUNT);
   const delayMs = paceMs ?? IMPORT_PREVIEW_IMAGE_DELAY_MS;
   for (let i = 0; i < urls.length; i++) {
     await sleep(delayMs);
     const buf = await fetchImageBytes(urls[i]);
-    if (buf) {
-      await addPreviewImage(printId, buf);
-      if (!platesThumbSeeded && plateId && !plateThumbExists(plateId)) {
-        await saveThumbFromBytes(plateId, buf);
-        platesThumbSeeded = true;
-      }
+    if (!buf) continue;
+    const added = await addPreviewImage(printId, buf);
+    if (added && !firstAdded) {
+      firstAdded = true;
+      await removeGeneratedPreviewImages(printId);
+      if (plateId && (await plateThumbReplaceable(plateId))) await saveThumbFromBytes(plateId, buf);
     }
   }
 }

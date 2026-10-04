@@ -15,7 +15,13 @@ import {
   resolvePlateFilePath,
   type NewPlateInput,
 } from "../services/printCreation";
-import { availablePlateFilename, plateThumbPath, relocatePrint, saveThumbFromBytes } from "../services/printService";
+import {
+  availablePlateFilename,
+  plateThumbPath,
+  plateThumbReplaceable,
+  relocatePrint,
+  saveThumbFromBytes,
+} from "../services/printService";
 import { addGeneratedPreviewImageIfNone } from "../services/previewImageService";
 import { printOutById } from "../services/printLoader";
 import { generateModelPreviewGlb, modelPreviewGlbPath, modelPreviewState } from "../services/modelPreviewCache";
@@ -193,10 +199,14 @@ router.post(
       where: { id: req.params.plateId, print: { userId: req.userId } },
     });
     if (!plate) throw new HttpError(404, "Not found");
-    const ok = await saveThumbFromBytes(plate.id, file.buffer);
-    if (!ok) throw new HttpError(400, "Invalid thumbnail image");
-    // Only when no better preview (e.g. an imported cover) exists.
-    await addGeneratedPreviewImageIfNone(plate.printId, file.buffer);
+    // A render that finishes after an import set the cover as the thumb mustn't replace it.
+    if (await plateThumbReplaceable(plate.id)) {
+      const ok = await saveThumbFromBytes(plate.id, file.buffer);
+      if (!ok) throw new HttpError(400, "Invalid thumbnail image");
+      await prisma.plate.update({ where: { id: plate.id }, data: { thumbGenerated: true } });
+      // Only when no better preview (e.g. an imported cover) exists.
+      await addGeneratedPreviewImageIfNone(plate.printId, file.buffer);
+    }
     res.json({ print: await printOutById(req.userId!, plate.printId) });
   }),
 );

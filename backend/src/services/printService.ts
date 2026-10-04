@@ -416,6 +416,8 @@ async function saveThumbBuffer(plateId: string, input: Buffer): Promise<boolean>
       .jpeg({ quality: 88, mozjpeg: true })
       .toFile(tmp);
     await fs.rename(tmp, dest);
+    // Any thumb but our own render; the generated-thumbnail route marks those after saving.
+    await prisma.plate.updateMany({ where: { id: plateId, thumbGenerated: true }, data: { thumbGenerated: false } });
     return true;
   } catch {
     await fs.rm(tmp, { force: true });
@@ -478,4 +480,11 @@ export function plateThumbPath(plateId: string): string {
 
 export function plateThumbExists(plateId: string): boolean {
   return fsSync.existsSync(plateThumbPath(plateId));
+}
+
+/** True when the plate has no thumb or only our own 3D render, which an imported image beats. */
+export async function plateThumbReplaceable(plateId: string): Promise<boolean> {
+  if (!plateThumbExists(plateId)) return true;
+  const plate = await prisma.plate.findUnique({ where: { id: plateId }, select: { thumbGenerated: true } });
+  return plate?.thumbGenerated ?? false;
 }

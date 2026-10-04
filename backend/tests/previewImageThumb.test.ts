@@ -1,7 +1,11 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
 import sharp from "sharp";
 import { createApp } from "../src/app";
+import { prisma } from "../src/db";
+import { attachImportedPreviewImages } from "../src/services/importService";
+import { plateThumbPath } from "../src/services/printService";
+import { previewImagePath } from "../src/services/previewImageService";
 
 const app = createApp();
 let token: string;
@@ -14,6 +18,11 @@ function png(r: number) {
   return sharp({ create: { width: 8, height: 8, channels: 3, background: { r, g: 0, b: 0 } } })
     .png()
     .toBuffer();
+}
+
+// The stored JPEGs are re-encoded, so an image is recognised by its red channel.
+async function redOf(filePath: string) {
+  return Math.round((await sharp(filePath).stats()).channels[0].mean);
 }
 
 async function uploadStl() {
@@ -42,5 +51,61 @@ describe("preview images", () => {
     expect(res.status).toBe(200);
     expect(res.body.print.preview_images).toHaveLength(2);
     expect(res.body.print.thumb_url).not.toBeNull();
+  });
+});
+
+describe("a 3D render made while an import runs", () => {
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  it("gives way to the imported cover, as thumbnail and first preview image", async () => {
+    const print = await uploadStl();
+    const plate = (await prisma.plate.findFirst({ where: { printId: print.id } }))!;
+
+    // The model is browsable before its images download, so the app renders and saves one.
+    const render = await request(app)
+      .post(`/api/plate/${plate.id}/thumbnail-generated`)
+      .set(auth())
+      .attach("file", await png(10), "render.png");
+    expect(render.status).toBe(200);
+    expect(render.body.print.preview_images).toHaveLength(1);
+
+    const images: Record<string, Buffer> = {
+      "https://img.example.com/cover.png": await png(200),
+      "https://img.example.com/gallery.png": await png(120),
+    };
+    global.fetch = (async (input: RequestInfo | URL) => {
+      const body = images[String(input)];
+      return body
+        ? new Response(body, { headers: { "content-type": "image/png" } })
+        : new Response("not found", { status: 404 });
+    }) as typeof fetch;
+    await attachImportedPreviewImages(
+      print.id,
+      plate.id,
+      "https://img.example.com/cover.png",
+      [{ url: "https://img.example.com/gallery.png", filename: "gallery.png" }],
+      0,
+    );
+
+    const previews = await prisma.previewImage.findMany({ where: { printId: print.id }, orderBy: { position: "asc" } });
+    expect(previews.map((img) => [img.position, img.generated])).toEqual([
+      [0, false],
+      [1, false],
+    ]);
+    expect(await redOf(previewImagePath(previews[0].id))).toBeGreaterThan(180);
+    expect(await redOf(plateThumbPath(plate.id))).toBeGreaterThan(180);
+    expect((await prisma.plate.findUnique({ where: { id: plate.id } }))!.thumbGenerated).toBe(false);
+
+    // A render that finishes after the cover landed doesn't replace it.
+    const late = await request(app)
+      .post(`/api/plate/${plate.id}/thumbnail-generated`)
+      .set(auth())
+      .attach("file", await png(10), "render.png");
+    expect(late.status).toBe(200);
+    expect(late.body.print.preview_images).toHaveLength(2);
+    expect(await redOf(plateThumbPath(plate.id))).toBeGreaterThan(180);
   });
 });

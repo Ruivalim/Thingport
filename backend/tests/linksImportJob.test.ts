@@ -231,12 +231,19 @@ describe("the links import queue", () => {
     const start = await startLinks([`https://makerworld.com/en/models/${id}-phoenix`], { scope: "all" });
     const job = await waitJob(start.body.job_id);
     expect(job.status).toBe("DONE");
-    expect(job.imported).toBe(2);
+    // One link is one model, however many profiles it brought in.
+    expect(job.imported).toBe(1);
 
     const items = await prisma.importJobItem.findMany({ where: { jobId: job.id } });
     expect(items[0].status).toBe("DONE");
 
     const user = await prisma.user.findFirst({ where: { email: `links-${stamp}@example.com` } });
+    const notification = await prisma.notification.findFirst({
+      where: { userId: user!.id },
+      orderBy: { createdAt: "desc" },
+    });
+    expect(notification!.title).toBe("Imported 1 of 1 models");
+    expect(notification!.body).toBe("2 of 2 print profiles imported.");
     const print = await prisma.print.findFirst({
       where: { userId: user!.id, sourceExternalId: id },
       include: { plates: true },

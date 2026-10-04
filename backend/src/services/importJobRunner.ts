@@ -632,8 +632,13 @@ function failureMessage(err: unknown): string {
 }
 
 /** One queued link. A MakerWorld model with a multi-profile scope imports each wanted profile onto
- *  one print, like the PROFILES job; anything else is a plain single import. */
-async function importOneLink(userId: string, url: string, body: LinksImportJobBody): Promise<ProfileImportTotals> {
+ *  one print, like the PROFILES job; anything else is a plain single import. `profiles` marks the
+ *  former, whose totals count print profiles rather than models. */
+async function importOneLink(
+  userId: string,
+  url: string,
+  body: LinksImportJobBody,
+): Promise<ProfileImportTotals & { profiles: boolean }> {
   const parsed = parseMakerworldModelUrl(url);
   if (parsed && body.scope && body.scope !== "url") {
     const design = await fetchMakerworldDesignForImport(
@@ -644,11 +649,12 @@ async function importOneLink(userId: string, url: string, body: LinksImportJobBo
     if (!design) throw new HttpError(400, "Couldn't read this model's print profiles from MakerWorld");
     const profileIds = selectMakerworldProfiles(design, body.scope, parsed.requestedInstanceId);
     if (!profileIds.length) throw new HttpError(400, "This model has no print profiles to import");
-    return importProfileUrlsSequentially(
+    const totals = await importProfileUrlsSequentially(
       userId,
       profileIds.map((profileId) => `https://makerworld.com/en/models/${parsed.designId}#profileId-${profileId}`),
       { ...body, url },
     );
+    return { ...totals, profiles: true };
   }
   const result = await importPrintFromUrl(userId, url, { ...body, url });
   return {
@@ -658,6 +664,7 @@ async function importOneLink(userId: string, url: string, body: LinksImportJobBo
     failed: 0,
     printId: result.print.id,
     stopReason: null,
+    profiles: false,
   };
 }
 
@@ -687,6 +694,9 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
 
     let imported = 0;
     let alreadyInLibrary = 0;
+    // This run's print profiles, from links with a profile scope; the counts above are models.
+    let profilesImported = 0;
+    let profilesProcessed = 0;
     let printId: string | null = null;
     let stopReason: "rateLimited" | "auth" | null = null;
     let processed = (await countJobItems(jobId, "DONE")) + (await countJobItems(jobId, "FAILED"));
@@ -715,8 +725,13 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
         }
         try {
           const result = await importOneLink(userId, item.url, itemBody);
-          imported += result.imported;
-          alreadyInLibrary += result.alreadyInLibrary;
+          // A link is one model however many of its profiles came in.
+          if (result.imported) imported++;
+          else if (result.alreadyInLibrary) alreadyInLibrary++;
+          if (result.profiles) {
+            profilesImported += result.imported;
+            profilesProcessed += result.processed;
+          }
           if (result.printId) printId = result.printId;
           if (result.printId && options.collection_id) {
             await fileIntoCollection(userId, options.collection_id, result.printId);
@@ -788,6 +803,7 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
     });
 
     const bodyParts: string[] = [];
+    if (profilesProcessed) bodyParts.push(`${profilesImported} of ${profilesProcessed} print profiles imported`);
     if (alreadyInLibrary) bodyParts.push(`${alreadyInLibrary} already in your library`);
     if (stopReason === "rateLimited") {
       bodyParts.push(
@@ -801,7 +817,7 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
       bodyParts.push(`${failedCount} failed — retry them from the import's progress bar`);
     }
     await createNotification(userId, {
-      title: `Imported ${totalImported} of ${total} links`,
+      title: `Imported ${totalImported} of ${total} models`,
       body: bodyParts.length ? `${bodyParts.join(", ")}.` : null,
       externalUrl: job.sourceUrl,
       internalPath:

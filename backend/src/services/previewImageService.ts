@@ -33,10 +33,14 @@ async function saveBuffer(id: string, input: Buffer): Promise<boolean> {
 }
 
 /** Null if the buffer isn't a decodable image; never throws. */
-export async function addPreviewImage(printId: string, buffer: Buffer): Promise<PreviewImage | null> {
+export async function addPreviewImage(
+  printId: string,
+  buffer: Buffer,
+  generated = false,
+): Promise<PreviewImage | null> {
   const last = await prisma.previewImage.findFirst({ where: { printId }, orderBy: { position: "desc" } });
   const position = last ? last.position + 1 : 0;
-  const row = await prisma.previewImage.create({ data: { printId, position } });
+  const row = await prisma.previewImage.create({ data: { printId, position, generated } });
   const ok = await saveBuffer(row.id, buffer);
   if (!ok) {
     await prisma.previewImage.delete({ where: { id: row.id } }).catch(() => undefined);
@@ -49,7 +53,23 @@ export async function addPreviewImage(printId: string, buffer: Buffer): Promise<
 export async function addGeneratedPreviewImageIfNone(printId: string, buffer: Buffer): Promise<void> {
   const count = await prisma.previewImage.count({ where: { printId } });
   if (count > 0) return;
-  await addPreviewImage(printId, buffer);
+  await addPreviewImage(printId, buffer, true);
+}
+
+/** Drops our own renders, so the images that replace them start at position 0. */
+export async function removeGeneratedPreviewImages(printId: string): Promise<void> {
+  const generated = await prisma.previewImage.findMany({ where: { printId, generated: true } });
+  if (!generated.length) return;
+  await prisma.previewImage.deleteMany({ where: { id: { in: generated.map((img) => img.id) } } });
+  const remaining = await prisma.previewImage.findMany({ where: { printId }, orderBy: { position: "asc" } });
+  // Two-phase renumber, as in plates.ts, to avoid (printId, position) collisions.
+  await prisma.$transaction(
+    remaining.map((img, idx) => prisma.previewImage.update({ where: { id: img.id }, data: { position: -(idx + 1) } })),
+  );
+  await prisma.$transaction(
+    remaining.map((img, idx) => prisma.previewImage.update({ where: { id: img.id }, data: { position: idx } })),
+  );
+  for (const img of generated) await fs.rm(previewImagePath(img.id), { force: true }).catch(() => undefined);
 }
 
 export async function deleteAllPreviewImages(printId: string): Promise<void> {

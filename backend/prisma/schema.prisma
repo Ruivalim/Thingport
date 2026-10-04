@@ -336,6 +336,8 @@ model Plate {
   sourceInstanceId String?
   // Computed lazily; plate files are never rewritten in place.
   contentSha256    String?
+  // The thumb is our own 3D render, which an imported image replaces.
+  thumbGenerated   Boolean  @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -351,6 +353,8 @@ model PreviewImage {
   printId   String
   print     Print    @relation(fields: [printId], references: [id], onDelete: Cascade)
   position  Int
+  // Our own 3D render, which an imported image replaces.
+  generated Boolean  @default(false)
   createdAt DateTime @default(now())
 
   @@unique([printId, position])

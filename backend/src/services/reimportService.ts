@@ -279,7 +279,8 @@ export async function reimportPrint(userId: string, printId: string, opts: Reimp
   if (opts.metadata) metadata = await fillEmptyMetadata(userId, print, snapshot.meta);
 
   let imagesAdded = 0;
-  if (opts.images && print.previewImages.length === 0) {
+  // Only our own 3D renders count as an empty slot; the import replaces them.
+  if (opts.images && print.previewImages.every((image) => image.generated)) {
     await attachImportedPreviewImages(
       print.id,
       print.plates[0]?.id,
