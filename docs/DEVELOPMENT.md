@@ -159,6 +159,23 @@ CI runs it every Saturday at 00:00 UTC (`.github/workflows/regression.yml`). You
 from the Actions tab. When it fails, the HTML report, traces and container logs are uploaded as the
 `regression-report` artifact.
 
+### App screenshots
+
+The README and website screenshots in `frontend/src/assets/screenshots/` are captured from a running
+instance with a populated library, by `regression/screenshots.mjs` (the extension's screenshots
+aren't covered). It signs in, captures every shot at 1400×790 and 2× scale, and overwrites the files.
+The account's theme and Categories/Folders choice are switched for the shots and restored afterwards.
+
+```bash
+cd regression
+THINGPORT_PASSWORD='…' npm run screenshots -- --url https://thingport.example --email you@example.com
+npm run screenshots -- --url … --email … --only 03,04     # just some shots
+npm run screenshots -- --url … --email … --model "Benchy" # model for the details and 3D shots
+```
+
+`--out` writes somewhere else instead, e.g. to compare before replacing. Self-signed certificates
+are accepted.
+
 ## Quality checks
 
 | Command                               | What it runs                     |

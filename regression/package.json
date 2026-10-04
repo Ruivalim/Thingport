@@ -4,7 +4,8 @@
   "license": "AGPL-3.0-only",
   "scripts": {
     "test": "./run.sh",
-    "report": "playwright show-report"
+    "report": "playwright show-report",
+    "screenshots": "node screenshots.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
