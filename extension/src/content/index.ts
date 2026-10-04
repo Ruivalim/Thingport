@@ -97,7 +97,13 @@ async function init(): Promise<void> {
   }
   if (isStale()) return;
 
-  setContext({ url, instanceUrl: stateRes.data.instanceUrl, classification, library });
+  setContext({
+    url,
+    instanceUrl: stateRes.data.instanceUrl,
+    classification,
+    library,
+    sendToQueue: stateRes.data.sendToQueue,
+  });
   const root = mountHost();
   const togglePanel = mountPanel(root, () => void loadPanel());
   mountFab(root, {

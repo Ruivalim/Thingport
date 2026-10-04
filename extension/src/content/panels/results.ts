@@ -4,11 +4,16 @@ export function statusHtml(text: string): string {
   return `<div class="tg-status">${escapeHtml(text)}</div>`;
 }
 
-export function successHtml(link: string, note?: string | null, title = "Imported!"): string {
+export function successHtml(
+  link: string,
+  note?: string | null,
+  title = "Imported!",
+  linkLabel = "Open in Thingport",
+): string {
   return `
     <div class="tg-title">${escapeHtml(title)}</div>
     ${note ? `<div class="tg-hint">${escapeHtml(note)}</div>` : ""}
-    <a class="tg-btn" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">Open in Thingport</a>
+    <a class="tg-btn" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkLabel)}</a>
   `;
 }
 

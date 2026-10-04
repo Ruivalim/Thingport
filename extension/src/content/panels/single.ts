@@ -56,8 +56,19 @@ function profileUrl(url: string, instanceId: string): string {
 }
 
 function importHeading(): string {
-  const { title } = ctx();
+  const { title, sendToQueue } = ctx();
+  if (sendToQueue) return title ? `Queue "${escapeHtml(title)}"` : "Queue this model";
   return title ? `Import "${escapeHtml(title)}"` : "Import this model";
+}
+
+function importLabel(): string {
+  return ctx().sendToQueue ? "Add to queue" : "Import";
+}
+
+function queueHintHtml(): string {
+  return ctx().sendToQueue
+    ? `<div class="tg-hint">Send to queue is on: this waits, paused, in Thingport's import queue.</div>`
+    : "";
 }
 
 export async function loadSingleItem(): Promise<void> {
@@ -90,9 +101,10 @@ export async function loadSingleItem(): Promise<void> {
   if (zipFilename === null) {
     renderPanel(`
       <div class="tg-title">${importHeading()}</div>
+      ${queueHintHtml()}
       ${await profilesPickerHtml()}
       ${await collectionPickerHtml()}
-      <button class="tg-btn" type="button" data-action="import">Import</button>
+      <button class="tg-btn" type="button" data-action="import">${importLabel()}</button>
     `);
     onPanelAction("import", () => void runDirectImport());
     return;
@@ -101,8 +113,9 @@ export async function loadSingleItem(): Promise<void> {
   renderPanel(`
     <div class="tg-title">${importHeading()}</div>
     <div class="tg-hint">${escapeHtml(zipFilename)} contains multiple files.</div>
+    ${queueHintHtml()}
     ${await collectionPickerHtml()}
-    <button class="tg-btn" type="button" data-action="import-as-zip">Import as one model</button>
+    <button class="tg-btn" type="button" data-action="import-as-zip">${ctx().sendToQueue ? "Queue as one model" : "Import as one model"}</button>
     <button class="tg-btn tg-btn--secondary" type="button" data-action="choose-files">Choose files…</button>
   `);
   onPanelAction("import-as-zip", () => void runDirectImport());
@@ -122,8 +135,9 @@ function addProfileHtml(profilesPicker: string): string {
   return `
     <div class="tg-title">In your library</div>
     <div class="tg-hint">${hint}</div>
+    ${queueHintHtml()}
     ${profilesPicker}
-    <button class="tg-btn" type="button" data-action="import">Add profile</button>
+    <button class="tg-btn" type="button" data-action="import">${ctx().sendToQueue ? "Queue profile" : "Add profile"}</button>
     <button class="tg-btn tg-btn--secondary" type="button" data-action="reimport">Update model in Thingport</button>
     <a class="tg-btn tg-btn--secondary" href="${escapeHtml(modelLink)}" target="_blank" rel="noopener noreferrer">Open model in Thingport</a>
   `;
@@ -179,6 +193,11 @@ async function runDirectImport(opts?: { entries?: string[] }): Promise<void> {
   // Captured up front: SPA navigation clears the context mid-import.
   const collectionId = selectedCollectionId();
   const scope = selectedProfileScope();
+  // Picking files out of a zip needs the download now, so that one always imports directly.
+  if (ctx().sendToQueue && !opts?.entries) {
+    await runQueueImport(scope, collectionId);
+    return;
+  }
   if (scope !== "url") {
     await runProfilesImport(scope, collectionId);
     return;
@@ -265,4 +284,27 @@ async function runProfilesImport(scope: MakerworldProfileScope, collectionId: st
   renderPanel(
     successHtml(`${instanceUrl}/models/${printId}`, `${parts.join(", ")}.`, failed ? "Partly imported" : undefined),
   );
+}
+
+/** Sends the link to the paused import queue with the panel's collection and profile choices. No
+ *  download is resolved here: the instance does that once the queue is started. */
+async function runQueueImport(scope: MakerworldProfileScope, collectionId: string | null): Promise<void> {
+  const { url, instanceUrl, title } = ctx();
+  renderPanel(statusHtml("Adding to the queue…"));
+  try {
+    const result = await request("QUEUE_IMPORT", { url, collectionId, scope, title: title ?? null });
+    const waiting = `${result.waiting} link${result.waiting === 1 ? "" : "s"} waiting`;
+    renderPanel(
+      successHtml(
+        `${instanceUrl}/admin-queue`,
+        result.duplicate
+          ? `This link was already waiting in the queue (${waiting}).`
+          : `Paused until it's started from Administration > Import queue (${waiting}).`,
+        result.duplicate ? "Already in the queue" : "Added to the queue",
+        "Open import queue",
+      ),
+    );
+  } catch (err) {
+    renderPanel(errorHtml(err));
+  }
 }

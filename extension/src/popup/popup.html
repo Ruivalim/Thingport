@@ -43,6 +43,13 @@
           <label for="enabled-switch">Extension enabled</label>
           <input type="checkbox" role="switch" class="switch" id="enabled-switch" />
         </div>
+        <div class="toggle-row">
+          <label for="queue-switch">Send to queue</label>
+          <input type="checkbox" role="switch" class="switch" id="queue-switch" aria-describedby="queue-switch-hint" />
+        </div>
+        <p class="note" id="queue-switch-hint">
+          Imports wait, paused, in Thingport's import queue until they're started from Administration.
+        </p>
         <div class="section" id="recent-section" hidden>
           <h2 class="section__title">Recent imports</h2>
           <div class="recent-grid" id="recent-grid"></div>
