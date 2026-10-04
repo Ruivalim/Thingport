@@ -203,12 +203,16 @@ enum ImportJobType {
   COLLECTION
   ZIP
   PROFILES
+  LINKS
 }
 
 enum ImportJobStatus {
   RUNNING
   DONE
   ERROR
+  // A LINKS job waiting for someone to start it: the extension's "send to queue" collects links
+  // here, and pausing a running job parks its remaining links here too.
+  PAUSED
 }
 
 /// A background batch import. At most one RUNNING job per user (enforced in routes/imports.ts).
@@ -230,10 +234,40 @@ model ImportJob {
   resultCollectionId String?
   // Set when the job created exactly one Print, so the frontend can open it directly.
   resultPrintId      String?
+  // The LINKS job's shared request body (never the MakerWorld cookie), so a retry can rerun it.
+  payload            Json?
+  // The "N links waiting" notification of a PAUSED queue, updated as links are added to it.
+  notificationId     String?
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
+  items              ImportJobItem[]
 
   @@index([userId, status])
+}
+
+enum ImportJobItemStatus {
+  PENDING
+  RUNNING
+  DONE
+  FAILED
+}
+
+/// One queued URL of a LINKS job, kept so failed links can be retried after a LINKS run.
+model ImportJobItem {
+  id           String              @id @default(cuid())
+  jobId        String
+  job          ImportJob           @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  url          String
+  status       ImportJobItemStatus @default(PENDING)
+  attempts     Int                 @default(0)
+  errorMessage String?
+  // Per-link options a queued link carries on its own (collection_id, scope, title), over the
+  // job's shared payload.
+  payload      Json?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@index([jobId, status])
 }
 
 model Notification {

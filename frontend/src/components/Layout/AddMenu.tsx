@@ -32,6 +32,9 @@ import {
   IMPORT_LINK_EXAMPLES,
   isMakerworldCollectionUrl,
   isMakerworldModelUrl,
+  isPrintablesCollectionUrl,
+  isThingiverseCollectionUrl,
+  isThingiverseLikesUrl,
   type ImportProviderKey,
 } from "../../utils/importLinkDetection";
 import type { MakerworldProfileScope } from "../../api/imports";
@@ -60,9 +63,35 @@ export default function AddMenu({ categoryId, makerworldCookie, onUploaded, onUn
   const [captcha, setCaptcha] = React.useState<CaptchaAnswer | null>(null);
   const needsCaptcha = Boolean(captchaSettings?.import);
 
-  const detectedProvider = detectImportProvider(linkValue);
-  const isBlockedCollection = isMakerworldCollectionUrl(linkValue);
-  const isMakerworldModel = isMakerworldModelUrl(linkValue);
+  // A pasted block of links becomes one queue job; a single link keeps the existing flows
+  // (collection pickers, zip inspection, immediate import).
+  const links = React.useMemo(
+    () =>
+      linkValue
+        .split(/\s+/)
+        .map((s) => s.trim())
+        .filter(Boolean),
+    [linkValue],
+  );
+  const isBatch = links.length > 1;
+  const detectedProviders = React.useMemo(() => {
+    const found = new Set<ImportProviderKey>();
+    for (const link of links) {
+      const key = detectImportProvider(link);
+      if (key) found.add(key);
+    }
+    return found;
+  }, [links]);
+  const isBlockedCollection = isBatch
+    ? links.some(
+        (link) =>
+          isMakerworldCollectionUrl(link) ||
+          isThingiverseLikesUrl(link) ||
+          isThingiverseCollectionUrl(link) ||
+          isPrintablesCollectionUrl(link),
+      )
+    : isMakerworldCollectionUrl(linkValue);
+  const isMakerworldModel = links.some((link) => isMakerworldModelUrl(link));
 
   const closeMenu = () => setAnchorEl(null);
 
@@ -90,9 +119,14 @@ export default function AddMenu({ categoryId, makerworldCookie, onUploaded, onUn
   };
 
   const submitImport = async () => {
-    if (!linkValue.trim() || isBlockedCollection) return;
+    if (!links.length || isBlockedCollection) return;
     if (needsCaptcha && !captcha?.captcha_answer.trim()) return;
     // Each captcha works once; reopening shows a fresh one.
+    if (isBatch) {
+      await upload.submitImportMany(links, needsCaptcha ? captcha : null, isMakerworldModel ? profileScope : "url");
+      setImportOpen(false);
+      return;
+    }
     await upload.submitImport(linkValue, needsCaptcha ? captcha : null, isMakerworldModel ? profileScope : "url");
     setImportOpen(false);
   };
@@ -141,7 +175,7 @@ export default function AddMenu({ categoryId, makerworldCookie, onUploaded, onUn
           <Stack direction="row" spacing={1} sx={{ mb: 1.5 }}>
             {IMPORT_PROVIDERS.map((key) => {
               const info = IMPORT_PROVIDER_INFO[key];
-              const active = detectedProvider === key;
+              const active = detectedProviders.has(key);
               return (
                 <Chip
                   key={key}
@@ -175,25 +209,31 @@ export default function AddMenu({ categoryId, makerworldCookie, onUploaded, onUn
 
           {isBlockedCollection && (
             <Alert severity="warning" sx={{ mb: 1.5 }}>
-              {t("addMenu.makerworldCollectionBlocked")}
+              {t(isBatch ? "addMenu.batchCollectionsBlocked" : "addMenu.makerworldCollectionBlocked")}
             </Alert>
           )}
 
           <TextField
             fullWidth
-            type="url"
+            multiline
+            minRows={2}
             margin="dense"
             value={linkValue}
             onChange={(e) => setLinkValue(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") {
+              if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 submitImport();
               }
             }}
-            placeholder={t("uploadBar.linkPlaceholder") ?? undefined}
+            placeholder={t("addMenu.linksPlaceholder") ?? undefined}
             disabled={upload.importing}
           />
+          {isBatch && (
+            <Typography variant="caption" color="text.secondary" component="div" sx={{ mt: 0.5 }}>
+              {t("addMenu.linksDetected", { count: links.length })}
+            </Typography>
+          )}
           {isMakerworldModel && (
             <TextField
               select
@@ -227,7 +267,7 @@ export default function AddMenu({ categoryId, makerworldCookie, onUploaded, onUn
             onClick={submitImport}
             disabled={
               upload.importing ||
-              !linkValue.trim() ||
+              !links.length ||
               isBlockedCollection ||
               (needsCaptcha && !captcha?.captcha_answer.trim())
             }

@@ -24,6 +24,7 @@ function showConfiguredView(state: ExtensionState): void {
   els.instanceUrlText.textContent = displayInstanceUrl(state.instanceUrl);
   els.instanceUrlText.title = state.instanceUrl;
   els.enabledSwitch.checked = !state.disabled;
+  els.queueSwitch.checked = state.sendToQueue;
   clearError(els.configuredError);
   void loadRecentImports();
 }
@@ -65,6 +66,17 @@ els.enabledSwitch.addEventListener("change", async () => {
   if (!res?.ok) {
     showError(res?.error ?? "Couldn't save", els.configuredError);
     els.enabledSwitch.checked = !els.enabledSwitch.checked;
+  }
+});
+
+els.queueSwitch.addEventListener("change", async () => {
+  clearError(els.configuredError);
+  els.queueSwitch.disabled = true;
+  const res = await send("SET_SEND_TO_QUEUE", { sendToQueue: els.queueSwitch.checked });
+  els.queueSwitch.disabled = false;
+  if (!res?.ok) {
+    showError(res?.error ?? "Couldn't save", els.configuredError);
+    els.queueSwitch.checked = !els.queueSwitch.checked;
   }
 });
 

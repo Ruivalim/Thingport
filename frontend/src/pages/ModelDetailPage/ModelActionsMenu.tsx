@@ -16,6 +16,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import PlaylistAddIcon from "@mui/icons-material/PlaylistAdd";
 import PlaylistRemoveIcon from "@mui/icons-material/PlaylistRemove";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import SyncIcon from "@mui/icons-material/Sync";
 import LaunchIcon from "@mui/icons-material/Launch";
 import type { SxProps, Theme } from "@mui/material/styles";
 import { UnauthorizedError } from "../../api/client";
@@ -32,6 +33,7 @@ import { useNormalizedOpen } from "./useNormalizedOpen";
 import DownloadPickerDialog from "./DownloadPickerDialog";
 import AddToCollectionModal from "./AddToCollectionModal";
 import EditModelModal from "./EditModelModal";
+import ReimportDialog from "./ReimportDialog";
 
 type Props = {
   print: Print;
@@ -69,6 +71,7 @@ export default function ModelActionsMenu({
   const [deleting, setDeleting] = useState(false);
   const [removingFromCollection, setRemovingFromCollection] = useState(false);
   const [addToCollectionOpen, setAddToCollectionOpen] = useState(false);
+  const [reimportOpen, setReimportOpen] = useState(false);
   // Driven by ?edit=<id> so links and the back button open/close it.
   const editOpen = searchParams.get("edit") === print.id;
   const {
@@ -268,6 +271,19 @@ export default function ModelActionsMenu({
           </MenuItem>
         )}
         {providerInfo && print.source_url && (
+          <MenuItem
+            onClick={() => {
+              closeMenu();
+              setReimportOpen(true);
+            }}
+          >
+            <ListItemIcon>
+              <SyncIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>{t("models:detail.reimport")}</ListItemText>
+          </MenuItem>
+        )}
+        {providerInfo && print.source_url && (
           <MenuItem component="a" href={print.source_url} target="_blank" rel="noopener noreferrer" onClick={closeMenu}>
             <ListItemIcon>
               <OpenInNewIcon fontSize="small" />
@@ -323,6 +339,16 @@ export default function ModelActionsMenu({
           onUnauthorized={onUnauthorized}
           onUpdated={(updated) => onUpdated?.(updated)}
           viewer={viewer}
+        />
+      )}
+
+      {reimportOpen && (
+        <ReimportDialog
+          open
+          print={print}
+          onClose={() => setReimportOpen(false)}
+          onUpdated={(updated) => onUpdated?.(updated)}
+          onUnauthorized={onUnauthorized}
         />
       )}
     </>

@@ -39,9 +39,11 @@ import { fetchPrintablesCollectionEntries, parsePrintablesCollectionUrl } from "
 import { getThingiverseAccessToken } from "../services/settingsService";
 import { getUserMakerworldCookie } from "../services/makerworldCookieService";
 import { listZipEntries } from "../services/zipService";
-import { createJob, getActiveJob, getJob } from "../services/importJobService";
+import { createJob, createJobItems, getActiveJob, getJob, listJobItems } from "../services/importJobService";
+import { queueLink, startLinksJob } from "../services/importQueueService";
 import {
   runCollectionImportJob,
+  runLinksImportJob,
   runMakerworldProfilesImportJob,
   runPrintablesCollectionImportJob,
   runThingiverseCollectionImportJob,
@@ -49,7 +51,8 @@ import {
   runZipImportJob,
 } from "../services/importJobRunner";
 import { createLog } from "../services/auditLog";
-import { toImportJobOut, toPrintOut } from "../dto";
+import { toImportJobItemOut, toImportJobOut, toPrintOut } from "../dto";
+import type { Prisma } from "@prisma/client";
 
 const router = Router();
 router.use(requireAuth);
@@ -424,6 +427,98 @@ router.get(
   asyncHandler(async (req, res) => {
     const job = await getActiveJob(req.userId!);
     res.json(job ? toImportJobOut(job) : null);
+  }),
+);
+
+const linksImportRequestSchema = importRequestSchema.extend({
+  // The queue carries its own urls; this one is only there so the shared body shape still fits.
+  url: z.string().optional(),
+  urls: z.array(z.string()).min(1).max(500),
+  scope: z.enum(["url", "designer", "all"]).default("url"),
+});
+
+/** The shared request body a LINKS job reruns on a retry -- never the cookie or the captcha. */
+function linksJobPayload(body: z.infer<typeof linksImportRequestSchema>): Prisma.InputJsonValue {
+  return {
+    notes: body.notes ?? null,
+    tags: body.tags,
+    category_id: body.category_id ?? null,
+    scope: body.scope,
+  };
+}
+
+router.post(
+  "/import/links",
+  requireCaptcha("import"),
+  asyncHandler(async (req, res) => {
+    const body = await withStoredMakerworldCookie(req.userId!, parseBody(linksImportRequestSchema, req.body));
+    await assertNoActiveJob(req.userId!);
+    const urls: string[] = [];
+    for (const raw of body.urls) {
+      const url = await normalizeImportUrl(raw.trim());
+      if (url && !urls.includes(url)) urls.push(url);
+    }
+    if (!urls.length) throw new HttpError(400, "No links to import");
+    const job = await createJob(req.userId!, "LINKS", {
+      sourceUrl: urls[0],
+      total: urls.length,
+      payload: linksJobPayload(body),
+    });
+    await createJobItems(job.id, urls);
+    void runLinksImportJob(job.id, req.userId!, { ...body, url: urls[0] });
+    res.status(202).json({ job_id: job.id });
+  }),
+);
+
+/** Reruns just the links that failed, so a CAPTCHA cooloff or a cookie fix is enough to finish a
+ * batch. */
+router.post(
+  "/import/jobs/:id/retry",
+  requireCaptcha("import"),
+  asyncHandler(async (req, res) => {
+    const job = await getJob(req.params.id, req.userId!);
+    if (!job) throw new HttpError(404, "Import job not found");
+    await startLinksJob(job, { retryFailed: true });
+    res.status(202).json({ job_id: job.id });
+  }),
+);
+
+const queueLinkRequestSchema = z.object({
+  url: z.string().min(1),
+  collection_id: z.string().nullable().optional(),
+  scope: z.enum(["url", "designer", "all"]).optional(),
+  title: z.string().max(500).nullable().optional(),
+});
+
+/** The extension's "send to queue": the link waits, paused, in the user's queue until it's started
+ *  from the admin import queue. Nothing is fetched now, so this is quick and never trips a CAPTCHA. */
+router.post(
+  "/import/queue",
+  requireCaptcha("import"),
+  asyncHandler(async (req, res) => {
+    const body = parseBody(queueLinkRequestSchema, req.body);
+    const url = await normalizeImportUrl(body.url.trim());
+    if (!url) throw new HttpError(400, "No link to queue");
+    const result = await queueLink(req.userId!, url, {
+      collection_id: body.collection_id ?? null,
+      scope: body.scope,
+      title: body.title?.trim() || null,
+    });
+    res.status(result.duplicate ? 200 : 201).json({
+      job_id: result.job.id,
+      item_id: result.itemId,
+      duplicate: result.duplicate,
+      waiting: result.waiting,
+    });
+  }),
+);
+
+router.get(
+  "/import/jobs/:id/items",
+  asyncHandler(async (req, res) => {
+    const job = await getJob(req.params.id, req.userId!);
+    if (!job) throw new HttpError(404, "Import job not found");
+    res.json((await listJobItems(job.id)).map(toImportJobItemOut));
   }),
 );
 

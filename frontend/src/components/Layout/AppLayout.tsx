@@ -103,6 +103,9 @@ function useRouteChrome() {
   } else if (path.startsWith("/admin-users")) {
     title = t("adminSettings.users.heading");
     onBack = () => navigate("/admin");
+  } else if (path.startsWith("/admin-queue")) {
+    title = t("adminSettings.importQueue.heading");
+    onBack = () => navigate("/admin");
   } else if (path.startsWith("/admin-logs")) {
     title = t("adminSettings.logs.heading");
     onBack = () => navigate("/admin");

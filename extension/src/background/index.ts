@@ -3,9 +3,9 @@
 
 import { listen, type BackgroundMessages } from "../shared/messages";
 import { apiCall } from "./api";
-import { getState, saveConfig, setDisabled } from "./config";
+import { getState, saveConfig, setDisabled, setSendToQueue } from "./config";
 import { armDownloadCapture, awaitDownloadCapture } from "./downloadCapture";
-import { importSingle } from "./importJobs";
+import { importSingle, queueImport } from "./importJobs";
 import { abortJob, advanceJob, dropJobIfForTab, forceAdvanceJob, getJobForTab, startJob } from "./makerworldJob";
 import { getRecentImports } from "./recentImports";
 import { openSetup } from "./setup";
@@ -20,11 +20,13 @@ listen<BackgroundMessages>({
   GET_STATE: () => getState(),
   SAVE_CONFIG: (payload) => saveConfig(payload),
   SET_DISABLED: ({ disabled }) => setDisabled(disabled),
+  SET_SEND_TO_QUEUE: ({ sendToQueue }) => setSendToQueue(sendToQueue),
   GET_RECENT_IMPORTS: () => getRecentImports(),
   OPEN_SETUP: (_payload, sender) => openSetup(sender.tab?.id),
   SET_TAB_ICON_STATE: ({ active }, sender) => setTabIconState(senderTabId(sender), active),
   API_CALL: ({ method, path, body }) => apiCall(method, path, body),
   IMPORT_SINGLE: (payload) => importSingle(payload),
+  QUEUE_IMPORT: (payload) => queueImport(payload),
   START_MAKERWORLD_COLLECTION_JOB: (payload, sender) => startJob(senderTabId(sender), payload),
   ABORT_MAKERWORLD_COLLECTION_JOB: (_payload, sender) => abortJob(senderTabId(sender)),
   FORCE_ADVANCE_MAKERWORLD_JOB: (_payload, sender) => forceAdvanceJob(senderTabId(sender)),

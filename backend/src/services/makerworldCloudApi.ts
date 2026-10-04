@@ -12,6 +12,7 @@ import {
   type ImportedPageMetadata,
 } from "./importResolvers";
 import { maybeSleep, sleep } from "../utils/concurrency";
+import { HttpError } from "../utils/fileUtils";
 import {
   isCaptchaChallenge,
   makerworldCaptchaCooloffActive,
@@ -78,8 +79,11 @@ async function fetchCloudJson(url: string, bearerToken: string): Promise<{ statu
         }
       }
       return { status: res.status, data };
-    } catch {
-      return null;
+    } catch (err) {
+      if (err instanceof HttpError) throw err;
+      // A network failure, unlike a non-200 answer, is worth surfacing: falling back to page
+      // scraping would only fail there too, with a less honest error.
+      throw new HttpError(502, "Failed to reach the provider", undefined, true);
     } finally {
       clearTimeout(timeout);
     }

@@ -1,9 +1,15 @@
 // Typed runtime messages between the content script/popup and the background. Replies use a
 // `{ ok, data } | { ok: false, error }` envelope: `send` returns it, `request` throws on error.
 
-import type { Print } from "./api";
+import type { Print, QueueImportResult } from "./api";
 
-export type ExtensionState = { configured: boolean; disabled: boolean; instanceUrl: string; email: string };
+export type ExtensionState = {
+  configured: boolean;
+  disabled: boolean;
+  sendToQueue: boolean;
+  instanceUrl: string;
+  email: string;
+};
 
 export type RecentImport = {
   printId: string;
@@ -30,6 +36,13 @@ export type ImportSinglePayload = {
   title?: string | null;
 };
 
+export type QueueImportPayload = {
+  url: string;
+  collectionId?: string | null;
+  scope?: "url" | "designer" | "all";
+  title?: string | null;
+};
+
 export type MakerworldJob = {
   tabId: number;
   originalUrl: string;
@@ -49,11 +62,13 @@ export type BackgroundMessages = {
   GET_STATE: { payload: void; result: ExtensionState };
   SAVE_CONFIG: { payload: { instanceUrl: string; email: string; password: string }; result: null };
   SET_DISABLED: { payload: { disabled: boolean }; result: null };
+  SET_SEND_TO_QUEUE: { payload: { sendToQueue: boolean }; result: null };
   GET_RECENT_IMPORTS: { payload: void; result: RecentImport[] };
   OPEN_SETUP: { payload: void; result: "popup" | "tab" };
   SET_TAB_ICON_STATE: { payload: { active: boolean }; result: null };
   API_CALL: { payload: ApiCallPayload; result: unknown };
   IMPORT_SINGLE: { payload: ImportSinglePayload; result: Print | null };
+  QUEUE_IMPORT: { payload: QueueImportPayload; result: QueueImportResult };
   START_MAKERWORLD_COLLECTION_JOB: {
     payload: { urls: string[]; collectionId: string | null; originalUrl: string };
     result: null;

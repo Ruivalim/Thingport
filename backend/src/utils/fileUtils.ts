@@ -39,10 +39,13 @@ export class HttpError extends Error {
   status: number;
   // For the rare case the frontend must branch on why a request failed, e.g. EMAIL_NOT_VERIFIED.
   code?: string;
-  constructor(status: number, message: string, code?: string) {
+  // Set when the failure is worth trying again (the network, not the provider, said no).
+  transient?: boolean;
+  constructor(status: number, message: string, code?: string, transient?: boolean) {
     super(message);
     this.status = status;
     this.code = code;
+    this.transient = transient;
   }
 }
 

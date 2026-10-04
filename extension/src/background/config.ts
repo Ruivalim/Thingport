@@ -17,6 +17,7 @@ export async function getState(): Promise<ExtensionState> {
   return {
     configured: isConfigured(config),
     disabled: Boolean(config.disabled),
+    sendToQueue: Boolean(config.sendToQueue),
     instanceUrl: config.instanceUrl || "",
     email: config.email || "",
   };
@@ -41,5 +42,10 @@ export async function saveConfig({
 
 export async function setDisabled(disabled: boolean): Promise<null> {
   await chrome.storage.local.set({ disabled: Boolean(disabled) });
+  return null;
+}
+
+export async function setSendToQueue(sendToQueue: boolean): Promise<null> {
+  await chrome.storage.local.set({ sendToQueue: Boolean(sendToQueue) });
   return null;
 }

@@ -1,5 +1,5 @@
-import type { ImportJob, Print } from "../shared/api";
-import type { ImportSinglePayload } from "../shared/messages";
+import type { ImportJob, Print, QueueImportResult } from "../shared/api";
+import type { ImportSinglePayload, QueueImportPayload } from "../shared/messages";
 import { apiCall } from "./api";
 import { recordRecentImport } from "./recentImports";
 
@@ -50,4 +50,15 @@ export async function importSingle({
     await recordRecentImport(print, title ?? null).catch(() => undefined);
   }
   return print;
+}
+
+/** "Send to queue": nothing is fetched now; the link waits, paused, until it's started from the
+ *  instance's Administration > Import queue, which then imports it with the panel's choices. */
+export async function queueImport({ url, collectionId, scope, title }: QueueImportPayload): Promise<QueueImportResult> {
+  return apiCall<QueueImportResult>("POST", "/import/queue", {
+    url,
+    collection_id: collectionId ?? null,
+    scope: scope ?? "url",
+    title: title ?? null,
+  });
 }

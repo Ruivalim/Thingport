@@ -9,6 +9,8 @@ export type ImportContext = {
   instanceUrl: string;
   classification: Classification;
   library: LibraryState | null;
+  /** Imports go to the instance's paused import queue (the popup's "Send to queue"). */
+  sendToQueue: boolean;
   title?: string | null;
 };
 

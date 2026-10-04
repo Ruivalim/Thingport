@@ -10,6 +10,7 @@ export const els = {
   editInstanceBtn: byId<HTMLButtonElement>("edit-instance-btn"),
   configuredView: byId("configured-view"),
   enabledSwitch: byId<HTMLInputElement>("enabled-switch"),
+  queueSwitch: byId<HTMLInputElement>("queue-switch"),
   recentSection: byId("recent-section"),
   recentGrid: byId("recent-grid"),
   configuredError: byId("configured-error"),

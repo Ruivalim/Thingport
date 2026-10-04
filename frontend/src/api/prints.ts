@@ -92,6 +92,19 @@ export type UploadPrintsResult = {
   prints: Print[];
 };
 
+export type ReimportResult = {
+  source_url: string;
+  title_filled: boolean;
+  notes_filled: boolean;
+  tags_added: string[];
+  creator_filled: boolean;
+  author_linked: boolean;
+  category_filled: boolean;
+  files_added: number;
+  files_already_present: number;
+  images_added: number;
+};
+
 export type PrintSortMode = "newest" | "popular" | "downloads";
 
 /** Filters combine with AND. */
@@ -352,6 +365,23 @@ export const printsApi = {
     if (res.status === 401) throw new UnauthorizedError();
     if (!res.ok) {
       throw new Error(await readErrorMessage(res, "Metadata update failed"));
+    }
+    return res.json();
+  },
+
+  /** Refreshes a model from its source; only empty fields are filled, never an edit. */
+  reimport: async (
+    id: string,
+    payload: { metadata: boolean; files: boolean; images: boolean },
+  ): Promise<ReimportResult> => {
+    const res = await fetch(`${apiBase()}/print/${id}/reimport`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) {
+      throw new Error(await readErrorMessage(res, "Update from source failed"));
     }
     return res.json();
   },

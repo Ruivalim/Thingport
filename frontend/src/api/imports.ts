@@ -27,10 +27,11 @@ export type ImportCollectionEntriesResult = {
   entries: ImportCollectionEntry[];
 };
 
-export type ImportJobType = "COLLECTION" | "ZIP" | "PROFILES";
+export type ImportJobType = "COLLECTION" | "ZIP" | "PROFILES" | "LINKS";
 
 export type MakerworldProfileScope = "url" | "designer" | "all";
-export type ImportJobStatus = "RUNNING" | "DONE" | "ERROR";
+// PAUSED: a link queue waiting to be started from the admin import queue.
+export type ImportJobStatus = "RUNNING" | "DONE" | "ERROR" | "PAUSED";
 
 /** Polled by ImportJobContext until status leaves RUNNING. */
 export type ImportJob = {
@@ -49,6 +50,19 @@ export type ImportJob = {
   result_collection_id: string | null;
   // Set when the job created exactly one Print, so the UI can open it.
   result_print_id: string | null;
+};
+
+/** One queued link of a LINKS job. Polled alongside the job to show the queue's detail. */
+export type ImportJobItem = {
+  id: string;
+  url: string;
+  status: "PENDING" | "RUNNING" | "DONE" | "FAILED";
+  attempts: number;
+  error_message: string | null;
+  /** Set on links sent from the extension's "send to queue". */
+  title: string | null;
+  collection_id: string | null;
+  scope: MakerworldProfileScope | null;
 };
 
 type ImportLinkPayload = {
@@ -164,6 +178,32 @@ export const importsApi = {
     });
     if (res.status === 401) throw new UnauthorizedError();
     if (!res.ok) throw new Error(await readErrorMessage(res, "Import failed"));
+    return res.json();
+  },
+
+  /** Returns immediately; ImportJobContext polls the job. A pasted list of links, imported one at
+   *  a time; what fails can be rerun with retryImportJob. */
+  fromLinks: async (
+    payload: Omit<ImportLinkPayload, "url"> & { urls: string[]; scope?: MakerworldProfileScope },
+  ): Promise<{ job_id: string }> => {
+    const res = await fetch(`${apiBase()}/import/links`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Import failed"));
+    return res.json();
+  },
+
+  /** Reruns just a link-list job's failed links. */
+  retryImportJob: async (jobId: string): Promise<{ job_id: string }> => {
+    const res = await fetch(`${apiBase()}/import/jobs/${jobId}/retry`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Retry failed"));
     return res.json();
   },
 
@@ -298,6 +338,14 @@ export const importsApi = {
     const res = await fetch(`${apiBase()}/import/jobs/${jobId}`, { headers: authHeaders() });
     if (res.status === 401) throw new UnauthorizedError();
     if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to load import progress"));
+    return res.json();
+  },
+
+  /** Per-link state of a queue job, for the progress bar's detail view. */
+  getImportJobItems: async (jobId: string): Promise<ImportJobItem[]> => {
+    const res = await fetch(`${apiBase()}/import/jobs/${jobId}/items`, { headers: authHeaders() });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to load the import queue"));
     return res.json();
   },
 };

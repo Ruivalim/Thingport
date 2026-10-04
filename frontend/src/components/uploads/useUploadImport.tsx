@@ -59,6 +59,7 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
     startThingiverseCollectionImport,
     startPrintablesCollectionImport,
     startMakerworldProfilesImport,
+    startLinksImport,
   } = useImportJob();
   const isBusy = uploading || importing || zipPrompt.isOpen || collectionPrompt.isOpen || importModePrompt.isOpen;
 
@@ -409,6 +410,34 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
     }
   };
 
+  /** Several pasted links run as one queue job, with per-link retries for whatever fails. */
+  const submitImportMany = async (
+    urls: string[],
+    captcha?: CaptchaAnswer | null,
+    profileScope: MakerworldProfileScope = "url",
+  ) => {
+    if (!urls.length) return;
+    setImporting(true);
+    try {
+      await startLinksImport({
+        urls,
+        scope: profileScope,
+        category_id: categoryId || undefined,
+        makerworld_cookie: (makerworldCookie || "").trim() || undefined,
+        ...captcha,
+      });
+    } catch (err) {
+      if (err instanceof UnauthorizedError) {
+        onUnauthorized?.();
+        return;
+      }
+      console.error("Import failed for", urls, err);
+      alert(err instanceof Error ? err.message : t("uploadBar.importFailed"));
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return {
     fileInput,
     folderInput,
@@ -418,6 +447,7 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
     triggerUpload,
     triggerFolderUpload,
     submitImport,
+    submitImportMany,
     modals: (
       <>
         {zipPrompt.modal}

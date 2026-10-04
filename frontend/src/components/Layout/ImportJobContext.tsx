@@ -10,6 +10,7 @@ type StartThingiverseLikesImportPayload = Parameters<typeof importsApi.fromThing
 type StartThingiverseCollectionImportPayload = Parameters<typeof importsApi.fromThingiverseCollection>[0];
 type StartPrintablesCollectionImportPayload = Parameters<typeof importsApi.fromPrintablesCollection>[0];
 type StartMakerworldProfilesImportPayload = Parameters<typeof importsApi.fromMakerworldProfiles>[0];
+type StartLinksImportPayload = Parameters<typeof importsApi.fromLinks>[0];
 
 type ImportJobContextValue = {
   /** Non-null while a batch import runs; drives the progress bar and disables importing. */
@@ -21,6 +22,10 @@ type ImportJobContextValue = {
   startThingiverseCollectionImport: (payload: StartThingiverseCollectionImportPayload) => Promise<void>;
   startPrintablesCollectionImport: (payload: StartPrintablesCollectionImportPayload) => Promise<void>;
   startMakerworldProfilesImport: (payload: StartMakerworldProfilesImportPayload) => Promise<void>;
+  startLinksImport: (payload: StartLinksImportPayload) => Promise<void>;
+  /** Reruns the links that failed on the finished job shown in the progress bar. */
+  retryJob: () => Promise<void>;
+  dismissJob: () => void;
 };
 
 const ImportJobContext = createContext<ImportJobContextValue | null>(null);
@@ -58,8 +63,18 @@ export function ImportJobProvider({
           return;
         }
         stopPolling();
-        setActiveJob(null);
+        // Paused from the admin import queue: nothing finished, so don't navigate anywhere.
+        if (job.status === "PAUSED") {
+          setActiveJob(null);
+          return;
+        }
         onJobCompletedRef.current?.();
+        // A link queue with failures stays on screen so they can be retried or dismissed.
+        if (job.type === "LINKS" && (job.failed_count > 0 || job.status === "ERROR")) {
+          setActiveJob(job);
+          return;
+        }
+        setActiveJob(null);
         // One resulting print opens its details page; more go to the models grid; none stays put.
         if (job.status === "DONE") {
           if (job.result_print_id) {
@@ -164,6 +179,29 @@ export function ImportJobProvider({
     [startPolling],
   );
 
+  const startLinksImport = useCallback(
+    async (payload: StartLinksImportPayload) => {
+      const { job_id } = await importsApi.fromLinks(payload);
+      const job = await importsApi.getImportJob(job_id);
+      setActiveJob(job);
+      startPolling(job_id);
+    },
+    [startPolling],
+  );
+
+  const retryJob = useCallback(async () => {
+    if (!activeJob) return;
+    const { job_id } = await importsApi.retryImportJob(activeJob.id);
+    const job = await importsApi.getImportJob(job_id);
+    setActiveJob(job);
+    startPolling(job_id);
+  }, [activeJob, startPolling]);
+
+  const dismissJob = useCallback(() => {
+    stopPolling();
+    setActiveJob(null);
+  }, [stopPolling]);
+
   const value = useMemo(
     () => ({
       activeJob,
@@ -174,6 +212,9 @@ export function ImportJobProvider({
       startThingiverseCollectionImport,
       startPrintablesCollectionImport,
       startMakerworldProfilesImport,
+      startLinksImport,
+      retryJob,
+      dismissJob,
     }),
     [
       activeJob,
@@ -183,6 +224,9 @@ export function ImportJobProvider({
       startThingiverseCollectionImport,
       startPrintablesCollectionImport,
       startMakerworldProfilesImport,
+      startLinksImport,
+      retryJob,
+      dismissJob,
     ],
   );
 

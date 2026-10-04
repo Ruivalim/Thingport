@@ -217,7 +217,10 @@
       "profilesDesigner": "All designer print profiles",
       "profilesAll": "Designer and community print profiles",
       "profilesHelpUrl": "The profile the link points to, or the model's default one. Other profiles can be added later.",
-      "profilesHelpMany": "Each profile becomes its own file on the model. They're imported one at a time in the background, which can take a few minutes."
+      "profilesHelpMany": "Each profile becomes its own file on the model. They're imported one at a time in the background, which can take a few minutes.",
+      "linksPlaceholder": "Paste model links, one per line. Several links are imported as a queue.",
+      "linksDetected": "{{count}} links will be imported one at a time as a background job. Failed links can be retried when it finishes.",
+      "batchCollectionsBlocked": "Collection links (likes, collections) can only be imported one at a time. Paste model links here instead, or import a collection on its own."
     },
     "userMenu": {
       "theme": "Theme",
@@ -256,7 +259,19 @@
     "importProgress": {
       "starting": "Starting import…",
       "label": "Importing… {{processed}} of {{total}}",
-      "tooltip": "{{imported}} imported, {{alreadyInLibrary}} already in your library, {{failedCount}} failed"
+      "tooltip": "{{imported}} imported, {{alreadyInLibrary}} already in your library, {{failedCount}} failed. Click to see the queue.",
+      "done": "Imported {{imported}}, {{alreadyInLibrary}} already in your library. Click to see the queue.",
+      "doneWithFailures": "Imported {{imported}}, {{alreadyInLibrary}} already in your library, {{failedCount}} failed. Click to see which and why.",
+      "tooltipFailed": "{{failedCount}} links failed. Click to see which ones and why.",
+      "retryFailed": "Retry failed",
+      "dismiss": "Dismiss",
+      "queueTitle": "Import queue",
+      "queueEmpty": "No links in this queue.",
+      "queueClose": "Close",
+      "itemPending": "waiting",
+      "itemRunning": "importing",
+      "itemDone": "imported",
+      "itemFailed": "failed"
     },
     "dashboard": {
       "loadError": "Failed to load your dashboard.",
@@ -614,6 +629,77 @@
           "helpOff": "Off: previews always show a model's full detail.",
           "loadFailed": "Failed to load rendering settings.",
           "saveFailed": "Failed to save rendering settings."
+        }
+      },
+      "importQueue": {
+        "heading": "Import queue",
+        "loadFailed": "Unable to load the import queue.",
+        "empty": "Nothing in the queue. Links sent from Thingport Grab with \"Send to queue\" on wait here until you start them.",
+        "emptyFilter": "No imports match this filter.",
+        "startAll": "Start all ({{count}})",
+        "retryAll": "Retry all failed ({{count}})",
+        "pauseAll": "Pause all",
+        "clearFinished": "Clear finished",
+        "startedAll": "Started {{count}} import(s). They run one at a time.",
+        "retriedAll": "Retrying {{count}} import(s), one at a time.",
+        "cleared": "Cleared {{count}} finished import(s).",
+        "bulkRunning": "Running imports one at a time, {{count}} more waiting.",
+        "filter": {
+          "all": "All",
+          "paused": "Paused",
+          "running": "Running",
+          "failed": "With failures",
+          "done": "Finished"
+        },
+        "columnSource": "Import",
+        "columnUser": "User",
+        "columnStatus": "Status",
+        "columnProgress": "Progress",
+        "columnCreated": "Created",
+        "columnActions": "Actions",
+        "progress": "{{processed}} of {{total}}, {{imported}} imported, {{failed}} failed",
+        "type": {
+          "LINKS": "Links",
+          "COLLECTION": "Collection",
+          "ZIP": "ZIP",
+          "PROFILES": "Print profiles"
+        },
+        "status": {
+          "paused": "Paused",
+          "pausing": "Pausing",
+          "running": "Running",
+          "stalled": "Stalled",
+          "error": "Error",
+          "done": "Done",
+          "doneWithFailures": "Done, with failures"
+        },
+        "statusHint": {
+          "paused": "Waiting to be started.",
+          "pausing": "Finishing the link it's on, then it stops.",
+          "running": "Importing now.",
+          "stalled": "Cut off by a restart. Pause it, then start it again to finish.",
+          "error": "The import failed.",
+          "done": "Every link imported.",
+          "doneWithFailures": "Finished, but some links failed. Retry them once the cause is fixed."
+        },
+        "start": "Start",
+        "pause": "Pause after the current link",
+        "retry": "Retry {{count}} failed",
+        "delete": "Delete",
+        "deleteTitle": "Delete this import?",
+        "deleteMessage": "Its {{count}} link(s) are removed from the queue. Models already imported stay in the library.",
+        "showLinks": "Show links",
+        "hideLinks": "Hide links",
+        "removeLink": "Remove from queue",
+        "itemStatus": {
+          "PENDING": "waiting",
+          "RUNNING": "importing",
+          "DONE": "imported",
+          "FAILED": "failed"
+        },
+        "scope": {
+          "designer": "All designer print profiles",
+          "all": "Designer and community print profiles"
         }
       }
     },
@@ -1304,6 +1390,17 @@
       "confirmRemoveFromCollection": "Remove \"{{name}}\" from this collection?",
       "removeFromCollectionFailed": "Failed to remove from collection. Please try again.",
       "openInProvider": "Open in {{provider}}",
+      "reimport": "Update from source",
+      "reimportSource": "its source",
+      "reimportTitle": "Update from source",
+      "reimportHint": "Pulls what {{provider}} offers right now. Only empty fields are filled: an edit you made always wins, and tags are only added, never removed.",
+      "reimportMetadata": "Fill empty metadata (title, description, tags, author, category)",
+      "reimportFiles": "Add missing files (e.g. print profiles not on the model yet)",
+      "reimportImages": "Fill empty preview images",
+      "reimportSubmit": "Update",
+      "reimportDone": "Updated: {{filesAdded}} files added, {{imagesAdded}} images added, {{tagsAdded}} tags added.",
+      "reimportNothing": "Nothing new to add: the model already has everything the source offers.",
+      "reimportFailed": "Couldn't update from source. Please try again.",
       "openInSlicer": "Open in {{slicer}}",
       "openNormalizedInSlicer": "Open normalized in {{slicer}}",
       "normalizedInfo": "MakerWorld files are Bambu Studio projects, which {{slicer}} often opens without their colors or print settings. This opens a converted copy that keeps painted colors, filament colors, plates and the designer's settings (walls, layer height, infill, supports). Heads up: multi-part objects may be merged into one, per-object overrides and layer color changes are dropped, and you pick your own printer profile. The stored file isn't changed.",
