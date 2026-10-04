@@ -297,6 +297,20 @@ Bug reports and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md
 commit and pull request workflow, and [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for how to run
 Thingport locally with hot reload.
 
+### Honourable contributors
+
+<table>
+  <tr>
+    <td align="center" width="140">
+      <a href="https://github.com/Ruivalim"><img src="https://avatars.githubusercontent.com/u/15039284?v=4&s=160" width="80" height="80" alt="Rui Valim"></a><br>
+      <sub><b>Ruivalim</b></sub><br>
+      <a href="https://github.com/Ruivalim"><img src="docs/assets/icons/github.svg" width="16" height="16" alt="GitHub"></a>&nbsp;
+      <a href="https://ruivalim.com.br"><img src="docs/assets/icons/website.svg" width="16" height="16" alt="Website"></a>&nbsp;
+      <a href="https://www.linkedin.com/in/rui-valim/"><img src="docs/assets/icons/linkedin.svg" width="16" height="16" alt="LinkedIn"></a>
+    </td>
+  </tr>
+</table>
+
 ## Support
 
 If Thingport is useful to you, consider supporting its development:
