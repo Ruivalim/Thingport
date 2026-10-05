@@ -15,7 +15,7 @@ import { api, escapeHtml } from "../runtime";
 import { onPanelAction, panelQuery, panelQueryAll, renderPanel } from "../shell";
 import { collectionPickerHtml, selectedCollectionId } from "./collectionPicker";
 import { errorHtml, statusHtml, successHtml } from "./results";
-import { checkingLinkPhrases, renderFunStatus } from "./funStatus";
+import { checkingLinkPhrases, importingPhrases, renderFunStatus, updatingPhrases, zipFilesPhrases } from "./funStatus";
 
 /** Model name for pages that skip /import/inspect. The <h1> first: Thingiverse's og:title goes
  *  stale on SPA navigation and Printables' has a suffix. */
@@ -154,7 +154,7 @@ function addProfileHtml(profilesPicker: string): string {
 async function runReimport(): Promise<void> {
   const { library, instanceUrl } = ctx();
   if (!library?.printId) return;
-  renderPanel(statusHtml("Updating model in Thingport…"));
+  renderFunStatus(updatingPhrases(ctx().classification.provider));
   try {
     await api("POST", `/print/${library.printId}/reimport`, { metadata: true, files: true, images: true });
     const link = `${instanceUrl}/models/${library.printId}`;
@@ -165,7 +165,7 @@ async function runReimport(): Promise<void> {
 }
 
 async function loadZipEntries(): Promise<void> {
-  renderPanel(statusHtml("Loading files…"));
+  renderFunStatus(zipFilesPhrases);
   let result: ZipEntriesResult;
   try {
     result = await api<ZipEntriesResult>("POST", "/import/zip/entries", { url: ctx().url });
@@ -204,7 +204,7 @@ async function runDirectImport(opts?: { entries?: string[] }): Promise<void> {
     return;
   }
   const { url, instanceUrl, classification, title } = ctx();
-  renderPanel(statusHtml("Importing…"));
+  renderFunStatus(importingPhrases(classification.provider));
   const resolved =
     classification.provider === "makerworld" && classification.type === "model"
       ? await resolveMakerworldDownloadUrl(url).catch(() => null)

@@ -6,6 +6,7 @@ import { ctx } from "../context";
 import { api, escapeHtml, sleep } from "../runtime";
 import { isPanelMounted, onPanelAction, panelQueryAll, renderPanel } from "../shell";
 import { errorHtml, statusHtml, successHtml } from "./results";
+import { loadingModelsPhrases, renderFunStatus } from "./funStatus";
 
 type BatchKey = "thingiverse:likes" | "thingiverse:collection" | "printables:collection";
 
@@ -35,7 +36,7 @@ function endpoints() {
 }
 
 export async function loadBatchEntries(): Promise<void> {
-  renderPanel(statusHtml("Loading models…"));
+  renderFunStatus(loadingModelsPhrases(ctx().classification.provider));
   let result: BatchEntriesResult;
   try {
     result = await api<BatchEntriesResult>("POST", endpoints().entries, { url: ctx().url });

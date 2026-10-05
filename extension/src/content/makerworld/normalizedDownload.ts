@@ -6,6 +6,7 @@ import { createIcon } from "../../shared/icon";
 import { NORMALIZE_3MF_SLICERS } from "../../shared/slicers";
 import { api } from "../runtime";
 import css from "../styles/normalized.scss?inline";
+import { gettingFilePhrases, normalizingPhrases, rotatePhrases } from "../panels/funStatus";
 import { resolveMakerworldDownloadUrl } from "./downloadResolver";
 import { DOWNLOAD_3MF, DOWNLOAD_OTHER, DOWNLOAD_STL, OPEN_IN_APP } from "./labels";
 import { normalizeBambu3mf } from "./normalize";
@@ -110,9 +111,9 @@ function saveFile(bytes: Uint8Array, filename: string): void {
 }
 
 async function downloadNormalized(pageUrl: string, onProgress: (text: string) => void): Promise<void> {
-  onProgress("Getting file…");
+  let stopRotation = rotatePhrases(gettingFilePhrases, onProgress);
   // The normalizer reads the 3MF project, never the raw-files zip.
-  const resolved = await resolveMakerworldDownloadUrl(pageUrl, { profileOnly: true });
+  const resolved = await resolveMakerworldDownloadUrl(pageUrl, { profileOnly: true }).finally(stopRotation);
   if (!resolved) {
     throw new Error(
       "Couldn't get this model's file from MakerWorld. Make sure you're signed in to MakerWorld, then try again.",
@@ -126,10 +127,10 @@ async function downloadNormalized(pageUrl: string, onProgress: (text: string) =>
     throw tooBig(declared);
   }
   const input = await readBody(res, declared, onProgress);
-  onProgress("Normalizing…");
+  stopRotation = rotatePhrases(normalizingPhrases, onProgress);
   let output: Uint8Array;
   try {
-    output = await normalizeBambu3mf(input);
+    output = await normalizeBambu3mf(input).finally(stopRotation);
   } catch (err) {
     throw new Error("Couldn't normalize this file: it doesn't look like a 3MF project MakerWorld's Download gives.", {
       cause: err,
