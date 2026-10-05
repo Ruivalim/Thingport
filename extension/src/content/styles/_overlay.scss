@@ -39,8 +39,26 @@
     font-weight: 700;
   }
 
-  &__count {
+  &__count,
+  &__text {
     color: t.c("text-muted");
+  }
+
+  &__text {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  // .tg-btn's `display` outranks the browser's `[hidden] { display: none }`, which kept "Import next"
+  // showing from the start instead of after JOB_STUCK_REVEAL_MS.
+  [hidden] {
+    display: none;
+  }
+
+  // Leaves the page usable underneath (see mountPausedJobOverlay).
+  &--docked {
+    inset: auto 16px 16px auto;
+    background: none;
   }
 }
 

@@ -10,6 +10,7 @@ import {
   IMPORT_USER_AGENT,
 } from "../config";
 import { isJsonContentType } from "../utils/fileUtils";
+import { isCaptchaChallenge, MakerworldCaptchaError } from "./makerworldCaptcha";
 import {
   extractJsonFromBrowserBody,
   fetchViaFlaresolverr,
@@ -591,6 +592,14 @@ function makerworldModelIdFromUrl(url: string): string | null {
   }
 }
 
+/** A CAPTCHA reply (HTTP 418) is thrown, not treated as "no URL": the fallbacks after it would only
+ *  hit the same block and end in a misleading "No downloadable model file found". */
+function makerworldDownloadUrlOrCaptcha(data: unknown, apiUrl: string): string | null {
+  const url = data ? extractDownloadUrlFromResponse(data, apiUrl) : null;
+  if (!url && isCaptchaChallenge(data)) throw new MakerworldCaptchaError();
+  return url;
+}
+
 async function fetchMakerworldInstanceDownloadUrl(
   instanceId: string,
   pageUrl: string,
@@ -598,7 +607,7 @@ async function fetchMakerworldInstanceDownloadUrl(
 ): Promise<string | null> {
   const apiUrl = `https://makerworld.com/api/v1/design-service/instance/${instanceId}/f3mf?type=download&fileType=3mfstl`;
   const data = await fetchJsonFromUrl(apiUrl, pageUrl, makerworldApiHeaders(pageUrl, null, cookie));
-  return data ? extractDownloadUrlFromResponse(data, apiUrl) : null;
+  return makerworldDownloadUrlOrCaptcha(data, apiUrl);
 }
 
 async function fetchMakerworldModelDownloadUrl(
@@ -609,7 +618,7 @@ async function fetchMakerworldModelDownloadUrl(
 ): Promise<string | null> {
   const apiUrl = `https://makerworld.com/api/v1/models/${modelId}/download`;
   const data = await fetchJsonFromUrl(apiUrl, pageUrl, makerworldApiHeaders(pageUrl, nonce, cookie));
-  return data ? extractDownloadUrlFromResponse(data, apiUrl) : null;
+  return makerworldDownloadUrlOrCaptcha(data, apiUrl);
 }
 
 /** `requestedInstanceId` is passed separately because `pageUrl` never carries the hash. Every

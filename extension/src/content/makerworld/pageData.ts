@@ -52,13 +52,8 @@ export function readMakerworldDesignForPage(pageUrl: string): MakerworldPage | n
 
 const PAGE_FETCH_TIMEOUT_MS = 10000;
 
-/** Fetches the model's own page once when the tab's data is stale (the usual case after clicking
- *  through MakerWorld). */
-export async function loadMakerworldDesignForPage(pageUrl: string): Promise<MakerworldPage | null> {
-  const current = readMakerworldDesignForPage(pageUrl);
-  if (current) return current;
-  const expected = parseMakerworldModelUrl(pageUrl);
-  if (!expected) return null;
+/** A page's own __NEXT_DATA__, fetched fresh. */
+async function fetchNextData(pageUrl: string): Promise<unknown> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), PAGE_FETCH_TIMEOUT_MS);
   try {
@@ -66,15 +61,43 @@ export async function loadMakerworldDesignForPage(pageUrl: string): Promise<Make
     if (!res.ok) return null;
     const html = await res.text();
     const el = new DOMParser().parseFromString(html, "text/html").getElementById("__NEXT_DATA__");
-    const found = el?.textContent ? designFromNextData(JSON.parse(el.textContent), expected.designId) : null;
-    if (!found) return null;
-    fetchedDesigns.set(expected.designId, found);
-    return { ...found, requestedInstanceId: expected.requestedInstanceId };
+    return el?.textContent ? JSON.parse(el.textContent) : null;
   } catch {
     return null;
   } finally {
     clearTimeout(timeout);
   }
+}
+
+/** Fetches the model's own page once when the tab's data is stale (the usual case after clicking
+ *  through MakerWorld). */
+export async function loadMakerworldDesignForPage(pageUrl: string): Promise<MakerworldPage | null> {
+  const current = readMakerworldDesignForPage(pageUrl);
+  if (current) return current;
+  const expected = parseMakerworldModelUrl(pageUrl);
+  if (!expected) return null;
+  const found = designFromNextData(await fetchNextData(pageUrl), expected.designId);
+  if (!found) return null;
+  fetchedDesigns.set(expected.designId, found);
+  return { ...found, requestedInstanceId: expected.requestedInstanceId };
+}
+
+function collectionTotalFromNextData(nextData: unknown, collectionId: string): number | null {
+  const favoriteId = getPath(nextData, "props", "pageProps", "favorite", "id");
+  if (favoriteId == null || String(favoriteId) !== collectionId) return null;
+  const total = getPath(nextData, "props", "pageProps", "favoriteDesigns", "total");
+  return typeof total === "number" && total >= 0 ? total : null;
+}
+
+/** How many models the collection page will list (hidden ones excluded), from the page's own data;
+ *  the page itself only renders 20 at a time. Null if it can't be read. */
+export async function loadMakerworldCollectionTotal(pageUrl: string): Promise<number | null> {
+  const collectionId = pageUrl.match(/\/collections\/(\d+)/)?.[1];
+  if (!collectionId) return null;
+  return (
+    collectionTotalFromNextData(readNextData(), collectionId) ??
+    collectionTotalFromNextData(await fetchNextData(pageUrl), collectionId)
+  );
 }
 
 /** The requested profile (if the design has it), then the default, then the first. */

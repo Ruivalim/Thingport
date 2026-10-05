@@ -17,8 +17,9 @@ export function isCaptchaChallenge(data: unknown): boolean {
 
 export const MAKERWORLD_CAPTCHA_MESSAGE =
   "MakerWorld is challenging this account with a CAPTCHA before it will hand over a download link. " +
-  "This can't be solved automatically. Open the model on makerworld.com and click Download there " +
-  "once -- that usually clears it -- then retry the import.";
+  "This can't be solved automatically. Open the model on makerworld.com, click the arrow next to " +
+  '"Open in Bambu Studio", choose "Download 3MF" and solve the puzzle -- that usually clears it -- ' +
+  "then retry the import.";
 
 // The block is IP-scoped and clears on its own after 1-4 hours; retrying into it extends it.
 // The cooloff only needs to stop a batch import hammering a known block, so 2h is enough.

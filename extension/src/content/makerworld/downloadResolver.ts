@@ -1,10 +1,13 @@
 // Resolves the MakerWorld file URL in the page instead of the backend, whose resolution calls are
 // what trip MakerWorld's account-wide CAPTCHA. Same-origin fetches carry the real session and look
-// like the page's own traffic. Returns null on any failure so the backend can resolve it instead.
+// like the page's own traffic. Returns null on any failure so the backend can resolve it instead,
+// except a CAPTCHA, which is thrown: the backend would only hit the same wall.
 
 import type { ResolvedDownload } from "../../shared/messages";
 import { send } from "../../shared/messages";
 import { parseMakerworldModelUrl } from "../../shared/urls";
+import { sleep } from "../runtime";
+import { DOWNLOAD_3MF, DOWNLOAD_ALL, DOWNLOAD_OTHER, DOWNLOAD_STL, OPEN_IN_APP } from "./labels";
 import {
   loadMakerworldDesignForPage,
   makerworldDesignForImport,
@@ -39,6 +42,27 @@ function extractDownloadUrl(data: unknown): string | null {
   return null;
 }
 
+export const MAKERWORLD_CAPTCHA_MESSAGE =
+  'MakerWorld is asking for a CAPTCHA ("confirm you are not a robot"). Open any model on MakerWorld, ' +
+  'click the arrow next to "Open in Bambu Studio", choose "Download 3MF" and solve the puzzle, then ' +
+  "retry the import.";
+
+/** MakerWorld's anti-bot layer answers with HTTP 418 (sometimes 200) and a body naming a captcha.
+ *  Thrown rather than returned as null so it isn't reported as "no file found". */
+export class MakerworldCaptchaError extends Error {
+  constructor() {
+    super(MAKERWORLD_CAPTCHA_MESSAGE);
+    this.name = "MakerworldCaptchaError";
+  }
+}
+
+/** Only asked of a body without a download URL, whose filename could otherwise say "robot". */
+function looksLikeCaptcha(data: unknown): boolean {
+  if (!data || typeof data !== "object") return false;
+  const text = JSON.stringify(data).toLowerCase();
+  return text.includes("captcha") || text.includes("robot");
+}
+
 async function fetchMakerworldApiJson(url: string, nonce: string | null): Promise<unknown> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), MAKERWORLD_API_FETCH_TIMEOUT_MS);
@@ -46,35 +70,91 @@ async function fetchMakerworldApiJson(url: string, nonce: string | null): Promis
     const headers: Record<string, string> = { Accept: "application/json", ...MAKERWORLD_CLIENT_HEADERS };
     if (nonce) headers["X-Nonce"] = nonce;
     const res = await fetch(url, { headers, signal: controller.signal });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
+    if (res.status === 418) throw new MakerworldCaptchaError();
+    const data: unknown = await res.json();
+    if (extractDownloadUrl(data)) return data;
+    if (looksLikeCaptcha(data)) throw new MakerworldCaptchaError();
+    return res.ok ? data : null;
+  } catch (err) {
+    if (err instanceof MakerworldCaptchaError) throw err;
     return null;
   } finally {
     clearTimeout(timeout);
   }
 }
 
-/** Matched by text (class names are build hashes), visible elements only. */
-function findDownloadButton(): HTMLElement | null {
-  for (const el of document.querySelectorAll<HTMLElement>("button, a")) {
-    if (!/^download$/i.test((el.textContent || "").trim())) continue;
-    if (el.offsetParent === null) continue; // hidden (display:none or detached)
-    return el;
+const MENU_WAIT_MS = 2000;
+// The raw-files dialog loads its file list before showing "Download all".
+const DIALOG_WAIT_MS = 4000;
+
+/** Polls until `find` returns something or `ms` passes; menus and dialogs render asynchronously. */
+async function waitFor<T>(find: () => T | null, ms: number): Promise<T | null> {
+  for (const end = Date.now() + ms; ; await sleep(150)) {
+    const found = find();
+    if (found || Date.now() >= end) return found;
+  }
+}
+
+/** The visible element holding exactly one of `labels` as its text. */
+function findByLabel(labels: Set<string>): HTMLElement | null {
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const el = node.parentElement;
+    if (el && el.offsetParent !== null && labels.has((node.textContent || "").trim())) return el;
   }
   return null;
 }
 
-/** Captures and cancels the download the real button starts (see background/downloadCapture.ts).
- *  Null means try the fallback. */
-async function captureViaRealClick(): Promise<string | null> {
-  const button = findDownloadButton();
-  if (!button) return null;
+/** The arrow beside "Open in Bambu Studio" (or Suite/Handy) that opens the download menu. */
+function findMenuArrow(): HTMLElement | null {
+  const label = findByLabel(OPEN_IN_APP);
+  if (!label) return null;
+  let el = label.parentElement;
+  for (let depth = 0; el && depth < 4; depth++, el = el.parentElement) {
+    const arrow = [...el.children].find((child) => !child.contains(label) && child.querySelector("svg"));
+    if (arrow) return arrow as HTMLElement;
+  }
+  return null;
+}
+
+async function armCapture(): Promise<boolean> {
   const armed = await send("ARM_DOWNLOAD_CAPTURE");
-  if (!armed || !armed.ok) return null;
-  button.click();
+  return Boolean(armed && armed.ok);
+}
+
+/** Escape, sent where MakerWorld's dialog listens: it traps focus inside itself. */
+function closeFilesDialog(): void {
+  (document.activeElement ?? document.body).dispatchEvent(
+    new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+  );
+}
+
+/** Clicks through MakerWorld's own download UI the way a person would: "Download 3MF" (the
+ *  selected profile) from the menu under "Open in Bambu Studio", else the model's raw files (a
+ *  zip, via the dialog's "Download all"), else any other download item. The browser download that
+ *  starts is captured and cancelled (see background/downloadCapture.ts). Null means try the API
+ *  fallback -- also what a CAPTCHA looks like here, since MakerWorld shows it instead of
+ *  downloading. */
+async function captureViaRealClick(): Promise<{ url: string; isProfile: boolean } | null> {
+  const arrow = findMenuArrow();
+  arrow?.click();
+  const fileItem = () => findByLabel(DOWNLOAD_3MF) ?? findByLabel(DOWNLOAD_STL);
+  const item = (arrow ? await waitFor(fileItem, MENU_WAIT_MS) : fileItem()) ?? findByLabel(DOWNLOAD_OTHER);
+  if (!item) return null;
+  const isProfile = DOWNLOAD_3MF.has((item.textContent || "").trim());
+  if (!(await armCapture())) return null;
+  item.click();
+  if (!isProfile) {
+    // Raw-file items open a dialog listing the files instead of downloading.
+    const downloadAll = await waitFor(() => findByLabel(DOWNLOAD_ALL), DIALOG_WAIT_MS);
+    if (downloadAll) {
+      if (!(await armCapture())) return null;
+      downloadAll.click();
+    }
+  }
   const res = await send("AWAIT_DOWNLOAD_CAPTURE");
-  return res && res.ok ? res.data : null;
+  if (!isProfile) closeFilesDialog();
+  return res && res.ok && res.data ? { url: res.data, isProfile } : null;
 }
 
 /** The printer the profile was made for, which MakerWorld's own download request names. */
@@ -116,17 +196,23 @@ async function resolveFromPageApi(pageUrl: string): Promise<ResolvedDownload | n
 export async function resolveMakerworldDownloadUrl(pageUrl: string): Promise<ResolvedDownload | null> {
   const viaClick = await captureViaRealClick().catch(() => null);
   if (viaClick) {
-    // The button downloads the page's selected profile, which follows the URL hash.
+    // "Download 3MF" gives the page's selected profile, which follows the URL hash; the raw-files
+    // zip belongs to no profile.
     const page = readMakerworldDesignForPage(pageUrl);
-    if (!page)
-      return { downloadUrl: viaClick, instanceId: parseMakerworldModelUrl(pageUrl)?.requestedInstanceId ?? null };
-    return {
-      downloadUrl: viaClick,
-      instanceId: pickMakerworldInstanceId(page.design, page.requestedInstanceId),
-      design: makerworldDesignForImport(page.design),
-    };
+    const requested = parseMakerworldModelUrl(pageUrl)?.requestedInstanceId ?? null;
+    const instanceId = !viaClick.isProfile
+      ? null
+      : page
+        ? pickMakerworldInstanceId(page.design, page.requestedInstanceId)
+        : requested;
+    return page
+      ? { downloadUrl: viaClick.url, instanceId, design: makerworldDesignForImport(page.design) }
+      : { downloadUrl: viaClick.url, instanceId };
   }
-  return resolveFromPageApi(pageUrl).catch(() => null);
+  return resolveFromPageApi(pageUrl).catch((err) => {
+    if (err instanceof MakerworldCaptchaError) throw err;
+    return null;
+  });
 }
 
 /** The Download button only gives the selected profile, so other profiles resolve via the API. */

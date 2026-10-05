@@ -6,7 +6,15 @@ import { apiCall } from "./api";
 import { getState, saveConfig, setDisabled, setSendToQueue } from "./config";
 import { armDownloadCapture, awaitDownloadCapture } from "./downloadCapture";
 import { importSingle, queueImport } from "./importJobs";
-import { abortJob, advanceJob, dropJobIfForTab, forceAdvanceJob, getJobForTab, startJob } from "./makerworldJob";
+import {
+  abortJob,
+  advanceJob,
+  dropJobIfForTab,
+  forceAdvanceJob,
+  getJobForTab,
+  resumeJob,
+  startJob,
+} from "./makerworldJob";
 import { getRecentImports } from "./recentImports";
 import { openSetup } from "./setup";
 import { setTabIconState } from "./tabIcon";
@@ -30,6 +38,12 @@ listen<BackgroundMessages>({
   START_MAKERWORLD_COLLECTION_JOB: (payload, sender) => startJob(senderTabId(sender), payload),
   ABORT_MAKERWORLD_COLLECTION_JOB: (_payload, sender) => abortJob(senderTabId(sender)),
   FORCE_ADVANCE_MAKERWORLD_JOB: (_payload, sender) => forceAdvanceJob(senderTabId(sender)),
+  RESUME_MAKERWORLD_JOB: (_payload, sender) => resumeJob(senderTabId(sender)),
+  // Not awaited: the step runs for as long as the import takes.
+  MAKERWORLD_JOB_STEP_DUE: (_payload, sender) => {
+    void advanceJob(senderTabId(sender));
+    return null;
+  },
   ARM_DOWNLOAD_CAPTURE: () => armDownloadCapture(),
   AWAIT_DOWNLOAD_CAPTURE: () => awaitDownloadCapture(),
   GET_MAKERWORLD_JOB: (_payload, sender) => getJobForTab(sender.tab?.id),

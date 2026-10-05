@@ -19,40 +19,98 @@ function overlayHtml(title: string, countHtml: string, extra = ""): string {
   `;
 }
 
-export function mountJobOverlay(root: ShadowRoot, job: MakerworldJob): void {
-  const overlay = document.createElement("div");
-  overlay.className = "tg-overlay";
-  const percent = job.total ? Math.round((job.imported / job.total) * 100) : 0;
-  overlay.innerHTML = overlayHtml(
-    "Importing from MakerWorld…",
-    `<div class="tg-overlay__count">${job.imported} / ${job.total} models imported (${percent}%)</div>
-     <div class="tg-progress"><div class="tg-progress__bar" style="width:${percent}%"></div></div>`,
-    `<button class="tg-btn tg-btn--danger" type="button" data-action="abort">Abort</button>
-     <button class="tg-btn tg-btn--secondary" type="button" data-action="next" hidden>Import next</button>`,
-  );
-  fillIcons(overlay);
-  root.appendChild(overlay);
+function formatWait(ms: number): string {
+  const seconds = Math.max(0, Math.ceil(ms / 1000));
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
 
+function progressHtml(job: MakerworldJob): string {
+  const percent = job.total ? Math.round((job.imported / job.total) * 100) : 0;
+  return `<div class="tg-overlay__count">${job.imported} / ${job.total} models imported (${percent}%)</div>
+     <div class="tg-progress"><div class="tg-progress__bar" style="width:${percent}%"></div></div>`;
+}
+
+function wireAbort(overlay: HTMLElement): void {
   const abortBtn = overlay.querySelector<HTMLButtonElement>("[data-action=abort]")!;
   abortBtn.addEventListener("click", () => {
     abortBtn.disabled = true;
     abortBtn.textContent = "Aborting…";
     void send("ABORT_MAKERWORLD_COLLECTION_JOB");
   });
+}
 
-  // Normally the page navigates on first, tearing this timer down.
+/** Counts down the wait between models, then asks the background to start this one. */
+export function mountJobOverlay(root: ShadowRoot, job: MakerworldJob): void {
+  const overlay = document.createElement("div");
+  overlay.className = "tg-overlay";
+  overlay.innerHTML = overlayHtml(
+    "Importing from MakerWorld…",
+    progressHtml(job),
+    `<div class="tg-overlay__count" data-role="wait" hidden></div>
+     <button class="tg-btn tg-btn--danger" type="button" data-action="abort">Abort</button>
+     <button class="tg-btn tg-btn--secondary" type="button" data-action="next" hidden>Import next</button>`,
+  );
+  fillIcons(overlay);
+  root.appendChild(overlay);
+  wireAbort(overlay);
+
   const nextBtn = overlay.querySelector<HTMLButtonElement>("[data-action=next]")!;
-  setTimeout(() => {
-    nextBtn.hidden = false;
-  }, JOB_STUCK_REVEAL_MS);
   nextBtn.addEventListener("click", () => {
     nextBtn.disabled = true;
     nextBtn.textContent = "Checking…";
     void send("FORCE_ADVANCE_MAKERWORLD_JOB");
   });
+  // Normally the page navigates on first, tearing this timer down.
+  const startStep = () => {
+    if (job.awaitingLoad) void send("MAKERWORLD_JOB_STEP_DUE");
+    setTimeout(() => {
+      nextBtn.hidden = false;
+    }, JOB_STUCK_REVEAL_MS);
+  };
+
+  const waitEl = overlay.querySelector<HTMLElement>("[data-role=wait]")!;
+  if (!job.awaitingLoad || Date.now() >= job.startAt) {
+    startStep();
+    return;
+  }
+  waitEl.hidden = false;
+  const tick = () => {
+    const remaining = job.startAt - Date.now();
+    waitEl.textContent = `Next model in ${formatWait(remaining)}`;
+    if (remaining > 0) return;
+    clearInterval(timer);
+    waitEl.hidden = true;
+    startStep();
+  };
+  const timer = setInterval(tick, 1000);
+  tick();
 }
 
-export type ScanOverlay = { update(count: number): void; remove(): void };
+/** Docked rather than full-page: the user has to reach MakerWorld's own CAPTCHA underneath. */
+export function mountPausedJobOverlay(root: ShadowRoot, job: MakerworldJob): void {
+  const overlay = document.createElement("div");
+  overlay.className = "tg-overlay tg-overlay--docked";
+  overlay.innerHTML = overlayHtml(
+    "Paused: MakerWorld wants a CAPTCHA",
+    progressHtml(job),
+    `<div class="tg-overlay__text">Solve the puzzle on this page. If none is showing, click the arrow
+       next to "Open in Bambu Studio" and choose "Download 3MF" to bring it up. Then resume -- the
+       run continues from this model.</div>
+     <button class="tg-btn" type="button" data-action="resume">Resume</button>
+     <button class="tg-btn tg-btn--danger" type="button" data-action="abort">Abort</button>`,
+  );
+  fillIcons(overlay);
+  root.appendChild(overlay);
+  wireAbort(overlay);
+  const resumeBtn = overlay.querySelector<HTMLButtonElement>("[data-action=resume]")!;
+  resumeBtn.addEventListener("click", () => {
+    resumeBtn.disabled = true;
+    resumeBtn.textContent = "Resuming…";
+    void send("RESUME_MAKERWORLD_JOB");
+  });
+}
+
+export type ScanOverlay = { update(count: number, total?: number | null): void; remove(): void };
 
 export function mountScanOverlay(root: ShadowRoot): ScanOverlay {
   const overlay = document.createElement("div");
@@ -65,8 +123,8 @@ export function mountScanOverlay(root: ShadowRoot): ScanOverlay {
   root.appendChild(overlay);
   const countEl = overlay.querySelector<HTMLElement>('[data-role="count"]')!;
   return {
-    update: (count) => {
-      countEl.textContent = `${count} found so far`;
+    update: (count, total) => {
+      countEl.textContent = total ? `${count} of ${total} found` : `${count} found so far`;
     },
     remove: () => overlay.remove(),
   };

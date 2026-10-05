@@ -377,7 +377,13 @@ export async function openImportResponse(
       } else {
         if (!makerworldCookie) makerworldCookie = resolveMakerworldCookie(body);
         const requestedInstanceId = parseMakerworldModelUrl(validatedUrl)?.requestedInstanceId ?? null;
-        const resolved = await resolveMakerworldDownloadUrl(html, finalUrl, makerworldCookie, requestedInstanceId);
+        let resolved: Awaited<ReturnType<typeof resolveMakerworldDownloadUrl>>;
+        try {
+          resolved = await resolveMakerworldDownloadUrl(html, finalUrl, makerworldCookie, requestedInstanceId);
+        } catch (err) {
+          if (err instanceof MakerworldCaptchaError) throw new HttpError(429, err.message);
+          throw err;
+        }
         if (resolved) {
           downloadUrl = resolved.downloadUrl;
           resolvedMeta.makerworldProfile = resolved.profile;

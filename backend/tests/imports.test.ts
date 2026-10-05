@@ -192,6 +192,73 @@ describe("MakerWorld print profiles", () => {
     expect((await post(`${pageUrl}#profileId-200`, "200")).body.import_outcome).toBe("already_imported");
   });
 
+  it("reports MakerWorld's CAPTCHA instead of 'no downloadable file', and stops asking", async () => {
+    const fetchMock = vi.fn<(input: RequestInfo | URL) => Promise<Response>>(async (input) => {
+      const url = String(input);
+      if (url.startsWith("https://makerworld.com/en/models/")) {
+        return new Response("<html><head><title>Captcha Test</title></head><body></body></html>", {
+          headers: { "content-type": "text/html; charset=utf-8" },
+        });
+      }
+      if (url === `https://makerworld.com/api/v1/models/${designId}/download`) {
+        return new Response(JSON.stringify({ captchaId: "abc", message: "we need to confirm you are not a robot" }), {
+          status: 418,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      throw new Error(`Unexpected fetch to ${url}`);
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const res = await request(app).post("/api/import").set(auth()).send({ url: pageUrl });
+    expect(res.status).toBe(429);
+    expect(res.body.detail).toMatch(/CAPTCHA/);
+    // None of the generic API fallbacks ran after the CAPTCHA.
+    expect(fetchMock.mock.calls.map(([input]) => String(input)).filter((u) => u.includes("/api/v1/"))).toEqual([
+      `https://makerworld.com/api/v1/models/${designId}/download`,
+    ]);
+  });
+
+  it("runs POST /import?async=1 in the background and serves the result at /import/tasks/:id", async () => {
+    mockMakerworldFetch();
+    const start = await request(app)
+      .post("/api/import?async=1")
+      .set(auth())
+      .send({ url: pageUrl, resolved_download_url: "https://makerworld.com/files/profile-100.stl" });
+    expect(start.status).toBe(202);
+    const taskId = start.body.task_id as string;
+
+    let task = (await request(app).get(`/api/import/tasks/${taskId}`).set(auth())).body;
+    for (let i = 0; task.status === "running" && i < 100; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      task = (await request(app).get(`/api/import/tasks/${taskId}`).set(auth())).body;
+    }
+    expect(task.status).toBe("done");
+    expect(task.result.import_outcome).toBe("created");
+    expect(task.result.id).toEqual(expect.any(String));
+  });
+
+  it("hides an import task from other users", async () => {
+    mockMakerworldFetch();
+    const start = await request(app)
+      .post("/api/import?async=1")
+      .set(auth())
+      .send({ url: pageUrl, resolved_download_url: "https://makerworld.com/files/profile-100.stl" });
+    const other = await request(app)
+      .post("/api/register")
+      .send({ displayName: "Other", email: `imports-other-${Date.now()}@example.com`, password: "password123" });
+    const res = await request(app)
+      .get(`/api/import/tasks/${start.body.task_id}`)
+      .set({ Authorization: `Bearer ${other.body.token}` });
+    expect(res.status).toBe(404);
+    // Let the import finish before afterEach restores fetch and cleans up.
+    for (let i = 0; i < 100; i++) {
+      const task = await request(app).get(`/api/import/tasks/${start.body.task_id}`).set(auth());
+      if (task.body.status !== "running") break;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+  });
+
   it("treats a bare model URL as already imported without asking MakerWorld", async () => {
     mockMakerworldFetch();
     await importProfile(pageUrl, "100");

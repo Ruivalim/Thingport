@@ -52,6 +52,12 @@ export type MakerworldJob = {
   imported: number;
   total: number;
   awaitingLoad: boolean;
+  /** Wait before each model after the first, so a long run stays under MakerWorld's limits. */
+  stepDelayMs: number;
+  /** When the current model's step may start; its page counts down to it. */
+  startAt: number;
+  /** MakerWorld wants a CAPTCHA: the run waits on this model until the user resumes it. */
+  paused: boolean;
 };
 
 export type MakerworldJobError = { message: string; imported: number; total: number };
@@ -70,10 +76,12 @@ export type BackgroundMessages = {
   IMPORT_SINGLE: { payload: ImportSinglePayload; result: Print | null };
   QUEUE_IMPORT: { payload: QueueImportPayload; result: QueueImportResult };
   START_MAKERWORLD_COLLECTION_JOB: {
-    payload: { urls: string[]; collectionId: string | null; originalUrl: string };
+    payload: { urls: string[]; collectionId: string | null; originalUrl: string; stepDelayMs: number };
     result: null;
   };
   ABORT_MAKERWORLD_COLLECTION_JOB: { payload: void; result: null };
+  RESUME_MAKERWORLD_JOB: { payload: void; result: null };
+  MAKERWORLD_JOB_STEP_DUE: { payload: void; result: null };
   FORCE_ADVANCE_MAKERWORLD_JOB: { payload: void; result: null };
   ARM_DOWNLOAD_CAPTURE: { payload: void; result: null };
   AWAIT_DOWNLOAD_CAPTURE: { payload: void; result: string | null };
@@ -82,6 +90,8 @@ export type BackgroundMessages = {
 
 export type ContentMessages = {
   RESOLVE_MAKERWORLD_DOWNLOAD_URL: { payload: void; result: ResolvedDownload | null };
+  /** The guided import paused on this page; it re-renders. */
+  MAKERWORLD_JOB_UPDATED: { payload: void; result: null };
 };
 
 type AnyMessages = Record<string, { payload: unknown; result: unknown }>;

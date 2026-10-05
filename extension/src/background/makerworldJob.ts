@@ -2,7 +2,9 @@
 // there, one at a time. Real page loads pace the requests the way no config value can, which
 // keeps MakerWorld's account-wide CAPTCHA from tripping.
 //
-// State lives in chrome.storage because an MV3 background can be suspended between steps.
+// State lives in chrome.storage because an MV3 background can be suspended between steps. For the
+// same reason the wait between models is counted down by the next model's page (see overlays.ts),
+// not slept here: the background is killed after 30s idle.
 
 import type { ImportStatus } from "../shared/api";
 import type { MakerworldJob, MakerworldJobError } from "../shared/messages";
@@ -12,8 +14,6 @@ import { importSingle } from "./importJobs";
 
 const JOB_STORAGE_KEY = "makerworldCollectionJob";
 const JOB_ERROR_STORAGE_KEY = "makerworldJobError";
-// Not configurable: a shorter delay defeats the point.
-const STEP_DELAY_MS = 5000;
 // tabs.sendMessage has no timeout; this is well above the content script's own worst case.
 const DOWNLOAD_RESOLVE_TIMEOUT_MS = 30000;
 
@@ -27,16 +27,24 @@ async function setJob(job: MakerworldJob | null): Promise<void> {
   else await chrome.storage.local.remove(JOB_STORAGE_KEY);
 }
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
   return Promise.race([promise, new Promise<null>((resolve) => setTimeout(() => resolve(null), ms))]);
+}
+
+/** Both the extension's and the backend's CAPTCHA messages say so; API errors carry only text. */
+function isCaptchaMessage(message: string): boolean {
+  return /captcha/i.test(message);
 }
 
 /** `urls` are the not-yet-imported designs. tabs.onUpdated drives every step after the first. */
 export async function startJob(
   tabId: number,
-  { urls, collectionId, originalUrl }: { urls: string[]; collectionId: string | null; originalUrl: string },
+  {
+    urls,
+    collectionId,
+    originalUrl,
+    stepDelayMs,
+  }: { urls: string[]; collectionId: string | null; originalUrl: string; stepDelayMs: number },
 ): Promise<null> {
   if (!urls.length) return null;
   await setJob({
@@ -48,6 +56,9 @@ export async function startJob(
     imported: 0,
     total: urls.length,
     awaitingLoad: true,
+    stepDelayMs,
+    startAt: 0,
+    paused: false,
   });
   await chrome.tabs.update(tabId, { url: urls[0] });
   return null;
@@ -59,6 +70,15 @@ export async function abortJob(tabId: number): Promise<null> {
   if (!job || job.tabId !== tabId) return null;
   await setJob(null);
   await chrome.tabs.update(tabId, { url: job.originalUrl });
+  return null;
+}
+
+/** Retries the model the run paused on, once the user has solved MakerWorld's CAPTCHA. */
+export async function resumeJob(tabId: number): Promise<null> {
+  const job = await getJob();
+  if (!job || job.tabId !== tabId || !job.paused) return null;
+  await setJob({ ...job, paused: false, awaitingLoad: true, startAt: 0 });
+  await chrome.tabs.update(tabId, { url: job.urls[job.index] });
   return null;
 }
 
@@ -80,6 +100,7 @@ async function isStillAtStep(tabId: number, stepIndex: number): Promise<boolean>
   return Boolean(current && current.tabId === tabId && current.index === stepIndex);
 }
 
+/** The next model's page counts down `stepDelayMs` before its step starts. */
 async function moveForward(tabId: number, job: MakerworldJob): Promise<void> {
   job.index += 1;
   if (job.index >= job.urls.length) {
@@ -87,45 +108,60 @@ async function moveForward(tabId: number, job: MakerworldJob): Promise<void> {
     await chrome.tabs.update(tabId, { url: job.originalUrl });
     return;
   }
-  await setJob(job);
-  await sleep(STEP_DELAY_MS);
-  // The user may have hit Abort during the delay.
-  const stillActive = await getJob();
-  if (!stillActive || stillActive.tabId !== tabId) return;
-  job.awaitingLoad = true;
-  await setJob(job);
+  await setJob({ ...job, awaitingLoad: true, startAt: Date.now() + job.stepDelayMs });
   await chrome.tabs.update(tabId, { url: job.urls[job.index] });
 }
 
-/** Any failure stops the run: it almost always means MakerWorld rejected the request, and more
- *  requests would make it worse. */
+let claimQueue: Promise<unknown> = Promise.resolve();
+
+/** Takes the current step if it's due. Serialized: the page load and the page's countdown can both
+ *  ask at once, and the check-then-set on storage would otherwise let both through. */
+function claimStep(tabId: number): Promise<MakerworldJob | null> {
+  const claimed = claimQueue.then(async () => {
+    const job = await getJob();
+    if (!job || job.tabId !== tabId || !job.awaitingLoad || job.paused || Date.now() < job.startAt) return null;
+    job.awaitingLoad = false;
+    await setJob(job);
+    return job;
+  });
+  claimQueue = claimed.catch(() => undefined);
+  return claimed;
+}
+
+/** A CAPTCHA pauses the run on this model for the user to solve; any other failure stops it, since
+ *  it almost always means MakerWorld rejected the request, and more requests would make it worse. */
 export async function advanceJob(tabId: number): Promise<void> {
-  const job = await getJob();
-  if (!job || job.tabId !== tabId || !job.awaitingLoad) return;
+  const job = await claimStep(tabId);
+  if (!job) return;
   const stepIndex = job.index;
-  job.awaitingLoad = false;
-  await setJob(job);
 
   const currentUrl = job.urls[stepIndex];
   // The content script resolves the download itself with the page's session. Best-effort: null
   // lets the backend resolve it.
   let resolved = null;
+  let resolveError: string | null = null;
   try {
     const reply = await withTimeout(sendToTab(tabId, "RESOLVE_MAKERWORLD_DOWNLOAD_URL"), DOWNLOAD_RESOLVE_TIMEOUT_MS);
+    // The content script only replies with an error for a CAPTCHA; the backend would hit it too.
     if (reply && reply.ok) resolved = reply.data;
+    else if (reply) resolveError = reply.error;
   } catch {}
 
   try {
+    if (resolveError) throw new Error(resolveError);
     await importSingle({ url: currentUrl, collectionId: job.collectionId, resolved });
   } catch (err) {
     // A manual "Import next" may have moved past this step while the request was in flight.
     if (!(await isStillAtStep(tabId, stepIndex))) return;
+    const message = err instanceof Error ? err.message : String(err);
+    if (isCaptchaMessage(message)) {
+      // Stays on this page: the CAPTCHA has to be solved here, in MakerWorld's own UI.
+      await setJob({ ...job, paused: true });
+      await sendToTab(tabId, "MAKERWORLD_JOB_UPDATED").catch(() => undefined);
+      return;
+    }
     await setJob(null);
-    const error: MakerworldJobError = {
-      message: err instanceof Error ? err.message : String(err),
-      imported: job.imported,
-      total: job.total,
-    };
+    const error: MakerworldJobError = { message, imported: job.imported, total: job.total };
     await chrome.storage.local.set({ [JOB_ERROR_STORAGE_KEY]: error });
     await chrome.tabs.update(tabId, { url: job.originalUrl });
     return;

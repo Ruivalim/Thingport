@@ -41,6 +41,7 @@ import { getUserMakerworldCookie } from "../services/makerworldCookieService";
 import { listZipEntries } from "../services/zipService";
 import { createJob, createJobItems, getActiveJob, getJob, listJobItems } from "../services/importJobService";
 import { queueLink, startLinksJob } from "../services/importQueueService";
+import { getImportTask, startImportTask } from "../services/importTaskService";
 import {
   runCollectionImportJob,
   runLinksImportJob,
@@ -82,26 +83,36 @@ async function withStoredMakerworldCookie<T extends { makerworld_cookie?: string
   return stored ? { ...body, makerworld_cookie: stored } : body;
 }
 
+async function importAndDescribe(userId: string, url: string, body: z.infer<typeof importRequestSchema>) {
+  const result = await importPrintFromUrl(userId, url, body);
+  const { print, plates, author, previewImages } = result;
+  const importOutcome = result.alreadyImported ? "already_imported" : result.profileAdded ? "profile_added" : "created";
+  void createLog({ userId, action: "model_imported", targetId: print.id, details: { name: print.name, url } });
+  return { ...toPrintOut(print, plates, [], null, author, previewImages), import_outcome: importOutcome };
+}
+
+// `?async=1` answers 202 with a task id to poll at /import/tasks/:id (see importTaskService.ts).
 router.post(
   "/import",
   requireCaptcha("import"),
   asyncHandler(async (req, res) => {
     const body = await withStoredMakerworldCookie(req.userId!, parseBody(importRequestSchema, req.body));
     const url = await normalizeImportUrl(body.url);
-    const result = await importPrintFromUrl(req.userId!, url, body);
-    const { print, plates, author, previewImages } = result;
-    const importOutcome = result.alreadyImported
-      ? "already_imported"
-      : result.profileAdded
-        ? "profile_added"
-        : "created";
-    res.json({ ...toPrintOut(print, plates, [], null, author, previewImages), import_outcome: importOutcome });
-    void createLog({
-      userId: req.userId!,
-      action: "model_imported",
-      targetId: print.id,
-      details: { name: print.name, url },
-    });
+    if (req.query.async === "1") {
+      const taskId = startImportTask(req.userId!, () => importAndDescribe(req.userId!, url, body));
+      res.status(202).json({ task_id: taskId });
+      return;
+    }
+    res.json(await importAndDescribe(req.userId!, url, body));
+  }),
+);
+
+router.get(
+  "/import/tasks/:id",
+  asyncHandler(async (req, res) => {
+    const task = getImportTask(req.params.id, req.userId!);
+    if (!task) throw new HttpError(404, "Import task not found -- it may have expired or the server restarted");
+    res.json(task);
   }),
 );
 

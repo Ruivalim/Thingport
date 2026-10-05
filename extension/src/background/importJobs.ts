@@ -13,6 +13,19 @@ export async function pollJobToCompletion(jobId: string): Promise<ImportJob> {
   }
 }
 
+type ImportTaskState =
+  { status: "running" } | { status: "done"; result: Print } | { status: "error"; detail: string; http_status: number };
+
+/** Each poll is an extension API call (chrome.storage in apiCall), which keeps the worker alive. */
+async function pollImportTask(taskId: string): Promise<Print> {
+  for (;;) {
+    const task = await apiCall<ImportTaskState>("GET", `/import/tasks/${taskId}`);
+    if (task.status === "done") return task.result;
+    if (task.status === "error") throw new Error(task.detail);
+    await new Promise((resolve) => setTimeout(resolve, JOB_POLL_INTERVAL_MS));
+  }
+}
+
 /** One message covering import and collection filing, so both complete even if the tab navigates
  *  away: the background outlives the content script. */
 export async function importSingle({
@@ -39,7 +52,11 @@ export async function importSingle({
     if (job.status === "ERROR") throw new Error(job.error_message || "Import failed");
     print = job.result_print_id ? { id: job.result_print_id } : null;
   } else {
-    print = await apiCall<Print>("POST", "/import", { url, ...extra });
+    // Asynchronous so the request never outlives the worker: Chromium kills an extension service
+    // worker whose fetch() takes over 30s to answer. An older instance ignores `async` and
+    // answers with the print itself.
+    const started = await apiCall<Print | { task_id: string }>("POST", "/import?async=1", { url, ...extra });
+    print = "task_id" in started ? await pollImportTask(started.task_id) : started;
   }
 
   if (collectionId && print?.id) {

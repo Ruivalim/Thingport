@@ -6,9 +6,9 @@ import { listen, send, type ContentMessages } from "../shared/messages";
 import { CONFIG_CHANGE_KEYS } from "../shared/storage";
 import { classifyUrl } from "../shared/urls";
 import { setContext, type LibraryState } from "./context";
-import { resolveMakerworldDownloadUrl } from "./makerworld/downloadResolver";
+import { MakerworldCaptchaError, resolveMakerworldDownloadUrl } from "./makerworld/downloadResolver";
 import { offerNormalizedDownload, unmountNormalizedDownload } from "./makerworld/normalizedDownload";
-import { mountJobOverlay } from "./overlays";
+import { mountJobOverlay, mountPausedJobOverlay } from "./overlays";
 import { loadPanel } from "./panels";
 import { errorHtml } from "./panels/results";
 import { api } from "./runtime";
@@ -43,7 +43,9 @@ async function init(): Promise<void> {
   const jobRes = await send("GET_MAKERWORLD_JOB");
   if (isStale()) return;
   if (jobRes?.ok && jobRes.data.job) {
-    mountJobOverlay(mountHost(), jobRes.data.job);
+    const job = jobRes.data.job;
+    if (job.paused) mountPausedJobOverlay(mountHost(), job);
+    else mountJobOverlay(mountHost(), job);
     reportTabIconState(true);
     return;
   }
@@ -153,7 +155,17 @@ if (!window.thingportGrabInjected) {
   });
 
   listen<ContentMessages>({
-    RESOLVE_MAKERWORLD_DOWNLOAD_URL: () => resolveMakerworldDownloadUrl(location.href).catch(() => null),
+    // A CAPTCHA comes back as an error reply so the guided import can say so.
+    RESOLVE_MAKERWORLD_DOWNLOAD_URL: () =>
+      resolveMakerworldDownloadUrl(location.href).catch((err) => {
+        if (err instanceof MakerworldCaptchaError) throw err;
+        return null;
+      }),
+    MAKERWORLD_JOB_UPDATED: () => {
+      unmount();
+      void init();
+      return null;
+    },
   });
 
   installNavigationWatcher();
