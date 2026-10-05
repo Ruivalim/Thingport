@@ -1,5 +1,16 @@
 # Thingport Grab changelog
 
+# [thingport-grab-v1.3.0](https://github.com/TautvydasDerzinskas/Thingport/compare/thingport-grab-v1.2.0...thingport-grab-v1.3.0) (2026-10-05)
+
+
+### Features
+
+* **extension:** add loading state phrases for different operations ([0325f16](https://github.com/TautvydasDerzinskas/Thingport/commit/0325f16c8527bea78343f91f386c0c0a0d61d02a))
+* **extension:** allow importing to new custom collections ([a5ac824](https://github.com/TautvydasDerzinskas/Thingport/commit/a5ac82411079f395db9bcf9f951b7c1df9f096c8))
+* **extension:** improve loading messaging + make queue admin-only ([67a31cc](https://github.com/TautvydasDerzinskas/Thingport/commit/67a31cc94052fda9faf1daf831b6fbf5ce7b53e9))
+* link import queue with an admin page and send-to-queue in the extension, plus update from source ([#6](https://github.com/TautvydasDerzinskas/Thingport/issues/6)) ([96da36a](https://github.com/TautvydasDerzinskas/Thingport/commit/96da36ae7999ab5c91bf076a727922a0dbdad0ec))
+* pause guided MakerWorld imports on a CAPTCHA, and fix localized and long collection imports ([627a442](https://github.com/TautvydasDerzinskas/Thingport/commit/627a442d53a709f41e42bc508af7305aca5578a1))
+
 # [thingport-grab-v1.2.0](https://github.com/TautvydasDerzinskas/Thingport/compare/thingport-grab-v1.1.2...thingport-grab-v1.2.0) (2026-10-01)
 
 
