@@ -13,7 +13,7 @@ import {
 } from "../makerworld/pageData";
 import { api, escapeHtml } from "../runtime";
 import { onPanelAction, panelQuery, panelQueryAll, renderPanel } from "../shell";
-import { collectionPickerHtml, selectedCollectionId } from "./collectionPicker";
+import { collectionIdFor, collectionPickerHtml, readCollectionChoice, wireCollectionPicker } from "./collectionPicker";
 import { errorHtml, statusHtml, successHtml } from "./results";
 import { checkingLinkPhrases, importingPhrases, renderFunStatus, updatingPhrases, zipFilesPhrases } from "./funStatus";
 
@@ -71,7 +71,12 @@ function queueButtonHtml(): string {
 /** Queues with the panel's current choices. Picking files out of a zip needs the download now, so
  *  only the whole-link imports offer it. */
 function onQueueAction(): void {
-  onPanelAction("queue", () => void runQueueImport(selectedProfileScope(), selectedCollectionId()));
+  onPanelAction("queue", () => {
+    const choice = readCollectionChoice();
+    if (choice === "missing-name") return;
+    const scope = selectedProfileScope();
+    void collectionIdFor(choice).then((collectionId) => runQueueImport(scope, collectionId));
+  });
 }
 
 export async function loadSingleItem(): Promise<void> {
@@ -110,6 +115,7 @@ export async function loadSingleItem(): Promise<void> {
       <button class="tg-btn" type="button" data-action="import">Import</button>
       ${queueButtonHtml()}
     `);
+    wireCollectionPicker();
     onPanelAction("import", () => void runDirectImport());
     onQueueAction();
     return;
@@ -123,6 +129,7 @@ export async function loadSingleItem(): Promise<void> {
     ${queueButtonHtml()}
     <button class="tg-btn tg-btn--secondary" type="button" data-action="choose-files">Choose files…</button>
   `);
+  wireCollectionPicker();
   onPanelAction("import-as-zip", () => void runDirectImport());
   onQueueAction();
   onPanelAction("choose-files", () => void loadZipEntries());
@@ -189,6 +196,7 @@ async function loadZipEntries(): Promise<void> {
     ${await collectionPickerHtml()}
     <button class="tg-btn" type="button" data-action="import">Import selected</button>
   `);
+  wireCollectionPicker();
   onPanelAction("import", () => {
     const entries = panelQueryAll<HTMLInputElement>(".tg-entry__checkbox:checked").map((el) => el.value);
     if (entries.length) void runDirectImport({ entries });
@@ -197,14 +205,16 @@ async function loadZipEntries(): Promise<void> {
 
 async function runDirectImport(opts?: { entries?: string[] }): Promise<void> {
   // Captured up front: SPA navigation clears the context mid-import.
-  const collectionId = selectedCollectionId();
+  const choice = readCollectionChoice();
+  if (choice === "missing-name") return;
   const scope = selectedProfileScope();
   if (scope !== "url") {
-    await runProfilesImport(scope, collectionId);
+    await runProfilesImport(scope, await collectionIdFor(choice));
     return;
   }
   const { url, instanceUrl, classification, title } = ctx();
   renderFunStatus(importingPhrases(classification.provider));
+  const collectionId = await collectionIdFor(choice);
   const resolved =
     classification.provider === "makerworld" && classification.type === "model"
       ? await resolveMakerworldDownloadUrl(url).catch(() => null)

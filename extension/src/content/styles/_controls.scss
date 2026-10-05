@@ -21,7 +21,8 @@
   font-weight: 600;
 }
 
-.tg-select {
+.tg-select,
+.tg-input {
   @include m.text-input;
   margin-bottom: 10px;
 }

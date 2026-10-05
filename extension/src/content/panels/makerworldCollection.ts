@@ -3,10 +3,11 @@
 // it has as many as the page's own data says the collection holds.
 // Every not-yet-imported model is queued.
 
-import type { Collection, ImportStatus } from "../../shared/api";
+import type { ImportStatus } from "../../shared/api";
 import { request } from "../../shared/messages";
 import { makerworldModelUrl } from "../../shared/urls";
 import { ctx } from "../context";
+import { findOrCreateCollection } from "./collectionPicker";
 import { NO_MORE_DATA } from "../makerworld/labels";
 import { loadMakerworldCollectionTotal } from "../makerworld/pageData";
 import { mountScanOverlay } from "../overlays";
@@ -73,21 +74,6 @@ async function scrollToEnd(
     if (stagnantRounds >= SCAN_STAGNANT_LIMIT) break;
   }
   return [...ids];
-}
-
-/** Case-insensitive match on title, created if missing. Null on failure; the import proceeds. */
-async function findOrCreateCollection(name: string | null): Promise<string | null> {
-  const trimmed = (name || "").trim();
-  if (!trimmed) return null;
-  const normalized = trimmed.toLowerCase();
-  try {
-    const collections = await api<Collection[]>("GET", "/collections");
-    const existing = collections.find((c) => !c.system_key && (c.name || "").trim().toLowerCase() === normalized);
-    if (existing) return existing.id;
-    return (await api<Collection>("POST", "/collections", { name: trimmed })).id;
-  } catch {
-    return null;
-  }
 }
 
 // The first is the default. Longer waits let a big run go unattended under MakerWorld's rate limit.
