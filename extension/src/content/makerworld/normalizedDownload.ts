@@ -7,6 +7,7 @@ import { NORMALIZE_3MF_SLICERS } from "../../shared/slicers";
 import { api } from "../runtime";
 import css from "../styles/normalized.scss?inline";
 import { resolveMakerworldDownloadUrl } from "./downloadResolver";
+import { DOWNLOAD_3MF, DOWNLOAD_OTHER, DOWNLOAD_STL, OPEN_IN_APP } from "./labels";
 import { normalizeBambu3mf } from "./normalize";
 
 // Converting holds the file, its unzipped model XML and the result in memory at once.
@@ -110,7 +111,8 @@ function saveFile(bytes: Uint8Array, filename: string): void {
 
 async function downloadNormalized(pageUrl: string, onProgress: (text: string) => void): Promise<void> {
   onProgress("Getting file…");
-  const resolved = await resolveMakerworldDownloadUrl(pageUrl);
+  // The normalizer reads the 3MF project, never the raw-files zip.
+  const resolved = await resolveMakerworldDownloadUrl(pageUrl, { profileOnly: true });
   if (!resolved) {
     throw new Error(
       "Couldn't get this model's file from MakerWorld. Make sure you're signed in to MakerWorld, then try again.",
@@ -204,20 +206,24 @@ function buildHost(pageUrl: string, slicerLabel: string | null): HTMLElement {
 }
 
 // MakerWorld's main action, matched by label (class names are build hashes): usually the "Open in
-// Bambu Studio" split button, whose menu holds "Download 3MF" and "Download STL/CAD Files".
-const ACTION_LABELS = [/^open in .+/i, /^download\b/i];
+// Bambu Studio" split button, whose menu holds "Download 3MF" and "Download STL/CAD Files". The
+// English patterns also catch app names the translated sets don't list.
+const ACTION_LABELS: ((text: string) => boolean)[] = [
+  (text) => OPEN_IN_APP.has(text) || /^open in .+/i.test(text),
+  (text) => DOWNLOAD_3MF.has(text) || DOWNLOAD_STL.has(text) || DOWNLOAD_OTHER.has(text) || /^download\b/i.test(text),
+];
 const MAX_LABEL_LENGTH = 40;
 
 function findActionLabel(): HTMLElement | null {
   const candidates = [...document.querySelectorAll<HTMLElement>("button, a, span, div")].filter((el) => {
     if (el.childElementCount > 2 || el.offsetParent === null) return false;
     const text = (el.textContent || "").trim();
-    return text.length <= MAX_LABEL_LENGTH && ACTION_LABELS.some((label) => label.test(text));
+    return text.length <= MAX_LABEL_LENGTH && ACTION_LABELS.some((matches) => matches(text));
   });
   // Innermost, so wrappers repeating the same text don't win.
   const leaves = candidates.filter((el) => !candidates.some((other) => other !== el && el.contains(other)));
-  for (const label of ACTION_LABELS) {
-    const match = leaves.find((el) => label.test((el.textContent || "").trim()));
+  for (const matches of ACTION_LABELS) {
+    const match = leaves.find((el) => matches((el.textContent || "").trim()));
     if (match) return match;
   }
   return null;

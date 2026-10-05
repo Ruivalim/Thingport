@@ -32,7 +32,7 @@ export async function loginAndStoreToken(credentials: Credentials): Promise<stri
   if (!res.ok) throw new Error(await errorDetail(res, "Could not sign in to this Thingport instance"));
   const data = (await res.json()) as LoginResult;
   const tokenExpiresAt = Date.now() + data.expires_in * 1000;
-  await chrome.storage.local.set({ token: data.token, tokenExpiresAt });
+  await chrome.storage.local.set({ token: data.token, tokenExpiresAt, isAdmin: data.user?.role === "ADMIN" });
   return data.token;
 }
 

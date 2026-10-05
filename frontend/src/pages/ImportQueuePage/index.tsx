@@ -83,7 +83,7 @@ const ITEM_COLOR: Record<ImportJobItem["status"], StatusColor> = {
   FAILED: "error",
 };
 
-/** Every user's batch imports. Links sent from the extension's "send to queue" wait here, paused,
+/** Every user's batch imports. Links sent from the extension's "Add to the queue" wait here, paused,
  *  until started; "Start all" and "Retry all failed" run the jobs one after another. */
 export default function ImportQueuePage({ onUnauthorized }: Props) {
   const { t, i18n } = useTranslation(["app", "common"]);

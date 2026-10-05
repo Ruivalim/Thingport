@@ -74,4 +74,20 @@
 .tg-status {
   padding: t.$space-2 0;
   color: t.c("text");
+
+  // A rotating loading phrase (see panels/funStatus.ts); the class is re-added to replay the fade.
+  &--fun {
+    animation: tg-status-in 0.35s ease;
+
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+    }
+  }
+}
+
+@keyframes tg-status-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
 }

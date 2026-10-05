@@ -1,5 +1,6 @@
-// The content script clicks MakerWorld's real Download button; this captures the resulting browser
-// download, cancels it, and reads its URL. That avoids guessing MakerWorld's resolution API.
+// Backup for content/makerworld/downloadResolver.ts, which normally reads the file URL from the link
+// MakerWorld clicks before any download starts: should a real browser download start instead, this
+// captures it, cancels it, and reads its URL.
 //
 // Two messages (ARM, then AWAIT) because the click happens in the content script in between.
 
@@ -39,4 +40,15 @@ export function armDownloadCapture(): null {
 
 export function awaitDownloadCapture(): Promise<string | null> {
   return currentCapture ?? Promise.resolve(null);
+}
+
+/** Drops a capture the page's own file link already answered (see content/makerworld/
+ *  downloadResolver.ts), so it can't swallow the user's next real download. */
+export function disarmDownloadCapture(): null {
+  if (pending) {
+    clearTimeout(pending.timeoutId);
+    pending.resolve(null);
+    pending = null;
+  }
+  return null;
 }

@@ -501,7 +501,7 @@ const queueLinkRequestSchema = z.object({
   title: z.string().max(500).nullable().optional(),
 });
 
-/** The extension's "send to queue": the link waits, paused, in the user's queue until it's started
+/** The extension's "Add to the queue": the link waits, paused, in the user's queue until it's started
  *  from the admin import queue. Nothing is fetched now, so this is quick and never trips a CAPTCHA. */
 router.post(
   "/import/queue",

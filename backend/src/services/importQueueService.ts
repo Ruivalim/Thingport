@@ -1,4 +1,4 @@
-// The import queue behind the admin "Import queue" page and the extension's "send to queue". Links
+// The import queue behind the admin "Import queue" page and the extension's "Add to the queue". Links
 // sent from the extension collect in one PAUSED LINKS job per user until someone starts it; the
 // admin page starts, pauses, retries and cleans up LINKS jobs of every user.
 

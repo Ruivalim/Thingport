@@ -6,7 +6,8 @@ import type { Print, QueueImportResult } from "./api";
 export type ExtensionState = {
   configured: boolean;
   disabled: boolean;
-  sendToQueue: boolean;
+  /** Admins can send an import to the instance's paused import queue instead. */
+  isAdmin: boolean;
   instanceUrl: string;
   email: string;
 };
@@ -68,7 +69,6 @@ export type BackgroundMessages = {
   GET_STATE: { payload: void; result: ExtensionState };
   SAVE_CONFIG: { payload: { instanceUrl: string; email: string; password: string }; result: null };
   SET_DISABLED: { payload: { disabled: boolean }; result: null };
-  SET_SEND_TO_QUEUE: { payload: { sendToQueue: boolean }; result: null };
   GET_RECENT_IMPORTS: { payload: void; result: RecentImport[] };
   OPEN_SETUP: { payload: void; result: "popup" | "tab" };
   SET_TAB_ICON_STATE: { payload: { active: boolean }; result: null };
@@ -85,6 +85,7 @@ export type BackgroundMessages = {
   FORCE_ADVANCE_MAKERWORLD_JOB: { payload: void; result: null };
   ARM_DOWNLOAD_CAPTURE: { payload: void; result: null };
   AWAIT_DOWNLOAD_CAPTURE: { payload: void; result: string | null };
+  DISARM_DOWNLOAD_CAPTURE: { payload: void; result: null };
   GET_MAKERWORLD_JOB: { payload: void; result: { job: MakerworldJob | null; error: MakerworldJobError | null } };
 };
 

@@ -104,7 +104,7 @@ async function init(): Promise<void> {
     instanceUrl: stateRes.data.instanceUrl,
     classification,
     library,
-    sendToQueue: stateRes.data.sendToQueue,
+    canQueue: stateRes.data.isAdmin,
   });
   const root = mountHost();
   const togglePanel = mountPanel(root, () => void loadPanel());

@@ -1,17 +1,5 @@
 @use "../../styles/tokens" as t;
 
-.toggle-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: t.$space-2;
-
-  label {
-    font-weight: 600;
-    cursor: pointer;
-  }
-}
-
 .switch {
   position: relative;
   flex-shrink: 0;

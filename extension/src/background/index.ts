@@ -3,8 +3,8 @@
 
 import { listen, type BackgroundMessages } from "../shared/messages";
 import { apiCall } from "./api";
-import { getState, saveConfig, setDisabled, setSendToQueue } from "./config";
-import { armDownloadCapture, awaitDownloadCapture } from "./downloadCapture";
+import { getState, saveConfig, setDisabled } from "./config";
+import { armDownloadCapture, awaitDownloadCapture, disarmDownloadCapture } from "./downloadCapture";
 import { importSingle, queueImport } from "./importJobs";
 import {
   abortJob,
@@ -28,7 +28,6 @@ listen<BackgroundMessages>({
   GET_STATE: () => getState(),
   SAVE_CONFIG: (payload) => saveConfig(payload),
   SET_DISABLED: ({ disabled }) => setDisabled(disabled),
-  SET_SEND_TO_QUEUE: ({ sendToQueue }) => setSendToQueue(sendToQueue),
   GET_RECENT_IMPORTS: () => getRecentImports(),
   OPEN_SETUP: (_payload, sender) => openSetup(sender.tab?.id),
   SET_TAB_ICON_STATE: ({ active }, sender) => setTabIconState(senderTabId(sender), active),
@@ -46,6 +45,7 @@ listen<BackgroundMessages>({
   },
   ARM_DOWNLOAD_CAPTURE: () => armDownloadCapture(),
   AWAIT_DOWNLOAD_CAPTURE: () => awaitDownloadCapture(),
+  DISARM_DOWNLOAD_CAPTURE: () => disarmDownloadCapture(),
   GET_MAKERWORLD_JOB: (_payload, sender) => getJobForTab(sender.tab?.id),
 });
 

@@ -5,8 +5,8 @@ export const STORAGE_KEYS = {
   email: "email",
   password: "password",
   disabled: "disabled",
-  // Imports go to the instance's paused import queue instead of running right away.
-  sendToQueue: "sendToQueue",
+  // From the last login: admins get "Add to the queue" in the import panel.
+  isAdmin: "isAdmin",
   token: "token",
   tokenExpiresAt: "tokenExpiresAt",
   // Lets the cookie sync skip a redundant PATCH.
@@ -18,7 +18,7 @@ export type StoredConfig = {
   email?: string;
   password?: string;
   disabled?: boolean;
-  sendToQueue?: boolean;
+  isAdmin?: boolean;
   token?: string;
   tokenExpiresAt?: number;
   lastSyncedMakerworldCookie?: string;
@@ -29,7 +29,7 @@ export const CONFIG_CHANGE_KEYS: readonly string[] = [
   STORAGE_KEYS.email,
   STORAGE_KEYS.password,
   STORAGE_KEYS.disabled,
-  STORAGE_KEYS.sendToQueue,
+  STORAGE_KEYS.isAdmin,
 ];
 
 export function normalizeInstanceUrl(raw: string | undefined | null): string {

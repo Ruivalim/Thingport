@@ -12,6 +12,8 @@ import "./styles/popup.scss";
 const returnTabId = Number.parseInt(new URLSearchParams(location.search).get("returnTab") ?? "", 10);
 
 fillIcons(document);
+// Bumped by semantic-release in package.json, which the build copies into the manifest.
+els.version.textContent = `v${chrome.runtime.getManifest().version}`;
 
 function displayInstanceUrl(instanceUrl: string): string {
   return instanceUrl.replace(/^https?:\/\//i, "");
@@ -21,10 +23,10 @@ function showConfiguredView(state: ExtensionState): void {
   els.configuredView.hidden = false;
   els.setupForm.hidden = true;
   els.instanceRow.hidden = false;
+  els.enabledToggle.hidden = false;
   els.instanceUrlText.textContent = displayInstanceUrl(state.instanceUrl);
   els.instanceUrlText.title = state.instanceUrl;
   els.enabledSwitch.checked = !state.disabled;
-  els.queueSwitch.checked = state.sendToQueue;
   clearError(els.configuredError);
   void loadRecentImports();
 }
@@ -32,6 +34,7 @@ function showConfiguredView(state: ExtensionState): void {
 function showSetupForm(prefillUrl = "", prefillEmail = ""): void {
   els.configuredView.hidden = true;
   els.instanceRow.hidden = true;
+  els.enabledToggle.hidden = true;
   els.setupForm.hidden = false;
   els.cancelBtn.hidden = !prefillUrl;
   els.instanceUrlInput.value = prefillUrl;
@@ -66,17 +69,6 @@ els.enabledSwitch.addEventListener("change", async () => {
   if (!res?.ok) {
     showError(res?.error ?? "Couldn't save", els.configuredError);
     els.enabledSwitch.checked = !els.enabledSwitch.checked;
-  }
-});
-
-els.queueSwitch.addEventListener("change", async () => {
-  clearError(els.configuredError);
-  els.queueSwitch.disabled = true;
-  const res = await send("SET_SEND_TO_QUEUE", { sendToQueue: els.queueSwitch.checked });
-  els.queueSwitch.disabled = false;
-  if (!res?.ok) {
-    showError(res?.error ?? "Couldn't save", els.configuredError);
-    els.queueSwitch.checked = !els.queueSwitch.checked;
   }
 });
 

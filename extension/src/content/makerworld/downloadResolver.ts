@@ -84,6 +84,8 @@ async function fetchMakerworldApiJson(url: string, nonce: string | null): Promis
 }
 
 const MENU_WAIT_MS = 2000;
+// Matches background/downloadCapture.ts: MakerWorld fetches the file URL before it clicks.
+const CAPTURE_TIMEOUT_MS = 8000;
 // The raw-files dialog loads its file list before showing "Download all".
 const DIALOG_WAIT_MS = 4000;
 
@@ -122,6 +124,45 @@ async function armCapture(): Promise<boolean> {
   return Boolean(armed && armed.ok);
 }
 
+// A model file on MakerWorld's file host, as opposed to any other link the page might click.
+const FILE_LINK = /\.(3mf|zip|stl|step|stp|obj)$/i;
+
+/** MakerWorld starts a download by clicking a temporary link to the file. Taking that click first
+ *  reads the URL with no browser download at all (no download bubble, no "Save as" dialog). */
+function interceptFileLink(timeoutMs: number): { url: Promise<string | null>; stop: () => void } {
+  let resolveUrl!: (found: string | null) => void;
+  const url = new Promise<string | null>((resolve) => (resolveUrl = resolve));
+  const onClick = (event: MouseEvent) => {
+    const link = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>("a[href]") : null;
+    if (!link || !/^https?:/i.test(link.href)) return;
+    if (!link.hasAttribute("download") && !FILE_LINK.test(new URL(link.href).pathname)) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    finish(link.href);
+  };
+  const timer = setTimeout(() => finish(null), timeoutMs);
+  function finish(found: string | null): void {
+    clearTimeout(timer);
+    window.removeEventListener("click", onClick, true);
+    resolveUrl(found);
+  }
+  window.addEventListener("click", onClick, true);
+  return { url, stop: () => finish(null) };
+}
+
+/** The first URL either source finds, or null once both give up. */
+function firstUrl(sources: Promise<string | null>[]): Promise<string | null> {
+  return new Promise((resolve) => {
+    let pending = sources.length;
+    for (const source of sources) {
+      void source.then((url) => {
+        if (url) resolve(url);
+        else if (--pending === 0) resolve(null);
+      });
+    }
+  });
+}
+
 /** Escape, sent where MakerWorld's dialog listens: it traps focus inside itself. */
 function closeFilesDialog(): void {
   (document.activeElement ?? document.body).dispatchEvent(
@@ -135,26 +176,40 @@ function closeFilesDialog(): void {
  *  starts is captured and cancelled (see background/downloadCapture.ts). Null means try the API
  *  fallback -- also what a CAPTCHA looks like here, since MakerWorld shows it instead of
  *  downloading. */
-async function captureViaRealClick(): Promise<{ url: string; isProfile: boolean } | null> {
+async function captureViaRealClick(profileOnly: boolean): Promise<{ url: string; isProfile: boolean } | null> {
   const arrow = findMenuArrow();
   arrow?.click();
-  const fileItem = () => findByLabel(DOWNLOAD_3MF) ?? findByLabel(DOWNLOAD_STL);
-  const item = (arrow ? await waitFor(fileItem, MENU_WAIT_MS) : fileItem()) ?? findByLabel(DOWNLOAD_OTHER);
+  const fileItem = () => findByLabel(DOWNLOAD_3MF) ?? (profileOnly ? null : findByLabel(DOWNLOAD_STL));
+  const found = arrow ? await waitFor(fileItem, MENU_WAIT_MS) : fileItem();
+  const item = found ?? (profileOnly ? null : findByLabel(DOWNLOAD_OTHER));
   if (!item) return null;
   const isProfile = DOWNLOAD_3MF.has((item.textContent || "").trim());
-  if (!(await armCapture())) return null;
+  // The link intercept is what normally answers; the browser-download capture only backs it up,
+  // should MakerWorld ever start a download some other way.
+  const link = interceptFileLink(CAPTURE_TIMEOUT_MS);
+  if (!(await armCapture())) {
+    link.stop();
+    return null;
+  }
   item.click();
   if (!isProfile) {
     // Raw-file items open a dialog listing the files instead of downloading.
     const downloadAll = await waitFor(() => findByLabel(DOWNLOAD_ALL), DIALOG_WAIT_MS);
     if (downloadAll) {
-      if (!(await armCapture())) return null;
+      if (!(await armCapture())) {
+        link.stop();
+        return null;
+      }
       downloadAll.click();
     }
   }
-  const res = await send("AWAIT_DOWNLOAD_CAPTURE");
+  const captured = send("AWAIT_DOWNLOAD_CAPTURE").then((res) => (res && res.ok ? res.data : null));
+  const url = await firstUrl([link.url, captured]);
+  link.stop();
+  // Otherwise the still-armed capture would swallow the user's next real download.
+  void send("DISARM_DOWNLOAD_CAPTURE");
   if (!isProfile) closeFilesDialog();
-  return res && res.ok && res.data ? { url: res.data, isProfile } : null;
+  return url ? { url, isProfile } : null;
 }
 
 /** The printer the profile was made for, which MakerWorld's own download request names. */
@@ -193,8 +248,12 @@ async function resolveFromPageApi(pageUrl: string): Promise<ResolvedDownload | n
 }
 
 /** `pageUrl` is captured by the caller before any await. */
-export async function resolveMakerworldDownloadUrl(pageUrl: string): Promise<ResolvedDownload | null> {
-  const viaClick = await captureViaRealClick().catch(() => null);
+/** `profileOnly` skips the raw-files zip, for callers that need the 3MF itself. */
+export async function resolveMakerworldDownloadUrl(
+  pageUrl: string,
+  { profileOnly = false } = {},
+): Promise<ResolvedDownload | null> {
+  const viaClick = await captureViaRealClick(profileOnly).catch(() => null);
   if (viaClick) {
     // "Download 3MF" gives the page's selected profile, which follows the URL hash; the raw-files
     // zip belongs to no profile.

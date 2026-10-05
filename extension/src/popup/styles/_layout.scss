@@ -124,3 +124,54 @@ body {
   line-height: 1.4;
   color: t.c("text-muted");
 }
+
+// Shows `data-tooltip` below on hover or keyboard focus, right-aligned so it stays in the popup.
+.tooltip {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+
+  &::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 1;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: t.$font-size-xs;
+    white-space: nowrap;
+    color: t.c("surface");
+    background: t.c("text");
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+  }
+
+  &:hover::after,
+  &:focus-within::after {
+    opacity: 1;
+  }
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: t.$space-2;
+  margin-top: t.$space-3;
+  padding-top: t.$space-2;
+  border-top: 1px solid t.c("border");
+  font-size: t.$font-size-xs;
+  color: t.c("text-muted");
+
+  &__link {
+    color: inherit;
+    text-decoration: none;
+
+    &:hover {
+      color: t.c("text");
+      text-decoration: underline;
+    }
+  }
+}

@@ -9,8 +9,8 @@ export const els = {
   instanceUrlText: byId("instance-url-text"),
   editInstanceBtn: byId<HTMLButtonElement>("edit-instance-btn"),
   configuredView: byId("configured-view"),
+  enabledToggle: byId("enabled-toggle"),
   enabledSwitch: byId<HTMLInputElement>("enabled-switch"),
-  queueSwitch: byId<HTMLInputElement>("queue-switch"),
   recentSection: byId("recent-section"),
   recentGrid: byId("recent-grid"),
   configuredError: byId("configured-error"),
@@ -21,6 +21,7 @@ export const els = {
   saveBtn: byId<HTMLButtonElement>("save-btn"),
   cancelBtn: byId<HTMLButtonElement>("cancel-btn"),
   error: byId("error"),
+  version: byId("version"),
 };
 
 export function showError(message: string, el: HTMLElement = els.error): void {

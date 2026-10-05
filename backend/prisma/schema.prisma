@@ -210,7 +210,7 @@ enum ImportJobStatus {
   RUNNING
   DONE
   ERROR
-  // A LINKS job waiting for someone to start it: the extension's "send to queue" collects links
+  // A LINKS job waiting for someone to start it: the extension's "Add to the queue" collects links
   // here, and pausing a running job parks its remaining links here too.
   PAUSED
 }

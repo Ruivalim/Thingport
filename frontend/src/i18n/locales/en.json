@@ -634,7 +634,7 @@
       "importQueue": {
         "heading": "Import queue",
         "loadFailed": "Unable to load the import queue.",
-        "empty": "Nothing in the queue. Links sent from Thingport Grab with \"Send to queue\" on wait here until you start them.",
+        "empty": "Nothing in the queue. Links sent from Thingport Grab with \"Add to the queue\" wait here until you start them.",
         "emptyFilter": "No imports match this filter.",
         "startAll": "Start all ({{count}})",
         "retryAll": "Retry all failed ({{count}})",

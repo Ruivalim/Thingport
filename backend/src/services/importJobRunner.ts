@@ -588,7 +588,7 @@ export async function runZipImportJob(jobId: string, userId: string, body: ZipIm
 
 export type LinksImportJobBody = ImportRequestBody & { scope?: MakerworldProfileScope };
 
-/** What a link sent from the extension's "send to queue" carries on its own item, over the job's
+/** What a link sent from the extension's "Add to the queue" carries on its own item, over the job's
  *  shared body: the panel's collection and profile scope, and the page title for the queue page. */
 export type QueuedLinkOptions = {
   collection_id?: string | null;

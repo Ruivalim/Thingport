@@ -636,7 +636,7 @@
       "importQueue": {
         "heading": "Importavimo eilė",
         "loadFailed": "Nepavyko įkelti importavimo eilės.",
-        "empty": "Eilė tuščia. Nuorodos, išsiųstos iš Thingport Grab su įjungtu „Siųsti į eilę“, laukia čia, kol jas paleisite.",
+        "empty": "Eilė tuščia. Nuorodos, išsiųstos iš Thingport Grab mygtuku „Pridėti į eilę“, laukia čia, kol jas paleisite.",
         "emptyFilter": "Nėra importų pagal šį filtrą.",
         "startAll": "Paleisti visus ({{count}})",
         "retryAll": "Kartoti visus nepavykusius ({{count}})",

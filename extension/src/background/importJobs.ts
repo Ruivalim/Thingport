@@ -69,7 +69,7 @@ export async function importSingle({
   return print;
 }
 
-/** "Send to queue": nothing is fetched now; the link waits, paused, until it's started from the
+/** "Add to the queue": nothing is fetched now; the link waits, paused, until it's started from the
  *  instance's Administration > Import queue, which then imports it with the panel's choices. */
 export async function queueImport({ url, collectionId, scope, title }: QueueImportPayload): Promise<QueueImportResult> {
   return apiCall<QueueImportResult>("POST", "/import/queue", {

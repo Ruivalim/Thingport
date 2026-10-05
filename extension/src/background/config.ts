@@ -14,10 +14,16 @@ export function isConfigured(config: StoredConfig): config is ConfiguredConfig {
 
 export async function getState(): Promise<ExtensionState> {
   const config = await getStoredConfig();
+  // Set up before the role was stored: one login learns it.
+  if (isConfigured(config) && config.isAdmin === undefined) {
+    await loginAndStoreToken(config)
+      .then(async () => Object.assign(config, await getStoredConfig()))
+      .catch(() => undefined);
+  }
   return {
     configured: isConfigured(config),
     disabled: Boolean(config.disabled),
-    sendToQueue: Boolean(config.sendToQueue),
+    isAdmin: Boolean(config.isAdmin),
     instanceUrl: config.instanceUrl || "",
     email: config.email || "",
   };
@@ -42,10 +48,5 @@ export async function saveConfig({
 
 export async function setDisabled(disabled: boolean): Promise<null> {
   await chrome.storage.local.set({ disabled: Boolean(disabled) });
-  return null;
-}
-
-export async function setSendToQueue(sendToQueue: boolean): Promise<null> {
-  await chrome.storage.local.set({ sendToQueue: Boolean(sendToQueue) });
   return null;
 }

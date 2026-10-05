@@ -59,7 +59,7 @@ export type ImportJobItem = {
   status: "PENDING" | "RUNNING" | "DONE" | "FAILED";
   attempts: number;
   error_message: string | null;
-  /** Set on links sent from the extension's "send to queue". */
+  /** Set on links sent from the extension's "Add to the queue". */
   title: string | null;
   collection_id: string | null;
   scope: MakerworldProfileScope | null;

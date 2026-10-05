@@ -15,6 +15,7 @@ import { api, escapeHtml } from "../runtime";
 import { onPanelAction, panelQuery, panelQueryAll, renderPanel } from "../shell";
 import { collectionPickerHtml, selectedCollectionId } from "./collectionPicker";
 import { errorHtml, statusHtml, successHtml } from "./results";
+import { checkingLinkPhrases, renderFunStatus } from "./funStatus";
 
 /** Model name for pages that skip /import/inspect. The <h1> first: Thingiverse's og:title goes
  *  stale on SPA navigation and Printables' has a suffix. */
@@ -56,19 +57,21 @@ function profileUrl(url: string, instanceId: string): string {
 }
 
 function importHeading(): string {
-  const { title, sendToQueue } = ctx();
-  if (sendToQueue) return title ? `Queue "${escapeHtml(title)}"` : "Queue this model";
+  const { title } = ctx();
   return title ? `Import "${escapeHtml(title)}"` : "Import this model";
 }
 
-function importLabel(): string {
-  return ctx().sendToQueue ? "Add to queue" : "Import";
+/** Admins only: the same import, but waiting paused in the instance's import queue. */
+function queueButtonHtml(): string {
+  return ctx().canQueue
+    ? `<button class="tg-btn tg-btn--secondary" type="button" data-action="queue">Add to the queue</button>`
+    : "";
 }
 
-function queueHintHtml(): string {
-  return ctx().sendToQueue
-    ? `<div class="tg-hint">Send to queue is on: this waits, paused, in Thingport's import queue.</div>`
-    : "";
+/** Queues with the panel's current choices. Picking files out of a zip needs the download now, so
+ *  only the whole-link imports offer it. */
+function onQueueAction(): void {
+  onPanelAction("queue", () => void runQueueImport(selectedProfileScope(), selectedCollectionId()));
 }
 
 export async function loadSingleItem(): Promise<void> {
@@ -76,11 +79,12 @@ export async function loadSingleItem(): Promise<void> {
   if (ctx().library) {
     renderPanel(addProfileHtml(await profilesPickerHtml()));
     onPanelAction("import", () => void runDirectImport());
+    onQueueAction();
     onPanelAction("reimport", () => void runReimport());
     return;
   }
-  renderPanel(statusHtml("Checking link…"));
   const { provider, type } = ctx().classification;
+  renderFunStatus(checkingLinkPhrases(provider));
   const skipInspect =
     (provider === "thingiverse" && type === "thing") || (provider === "printables" && type === "model");
 
@@ -101,24 +105,26 @@ export async function loadSingleItem(): Promise<void> {
   if (zipFilename === null) {
     renderPanel(`
       <div class="tg-title">${importHeading()}</div>
-      ${queueHintHtml()}
       ${await profilesPickerHtml()}
       ${await collectionPickerHtml()}
-      <button class="tg-btn" type="button" data-action="import">${importLabel()}</button>
+      <button class="tg-btn" type="button" data-action="import">Import</button>
+      ${queueButtonHtml()}
     `);
     onPanelAction("import", () => void runDirectImport());
+    onQueueAction();
     return;
   }
 
   renderPanel(`
     <div class="tg-title">${importHeading()}</div>
     <div class="tg-hint">${escapeHtml(zipFilename)} contains multiple files.</div>
-    ${queueHintHtml()}
     ${await collectionPickerHtml()}
-    <button class="tg-btn" type="button" data-action="import-as-zip">${ctx().sendToQueue ? "Queue as one model" : "Import as one model"}</button>
+    <button class="tg-btn" type="button" data-action="import-as-zip">Import as one model</button>
+    ${queueButtonHtml()}
     <button class="tg-btn tg-btn--secondary" type="button" data-action="choose-files">Choose files…</button>
   `);
   onPanelAction("import-as-zip", () => void runDirectImport());
+  onQueueAction();
   onPanelAction("choose-files", () => void loadZipEntries());
 }
 
@@ -135,9 +141,9 @@ function addProfileHtml(profilesPicker: string): string {
   return `
     <div class="tg-title">In your library</div>
     <div class="tg-hint">${hint}</div>
-    ${queueHintHtml()}
     ${profilesPicker}
-    <button class="tg-btn" type="button" data-action="import">${ctx().sendToQueue ? "Queue profile" : "Add profile"}</button>
+    <button class="tg-btn" type="button" data-action="import">Add profile</button>
+    ${queueButtonHtml()}
     <button class="tg-btn tg-btn--secondary" type="button" data-action="reimport">Update model in Thingport</button>
     <a class="tg-btn tg-btn--secondary" href="${escapeHtml(modelLink)}" target="_blank" rel="noopener noreferrer">Open model in Thingport</a>
   `;
@@ -193,11 +199,6 @@ async function runDirectImport(opts?: { entries?: string[] }): Promise<void> {
   // Captured up front: SPA navigation clears the context mid-import.
   const collectionId = selectedCollectionId();
   const scope = selectedProfileScope();
-  // Picking files out of a zip needs the download now, so that one always imports directly.
-  if (ctx().sendToQueue && !opts?.entries) {
-    await runQueueImport(scope, collectionId);
-    return;
-  }
   if (scope !== "url") {
     await runProfilesImport(scope, collectionId);
     return;
