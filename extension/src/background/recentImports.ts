@@ -1,5 +1,6 @@
-// The popup's "Recent imports" strip, kept entirely in extension storage. Entries reflect the model
-// as it was when imported.
+// The popup's "Recent imports" strip. The list is in the browser's sync storage, so it follows the
+// user to their other browsers and devices; thumbnails are too big for its quota, so each browser
+// caches its own in local storage. Entries reflect the model as it was when imported.
 
 import type { Print } from "../shared/api";
 import type { RecentImport } from "../shared/messages";
@@ -8,33 +9,94 @@ import { apiFetchBlob } from "./api";
 import { getStoredConfig, isConfigured, type ConfiguredConfig } from "./config";
 
 const RECENT_IMPORTS_STORAGE_KEY = "recentImports";
+const THUMBS_STORAGE_KEY = "recentImportThumbs";
 const RECENT_IMPORTS_KEPT = 5;
 const RECENT_IMPORT_THUMB_PX = 96;
 
-async function readStored(): Promise<RecentImport[]> {
+/** No email: the account is a hash of instance + email, so sync never carries the address. */
+type SyncedRecentImport = {
+  printId: string;
+  title: string | null;
+  url: string;
+  thumbPath: string | null;
+  account: string;
+};
+
+/** Up to 1.3.0 the list, thumbnails included, lived in local storage only. */
+type LegacyRecentImport = Omit<SyncedRecentImport, "account" | "thumbPath"> & {
+  thumbDataUrl: string | null;
+  instanceUrl: string;
+  email: string;
+};
+
+async function accountKey(config: ConfiguredConfig): Promise<string> {
+  const text = `${normalizeInstanceUrl(config.instanceUrl)}\n${config.email.trim().toLowerCase()}`;
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(digest).slice(0, 12)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function thumbKey(entry: Pick<SyncedRecentImport, "account" | "printId">): string {
+  return `${entry.account}:${entry.printId}`;
+}
+
+async function readThumbs(): Promise<Record<string, string>> {
+  const stored = await chrome.storage.local.get(THUMBS_STORAGE_KEY);
+  return (stored[THUMBS_STORAGE_KEY] as Record<string, string> | undefined) ?? {};
+}
+
+/** Drops thumbnails for models that fell off the list. */
+async function writeThumbs(thumbs: Record<string, string>, list: SyncedRecentImport[]): Promise<void> {
+  const kept = Object.fromEntries(list.map(thumbKey).flatMap((key) => (thumbs[key] ? [[key, thumbs[key]]] : [])));
+  await chrome.storage.local.set({ [THUMBS_STORAGE_KEY]: kept });
+}
+
+/** Moves a pre-sync list into sync storage, once. Only the signed-in account's entries can be
+ *  re-keyed, since the hash needs the email; the rest are dropped. */
+async function migrateLegacy(config: ConfiguredConfig): Promise<SyncedRecentImport[] | null> {
   const stored = await chrome.storage.local.get(RECENT_IMPORTS_STORAGE_KEY);
-  return (stored[RECENT_IMPORTS_STORAGE_KEY] as RecentImport[] | undefined) ?? [];
+  const legacy = stored[RECENT_IMPORTS_STORAGE_KEY] as LegacyRecentImport[] | undefined;
+  if (!legacy) return null;
+  await chrome.storage.local.remove(RECENT_IMPORTS_STORAGE_KEY);
+  const account = await accountKey(config);
+  const instanceUrl = normalizeInstanceUrl(config.instanceUrl);
+  const mine = legacy.filter((e) => e.instanceUrl === instanceUrl && e.email === config.email);
+  const list = mine.map(({ printId, title, url }) => ({ printId, title, url, thumbPath: null, account }));
+  const thumbs = await readThumbs();
+  for (const e of mine) if (e.thumbDataUrl) thumbs[thumbKey({ account, printId: e.printId })] = e.thumbDataUrl;
+  const synced = await readSynced();
+  const merged = [...synced, ...list.filter((e) => !synced.some((s) => thumbKey(s) === thumbKey(e)))];
+  await chrome.storage.sync.set({ [RECENT_IMPORTS_STORAGE_KEY]: merged.slice(0, RECENT_IMPORTS_KEPT) });
+  await writeThumbs(thumbs, merged);
+  return merged;
+}
+
+async function readSynced(): Promise<SyncedRecentImport[]> {
+  const stored = await chrome.storage.sync.get(RECENT_IMPORTS_STORAGE_KEY);
+  return (stored[RECENT_IMPORTS_STORAGE_KEY] as SyncedRecentImport[] | undefined) ?? [];
 }
 
 /** `titleHint` covers zip imports, whose job reports only the id. Scoped to instance + account. */
 export async function recordRecentImport(print: Print, titleHint: string | null): Promise<void> {
   const config = await getStoredConfig();
   if (!isConfigured(config)) return;
-  const instanceUrl = normalizeInstanceUrl(config.instanceUrl);
+  await migrateLegacy(config);
   const thumbPath = print.thumb_url || print.preview_images?.[0]?.url || null;
-  const entry: RecentImport = {
+  const entry: SyncedRecentImport = {
     printId: print.id,
     title: print.title || print.name || titleHint || null,
-    url: `${instanceUrl}/models/${print.id}`,
-    thumbDataUrl: thumbPath ? await fetchThumbDataUrl(config, thumbPath).catch(() => null) : null,
-    instanceUrl,
-    email: config.email,
+    url: `${normalizeInstanceUrl(config.instanceUrl)}/models/${print.id}`,
+    thumbPath,
+    account: await accountKey(config),
   };
   // Another profile of a listed model moves it to the front instead of adding a slot.
-  const rest = (await readStored()).filter(
-    (e) => !(e.printId === entry.printId && e.instanceUrl === instanceUrl && e.email === entry.email),
-  );
-  await chrome.storage.local.set({ [RECENT_IMPORTS_STORAGE_KEY]: [entry, ...rest].slice(0, RECENT_IMPORTS_KEPT) });
+  const rest = (await readSynced()).filter((e) => thumbKey(e) !== thumbKey(entry));
+  // Lists from other accounts share the slots; only the newest few overall are kept.
+  const list = [entry, ...rest].slice(0, RECENT_IMPORTS_KEPT * 2);
+  await chrome.storage.sync.set({ [RECENT_IMPORTS_STORAGE_KEY]: list });
+  const thumbs = await readThumbs();
+  const thumb = thumbPath ? await fetchThumbDataUrl(config, thumbPath).catch(() => null) : null;
+  if (thumb) thumbs[thumbKey(entry)] = thumb;
+  await writeThumbs(thumbs, list);
 }
 
 /** A small center-cropped square JPEG data URL. */
@@ -64,9 +126,29 @@ async function fetchThumbDataUrl(config: ConfiguredConfig, thumbPath: string): P
   return `data:image/jpeg;base64,${btoa(binary)}`;
 }
 
+/** Entries synced from another browser have no thumbnail here yet; they're fetched and cached on
+ *  first view. */
 export async function getRecentImports(): Promise<RecentImport[]> {
   const config = await getStoredConfig();
   if (!isConfigured(config)) return [];
-  const instanceUrl = normalizeInstanceUrl(config.instanceUrl);
-  return (await readStored()).filter((e) => e.instanceUrl === instanceUrl && e.email === config.email);
+  const all = (await migrateLegacy(config)) ?? (await readSynced());
+  const account = await accountKey(config);
+  const mine = all.filter((e) => e.account === account).slice(0, RECENT_IMPORTS_KEPT);
+  const thumbs = await readThumbs();
+  const missing = mine.filter((e) => !thumbs[thumbKey(e)] && e.thumbPath);
+  if (missing.length) {
+    await Promise.all(
+      missing.map(async (e) => {
+        const thumb = await fetchThumbDataUrl(config, e.thumbPath!).catch(() => null);
+        if (thumb) thumbs[thumbKey(e)] = thumb;
+      }),
+    );
+    await writeThumbs(thumbs, all);
+  }
+  return mine.map((e) => ({
+    printId: e.printId,
+    title: e.title,
+    url: e.url,
+    thumbDataUrl: thumbs[thumbKey(e)] ?? null,
+  }));
 }

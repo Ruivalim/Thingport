@@ -12,13 +12,12 @@ export type ExtensionState = {
   email: string;
 };
 
+/** The signed-in account's recent imports, as the popup shows them. */
 export type RecentImport = {
   printId: string;
   title: string | null;
   url: string;
   thumbDataUrl: string | null;
-  instanceUrl: string;
-  email: string;
 };
 
 /** See content/makerworld/downloadResolver.ts. */

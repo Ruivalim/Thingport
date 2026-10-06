@@ -1,6 +1,6 @@
 # Thingport Grab privacy policy
 
-_Effective 30 September 2026._
+_Effective 6 October 2026._
 
 Thingport Grab is a browser extension that imports 3D-printing models from MakerWorld, Printables
 and Thingiverse into **your own self-hosted Thingport instance**, and converts MakerWorld files for
@@ -9,16 +9,22 @@ extension's developer never receives any of your data, and nothing is shared wit
 
 ## What the extension stores
 
-Everything below is kept in your browser's local extension storage, on your device only. It isn't
-synced between browsers or devices.
+Everything below is kept in your browser's local extension storage, on your device only, except
+the list of recent imports, which is synced between your browsers as described below.
 
 - **Your Thingport connection:** the address of your Thingport instance, and the email and password
   you sign in to it with. They're stored as you entered them, so the extension can sign in again
   when its session expires.
 - **A session token** your Thingport instance issues when the extension signs in.
 - **Your settings:** whether the extension is switched on.
-- **Recent imports:** the title, a small thumbnail and a link for the last five models you imported
-  through the extension, shown in its toolbar popup.
+- **Recent imports:** the title and a link for the last five models you imported through the
+  extension, shown in its toolbar popup. This list is kept in your browser's sync storage, so it
+  appears in the extension on your other browsers and devices where you're signed in to the same
+  browser account and have sync on. It travels through your browser vendor's sync service (Google,
+  Mozilla or Microsoft) under that service's own privacy terms. It doesn't include your email or
+  password: entries are tied to your Thingport account by a one-way hash of your instance address
+  and email. Each model's thumbnail is fetched from your Thingport instance and kept in local
+  storage on each device; it isn't synced.
 - **Collection import progress:** while a MakerWorld collection import is running, the list of
   model pages still to visit, so it can carry on across page loads. It's deleted when the import
   ends.
@@ -79,7 +85,9 @@ model, and the model links listed on collection pages. It doesn't read any other
 ## Your control over your data
 
 - Change your Thingport connection, or switch the extension off, from its toolbar popup.
-- Uninstalling the extension deletes everything it stored.
+- Uninstalling the extension deletes everything it stored on that device. The synced list of recent
+  imports can stay in your browser account's sync data while the extension is still installed on
+  another of your browsers; clearing your browser's synced data removes it.
 - Anything the extension sends to your Thingport instance is stored on your own server, under your
   control, like everything else in your Thingport library.
 
