@@ -138,17 +138,21 @@ async function importMakerworldModel(designId: string, scope?: "url" | "designer
   return res.body;
 }
 
-async function reimport(printId: string, opts: Record<string, boolean> = {}) {
-  return request(app).post(`/api/print/${printId}/reimport`).set(auth()).send(opts);
+async function fillGaps(printId: string) {
+  return request(app).post(`/api/print/${printId}/fill-gaps`).set(auth()).send({});
 }
 
-describe("re-importing a model from its source", () => {
+async function sourceGaps(printId: string): Promise<string[] | null> {
+  return (await request(app).get(`/api/print/${printId}`).set(auth())).body.source_gaps;
+}
+
+describe("filling a model's missing details from its source", () => {
   beforeAll(async () => {
     const res = await request(app)
       .post("/api/register")
       .send({
-        displayName: "Reimport Test",
-        email: `reimport-${stamp}@example.com`,
+        displayName: "Fill Gaps Test",
+        email: `fillgaps-${stamp}@example.com`,
         password: "password123",
       });
     token = res.body.token;
@@ -168,7 +172,7 @@ describe("re-importing a model from its source", () => {
     mockFetch();
   });
 
-  it("fills only the empty metadata and merges tags, never overwriting an edit", async () => {
+  it("fills only the empty fields, never overwriting an edit", async () => {
     const designId = String(stamp % 1_000_000_000);
     setDesign(designId);
     const print = await importMakerworldModel(designId);
@@ -183,105 +187,126 @@ describe("re-importing a model from its source", () => {
       summary: "<p>An updated description.</p>",
       tags: ["phoenix", "articulated"],
     });
+    expect(await sourceGaps(print.id)).toContain("description");
 
-    const res = await reimport(print.id, { metadata: true, files: false, images: false });
+    const res = await fillGaps(print.id);
     expect(res.status).toBe(200);
-    expect(res.body.title_filled).toBe(false);
-    expect(res.body.notes_filled).toBe(true);
-    expect(res.body.tags_added).toEqual(["phoenix", "articulated"]);
+    expect(res.body.filled).toContain("description");
 
     const updated = await prisma.print.findUniqueOrThrow({ where: { id: print.id } });
     expect(updated.title).toBe("My own title"); // the edit wins
     expect(updated.notes).toBe("An updated description."); // the empty one is filled
-    expect(updated.tags.toSorted()).toEqual(["articulated", "mine", "phoenix"]);
+    expect(updated.tags).toEqual(["mine"]); // tags aren't a gap while there are any
     expect(updated.creator).toBe("Deus Cat");
     expect(updated.authorId).not.toBeNull();
   });
 
-  it("brings in the MakerWorld print profiles the model doesn't hold yet", async () => {
+  it("fills empty tags", async () => {
     const designId = String((stamp % 1_000_000_000) + 1);
+    setDesign(designId, { tags: ["phoenix", "articulated"] });
+    const print = await importMakerworldModel(designId);
+    await prisma.print.update({ where: { id: print.id }, data: { tags: [] } });
+
+    const res = await fillGaps(print.id);
+    expect(res.body.filled).toContain("tags");
+    const updated = await prisma.print.findUniqueOrThrow({ where: { id: print.id } });
+    expect(updated.tags.toSorted()).toEqual(["articulated", "phoenix"]);
+  });
+
+  it("stops offering gaps the source can't fill, until a new gap appears", async () => {
+    const designId = String((stamp % 1_000_000_000) + 2);
     setDesign(designId);
     const print = await importMakerworldModel(designId);
-    expect(print.plates).toHaveLength(1);
+    // The test user has no categories, so the source can never fill that one.
+    expect(await sourceGaps(print.id)).toContain("category");
 
-    const res = await reimport(print.id, { metadata: false, files: true, images: false });
-    expect(res.status).toBe(200);
-    expect(res.body.files_added).toBe(1);
-    expect(res.body.files_already_present).toBe(1);
+    const res = await fillGaps(print.id);
+    expect(res.body.remaining).toContain("category");
+    expect(await sourceGaps(print.id)).toEqual([]);
+    const status = await request(app)
+      .get(`/api/import/status?url=${encodeURIComponent(`https://makerworld.com/en/models/${designId}`)}`)
+      .set(auth());
+    expect(status.body.gaps).toEqual([]);
 
-    const plates = await prisma.plate.findMany({ where: { printId: print.id } });
-    expect(plates).toHaveLength(2);
-    // A second run has nothing left to add.
-    const again = await reimport(print.id, { metadata: false, files: true, images: false });
-    expect(again.body.files_added).toBe(0);
-    expect(again.body.files_already_present).toBe(2);
+    // Clearing a field the source does have opens a gap again.
+    await prisma.print.update({ where: { id: print.id }, data: { notes: null } });
+    expect(await sourceGaps(print.id)).toEqual(["description"]);
   });
 
   it("fills the image slots only while they are empty", async () => {
-    const designId = String((stamp % 1_000_000_000) + 2);
+    const designId = String((stamp % 1_000_000_000) + 3);
     coverAvailable = false;
     setDesign(designId);
     const print = await importMakerworldModel(designId);
     expect(await prisma.previewImage.count({ where: { printId: print.id } })).toBe(0);
+    expect(await sourceGaps(print.id)).toContain("images");
 
     coverAvailable = true;
-    const res = await reimport(print.id, { metadata: false, files: false, images: true });
-    expect(res.body.images_added).toBeGreaterThan(0);
+    const res = await fillGaps(print.id);
+    expect(res.body.filled).toContain("images");
 
     const count = await prisma.previewImage.count({ where: { printId: print.id } });
-    const again = await reimport(print.id, { metadata: false, files: false, images: true });
-    expect(again.body.images_added).toBe(0);
+    expect(count).toBeGreaterThan(0);
+    await fillGaps(print.id);
     expect(await prisma.previewImage.count({ where: { printId: print.id } })).toBe(count);
   });
 
-  it("adds a source file the library doesn't hold, without duplicating one it does", async () => {
-    currentThingFiles.set("body.stl", "solid body\nendsolid\n");
-    currentThingFiles.set("wheels.stl", "solid wheels\nendsolid\n");
-    const res = await request(app)
-      .post("/api/import")
-      .set(auth())
-      .send({ url: `https://www.thingiverse.com/thing:${THING_ID}` });
-    expect(res.status).toBe(200);
-    const print = res.body;
-    expect(print.plates).toHaveLength(2);
+  it("never adds files: the print profiles a model holds are the user's choice", async () => {
+    const designId = String((stamp % 1_000_000_000) + 4);
+    setDesign(designId);
+    const print = await importMakerworldModel(designId);
+    expect(print.plates).toHaveLength(1);
+    await prisma.print.update({ where: { id: print.id }, data: { notes: null } });
 
-    // Nothing new at the source: everything is recognized by content.
-    const same = await reimport(print.id, { metadata: false, files: true, images: false });
-    expect(same.body.files_added).toBe(0);
-    expect(same.body.files_already_present).toBe(2);
-
-    // The author replaces one file and adds another; the changed one comes in, the rest is skipped.
-    currentThingFiles.set("wheels.stl", "solid wheels v2\nendsolid\n");
-    currentThingFiles.set("spare.stl", "solid spare\nendsolid\n");
-    const changed = await reimport(print.id, { metadata: false, files: true, images: false });
-    expect(changed.body.files_added).toBe(2);
-    expect(changed.body.files_already_present).toBe(1);
-    expect(await prisma.plate.count({ where: { printId: print.id } })).toBe(4);
+    await fillGaps(print.id);
+    expect(await prisma.plate.count({ where: { printId: print.id } })).toBe(1);
   });
 
-  it("does nothing when every part is turned off", async () => {
-    const designId = String((stamp % 1_000_000_000) + 3);
-    setDesign(designId, { title: "Untouched", tags: ["never"] });
-    const print = await importMakerworldModel(designId);
-    await prisma.print.update({ where: { id: print.id }, data: { title: "Kept", tags: ["kept"] } });
-
-    const res = await reimport(print.id, { metadata: false, files: false, images: false });
+  it("doesn't ask the source when there's nothing to fill", async () => {
+    const user = await prisma.user.findFirstOrThrow({ where: { email: `fillgaps-${stamp}@example.com` } });
+    const print = await prisma.print.create({
+      data: {
+        userId: user.id,
+        name: `complete-${stamp}`,
+        nameNormalized: `complete-${stamp}`,
+        title: "Complete",
+        notes: "Has everything.",
+        tags: ["done"],
+        creator: "Someone",
+        sourceProvider: "makerworld",
+        sourceExternalId: String((stamp % 1_000_000_000) + 5),
+        unfillableGaps: ["author", "category", "images"],
+      },
+    });
+    const fetchSpy = vi.mocked(global.fetch);
+    fetchSpy.mockClear();
+    expect(await sourceGaps(print.id)).toEqual([]);
+    const res = await fillGaps(print.id);
     expect(res.status).toBe(200);
-    expect(res.body.tags_added).toEqual([]);
-    expect(res.body.files_added).toBe(0);
-    expect(res.body.images_added).toBe(0);
+    expect(res.body.filled).toEqual([]);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
 
-    const updated = await prisma.print.findUniqueOrThrow({ where: { id: print.id } });
-    expect(updated.title).toBe("Kept");
-    expect(updated.tags).toEqual(["kept"]);
+  it("still answers to the old reimport route used by older extensions", async () => {
+    const designId = String((stamp % 1_000_000_000) + 6);
+    setDesign(designId);
+    const print = await importMakerworldModel(designId);
+    await prisma.print.update({ where: { id: print.id }, data: { notes: null } });
+    const res = await request(app)
+      .post(`/api/print/${print.id}/reimport`)
+      .set(auth())
+      .send({ metadata: true, files: true, images: true });
+    expect(res.status).toBe(200);
+    expect(res.body.filled).toContain("description");
   });
 
   it("refuses a model with no recorded source", async () => {
-    const user = await prisma.user.findFirstOrThrow({ where: { email: `reimport-${stamp}@example.com` } });
+    const user = await prisma.user.findFirstOrThrow({ where: { email: `fillgaps-${stamp}@example.com` } });
     const print = await prisma.print.create({
       data: { userId: user.id, name: `no-source-${stamp}`, nameNormalized: `no-source-${stamp}` },
     });
-    const res = await reimport(print.id);
+    expect(await sourceGaps(print.id)).toEqual([]);
+    const res = await fillGaps(print.id);
     expect(res.status).toBe(400);
   });
 });

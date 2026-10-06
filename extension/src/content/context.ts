@@ -1,7 +1,13 @@
+import type { SourceGap } from "../shared/api";
 import type { Classification } from "../shared/urls";
 
-/** The model is in the library but this MakerWorld profile may not be, so offer to add it. */
-export type LibraryState = { state: "profile_missing" | "profile_unknown"; printId: string | null };
+/** The model is in the library. "imported" (this profile too) only gets a panel while the model
+ *  has gaps to fill; otherwise the MakerWorld profile may be missing, so offer to add it. */
+export type LibraryState = {
+  state: "imported" | "profile_missing" | "profile_unknown";
+  printId: string | null;
+  gaps: SourceGap[];
+};
 
 /** Set once per page by init(); title is filled in later. */
 export type ImportContext = {

@@ -78,6 +78,8 @@ export type Print = {
   is_favorite: boolean;
   source_provider?: string | null;
   source_url?: string | null;
+  /** Null from list endpoints, which can't tell an images gap. */
+  source_gaps?: SourceGap[] | null;
 };
 
 export type ListPrintsResult = {
@@ -92,17 +94,14 @@ export type UploadPrintsResult = {
   prints: Print[];
 };
 
-export type ReimportResult = {
+/** What "Fetch missing details" can fill from a model's source. */
+export type SourceGap = "title" | "description" | "tags" | "creator" | "author" | "category" | "images";
+
+export type FillGapsResult = {
   source_url: string;
-  title_filled: boolean;
-  notes_filled: boolean;
-  tags_added: string[];
-  creator_filled: boolean;
-  author_linked: boolean;
-  category_filled: boolean;
-  files_added: number;
-  files_already_present: number;
-  images_added: number;
+  filled: SourceGap[];
+  /** Still empty because the source has nothing for them either. */
+  remaining: SourceGap[];
 };
 
 export type PrintSortMode = "newest" | "popular" | "downloads";
@@ -369,19 +368,12 @@ export const printsApi = {
     return res.json();
   },
 
-  /** Refreshes a model from its source; only empty fields are filled, never an edit. */
-  reimport: async (
-    id: string,
-    payload: { metadata: boolean; files: boolean; images: boolean },
-  ): Promise<ReimportResult> => {
-    const res = await fetch(`${apiBase()}/print/${id}/reimport`, {
-      method: "POST",
-      headers: authHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify(payload),
-    });
+  /** Fills the model's empty details and images from its source; never overwrites an edit. */
+  fillGaps: async (id: string): Promise<FillGapsResult> => {
+    const res = await fetch(`${apiBase()}/print/${id}/fill-gaps`, { method: "POST", headers: authHeaders() });
     if (res.status === 401) throw new UnauthorizedError();
     if (!res.ok) {
-      throw new Error(await readErrorMessage(res, "Update from source failed"));
+      throw new Error(await readErrorMessage(res, "Filling in missing details failed"));
     }
     return res.json();
   },

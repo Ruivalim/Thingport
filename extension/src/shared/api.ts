@@ -13,11 +13,18 @@ export type Print = {
 
 export type Collection = { id: string; name: string; system_key?: string | null };
 
+/** What "Fetch missing details" can fill on a library model, from its source. */
+export type SourceGap = "title" | "description" | "tags" | "creator" | "author" | "category" | "images";
+
 export type ImportStatus = {
   already_imported: boolean;
   print_id?: string | null;
   state?: "imported" | "profile_missing" | "profile_unknown" | string;
+  /** Missing from instances older than 1.4.0. */
+  gaps?: SourceGap[];
 };
+
+export type FillGapsResult = { filled: SourceGap[]; remaining: SourceGap[] };
 
 export type InspectResult = { title?: string | null; is_zip?: boolean; filename?: string | null };
 

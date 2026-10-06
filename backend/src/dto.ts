@@ -17,6 +17,7 @@ import { previewImageExists, previewImagePath } from "./services/previewImageSer
 import { preparedFilename } from "./services/preparedPrint";
 import { modelPreviewGlbExists, modelPreviewGlbPath } from "./services/modelPreviewCache";
 import { buildImportSourceUrl } from "./services/importService";
+import { openSourceGaps, type SourceGap } from "./services/sourceGaps";
 import { parseQueuedLinkOptions } from "./services/importJobRunner";
 import type { QueueJobRow } from "./services/importQueueService";
 
@@ -138,6 +139,9 @@ export type PrintOut = {
   // source_url is the reconstructed original model page.
   source_provider: string | null;
   source_url: string | null;
+  /** What "Fetch missing details" could still fill. Null where the preview images weren't
+   *  loaded (list endpoints), since an images gap can't be told without them. */
+  source_gaps: SourceGap[] | null;
 };
 
 export type CategoryOut = {
@@ -222,14 +226,14 @@ export function toPrintOut(
   files: PrintFile[],
   preparedFile: PrintFile | null,
   author?: Author | null,
-  previewImages: PreviewImage[] = [],
+  previewImages?: PreviewImage[],
   category?: Category | null,
 ): PrintOut {
   const sortedPlates = plates.toSorted((a, b) => a.position - b.position);
   const plateOuts = sortedPlates.map((p) => toPlateOut(print.id, p));
   const supportingCount = files.filter((f) => f.role === "SUPPORTING").length;
   const totalSize = plates.reduce((sum, p) => sum + p.size, 0) + files.reduce((sum, f) => sum + f.size, 0);
-  const previewImageOuts = previewImages
+  const previewImageOuts = (previewImages ?? [])
     .toSorted((a, b) => a.position - b.position)
     .map(toPreviewImageOut)
     .filter((img): img is PreviewImageOut => img !== null);
@@ -294,6 +298,7 @@ export function toPrintOut(
     is_favorite: print.favoritedAt !== null,
     source_provider: print.sourceProvider,
     source_url: buildImportSourceUrl(print.sourceProvider, print.sourceExternalId),
+    source_gaps: previewImages ? openSourceGaps(print, previewImages) : null,
   };
 }
 

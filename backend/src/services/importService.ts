@@ -47,6 +47,7 @@ import {
   completeMakerworldAuthor,
   fetchMakerworldDesign,
 } from "./makerworldCloudApi";
+import { openSourceGaps, type SourceGap } from "./sourceGaps";
 import {
   parseThingiverseThingUrl,
   resolveThingiverseThing,
@@ -584,33 +585,36 @@ export function identifySourceModel(url: string): { provider: string; externalId
 
 /** `state` refines already_imported for a MakerWorld URL naming a profile: "profile_missing"
  *  when every plate is a different profile, "profile_unknown" when some plates predate profile
- *  tracking. already_imported stays for older extension versions. */
+ *  tracking. already_imported stays for older extension versions. `gaps` is what "Fetch
+ *  missing details" could fill on the library's model. */
 export type ImportStatus = {
   recognized: boolean;
   already_imported: boolean;
   print_id: string | null;
   state: "not_imported" | "imported" | "profile_missing" | "profile_unknown";
+  gaps: SourceGap[];
 };
 
 /** Never fetches the provider's page, so it's cheap enough for the extension to call on every
  * page load. */
 export async function checkImportStatus(userId: string, url: string): Promise<ImportStatus> {
   const source = identifySourceModel(url);
-  if (!source) return { recognized: false, already_imported: false, print_id: null, state: "not_imported" };
+  if (!source) return { recognized: false, already_imported: false, print_id: null, state: "not_imported", gaps: [] };
   const print = await prisma.print.findFirst({
     where: { userId, sourceProvider: source.provider, sourceExternalId: source.externalId },
-    select: { id: true, plates: { select: { sourceInstanceId: true } } },
+    include: { plates: { select: { sourceInstanceId: true } }, previewImages: { select: { generated: true } } },
   });
-  if (!print) return { recognized: true, already_imported: false, print_id: null, state: "not_imported" };
+  if (!print) return { recognized: true, already_imported: false, print_id: null, state: "not_imported", gaps: [] };
+  const gaps = openSourceGaps(print, print.previewImages);
   // Without a profile in the URL, any imported profile counts; asking MakerWorld on every page
   // view isn't worth it.
   const requestedInstanceId =
     source.provider === "makerworld" ? parseMakerworldModelUrl(url)?.requestedInstanceId : null;
   if (requestedInstanceId && !print.plates.some((plate) => plate.sourceInstanceId === requestedInstanceId)) {
     const state = print.plates.some((plate) => plate.sourceInstanceId == null) ? "profile_unknown" : "profile_missing";
-    return { recognized: true, already_imported: false, print_id: print.id, state };
+    return { recognized: true, already_imported: false, print_id: print.id, state, gaps };
   }
-  return { recognized: true, already_imported: true, print_id: print.id, state: "imported" };
+  return { recognized: true, already_imported: true, print_id: print.id, state: "imported", gaps };
 }
 
 /** Inverse of identifySourceModel, for the "Open in {Provider}" link. */

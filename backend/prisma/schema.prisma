@@ -113,6 +113,8 @@ model Print {
   // Dedupes re-imports of the same design. Null for uploads and unidentifiable sources.
   sourceProvider   String?
   sourceExternalId String?
+  // Gaps (see services/sourceGaps.ts) the source had nothing for at the last fill.
+  unfillableGaps   String[]                 @default([])
   categoryId       String?
   category         Category?                @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   authorId         String?

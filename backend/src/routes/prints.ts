@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { Router, type Request } from "express";
+import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import { prisma } from "../db";
 import { requireAuth } from "../auth";
@@ -20,7 +20,7 @@ import { RENDERABLE_MODEL_EXTS } from "../config";
 import { estimateDownloadSize, resolvePrintsForDownload, sendPrintsZip } from "../services/downloadZip";
 import { systemCollectionKeyForId } from "../services/collectionService";
 import { createLog } from "../services/auditLog";
-import { reimportPrint } from "../services/reimportService";
+import { fillSourceGaps } from "../services/fillGapsService";
 import { isNormalizable3mf, normalize3mfStatus, normalized3mfFor } from "../services/normalized3mfCache";
 import type { Prisma } from "@prisma/client";
 
@@ -587,28 +587,20 @@ router.delete(
   }),
 );
 
-const reimportRequestSchema = z.object({
-  metadata: z.boolean().default(true),
-  files: z.boolean().default(true),
-  images: z.boolean().default(true),
-});
+/** Fills the model's empty details and images from its source; never overwrites, never adds files. */
+async function fillGaps(req: Request, res: Response): Promise<void> {
+  const result = await fillSourceGaps(req.userId!, req.params.id);
+  res.json(result);
+  void createLog({
+    userId: req.userId!,
+    action: "model_reimported",
+    targetId: req.params.id,
+    details: { source_url: result.source_url, filled: result.filled },
+  });
+}
 
-/** Refreshes a model from its source: fills empty metadata, brings in files still missing (for
- *  MakerWorld, the print profiles that aren't on it yet) and fills an empty image slot. Nothing a
- *  user edited by hand is overwritten. */
-router.post(
-  "/print/:id/reimport",
-  asyncHandler(async (req, res) => {
-    const body = parseBody(reimportRequestSchema, req.body ?? {});
-    const result = await reimportPrint(req.userId!, req.params.id, body);
-    res.json(result);
-    void createLog({
-      userId: req.userId!,
-      action: "model_reimported",
-      targetId: req.params.id,
-      details: { source_url: result.source_url, files_added: result.files_added, tags_added: result.tags_added },
-    });
-  }),
-);
+router.post("/print/:id/fill-gaps", asyncHandler(fillGaps));
+// Extension versions up to 1.3.0 call it by its old name.
+router.post("/print/:id/reimport", asyncHandler(fillGaps));
 
 export default router;

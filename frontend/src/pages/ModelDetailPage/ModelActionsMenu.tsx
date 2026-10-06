@@ -16,7 +16,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import PlaylistAddIcon from "@mui/icons-material/PlaylistAdd";
 import PlaylistRemoveIcon from "@mui/icons-material/PlaylistRemove";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-import SyncIcon from "@mui/icons-material/Sync";
+import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import LaunchIcon from "@mui/icons-material/Launch";
 import type { SxProps, Theme } from "@mui/material/styles";
 import { UnauthorizedError } from "../../api/client";
@@ -33,7 +33,7 @@ import { useNormalizedOpen } from "./useNormalizedOpen";
 import DownloadPickerDialog from "./DownloadPickerDialog";
 import AddToCollectionModal from "./AddToCollectionModal";
 import EditModelModal from "./EditModelModal";
-import ReimportDialog from "./ReimportDialog";
+import FillGapsDialog from "./FillGapsDialog";
 
 type Props = {
   print: Print;
@@ -71,7 +71,8 @@ export default function ModelActionsMenu({
   const [deleting, setDeleting] = useState(false);
   const [removingFromCollection, setRemovingFromCollection] = useState(false);
   const [addToCollectionOpen, setAddToCollectionOpen] = useState(false);
-  const [reimportOpen, setReimportOpen] = useState(false);
+  const [fillGapsOpen, setFillGapsOpen] = useState(false);
+  const sourceGaps = print.source_gaps ?? [];
   // Driven by ?edit=<id> so links and the back button open/close it.
   const editOpen = searchParams.get("edit") === print.id;
   const {
@@ -270,17 +271,17 @@ export default function ModelActionsMenu({
             <ListItemText>{normalizedMenuLabel(slicerOption.label)}</ListItemText>
           </MenuItem>
         )}
-        {providerInfo && print.source_url && (
+        {providerInfo && print.source_url && sourceGaps.length > 0 && (
           <MenuItem
             onClick={() => {
               closeMenu();
-              setReimportOpen(true);
+              setFillGapsOpen(true);
             }}
           >
             <ListItemIcon>
-              <SyncIcon fontSize="small" />
+              <AutoFixHighIcon fontSize="small" />
             </ListItemIcon>
-            <ListItemText>{t("models:detail.reimport")}</ListItemText>
+            <ListItemText>{t("models:detail.fillGaps", { provider: providerInfo.label })}</ListItemText>
           </MenuItem>
         )}
         {providerInfo && print.source_url && (
@@ -342,11 +343,12 @@ export default function ModelActionsMenu({
         />
       )}
 
-      {reimportOpen && (
-        <ReimportDialog
+      {fillGapsOpen && (
+        <FillGapsDialog
           open
           print={print}
-          onClose={() => setReimportOpen(false)}
+          gaps={sourceGaps}
+          onClose={() => setFillGapsOpen(false)}
           onUpdated={(updated) => onUpdated?.(updated)}
           onUnauthorized={onUnauthorized}
         />

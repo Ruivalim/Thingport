@@ -86,12 +86,16 @@ async function init(): Promise<void> {
     try {
       const status = await api<ImportStatus>("GET", `/import/status?url=${encodeURIComponent(url)}`);
       if (isStale()) return;
+      const gaps = status.gaps ?? [];
       if (status.already_imported) {
-        reportTabIconState(false);
-        return;
-      }
-      if (status.state === "profile_missing" || status.state === "profile_unknown") {
-        library = { state: status.state, printId: status.print_id ?? null };
+        // Nothing to import, so the bubble only shows while there are details to fill in.
+        if (!gaps.length || !status.print_id) {
+          reportTabIconState(false);
+          return;
+        }
+        library = { state: "imported", printId: status.print_id, gaps };
+      } else if (status.state === "profile_missing" || status.state === "profile_unknown") {
+        library = { state: status.state, printId: status.print_id ?? null, gaps };
       }
     } catch {
       // Show the icon anyway; the panel surfaces the real error.
@@ -110,7 +114,11 @@ async function init(): Promise<void> {
   const togglePanel = mountPanel(root, () => void loadPanel());
   mountFab(root, {
     variant: library ? "in-library" : undefined,
-    label: library ? "Add this print profile to Thingport" : "Import to Thingport",
+    label: !library
+      ? "Import to Thingport"
+      : library.state === "imported"
+        ? "Fetch this model's missing details into Thingport"
+        : "Add this print profile to Thingport",
     onClick: togglePanel,
   });
   reportTabIconState(true);

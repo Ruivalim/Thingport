@@ -1,7 +1,7 @@
 // Thingiverse and Printables import directly; other links go through /import/inspect first, like
 // the web app's useUploadImport.tsx.
 
-import type { InspectResult, ZipEntriesResult } from "../../shared/api";
+import type { FillGapsResult, InspectResult, SourceGap, ZipEntriesResult } from "../../shared/api";
 import { request } from "../../shared/messages";
 import { ctx } from "../context";
 import {
@@ -19,7 +19,14 @@ import { api, escapeHtml } from "../runtime";
 import { onPanelAction, panelQuery, panelQueryAll, renderPanel } from "../shell";
 import { collectionIdFor, collectionPickerHtml, readCollectionChoice, wireCollectionPicker } from "./collectionPicker";
 import { errorHtml, statusHtml, successHtml } from "./results";
-import { checkingLinkPhrases, importingPhrases, renderFunStatus, updatingPhrases, zipFilesPhrases } from "./funStatus";
+import {
+  checkingLinkPhrases,
+  fillingGapsPhrases,
+  importingPhrases,
+  renderFunStatus,
+  SITE_NAMES,
+  zipFilesPhrases,
+} from "./funStatus";
 
 /** Model name for pages that skip /import/inspect. The <h1> first: Thingiverse's og:title goes
  *  stale on SPA navigation and Printables' has a suffix. */
@@ -84,12 +91,18 @@ function onQueueAction(): void {
 }
 
 export async function loadSingleItem(): Promise<void> {
+  const { library } = ctx();
+  if (library?.state === "imported") {
+    renderPanel(fillGapsHtml());
+    onPanelAction("fill-gaps", () => void runFillGaps());
+    return;
+  }
   // A MakerWorld profile is always one 3MF, so inspecting would only cost a download resolution.
-  if (ctx().library) {
+  if (library) {
     renderPanel(addProfileHtml(await profilesPickerHtml()));
     onPanelAction("import", () => void runDirectImport());
     onQueueAction();
-    onPanelAction("reimport", () => void runReimport());
+    onPanelAction("fill-gaps", () => void runFillGaps());
     return;
   }
   const { provider, type } = ctx().classification;
@@ -141,35 +154,79 @@ export async function loadSingleItem(): Promise<void> {
 
 /** The model's in the library but this profile may not be. */
 function addProfileHtml(profilesPicker: string): string {
-  const { library, url, instanceUrl } = ctx();
+  const { library, url } = ctx();
   const profileName = currentMakerworldProfileTitle(url);
   const profileLabel = profileName ? `the "${escapeHtml(profileName)}" profile` : "this print profile";
   const hint =
     library?.state === "profile_missing"
       ? `You already have this model. Add ${profileLabel} as another file on it?`
       : `This model is in your library. Add ${profileLabel} if you don't have it yet -- if one of the model's files already is this profile, nothing is downloaded twice.`;
-  const modelLink = library?.printId ? `${instanceUrl}/models/${library.printId}` : `${instanceUrl}/models`;
   return `
     <div class="tg-title">In your library</div>
     <div class="tg-hint">${hint}</div>
     ${profilesPicker}
     <button class="tg-btn" type="button" data-action="import">Add profile</button>
     ${queueButtonHtml()}
-    <button class="tg-btn tg-btn--secondary" type="button" data-action="reimport">Update model in Thingport</button>
-    <a class="tg-btn tg-btn--secondary" href="${escapeHtml(modelLink)}" target="_blank" rel="noopener noreferrer">Open model in Thingport</a>
+    ${library?.gaps.length ? fillGapsButtonHtml("tg-btn--secondary") : ""}
+    <a class="tg-btn tg-btn--secondary" href="${escapeHtml(libraryModelLink())}" target="_blank" rel="noopener noreferrer">Open model in Thingport</a>
   `;
 }
 
-/** Refreshes the library model from this page's source: fills empty metadata and images, and adds
- *  whatever files (e.g. print profiles) it doesn't hold yet. Nothing edited by hand is touched. */
-async function runReimport(): Promise<void> {
+const GAP_LABELS: Record<SourceGap, string> = {
+  title: "title",
+  description: "description",
+  tags: "tags",
+  creator: "creator name",
+  author: "linked author",
+  category: "category",
+  images: "preview images",
+};
+
+function gapList(gaps: SourceGap[]): string {
+  return gaps.map((gap) => GAP_LABELS[gap] ?? gap).join(", ");
+}
+
+function fillGapsButtonHtml(variant = ""): string {
+  return `<button class="tg-btn ${variant}" type="button" data-action="fill-gaps">Fetch missing details</button>`;
+}
+
+function libraryModelLink(): string {
   const { library, instanceUrl } = ctx();
+  return library?.printId ? `${instanceUrl}/models/${library.printId}` : `${instanceUrl}/models`;
+}
+
+/** Everything's imported, but the library model has empty details the source can fill. */
+function fillGapsHtml(): string {
+  const { library, classification } = ctx();
+  const gaps = library?.gaps ?? [];
+  return `
+    <div class="tg-title">In your library</div>
+    <div class="tg-hint">This model is missing its ${escapeHtml(gapList(gaps))}. Fetch them from ${SITE_NAMES[classification.provider]}? Nothing you've already filled in is changed.</div>
+    ${fillGapsButtonHtml()}
+    <a class="tg-btn tg-btn--secondary" href="${escapeHtml(libraryModelLink())}" target="_blank" rel="noopener noreferrer">Open model in Thingport</a>
+  `;
+}
+
+/** Fills the library model's empty details and images from its source. Never overwrites anything
+ *  and never adds files: which print profiles a model holds is the import's choice. */
+async function runFillGaps(): Promise<void> {
+  const { library, classification } = ctx();
   if (!library?.printId) return;
-  renderFunStatus(updatingPhrases(ctx().classification.provider));
+  const site = SITE_NAMES[classification.provider];
+  renderFunStatus(fillingGapsPhrases(classification.provider));
   try {
-    await api("POST", `/print/${library.printId}/reimport`, { metadata: true, files: true, images: true });
-    const link = `${instanceUrl}/models/${library.printId}`;
-    renderPanel(successHtml(link, "Filled in what the model in your library was missing.", "Model updated"));
+    const result = await api<FillGapsResult>("POST", `/print/${library.printId}/fill-gaps`);
+    library.gaps = [];
+    const remaining = result.remaining.length ? `${site} has nothing for the ${gapList(result.remaining)}.` : "";
+    renderPanel(
+      result.filled.length
+        ? successHtml(
+            libraryModelLink(),
+            `Fetched the ${gapList(result.filled)}. ${remaining}`.trim(),
+            "Details fetched",
+          )
+        : successHtml(libraryModelLink(), `${site} doesn't have these either.`, "Nothing to fetch"),
+    );
   } catch (err) {
     renderPanel(errorHtml(err));
   }

@@ -7,7 +7,7 @@ import { panelQuery, renderPanel } from "../shell";
 
 const ROTATE_MS = 2500;
 
-const SITE_NAMES: Record<Provider, string> = {
+export const SITE_NAMES: Record<Provider, string> = {
   makerworld: "MakerWorld",
   printables: "Printables",
   thingiverse: "Thingiverse",
@@ -44,14 +44,12 @@ export function importingPhrases(provider: Provider): string[] {
   ];
 }
 
-/** "Update model in Thingport": fills empty details and images, adds files it doesn't hold yet. */
-export function updatingPhrases(provider: Provider): string[] {
+/** "Fetch missing details": fills the library model's empty details and images. */
+export function fillingGapsPhrases(provider: Provider): string[] {
   return [
-    "Updating the model…",
-    `Checking ${SITE_NAMES[provider]} for anything new…`,
     "Filling in the blanks…",
+    `Asking ${SITE_NAMES[provider]} for the details…`,
     "Looking for missing photos…",
-    "Hunting for new files…",
     "Leaving your edits alone…",
     "Comparing notes…",
     "Dusting off the shelf…",
