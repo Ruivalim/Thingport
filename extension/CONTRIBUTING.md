@@ -262,6 +262,18 @@ previous version is still in certification, the job fails with `InProgressSubmis
 Microsoft has finished, open the failed run and use **Re-run failed jobs**. (The release itself,
 tag and changelog included, is already done at that point and isn't repeated.)
 
+Edge wants complete certification notes (under 2,000 characters) with every submission, and may fail
+one that only points at an earlier one. The job sends
+[scripts/edge-certification-notes.txt](scripts/edge-certification-notes.txt) with the version and
+the release link filled in; edit that file when testing steps or permissions change. The script
+refuses to upload if the filled-in notes are too long.
+
+Reviewers need a Thingport server to test against. If the optional repo secret
+`EDGE_REVIEW_TEST_SERVER` is set, its text goes into the notes (e.g. "Use the test server
+https://… with email … and password …."). Without it, the notes tell the reviewer how to start a
+server of their own with `install.sh`. Keep reviewer login details in that secret only: this repo
+is public.
+
 To test the script against Edge by hand, with the credentials below in your environment:
 
 ```bash

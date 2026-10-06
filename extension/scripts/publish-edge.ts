@@ -5,7 +5,12 @@
 // Microsoft anywhere from hours to days -- this only gets the update into the queue.
 //
 //   EDGE_PRODUCT_ID=... EDGE_CLIENT_ID=... EDGE_API_KEY=... \
-//     tsx scripts/publish-edge.ts dist/zips/thingport-grab-edge.zip [--notes "..."]
+//     tsx scripts/publish-edge.ts dist/zips/thingport-grab-edge.zip [--notes-file <path> | --notes "..."]
+//
+// Edge requires complete certification notes (under 2,000 characters) with every submission, and
+// may fail one that only points at an earlier one. --notes-file fills a template's {{version}},
+// {{changes}} and {{testServer}} from RELEASE_VERSION, RELEASE_TAG and EDGE_REVIEW_TEST_SERVER (a
+// secret: a reviewer account on a test server); see edge-certification-notes.txt.
 //
 // Run by .github/workflows/extension-release.yml when package.json's version hasn't been
 // published to Edge yet (see extension/CONTRIBUTING.md for setting up the credentials).
@@ -16,6 +21,14 @@ import { readFile } from "node:fs/promises";
 const API_BASE = process.env.EDGE_API_BASE || "https://api.addons.microsoftedge.microsoft.com";
 const POLL_INTERVAL_MS = 5000;
 const POLL_TIMEOUT_MS = 10 * 60 * 1000;
+const NOTES_MAX_CHARS = 2000;
+const REPO_URL = "https://github.com/TautvydasDerzinskas/Thingport";
+// Without a reviewer account, the reviewer runs a server of their own.
+const SELF_HOSTED_TEST_SERVER =
+  "No shared test server is provided. Start one with Docker in about two minutes (Linux or macOS) by " +
+  "running: curl -fsSL https://thingport.net/install.sh | WEB_PORT=8080 sh\nThen open " +
+  "http://localhost:8080 and register; the first account becomes the admin. Use http://localhost:8080 " +
+  "as the server address in step 2.";
 
 type Operation = {
   id?: string;
@@ -43,6 +56,26 @@ function requireEnv(name: string): string {
 function argValue(flag: string): string | undefined {
   const index = process.argv.indexOf(flag);
   return index >= 0 ? process.argv[index + 1] : undefined;
+}
+
+/** The template with its placeholders filled; refuses notes Edge would reject. */
+async function notesFromTemplate(path: string): Promise<string> {
+  const version = process.env.RELEASE_VERSION?.trim() || "update";
+  const tag = process.env.RELEASE_TAG?.trim();
+  const values: Record<string, string> = {
+    version,
+    changes: tag ? `${REPO_URL}/releases/tag/${tag}` : `${REPO_URL}/blob/main/extension/CHANGELOG.md`,
+    testServer: process.env.EDGE_REVIEW_TEST_SERVER?.trim() || SELF_HOSTED_TEST_SERVER,
+  };
+  const notes = (await readFile(path, "utf8"))
+    .replace(/\{\{(\w+)\}\}/g, (match, key: string) => values[key] ?? match)
+    .trim();
+  const unfilled = notes.match(/\{\{\w+\}\}/);
+  if (unfilled) throw new Error(`${path}: unknown placeholder ${unfilled[0]}`);
+  if (notes.length >= NOTES_MAX_CHARS) {
+    throw new Error(`Certification notes are ${notes.length} characters; Edge allows under ${NOTES_MAX_CHARS}.`);
+  }
+  return notes;
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -85,8 +118,17 @@ async function waitFor(url: string, auth: Record<string, string>, what: string):
 }
 
 async function main(): Promise<void> {
-  const zipPath = process.argv.slice(2).find((arg, i, all) => !arg.startsWith("--") && all[i - 1] !== "--notes");
-  if (!zipPath) throw new Error("Usage: tsx scripts/publish-edge.ts <package.zip> [--notes <text>]");
+  const zipPath = process.argv
+    .slice(2)
+    .find((arg, i, all) => !arg.startsWith("--") && all[i - 1] !== "--notes" && all[i - 1] !== "--notes-file");
+  if (!zipPath) {
+    throw new Error("Usage: tsx scripts/publish-edge.ts <package.zip> [--notes-file <path> | --notes <text>]");
+  }
+  // Checked before the upload, so a too-long note doesn't leave a half-done draft behind.
+  const notesFile = argValue("--notes-file");
+  const notes = notesFile
+    ? await notesFromTemplate(notesFile)
+    : (argValue("--notes") ?? "Automated update. Testing instructions are unchanged from the previous submission.");
   const productId = requireEnv("EDGE_PRODUCT_ID");
   const auth = { Authorization: `ApiKey ${requireEnv("EDGE_API_KEY")}`, "X-ClientID": requireEnv("EDGE_CLIENT_ID") };
   const productUrl = `${API_BASE}/v1/products/${productId}`;
@@ -101,8 +143,6 @@ async function main(): Promise<void> {
   const uploaded = await waitFor(`${productUrl}/submissions/draft/package/operations/${uploadId}`, auth, "Upload");
   console.log(`Upload processed: ${uploaded.message ?? "ok"}`);
 
-  const notes =
-    argValue("--notes") ?? "Automated update. Testing instructions are unchanged from the previous submission.";
   const publishId = await startOperation(
     `${productUrl}/submissions`,
     { method: "POST", headers: { ...auth, "Content-Type": "application/json" }, body: JSON.stringify({ notes }) },

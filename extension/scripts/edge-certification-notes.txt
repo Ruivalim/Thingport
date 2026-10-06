@@ -1,0 +1,18 @@
+Thingport Grab {{version}}. Changes in this version: {{changes}}
+
+WHAT IT DOES
+Imports 3D-printing models from MakerWorld, Printables and Thingiverse into the user's own self-hosted Thingport server (open source: https://github.com/TautvydasDerzinskas/Thingport). It has no servers of its own and sends nothing to the developer or any third party.
+
+HOW TO TEST
+1. A Thingport server is required. {{testServer}}
+2. Click the toolbar icon, enter the server address, email and password, and connect. Allow the access request for that address.
+3. Open a model page, e.g. https://www.printables.com/model/3161-3d-benchy or https://makerworld.com/en/models/3080401, click the Thingport button at the bottom right of the page and choose Import. The model appears in the Thingport web app and under Recent imports in the toolbar popup.
+4. MakerWorld downloads need a MakerWorld login in the same browser; Printables and Thingiverse work without one.
+
+PERMISSIONS
+- storage: the server address, sign-in and recent imports.
+- cookies: reads the MakerWorld session cookie, on makerworld.com only, which MakerWorld requires for downloads.
+- downloads: reads the link from a download MakerWorld's page starts, then cancels it.
+- host access: the three model sites, and the user's own server address (requested at setup).
+
+The code isn't minified or obfuscated. Documentation: https://thingport.net/docs/grab/ Privacy policy: https://github.com/TautvydasDerzinskas/Thingport/blob/main/extension/PRIVACY.md

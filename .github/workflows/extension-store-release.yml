@@ -147,10 +147,13 @@ jobs:
         with:
           name: thingport-grab-store-zips
           path: extension/dist/zips
+      # Edge wants complete certification notes with every submission; see the notes file.
       - name: Upload and submit for certification
-        run: |
-          npx tsx scripts/publish-edge.ts dist/zips/thingport-grab-edge.zip --notes \
-            "Automated update to version ${{ needs.release.outputs.version }}. Changes: https://github.com/TautvydasDerzinskas/Thingport/releases/tag/${{ needs.release.outputs.tag }} -- testing instructions are unchanged from the previous submission; documentation: https://thingport.net/docs/grab/"
+        env:
+          RELEASE_VERSION: ${{ needs.release.outputs.version }}
+          RELEASE_TAG: ${{ needs.release.outputs.tag }}
+          EDGE_REVIEW_TEST_SERVER: ${{ secrets.EDGE_REVIEW_TEST_SERVER }}
+        run: npx tsx scripts/publish-edge.ts dist/zips/thingport-grab-edge.zip --notes-file scripts/edge-certification-notes.txt
 
   # Its own job so it can be re-run alone. Same AMO credentials as the per-merge unlisted signing
   # in extension-release.yml; see extension/CONTRIBUTING.md.
