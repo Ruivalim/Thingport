@@ -1463,7 +1463,24 @@
       "descriptionWrite": "Write",
       "descriptionPreview": "Preview",
       "descriptionPlaceholder": "Describe the model, print settings, assembly steps...",
-      "descriptionMarkdownHint": "Markdown supported: **bold**, *italic*, # headings, - lists, [links](https://…) and ![images](https://…)."
+      "descriptionMarkdownHint": "Formatted with Markdown. Images added by URL are saved with the model.",
+      "toolbar": {
+        "label": "Formatting",
+        "bold": "Bold",
+        "boldText": "bold text",
+        "italic": "Italic",
+        "italicText": "italic text",
+        "heading": "Heading",
+        "bulletList": "Bulleted list",
+        "numberedList": "Numbered list",
+        "quote": "Quote",
+        "code": "Code",
+        "codeText": "code",
+        "link": "Link",
+        "linkText": "link text",
+        "image": "Image from URL",
+        "imageText": "image"
+      }
     },
     "author": {
       "pageTitle": "Author",

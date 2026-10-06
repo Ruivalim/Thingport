@@ -1466,7 +1466,24 @@
       "descriptionWrite": "Rašyti",
       "descriptionPreview": "Peržiūra",
       "descriptionPlaceholder": "Aprašykite modelį, spausdinimo nustatymus, surinkimo žingsnius...",
-      "descriptionMarkdownHint": "Palaikomas Markdown: **paryškinta**, *kursyvas*, # antraštės, - sąrašai, [nuorodos](https://…) ir ![paveikslėliai](https://…)."
+      "descriptionMarkdownHint": "Formatuojama Markdown. Pagal URL pridėti paveikslėliai išsaugomi kartu su modeliu.",
+      "toolbar": {
+        "label": "Formatavimas",
+        "bold": "Paryškinti",
+        "boldText": "paryškintas tekstas",
+        "italic": "Kursyvas",
+        "italicText": "kursyvinis tekstas",
+        "heading": "Antraštė",
+        "bulletList": "Sąrašas",
+        "numberedList": "Numeruotas sąrašas",
+        "quote": "Citata",
+        "code": "Kodas",
+        "codeText": "kodas",
+        "link": "Nuoroda",
+        "linkText": "nuorodos tekstas",
+        "image": "Paveikslėlis iš URL",
+        "imageText": "paveikslėlis"
+      }
     },
     "author": {
       "pageTitle": "Autorius",
