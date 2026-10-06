@@ -21,6 +21,7 @@ import { getThingiverseAccessToken } from "./settingsService";
 import { getUserMakerworldCookie } from "./makerworldCookieService";
 import { upsertAuthorFromImport } from "./authorService";
 import { emptyGaps, openSourceGaps, type SourceGap } from "./sourceGaps";
+import { localizeDescriptionImages } from "./descriptionImageService";
 
 export type FillGapsResult = {
   source_url: string;
@@ -141,9 +142,23 @@ export async function fillSourceGaps(userId: string, printId: string): Promise<F
       meta.galleryImages.map((image) => ({ url: image.url, filename: image.filename })),
     );
   }
+  if (wanted.has("description") && meta.description) await localizeDescriptionImages(print.id);
 
   const after = await prisma.print.findUniqueOrThrow({ where: { id: print.id }, include: { previewImages: true } });
   const remaining = emptyGaps(after, after.previewImages);
   await prisma.print.update({ where: { id: print.id }, data: { unfillableGaps: remaining } });
   return { source_url: sourceUrl, filled: gaps.filter((gap) => !remaining.includes(gap)), remaining };
+}
+
+/** Overwrites the description with the source's, unlike fillSourceGaps. Returns the source URL. */
+export async function refreshDescriptionFromSource(userId: string, printId: string): Promise<string> {
+  const print = await prisma.print.findFirst({ where: { id: printId, userId } });
+  if (!print) throw new HttpError(404, "Model not found");
+  const sourceUrl = buildImportSourceUrl(print.sourceProvider, print.sourceExternalId);
+  if (!sourceUrl) throw new HttpError(400, "This model has no recorded source to refresh its description from");
+  const meta = await fetchSourceMeta(userId, print, sourceUrl);
+  if (!meta.description) throw new HttpError(404, "The source has no description for this model");
+  await prisma.print.update({ where: { id: print.id }, data: { notes: meta.description } });
+  await localizeDescriptionImages(print.id);
+  return sourceUrl;
 }

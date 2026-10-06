@@ -17,6 +17,7 @@ import PlaylistAddIcon from "@mui/icons-material/PlaylistAdd";
 import PlaylistRemoveIcon from "@mui/icons-material/PlaylistRemove";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
+import NotesIcon from "@mui/icons-material/Notes";
 import LaunchIcon from "@mui/icons-material/Launch";
 import type { SxProps, Theme } from "@mui/material/styles";
 import { UnauthorizedError } from "../../api/client";
@@ -24,6 +25,7 @@ import { type Print, printsApi } from "../../api/prints";
 import type { AuthUser } from "../../api/auth";
 import { collectionsApi } from "../../api/collections";
 import { useConfirm } from "../../components/ConfirmProvider";
+import { useToast } from "../../components/ToastProvider";
 import { importProviderInfo } from "../../constants/importProviders";
 import { useDownloadPrint } from "./useDownloadPrint";
 import { useOpenInSlicer } from "./useOpenInSlicer";
@@ -72,6 +74,8 @@ export default function ModelActionsMenu({
   const [removingFromCollection, setRemovingFromCollection] = useState(false);
   const [addToCollectionOpen, setAddToCollectionOpen] = useState(false);
   const [fillGapsOpen, setFillGapsOpen] = useState(false);
+  const [refreshingDescription, setRefreshingDescription] = useState(false);
+  const showToast = useToast();
   const sourceGaps = print.source_gaps ?? [];
   // Driven by ?edit=<id> so links and the back button open/close it.
   const editOpen = searchParams.get("edit") === print.id;
@@ -125,6 +129,28 @@ export default function ModelActionsMenu({
       alert(t("models:detail.removeFromCollectionFailed"));
     } finally {
       setRemovingFromCollection(false);
+    }
+  };
+
+  const handleRefreshDescription = async (providerLabel: string) => {
+    closeMenu();
+    const confirmed = await confirmDialog({
+      message: t("models:detail.confirmRefreshDescription", { provider: providerLabel }),
+      confirmLabel: t("models:detail.refreshDescriptionConfirm"),
+    });
+    if (!confirmed) return;
+    setRefreshingDescription(true);
+    try {
+      onUpdated?.(await printsApi.refreshDescription(print.id));
+      showToast({ message: t("models:detail.refreshDescriptionDone") });
+    } catch (err) {
+      if (err instanceof UnauthorizedError) {
+        onUnauthorized?.();
+        return;
+      }
+      showToast({ message: err instanceof Error ? err.message : t("models:detail.refreshDescriptionFailed") });
+    } finally {
+      setRefreshingDescription(false);
     }
   };
 
@@ -271,6 +297,23 @@ export default function ModelActionsMenu({
             <ListItemText>{normalizedMenuLabel(slicerOption.label)}</ListItemText>
           </MenuItem>
         )}
+        {providerInfo && print.source_url && (
+          <MenuItem component="a" href={print.source_url} target="_blank" rel="noopener noreferrer" onClick={closeMenu}>
+            <ListItemIcon>
+              <OpenInNewIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>{t("models:detail.openInProvider", { provider: providerInfo.label })}</ListItemText>
+          </MenuItem>
+        )}
+        {providerInfo && print.source_url && <Divider />}
+        {providerInfo && print.source_url && (
+          <MenuItem disabled={refreshingDescription} onClick={() => void handleRefreshDescription(providerInfo.label)}>
+            <ListItemIcon>
+              <NotesIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>{t("models:detail.refreshDescription", { provider: providerInfo.label })}</ListItemText>
+          </MenuItem>
+        )}
         {providerInfo && print.source_url && sourceGaps.length > 0 && (
           <MenuItem
             onClick={() => {
@@ -282,14 +325,6 @@ export default function ModelActionsMenu({
               <AutoFixHighIcon fontSize="small" />
             </ListItemIcon>
             <ListItemText>{t("models:detail.fillGaps", { provider: providerInfo.label })}</ListItemText>
-          </MenuItem>
-        )}
-        {providerInfo && print.source_url && (
-          <MenuItem component="a" href={print.source_url} target="_blank" rel="noopener noreferrer" onClick={closeMenu}>
-            <ListItemIcon>
-              <OpenInNewIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>{t("models:detail.openInProvider", { provider: providerInfo.label })}</ListItemText>
           </MenuItem>
         )}
       </Menu>

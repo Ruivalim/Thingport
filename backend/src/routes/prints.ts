@@ -12,6 +12,12 @@ import { modelUpload } from "../uploadMiddleware";
 import { createPrint, deletePlateFiles, resolvePlateFilePath, type NewPlateInput } from "../services/printCreation";
 import { plateThumbPath, relocatePrint, relocatePrintsForToken, uniqueModelName } from "../services/printService";
 import { previewImagePath, deleteAllPreviewImages } from "../services/previewImageService";
+import {
+  deleteAllDescriptionImages,
+  descriptionImagePath,
+  localizeDescriptionImages,
+  pruneDescriptionImages,
+} from "../services/descriptionImageService";
 import { deleteAuthorIfOrphaned, getLinkedAuthorIds } from "../services/authorService";
 import { toPrintOut } from "../dto";
 import { loadFullPrint, printOutById } from "../services/printLoader";
@@ -20,7 +26,7 @@ import { RENDERABLE_MODEL_EXTS } from "../config";
 import { estimateDownloadSize, resolvePrintsForDownload, sendPrintsZip } from "../services/downloadZip";
 import { systemCollectionKeyForId } from "../services/collectionService";
 import { createLog } from "../services/auditLog";
-import { fillSourceGaps } from "../services/fillGapsService";
+import { fillSourceGaps, refreshDescriptionFromSource } from "../services/fillGapsService";
 import { isNormalizable3mf, normalize3mfStatus, normalized3mfFor } from "../services/normalized3mfCache";
 import type { Prisma } from "@prisma/client";
 
@@ -436,6 +442,22 @@ router.get(
 );
 
 router.get(
+  "/description-image/:id",
+  asyncHandler(async (req, res) => {
+    const image = await prisma.descriptionImage.findFirst({
+      where: { id: req.params.id, print: { userId: req.userId } },
+    });
+    if (!image) throw new HttpError(404, "Not found");
+    const filePath = descriptionImagePath(image.id);
+    if (!fs.existsSync(filePath)) throw new HttpError(404, "Not found");
+    res.setHeader("Content-Type", image.mime);
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Cache-Control", "private, max-age=31536000, immutable");
+    res.sendFile(path.resolve(filePath));
+  }),
+);
+
+router.get(
   "/preview-image/:id/file.jpg",
   asyncHandler(async (req, res) => {
     const image = await prisma.previewImage.findFirst({
@@ -502,6 +524,11 @@ router.post(
     const updated = await prisma.print.update({ where: { id: print.id }, data });
     const plates = await prisma.plate.findMany({ where: { printId: print.id }, orderBy: { position: "asc" } });
     await relocatePrint(updated, plates);
+    if (body.notes !== undefined) {
+      await pruneDescriptionImages(print.id);
+      // Images pasted in by URL are fetched in the background: slow hosts mustn't hold up the save.
+      void localizeDescriptionImages(print.id);
+    }
     res.json({ print: await printOutById(req.userId!, print.id) });
     void createLog({
       userId: req.userId!,
@@ -572,6 +599,7 @@ router.delete(
     const full = await loadFullPrint(req.userId!, req.params.id);
     await deleteAllPrintFiles(req.params.id);
     await deleteAllPreviewImages(req.params.id);
+    await deleteAllDescriptionImages(req.params.id);
     await prisma.print.delete({ where: { id: req.params.id } });
     for (const plate of full.plates) {
       await deletePlateFiles(plate);
@@ -600,6 +628,21 @@ async function fillGaps(req: Request, res: Response): Promise<void> {
 }
 
 router.post("/print/:id/fill-gaps", asyncHandler(fillGaps));
+
+/** Replaces the description with the source's current one, formatting and images included. */
+router.post(
+  "/print/:id/refresh-description",
+  asyncHandler(async (req, res) => {
+    const sourceUrl = await refreshDescriptionFromSource(req.userId!, req.params.id);
+    res.json({ print: await printOutById(req.userId!, req.params.id) });
+    void createLog({
+      userId: req.userId!,
+      action: "model_edited",
+      targetId: req.params.id,
+      details: { field: "description_refreshed", source_url: sourceUrl },
+    });
+  }),
+);
 // Extension versions up to 1.3.0 call it by its old name.
 router.post("/print/:id/reimport", asyncHandler(fillGaps));
 

@@ -1403,6 +1403,11 @@
       "fillGapsRemaining": "Šaltinyje nėra: {{remaining}}.",
       "fillGapsNothing": "Šaltinyje šios informacijos nėra.",
       "fillGapsFailed": "Nepavyko gauti trūkstamos informacijos. Bandykite dar kartą.",
+      "refreshDescription": "Atnaujinti aprašymą iš {{provider}}",
+      "confirmRefreshDescription": "Pakeisti šio modelio aprašymą dabartiniu aprašymu iš {{provider}}? Jūsų atlikti aprašymo pakeitimai bus prarasti.",
+      "refreshDescriptionConfirm": "Atnaujinti",
+      "refreshDescriptionDone": "Aprašymas atnaujintas",
+      "refreshDescriptionFailed": "Nepavyko atnaujinti aprašymo. Bandykite dar kartą.",
       "gap": {
         "title": "pavadinimas",
         "description": "aprašymas",
@@ -1457,7 +1462,11 @@
       "confirmDiscard": "Atmesti visus neišsaugotus šio modelio pakeitimus?",
       "discardConfirmLabel": "Atmesti",
       "updateSuccess": "Modelis atnaujintas",
-      "updateFailed": "Nepavyko atnaujinti modelio. Bandykite dar kartą."
+      "updateFailed": "Nepavyko atnaujinti modelio. Bandykite dar kartą.",
+      "descriptionWrite": "Rašyti",
+      "descriptionPreview": "Peržiūra",
+      "descriptionPlaceholder": "Aprašykite modelį, spausdinimo nustatymus, surinkimo žingsnius...",
+      "descriptionMarkdownHint": "Palaikomas Markdown: **paryškinta**, *kursyvas*, # antraštės, - sąrašai, [nuorodos](https://…) ir ![paveikslėliai](https://…)."
     },
     "author": {
       "pageTitle": "Autorius",

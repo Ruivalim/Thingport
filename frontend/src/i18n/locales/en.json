@@ -1400,6 +1400,11 @@
       "fillGapsRemaining": "The source has nothing for: {{remaining}}.",
       "fillGapsNothing": "The source has nothing to fetch for these.",
       "fillGapsFailed": "Couldn't fetch the missing details. Please try again.",
+      "refreshDescription": "Refresh description from {{provider}}",
+      "confirmRefreshDescription": "Replace this model's description with the current one from {{provider}}? Any changes you made to the description will be lost.",
+      "refreshDescriptionConfirm": "Refresh",
+      "refreshDescriptionDone": "Description refreshed",
+      "refreshDescriptionFailed": "Couldn't refresh the description. Please try again.",
       "gap": {
         "title": "title",
         "description": "description",
@@ -1454,7 +1459,11 @@
       "confirmDiscard": "Discard all unsaved changes to this model?",
       "discardConfirmLabel": "Discard",
       "updateSuccess": "Model updated",
-      "updateFailed": "Failed to update the model. Please try again."
+      "updateFailed": "Failed to update the model. Please try again.",
+      "descriptionWrite": "Write",
+      "descriptionPreview": "Preview",
+      "descriptionPlaceholder": "Describe the model, print settings, assembly steps...",
+      "descriptionMarkdownHint": "Markdown supported: **bold**, *italic*, # headings, - lists, [links](https://…) and ![images](https://…)."
     },
     "author": {
       "pageTitle": "Author",
