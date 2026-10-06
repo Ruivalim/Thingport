@@ -4,7 +4,11 @@
 import type { InspectResult, ZipEntriesResult } from "../../shared/api";
 import { request } from "../../shared/messages";
 import { ctx } from "../context";
-import { resolveMakerworldDownloadUrl, resolveMakerworldProfileDownload } from "../makerworld/downloadResolver";
+import {
+  isMakerworldBlockingError,
+  resolveMakerworldDownloadUrl,
+  resolveMakerworldProfileDownload,
+} from "../makerworld/downloadResolver";
 import {
   currentMakerworldProfileTitle,
   loadMakerworldDesignForPage,
@@ -215,11 +219,11 @@ async function runDirectImport(opts?: { entries?: string[] }): Promise<void> {
   const { url, instanceUrl, classification, title } = ctx();
   renderFunStatus(importingPhrases(classification.provider));
   const collectionId = await collectionIdFor(choice);
-  const resolved =
-    classification.provider === "makerworld" && classification.type === "model"
-      ? await resolveMakerworldDownloadUrl(url).catch(() => null)
-      : null;
   try {
+    const resolved =
+      classification.provider === "makerworld" && classification.type === "model"
+        ? await resolveMakerworldDownloadUrl(url).catch(nullUnlessBlocking)
+        : null;
     // One message so import and collection filing finish even if the page is gone.
     const print = await request("IMPORT_SINGLE", { url, entries: opts?.entries, collectionId, resolved, title });
     const link = print ? `${instanceUrl}/models/${print.id}` : `${instanceUrl}/models`;
@@ -241,8 +245,14 @@ async function runDirectImport(opts?: { entries?: string[] }): Promise<void> {
   }
 }
 
+/** Null lets the backend resolve it; a CAPTCHA or the download limit would stop it too. */
+function nullUnlessBlocking(err: unknown): null {
+  if (isMakerworldBlockingError(err)) throw err;
+  return null;
+}
+
 /** The first profile creates (or finds) the model; later ones are added as files. Stops on a
- *  CAPTCHA, which would fail every later one. */
+ *  CAPTCHA or the daily download limit, which would fail every later one. */
 async function runProfilesImport(scope: MakerworldProfileScope, collectionId: string | null): Promise<void> {
   const { url, instanceUrl, title } = ctx();
   const page = await loadMakerworldDesignForPage(url);
@@ -261,11 +271,11 @@ async function runProfilesImport(scope: MakerworldProfileScope, collectionId: st
     renderPanel(statusHtml(`Importing print profile ${index + 1} of ${ids.length}…`));
     if (index > 0) await new Promise((resolve) => setTimeout(resolve, PROFILE_GAP_MS));
     // The page's Download button gives exactly the link's profile.
-    const resolved =
-      index === 0
-        ? await resolveMakerworldDownloadUrl(url).catch(() => null)
-        : await resolveMakerworldProfileDownload(url, instanceId).catch(() => null);
     try {
+      const resolved =
+        index === 0
+          ? await resolveMakerworldDownloadUrl(url).catch(nullUnlessBlocking)
+          : await resolveMakerworldProfileDownload(url, instanceId).catch(nullUnlessBlocking);
       const print = await request("IMPORT_SINGLE", {
         url: index === 0 ? url : profileUrl(url, instanceId),
         collectionId,
@@ -278,7 +288,8 @@ async function runProfilesImport(scope: MakerworldProfileScope, collectionId: st
     } catch (err) {
       failed++;
       lastError = err;
-      if (err instanceof Error && /captcha/i.test(err.message)) {
+      // The backend's errors arrive as plain text.
+      if (err instanceof Error && /captcha|download limit/i.test(err.message)) {
         failed += ids.length - index - 1;
         break;
       }

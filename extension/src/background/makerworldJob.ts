@@ -128,8 +128,9 @@ function claimStep(tabId: number): Promise<MakerworldJob | null> {
   return claimed;
 }
 
-/** A CAPTCHA pauses the run on this model for the user to solve; any other failure stops it, since
- *  it almost always means MakerWorld rejected the request, and more requests would make it worse. */
+/** A CAPTCHA pauses the run on this model for the user to solve; any other failure, the daily
+ *  download limit included, stops it, since it almost always means MakerWorld rejected the
+ *  request, and more requests would make it worse. */
 export async function advanceJob(tabId: number): Promise<void> {
   const job = await claimStep(tabId);
   if (!job) return;
@@ -142,7 +143,8 @@ export async function advanceJob(tabId: number): Promise<void> {
   let resolveError: string | null = null;
   try {
     const reply = await withTimeout(sendToTab(tabId, "RESOLVE_MAKERWORLD_DOWNLOAD_URL"), DOWNLOAD_RESOLVE_TIMEOUT_MS);
-    // The content script only replies with an error for a CAPTCHA; the backend would hit it too.
+    // The content script only replies with an error for a CAPTCHA or the daily download limit;
+    // the backend would hit it too.
     if (reply && reply.ok) resolved = reply.data;
     else if (reply) resolveError = reply.error;
   } catch {}

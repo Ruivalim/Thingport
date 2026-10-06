@@ -12,6 +12,8 @@ import {
   parseMakerworldModelUrl,
   selectMakerworldProfiles,
   type MakerworldProfileScope,
+  MAKERWORLD_DOWNLOAD_LIMIT_CODE,
+  MAKERWORLD_DOWNLOAD_LIMIT_MESSAGE,
 } from "./makerworldCloudApi";
 import { fetchMakerworldCollectionTitle, parseMakerworldCollectionUrl } from "./makerworldCollections";
 import {
@@ -40,16 +42,22 @@ type PrintablesCollectionImportJobBody = ImportRequestBody & { model_ids: string
 type MakerworldProfilesImportJobBody = ImportRequestBody & { scope: Exclude<MakerworldProfileScope, "url"> };
 
 // Why a design failed, so a batch reads as one clear cause instead of "N failed". Once a CAPTCHA
-// ("rateLimited") or auth failure hits, every remaining item fails the same way.
-type ImportFailureReason = "unavailable" | "rateLimited" | "auth" | "other";
+// ("rateLimited"), the daily download limit or an auth failure hits, every remaining item fails
+// the same way.
+type ImportFailureReason = "unavailable" | "rateLimited" | "downloadLimit" | "auth" | "other";
+type StopReason = "rateLimited" | "downloadLimit" | "auth";
 
 function classifyImportFailure(err: unknown): ImportFailureReason {
   if (err instanceof HttpError) {
     if (err.status === 403 || err.status === 404) return "unavailable";
-    if (err.status === 429) return "rateLimited";
+    if (err.status === 429) return err.code === MAKERWORLD_DOWNLOAD_LIMIT_CODE ? "downloadLimit" : "rateLimited";
     if (err.status === 401) return "auth";
   }
   return "other";
+}
+
+function asStopReason(reason: ImportFailureReason): StopReason | null {
+  return reason === "rateLimited" || reason === "downloadLimit" || reason === "auth" ? reason : null;
 }
 
 async function markJobFailed(jobId: string, err: unknown): Promise<void> {
@@ -64,10 +72,10 @@ type ProfileImportTotals = {
   alreadyInLibrary: number;
   failed: number;
   printId: string | null;
-  stopReason: "rateLimited" | "auth" | null;
+  stopReason: StopReason | null;
 };
 
-/** Imports each profile URL onto one print, in order. Once a CAPTCHA ("rateLimited") or auth
+/** Imports each profile URL onto one print, in order. Once a CAPTCHA, download-limit or auth
  * failure hits, every remaining profile fails the same way without another MakerWorld call. */
 async function importProfileUrlsSequentially(
   userId: string,
@@ -98,8 +106,7 @@ async function importProfileUrlsSequentially(
         else totals.imported++;
       } catch (err) {
         totals.failed++;
-        const reason = classifyImportFailure(err);
-        if (reason === "rateLimited" || reason === "auth") totals.stopReason = reason;
+        totals.stopReason = asStopReason(classifyImportFailure(err));
       }
     }
     totals.processed++;
@@ -165,6 +172,10 @@ export async function runMakerworldProfilesImportJob(
       bodyParts.push(
         `the rest blocked by a MakerWorld CAPTCHA challenge — this usually clears in 1-4 hours, then import the model again to add the missing profiles`,
       );
+    } else if (stopReason === "downloadLimit") {
+      bodyParts.push(
+        `the rest not downloaded — MakerWorld's daily download limit was reached, import the model again tomorrow to add the missing profiles`,
+      );
     } else if (stopReason === "auth") {
       bodyParts.push(
         `the rest failed because your MakerWorld session expired — update the cookie in Settings and import again`,
@@ -195,6 +206,7 @@ export async function runCollectionImportJob(
     let processed = 0;
     let unavailable = 0;
     let rateLimited = 0;
+    let downloadLimited = 0;
     let authFailed = 0;
     const failed: string[] = [];
     const successPrintIds: string[] = [];
@@ -210,6 +222,10 @@ export async function runCollectionImportJob(
         makerworldPaceMs: IMPORT_MAKERWORLD_CALL_DELAY_MS,
       };
       try {
+        // Every later download would hit the same limit, so don't spend more requests on it.
+        if (downloadLimited) {
+          throw new HttpError(429, MAKERWORLD_DOWNLOAD_LIMIT_MESSAGE, MAKERWORLD_DOWNLOAD_LIMIT_CODE);
+        }
         const { print, alreadyImported } = await importPrintFromUrl(userId, modelUrl, itemBody);
         successPrintIds.push(print.id);
         if (alreadyImported) alreadyInLibrary++;
@@ -219,6 +235,7 @@ export async function runCollectionImportJob(
         const reason = classifyImportFailure(err);
         if (reason === "unavailable") unavailable++;
         else if (reason === "rateLimited") rateLimited++;
+        else if (reason === "downloadLimit") downloadLimited++;
         else if (reason === "auth") authFailed++;
       } finally {
         processed++;
@@ -275,11 +292,16 @@ export async function runCollectionImportJob(
     const label = collectionTitle ? `"${collectionTitle}"` : "a MakerWorld collection";
     const bodyParts: string[] = [];
     if (alreadyInLibrary) bodyParts.push(`${alreadyInLibrary} already in your library`);
-    const otherFailed = failed.length - unavailable - rateLimited - authFailed;
+    const otherFailed = failed.length - unavailable - rateLimited - downloadLimited - authFailed;
     if (unavailable) bodyParts.push(`${unavailable} unavailable (private, deleted, or hidden)`);
     if (rateLimited) {
       bodyParts.push(
         `${rateLimited} blocked by a MakerWorld CAPTCHA challenge (too many requests at once) — this usually clears in 1-4 hours, then retry the same collection`,
+      );
+    }
+    if (downloadLimited) {
+      bodyParts.push(
+        `${downloadLimited} not downloaded — MakerWorld's daily download limit was reached, retry the same collection tomorrow`,
       );
     }
     if (authFailed)
@@ -698,7 +720,7 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
     let profilesImported = 0;
     let profilesProcessed = 0;
     let printId: string | null = null;
-    let stopReason: "rateLimited" | "auth" | null = null;
+    let stopReason: StopReason | null = null;
     let processed = (await countJobItems(jobId, "DONE")) + (await countJobItems(jobId, "FAILED"));
 
     for (const item of items) {
@@ -716,10 +738,11 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
       while (!settled) {
         attempts++;
         if (stopReason) {
-          itemError =
-            stopReason === "rateLimited"
-              ? "blocked by a MakerWorld CAPTCHA challenge — retry once it clears (usually 1-4 hours)"
-              : "the MakerWorld session expired — update the cookie in Settings, then retry";
+          itemError = {
+            rateLimited: "blocked by a MakerWorld CAPTCHA challenge — retry once it clears (usually 1-4 hours)",
+            downloadLimit: "MakerWorld's daily download limit was reached — retry tomorrow",
+            auth: "the MakerWorld session expired — update the cookie in Settings, then retry",
+          }[stopReason];
           settled = true;
           break;
         }
@@ -742,10 +765,11 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
             itemError = `${result.failed} of ${result.processed} print profiles failed`;
             if (result.stopReason) {
               stopReason = result.stopReason;
-              itemError +=
-                result.stopReason === "rateLimited"
-                  ? " (MakerWorld CAPTCHA challenge — retry once it clears)"
-                  : " (the MakerWorld session expired — update the cookie in Settings, then retry)";
+              itemError += {
+                rateLimited: " (MakerWorld CAPTCHA challenge — retry once it clears)",
+                downloadLimit: " (MakerWorld's daily download limit — retry tomorrow)",
+                auth: " (the MakerWorld session expired — update the cookie in Settings, then retry)",
+              }[result.stopReason];
             }
             settled = true;
           } else {
@@ -754,8 +778,7 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
           }
         } catch (err) {
           itemError = failureMessage(err);
-          const reason = classifyImportFailure(err);
-          if (reason === "rateLimited" || reason === "auth") stopReason = reason;
+          stopReason = asStopReason(classifyImportFailure(err)) ?? stopReason;
           if (!isTransientImportFailure(err) || attempts >= LINKS_MAX_ATTEMPTS) {
             settled = true;
           } else {
@@ -808,6 +831,10 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
     if (stopReason === "rateLimited") {
       bodyParts.push(
         `the rest blocked by a MakerWorld CAPTCHA challenge — this usually clears in 1-4 hours, then retry the failed links`,
+      );
+    } else if (stopReason === "downloadLimit") {
+      bodyParts.push(
+        `the rest not downloaded — MakerWorld's daily download limit was reached, retry the failed links tomorrow`,
       );
     } else if (stopReason === "auth") {
       bodyParts.push(

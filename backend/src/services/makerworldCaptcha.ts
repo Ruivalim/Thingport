@@ -41,6 +41,28 @@ export class MakerworldCaptchaError extends Error {
   }
 }
 
+// The per-account daily download cap: HTTP 400 with {"code":-1,"error":"You've reached your daily
+// download limit."}. Every later download fails the same way until it resets.
+export function isDownloadLimitReply(data: unknown): boolean {
+  if (!isRecord(data)) return false;
+  return ["error", "message", "msg"].some(
+    (key) => typeof data[key] === "string" && /download limit/i.test(data[key] as string),
+  );
+}
+
+export const MAKERWORLD_DOWNLOAD_LIMIT_MESSAGE =
+  "MakerWorld daily download limit reached for this account. Try again tomorrow.";
+
+// The HttpError code, so batch runners can tell it from a CAPTCHA (both are 429).
+export const MAKERWORLD_DOWNLOAD_LIMIT_CODE = "MAKERWORLD_DOWNLOAD_LIMIT";
+
+export class MakerworldDownloadLimitError extends Error {
+  constructor() {
+    super(MAKERWORLD_DOWNLOAD_LIMIT_MESSAGE);
+    this.name = "MakerworldDownloadLimitError";
+  }
+}
+
 export class MakerworldAuthError extends Error {
   constructor() {
     super("Your MakerWorld session has expired or was rejected. Update the cookie in Settings and try again.");

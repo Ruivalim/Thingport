@@ -15,9 +15,11 @@ import { maybeSleep, sleep } from "../utils/concurrency";
 import { HttpError } from "../utils/fileUtils";
 import {
   isCaptchaChallenge,
+  isDownloadLimitReply,
   makerworldCaptchaCooloffActive,
   MakerworldAuthError,
   MakerworldCaptchaError,
+  MakerworldDownloadLimitError,
   noteCaptchaChallenge,
 } from "./makerworldCaptcha";
 
@@ -26,6 +28,9 @@ export {
   makerworldCaptchaCooloffActive,
   MakerworldAuthError,
   MakerworldCaptchaError,
+  MAKERWORLD_DOWNLOAD_LIMIT_CODE,
+  MAKERWORLD_DOWNLOAD_LIMIT_MESSAGE,
+  MakerworldDownloadLimitError,
 } from "./makerworldCaptcha";
 
 // makerworld.com puts Cloudflare and a Geetest CAPTCHA in front of download resolution;
@@ -364,6 +369,7 @@ export async function resolveMakerworldViaCloudApi(
     noteCaptchaChallenge();
     throw new MakerworldCaptchaError();
   }
+  if (isDownloadLimitReply(downloadResult.data)) throw new MakerworldDownloadLimitError();
   if (downloadResult.status === 401 || downloadResult.status === 403) throw new MakerworldAuthError();
   if (downloadResult.status !== 200 || !isRecord(downloadResult.data)) return null;
   const body = downloadResult.data;

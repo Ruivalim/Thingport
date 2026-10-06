@@ -10,7 +10,12 @@ import {
   IMPORT_USER_AGENT,
 } from "../config";
 import { isJsonContentType } from "../utils/fileUtils";
-import { isCaptchaChallenge, MakerworldCaptchaError } from "./makerworldCaptcha";
+import {
+  isCaptchaChallenge,
+  isDownloadLimitReply,
+  MakerworldCaptchaError,
+  MakerworldDownloadLimitError,
+} from "./makerworldCaptcha";
 import {
   extractJsonFromBrowserBody,
   fetchViaFlaresolverr,
@@ -592,11 +597,12 @@ function makerworldModelIdFromUrl(url: string): string | null {
   }
 }
 
-/** A CAPTCHA reply (HTTP 418) is thrown, not treated as "no URL": the fallbacks after it would only
- *  hit the same block and end in a misleading "No downloadable model file found". */
+/** A CAPTCHA reply (HTTP 418) or the daily download limit is thrown, not treated as "no URL": the
+ *  fallbacks after it would only hit the same block and end in a misleading error. */
 function makerworldDownloadUrlOrCaptcha(data: unknown, apiUrl: string): string | null {
   const url = data ? extractDownloadUrlFromResponse(data, apiUrl) : null;
   if (!url && isCaptchaChallenge(data)) throw new MakerworldCaptchaError();
+  if (!url && isDownloadLimitReply(data)) throw new MakerworldDownloadLimitError();
   return url;
 }
 

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   MakerworldCaptchaError,
   makerworldCaptchaCooloffActive,
+  MakerworldDownloadLimitError,
   resolveMakerworldViaCloudApi,
 } from "../src/services/makerworldCloudApi";
 
@@ -44,6 +45,22 @@ describe("resolveMakerworldViaCloudApi", () => {
 
     expect(designCalls).toBe(2);
     expect(result?.downloadUrl).toBe(VALID_DOWNLOAD.url);
+    expect(makerworldCaptchaCooloffActive()).toBe(false);
+  });
+
+  it("throws MakerworldDownloadLimitError on the daily download limit reply", async () => {
+    global.fetch = vi.fn<(input: RequestInfo | URL) => Promise<Response>>(async (input) => {
+      const url = String(input);
+      if (url.includes("/design-service/design/")) return jsonResponse(200, VALID_DESIGN);
+      if (url.includes("/iot-service/api/user/profile/")) {
+        return jsonResponse(400, { code: -1, error: "You've reached your daily download limit." });
+      }
+      throw new Error(`Unexpected fetch to ${url}`);
+    }) as unknown as typeof fetch;
+
+    await expect(resolveMakerworldViaCloudApi("321", null, "test-token")).rejects.toBeInstanceOf(
+      MakerworldDownloadLimitError,
+    );
     expect(makerworldCaptchaCooloffActive()).toBe(false);
   });
 

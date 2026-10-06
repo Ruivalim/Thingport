@@ -40,6 +40,8 @@ import {
   MakerworldAuthError,
   MakerworldCaptchaError,
   makerworldCaptchaCooloffActive,
+  MAKERWORLD_DOWNLOAD_LIMIT_CODE,
+  MakerworldDownloadLimitError,
   parseMakerworldModelUrl,
   resolveMakerworldViaCloudApi,
   completeMakerworldAuthor,
@@ -286,6 +288,9 @@ async function tryMakerworldCloudApi(url: string, body: ImportRequestBody): Prom
     return resolved;
   } catch (err) {
     if (err instanceof MakerworldCaptchaError) throw new HttpError(429, err.message);
+    if (err instanceof MakerworldDownloadLimitError) {
+      throw new HttpError(429, err.message, MAKERWORLD_DOWNLOAD_LIMIT_CODE);
+    }
     // 400, not 401: the frontend treats any 401 as an expired Thingport session and logs out.
     if (err instanceof MakerworldAuthError) throw new HttpError(400, err.message);
     throw err;
@@ -382,6 +387,9 @@ export async function openImportResponse(
           resolved = await resolveMakerworldDownloadUrl(html, finalUrl, makerworldCookie, requestedInstanceId);
         } catch (err) {
           if (err instanceof MakerworldCaptchaError) throw new HttpError(429, err.message);
+          if (err instanceof MakerworldDownloadLimitError) {
+            throw new HttpError(429, err.message, MAKERWORLD_DOWNLOAD_LIMIT_CODE);
+          }
           throw err;
         }
         if (resolved) {

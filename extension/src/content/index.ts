@@ -6,7 +6,7 @@ import { listen, send, type ContentMessages } from "../shared/messages";
 import { CONFIG_CHANGE_KEYS } from "../shared/storage";
 import { classifyUrl } from "../shared/urls";
 import { setContext, type LibraryState } from "./context";
-import { MakerworldCaptchaError, resolveMakerworldDownloadUrl } from "./makerworld/downloadResolver";
+import { isMakerworldBlockingError, resolveMakerworldDownloadUrl } from "./makerworld/downloadResolver";
 import { offerNormalizedDownload, unmountNormalizedDownload } from "./makerworld/normalizedDownload";
 import { mountJobOverlay, mountPausedJobOverlay } from "./overlays";
 import { loadPanel } from "./panels";
@@ -155,10 +155,11 @@ if (!window.thingportGrabInjected) {
   });
 
   listen<ContentMessages>({
-    // A CAPTCHA comes back as an error reply so the guided import can say so.
+    // A CAPTCHA or the daily download limit comes back as an error reply so the guided import can
+    // say so.
     RESOLVE_MAKERWORLD_DOWNLOAD_URL: () =>
       resolveMakerworldDownloadUrl(location.href).catch((err) => {
-        if (err instanceof MakerworldCaptchaError) throw err;
+        if (isMakerworldBlockingError(err)) throw err;
         return null;
       }),
     MAKERWORLD_JOB_UPDATED: () => {

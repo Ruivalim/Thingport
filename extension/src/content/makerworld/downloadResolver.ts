@@ -1,7 +1,8 @@
 // Resolves the MakerWorld file URL in the page instead of the backend, whose resolution calls are
 // what trip MakerWorld's account-wide CAPTCHA. Same-origin fetches carry the real session and look
 // like the page's own traffic. Returns null on any failure so the backend can resolve it instead,
-// except a CAPTCHA, which is thrown: the backend would only hit the same wall.
+// except a CAPTCHA or the daily download limit, which are thrown: the backend would only hit the
+// same wall.
 
 import type { ResolvedDownload } from "../../shared/messages";
 import { send } from "../../shared/messages";
@@ -56,6 +57,29 @@ export class MakerworldCaptchaError extends Error {
   }
 }
 
+export const MAKERWORLD_DOWNLOAD_LIMIT_MESSAGE =
+  "MakerWorld daily download limit reached for this account. Try again tomorrow.";
+
+/** The per-account daily cap: HTTP 400 with {"code":-1,"error":"You've reached your daily download
+ *  limit."}. Every later download fails the same way until it resets. */
+export class MakerworldDownloadLimitError extends Error {
+  constructor() {
+    super(MAKERWORLD_DOWNLOAD_LIMIT_MESSAGE);
+    this.name = "MakerworldDownloadLimitError";
+  }
+}
+
+/** Errors that end an import outright: retrying or falling back to the backend can't get past them. */
+export function isMakerworldBlockingError(err: unknown): boolean {
+  return err instanceof MakerworldCaptchaError || err instanceof MakerworldDownloadLimitError;
+}
+
+function looksLikeDownloadLimit(data: unknown): boolean {
+  if (!data || typeof data !== "object") return false;
+  const { error, message, msg } = data as Record<string, unknown>;
+  return [error, message, msg].some((value) => typeof value === "string" && /download limit/i.test(value));
+}
+
 /** Only asked of a body without a download URL, whose filename could otherwise say "robot". */
 function looksLikeCaptcha(data: unknown): boolean {
   if (!data || typeof data !== "object") return false;
@@ -74,9 +98,10 @@ async function fetchMakerworldApiJson(url: string, nonce: string | null): Promis
     const data: unknown = await res.json();
     if (extractDownloadUrl(data)) return data;
     if (looksLikeCaptcha(data)) throw new MakerworldCaptchaError();
+    if (looksLikeDownloadLimit(data)) throw new MakerworldDownloadLimitError();
     return res.ok ? data : null;
   } catch (err) {
-    if (err instanceof MakerworldCaptchaError) throw err;
+    if (isMakerworldBlockingError(err)) throw err;
     return null;
   } finally {
     clearTimeout(timeout);
@@ -269,7 +294,7 @@ export async function resolveMakerworldDownloadUrl(
       : { downloadUrl: viaClick.url, instanceId };
   }
   return resolveFromPageApi(pageUrl).catch((err) => {
-    if (err instanceof MakerworldCaptchaError) throw err;
+    if (isMakerworldBlockingError(err)) throw err;
     return null;
   });
 }
@@ -281,6 +306,9 @@ export async function resolveMakerworldProfileDownload(
 ): Promise<ResolvedDownload | null> {
   const page = await loadMakerworldDesignForPage(pageUrl);
   if (!page) return null;
-  const downloadUrl = await fetchInstanceDownloadUrl(page.design, instanceId).catch(() => null);
+  const downloadUrl = await fetchInstanceDownloadUrl(page.design, instanceId).catch((err) => {
+    if (err instanceof MakerworldDownloadLimitError) throw err;
+    return null;
+  });
   return downloadUrl ? { downloadUrl, instanceId, design: makerworldDesignForImport(page.design) } : null;
 }
