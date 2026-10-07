@@ -8,6 +8,7 @@ import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 import AppLayout from "./components/Layout/AppLayout";
 import DashboardPage from "./pages/DashboardPage";
+import ActivityPage from "./pages/ActivityPage";
 import ModelsPage from "./pages/ModelsPage";
 import ModelDetailPage from "./pages/ModelDetailPage";
 import CollectionsPage from "./pages/CollectionsPage";
@@ -214,6 +215,7 @@ function AppShell({
         />
         <Route path="/profile/password" element={<ChangePasswordPage onUnauthorized={onUnauthorized} />} />
         <Route path="/downloads" element={<DownloadPage />} />
+        <Route path="/activity" element={<ActivityPage onUnauthorized={onUnauthorized} />} />
         <Route
           path="/admin"
           element={isAdmin ? <AdminPage onUnauthorized={onUnauthorized} /> : <Navigate to="/" replace />}

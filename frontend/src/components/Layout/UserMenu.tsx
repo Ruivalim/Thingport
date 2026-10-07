@@ -13,6 +13,7 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import PersonIcon from "@mui/icons-material/Person";
 import ViewInArIcon from "@mui/icons-material/ViewInAr";
+import InsightsIcon from "@mui/icons-material/Insights";
 import PaletteIcon from "@mui/icons-material/Palette";
 import CheckIcon from "@mui/icons-material/Check";
 import LogoutIcon from "@mui/icons-material/Logout";
@@ -148,6 +149,17 @@ export function UserMenu({ user, theme, onThemeChange, onOpenProfile, onLogout }
             <ViewInArIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText>{t("userMenu.myModels")}</ListItemText>
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            closeMenu();
+            navigate("/activity");
+          }}
+        >
+          <ListItemIcon>
+            <InsightsIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>{t("activity.title")}</ListItemText>
         </MenuItem>
         <MenuItem
           onClick={() => {

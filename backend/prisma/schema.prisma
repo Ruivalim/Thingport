@@ -49,6 +49,7 @@ model User {
   logs                     Log[]
   authorLinks              AuthorLink[]
   bookmarks                Bookmark[]
+  activities               Activity[]
   invitationsSent          Invitation[]
   createdAt                DateTime       @default(now())
   updatedAt                DateTime       @updatedAt
@@ -420,4 +421,20 @@ model Log {
 
   @@index([userId, createdAt])
   @@index([createdAt])
+}
+
+// One per thing the user did to a model, for their activity heatmap: "import", "upload", "delete",
+// "download" or "slicer". Separate from Log, which an import job writes once for many models and
+// which can't tell a download from a slicer open.
+model Activity {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String
+  // No relation: a deleted model keeps its history, shown by the name it had.
+  printId   String?
+  name      String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
 }

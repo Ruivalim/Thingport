@@ -8,6 +8,7 @@ const EN: Record<PageId, string> = {
   tags: "Tags",
   downloads: "Downloads",
   myModels: "My models",
+  activity: "Activity",
   profile: "Profile",
 };
 const ids = (query: string) => matchPages(query, EN).map((page) => page.id);

@@ -51,7 +51,7 @@ type PrintForModelSummary = {
   plates: { id: string }[];
 };
 
-function toModelSummary(print: PrintForModelSummary): DashboardModel {
+export function toModelSummary(print: PrintForModelSummary): DashboardModel {
   const plateId = print.plates[0]?.id ?? null;
   let thumbUrl: string | null = null;
   if (plateId && plateThumbExists(plateId)) {
@@ -68,7 +68,7 @@ function toModelSummary(print: PrintForModelSummary): DashboardModel {
   };
 }
 
-const MODEL_SUMMARY_SELECT = {
+export const MODEL_SUMMARY_SELECT = {
   id: true,
   name: true,
   viewCount: true,

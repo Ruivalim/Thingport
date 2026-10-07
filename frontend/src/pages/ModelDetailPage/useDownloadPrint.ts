@@ -4,8 +4,8 @@ import { UnauthorizedError } from "../../api/client";
 import { type Plate, type Print, printsApi } from "../../api/prints";
 import { saveResponseToDisk } from "../../utils/downloadResponse";
 
-/** A single-plate model downloads directly; multi-plate opens a picker. `recordUse` bumps the print
- *  count for Open in {Slicer}. */
+/** A single-plate model downloads directly; multi-plate opens a picker. `recordUse` records an
+ *  Open in {Slicer}. */
 export function useDownloadPrint(print: Print, onUnauthorized?: () => void, onRecorded?: (print: Print) => void) {
   const { t } = useTranslation(["models"]);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -21,14 +21,15 @@ export function useDownloadPrint(print: Print, onUnauthorized?: () => void, onRe
   };
 
   // Fire-and-forget. Only a real print is passed on: an older backend answers `{ ok: true }`.
-  const recordUse = () => {
+  const record = (kind: "download" | "slicer") => {
     printsApi
-      .recordDownload(print.id)
+      .recordDownload(print.id, kind)
       .then((updated) => {
         if (updated && typeof updated === "object" && updated.id === print.id) onRecorded?.(updated);
       })
       .catch(() => {});
   };
+  const recordUse = () => record("slicer");
 
   const downloadPlate = async (plate: Plate) => {
     setDownloading(true);
@@ -38,7 +39,7 @@ export function useDownloadPrint(print: Print, onUnauthorized?: () => void, onRe
       if (!res.ok) throw new Error("Download failed");
       await saveResponseToDisk(res, plate.filename || "download");
       setPickerOpen(false);
-      recordUse();
+      record("download");
     } catch (err) {
       handleDownloadError(err);
     } finally {
@@ -52,7 +53,7 @@ export function useDownloadPrint(print: Print, onUnauthorized?: () => void, onRe
       const res = await printsApi.downloadZip({ print_ids: [print.id] });
       await saveResponseToDisk(res, `${print.name || "model"}.zip`);
       setPickerOpen(false);
-      recordUse();
+      record("download");
     } catch (err) {
       handleDownloadError(err);
     } finally {

@@ -23,6 +23,7 @@ import TranslateIcon from "@mui/icons-material/Translate";
 import SpaceDashboardIcon from "@mui/icons-material/SpaceDashboard";
 import DownloadIcon from "@mui/icons-material/Download";
 import PersonIcon from "@mui/icons-material/Person";
+import InsightsIcon from "@mui/icons-material/Insights";
 import WebAssetIcon from "@mui/icons-material/WebAsset";
 import { UnauthorizedError } from "../../../api/client";
 import { type SearchResult, searchApi } from "../../../api/search";
@@ -86,6 +87,7 @@ const PAGE_ICONS: Record<PageId, ReactNode> = {
   tags: <LocalOfferIcon />,
   downloads: <DownloadIcon />,
   myModels: <ViewInArIcon />,
+  activity: <InsightsIcon />,
   profile: <PersonIcon />,
 };
 

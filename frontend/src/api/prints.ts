@@ -459,11 +459,12 @@ export const printsApi = {
     return res.json();
   },
 
-  /** Bumps the print count; returns the updated print. */
-  recordDownload: async (id: string): Promise<Print> => {
+  /** Bumps the print count and records the activity; returns the updated print. */
+  recordDownload: async (id: string, kind: "download" | "slicer" = "download"): Promise<Print> => {
     const res = await fetch(`${apiBase()}/print/${id}/download`, {
       method: "POST",
-      headers: authHeaders(),
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ kind }),
     });
     assertOk(res, "Failed to record download");
     return res.json();

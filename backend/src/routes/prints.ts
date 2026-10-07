@@ -26,6 +26,7 @@ import { RENDERABLE_MODEL_EXTS } from "../config";
 import { estimateDownloadSize, resolvePrintsForDownload, sendPrintsZip } from "../services/downloadZip";
 import { systemCollectionKeyForId } from "../services/collectionService";
 import { createLog } from "../services/auditLog";
+import { recordActivity } from "../services/activityService";
 import { fillSourceGaps } from "../services/fillGapsService";
 import { isNormalizable3mf, normalize3mfStatus, normalized3mfFor } from "../services/normalized3mfCache";
 import type { Prisma } from "@prisma/client";
@@ -134,6 +135,7 @@ router.post(
             { filename: safeName, mime, tempFilePath: file.path },
           ]);
           printsOut.push(toPrintOut(print, plates, [], null));
+          void recordActivity(req.userId!, "upload", print.id, print.name);
           void createLog({
             userId: req.userId!,
             action: "model_uploaded",
@@ -160,6 +162,7 @@ router.post(
         }
 
         printsOut.push(await printOutById(req.userId!, print.id));
+        void recordActivity(req.userId!, "upload", print.id, print.name);
         void createLog({
           userId: req.userId!,
           action: "model_uploaded",
@@ -294,17 +297,22 @@ router.delete(
   }),
 );
 
+// Older clients send no body, which was always a download.
+const recordUseSchema = z.object({ kind: z.enum(["download", "slicer"]).default("download") });
 router.post(
   "/print/:id/download",
   asyncHandler(async (req, res) => {
     // Recorded explicitly by the detail page: the file/zip routes also serve the viewer, snapshots
     // and bulk zips, which aren't downloads of this model.
+    const { kind } = parseBody(recordUseSchema, req.body ?? {});
     const result = await prisma.print.updateMany({
       where: { id: req.params.id, userId: req.userId },
       data: { printCount: { increment: 1 } },
     });
     if (result.count === 0) throw new HttpError(404, "Print not found");
-    res.json(await printOutById(req.userId!, req.params.id));
+    const print = await printOutById(req.userId!, req.params.id);
+    void recordActivity(req.userId!, kind, req.params.id, print.name);
+    res.json(print);
   }),
 );
 
@@ -606,6 +614,7 @@ router.delete(
       await fs.promises.rm(plateThumbPath(plate.id), { force: true }).catch(() => undefined);
     }
     res.json({ ok: true });
+    void recordActivity(req.userId!, "delete", req.params.id, full.print.name);
     void createLog({
       userId: req.userId!,
       action: "model_deleted",

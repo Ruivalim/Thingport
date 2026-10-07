@@ -21,6 +21,7 @@ import searchRoutes from "./routes/search";
 import notificationsRoutes from "./routes/notifications";
 import adminRoutes from "./routes/admin";
 import dashboardRoutes from "./routes/dashboard";
+import activityRoutes from "./routes/activity";
 
 export function createApp(): Express {
   const app = express();
@@ -56,6 +57,7 @@ export function createApp(): Express {
   // Own prefix: on bare /api, its requireAdmin would also run for every route mounted after it.
   app.use("/api/admin", adminRoutes);
   app.use("/api", dashboardRoutes);
+  app.use("/api", activityRoutes);
 
   app.use((_req: Request, res: Response) => {
     res.status(404).json({ detail: "Not found" });

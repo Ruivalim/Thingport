@@ -2,7 +2,8 @@ import { SELF_AUTHOR_ID } from "../../../constants/selfAuthor";
 import { bestScore, minScoreFor } from "./match";
 
 // The app's own views. Admin pages are left out on purpose.
-export type PageId = "dashboard" | "models" | "collections" | "tags" | "downloads" | "myModels" | "profile";
+export type PageId =
+  "dashboard" | "models" | "collections" | "tags" | "downloads" | "myModels" | "activity" | "profile";
 
 export type SearchPage = {
   id: PageId;
@@ -29,6 +30,12 @@ export const SEARCH_PAGES: SearchPage[] = [
     path: `/authors/${SELF_AUTHOR_ID}`,
     labelKey: "app:userMenu.myModels",
     terms: ["my models", "my uploads", "uploads", "mine"],
+  },
+  {
+    id: "activity",
+    path: "/activity",
+    labelKey: "app:activity.title",
+    terms: ["activity", "heatmap", "calendar", "stats", "contributions"],
   },
   {
     id: "profile",

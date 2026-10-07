@@ -88,6 +88,9 @@ function useRouteChrome() {
   } else if (path === "/profile") {
     title = t("profile.title");
     onBack = goBack;
+  } else if (path === "/activity") {
+    title = t("activity.title");
+    onBack = goBack;
   } else if (path === "/downloads") {
     title = t("sidebar.downloads");
     onBack = () => navigate("/");

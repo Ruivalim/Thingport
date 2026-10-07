@@ -75,6 +75,7 @@ import { plateThumbReplaceable, saveThumbFromBytes } from "./printService";
 import { addPreviewImage, removeGeneratedPreviewImages } from "./previewImageService";
 import { localizeDescriptionImages } from "./descriptionImageService";
 import { prisma } from "../db";
+import { recordActivity } from "./activityService";
 import { Prisma } from "@prisma/client";
 import type { Author, Plate, PreviewImage, Print } from "@prisma/client";
 
@@ -933,13 +934,7 @@ async function importPrintablesModel(
   }
 }
 
-/** Returns the existing print with `alreadyImported: true` instead of re-downloading a model
- * this user already imported. */
-export async function importPrintFromUrl(
-  userId: string,
-  url: string,
-  body: ImportRequestBody,
-): Promise<{
+type ImportResult = {
   print: Print;
   plates: Plate[];
   author: Author | null;
@@ -947,7 +942,19 @@ export async function importPrintFromUrl(
   alreadyImported: boolean;
   /** Set when an existing MakerWorld print gained another profile's file. */
   profileAdded?: boolean;
-}> {
+};
+
+/** Returns the existing print with `alreadyImported: true` instead of re-downloading a model
+ * this user already imported. Every import path comes through here, so each new model is recorded
+ * as one activity, whether it came alone or in a job. */
+export async function importPrintFromUrl(userId: string, url: string, body: ImportRequestBody): Promise<ImportResult> {
+  const result = await importNewOrExisting(userId, url, body);
+  if (!result.alreadyImported && !result.profileAdded)
+    void recordActivity(userId, "import", result.print.id, result.print.name);
+  return result;
+}
+
+async function importNewOrExisting(userId: string, url: string, body: ImportRequestBody): Promise<ImportResult> {
   const source = identifySourceModel(url);
   if (source) {
     const existing = await findExistingImportedPrint(userId, source);
