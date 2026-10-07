@@ -254,7 +254,35 @@
       "sectionCollections": "Collections",
       "sectionTags": "Tags",
       "modelCount_one": "{{count}} model",
-      "modelCount_other": "{{count}} models"
+      "modelCount_other": "{{count}} models",
+      "sectionRecent": "Recent",
+      "sectionCommands": "Commands",
+      "open": "Open",
+      "runCommand": "Run command",
+      "toMove": "to move",
+      "kind": {
+        "model": "Model",
+        "collection": "Collection",
+        "tag": "Tag",
+        "command": "Command",
+        "page": "Page"
+      },
+      "commands": {
+        "theme": {
+          "dark": "Theme: Dark",
+          "light": "Theme: Light",
+          "system": "Theme: System"
+        },
+        "import": "Import from a link",
+        "importFrom": "Import from {{provider}}",
+        "importNotSupported": "Not a MakerWorld, Printables or Thingiverse link; opens the import window",
+        "language": "Language: {{name}}"
+      },
+      "searching": "Searching…",
+      "keepTyping": "Keep typing to search models, collections and tags, or type ! for commands.",
+      "noCommand": "No command by that name. Type ! on its own to see them all.",
+      "builtInCollection": "Built-in collection",
+      "sectionPages": "Pages"
     },
     "importProgress": {
       "starting": "Starting import…",

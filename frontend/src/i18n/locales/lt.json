@@ -254,7 +254,35 @@
       "sectionCollections": "Kolekcijos",
       "sectionTags": "Žymos",
       "modelCount_one": "{{count}} modelis",
-      "modelCount_other": "{{count}} modeliai"
+      "modelCount_other": "{{count}} modeliai",
+      "sectionRecent": "Neseniai",
+      "sectionCommands": "Komandos",
+      "open": "Atidaryti",
+      "runCommand": "Vykdyti komandą",
+      "toMove": "judėti",
+      "kind": {
+        "model": "Modelis",
+        "collection": "Kolekcija",
+        "tag": "Žyma",
+        "command": "Komanda",
+        "page": "Puslapis"
+      },
+      "commands": {
+        "theme": {
+          "dark": "Tema: tamsi",
+          "light": "Tema: šviesi",
+          "system": "Tema: pagal sistemą"
+        },
+        "import": "Importuoti iš nuorodos",
+        "importFrom": "Importuoti iš {{provider}}",
+        "importNotSupported": "Ne MakerWorld, Printables ar Thingiverse nuoroda; atidaromas importavimo langas",
+        "language": "Kalba: {{name}}"
+      },
+      "searching": "Ieškoma…",
+      "keepTyping": "Rašykite toliau, kad ieškotumėte modelių, kolekcijų ir žymų, arba įveskite ! komandoms.",
+      "noCommand": "Tokios komandos nėra. Įveskite tik !, kad pamatytumėte visas.",
+      "builtInCollection": "Įtaisyta kolekcija",
+      "sectionPages": "Puslapiai"
     },
     "importProgress": {
       "starting": "Pradedamas importas…",
