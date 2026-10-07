@@ -17,6 +17,7 @@ import { ImportJobProvider } from "./ImportJobContext";
 import { NotificationsProvider, useNotifications } from "./NotificationsContext";
 import type { ThemeSelection } from "../../constants/settingsOptions";
 import type { AuthUser } from "../../api/auth";
+import type { MakerWorldSettings } from "../../utils/settings";
 
 type AppLayoutProps = {
   muiTheme: Theme;
@@ -32,6 +33,7 @@ type AppLayoutProps = {
   onOpenProfile: () => void;
   onLogout: () => void;
   makerworldCookie: string;
+  onUpdateMakerWorld: (patch: Partial<MakerWorldSettings>) => void;
   user: AuthUser | null;
   onThemeChange: (theme: ThemeSelection) => void;
   children: React.ReactNode;
@@ -88,9 +90,6 @@ function useRouteChrome() {
   } else if (path === "/profile") {
     title = t("profile.title");
     onBack = goBack;
-  } else if (path === "/activity") {
-    title = t("activity.title");
-    onBack = goBack;
   } else if (path === "/downloads") {
     title = t("sidebar.downloads");
     onBack = () => navigate("/");
@@ -141,6 +140,7 @@ function AppLayoutShell({
   onOpenProfile,
   onLogout,
   makerworldCookie,
+  onUpdateMakerWorld,
   user,
   onThemeChange,
   children,
@@ -165,7 +165,7 @@ function AppLayoutShell({
         }}
       >
         <Sidebar isAdmin={isAdmin} onSelectCategory={onSelectCategory} bookmarksVersion={bookmarksVersion} />
-        <Box component="main" sx={{ flex: 1, p: 2, pt: 0 }}>
+        <Box component="main" sx={{ flex: 1, minWidth: 0, p: 2, pt: 0 }}>
           {apiUp === false && (
             <Alert severity="error" sx={{ mb: 1.5 }}>
               {t("shell.apiUnreachable")}
@@ -178,6 +178,7 @@ function AppLayoutShell({
             actions={pageHeader?.actions}
             categoryId={categoryId}
             makerworldCookie={makerworldCookie}
+            onUpdateMakerWorld={onUpdateMakerWorld}
             onUploaded={onPrintsChanged}
             onUnauthorized={onUnauthorized}
             user={user}

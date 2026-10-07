@@ -8,7 +8,6 @@ import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 import AppLayout from "./components/Layout/AppLayout";
 import DashboardPage from "./pages/DashboardPage";
-import ActivityPage from "./pages/ActivityPage";
 import ModelsPage from "./pages/ModelsPage";
 import ModelDetailPage from "./pages/ModelDetailPage";
 import CollectionsPage from "./pages/CollectionsPage";
@@ -36,7 +35,7 @@ import { healthApi, type HealthInfo } from "./api/health";
 import { authApi, type AuthUser } from "./api/auth";
 import { settingsApi, type PreviewMode } from "./api/settings";
 import { clearToken, clearUser, readToken, readUser, storeToken, storeUser } from "./utils/auth";
-import { type AppSettings, loadSettings, saveSettings } from "./utils/settings";
+import { type AppSettings, type MakerWorldSettings, loadSettings, saveSettings } from "./utils/settings";
 import { useResolvedTheme } from "./hooks/useResolvedTheme";
 import type { ResolvedTheme, ThemeSelection } from "./constants/settingsOptions";
 import { buildTheme } from "./theme";
@@ -99,6 +98,12 @@ function AppShell({
     setNonce((n) => n + 1);
   }, []);
 
+  const updateMakerWorld = React.useCallback(
+    (patch: Partial<MakerWorldSettings>) =>
+      setSettings((prev) => ({ ...prev, makerworld: { ...prev.makerworld, ...patch } })),
+    [setSettings],
+  );
+
   return (
     <AppLayout
       muiTheme={muiTheme}
@@ -113,6 +118,7 @@ function AppShell({
       onOpenProfile={() => navigate("/profile")}
       onLogout={onLogout}
       makerworldCookie={settings.makerworld.cookie}
+      onUpdateMakerWorld={updateMakerWorld}
       user={user}
       onThemeChange={onThemeChange}
     >
@@ -196,26 +202,13 @@ function AppShell({
             />
           }
         />
-        <Route
-          path="/profile"
-          element={
-            <ProfilePage
-              user={user}
-              makerworldCookie={settings.makerworld.cookie}
-              onUpdateMakerWorld={(patch) =>
-                setSettings((prev) => ({ ...prev, makerworld: { ...prev.makerworld, ...patch } }))
-              }
-              onUnauthorized={onUnauthorized}
-            />
-          }
-        />
+        <Route path="/profile" element={<ProfilePage user={user} onUnauthorized={onUnauthorized} />} />
         <Route
           path="/profile/email"
           element={<ChangeEmailPage user={user} onUserUpdated={onUserUpdated} onUnauthorized={onUnauthorized} />}
         />
         <Route path="/profile/password" element={<ChangePasswordPage onUnauthorized={onUnauthorized} />} />
         <Route path="/downloads" element={<DownloadPage />} />
-        <Route path="/activity" element={<ActivityPage onUnauthorized={onUnauthorized} />} />
         <Route
           path="/admin"
           element={isAdmin ? <AdminPage onUnauthorized={onUnauthorized} /> : <Navigate to="/" replace />}

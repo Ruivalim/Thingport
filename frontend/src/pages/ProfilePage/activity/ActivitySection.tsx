@@ -6,9 +6,9 @@ import Button from "@mui/material/Button";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import { UnauthorizedError } from "../../api/client";
-import { activityApi, type ActivitySummary } from "../../api/activity";
-import { dividerBorderColor } from "../../theme";
+import { UnauthorizedError } from "../../../api/client";
+import { activityApi, type ActivitySummary } from "../../../api/activity";
+import { dividerBorderColor } from "../../../theme";
 import Heatmap from "./Heatmap";
 import Timeline from "./Timeline";
 import { lastYearRange, localToday, yearRange } from "./calendar";
@@ -18,7 +18,7 @@ type Props = {
 };
 
 /** The signed-in user's own activity, as a year of days. Opens on the last 12 months, like GitHub. */
-export default function ActivityPage({ onUnauthorized }: Props) {
+export default function ActivitySection({ onUnauthorized }: Props) {
   const { t } = useTranslation("app");
   // Null is the last 12 months; a year is that calendar year.
   const [year, setYear] = React.useState<number | null>(null);
@@ -70,7 +70,7 @@ export default function ActivityPage({ onUnauthorized }: Props) {
   const years = loaded?.data.years ?? [new Date().getFullYear()];
 
   return (
-    <Box sx={{ p: { xs: 0, md: 1 } }}>
+    <Box>
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
@@ -98,8 +98,12 @@ export default function ActivityPage({ onUnauthorized }: Props) {
               onSelectDay={selectDay}
             />
           </Paper>
-          {/* Clear of the sticky top bar when scrolled to. */}
-          <Box ref={timelineRef} sx={{ mt: 3, scrollMarginTop: "calc(var(--topbar-height, 64px) + 8px)" }}>
+          {/* Clear of the sticky top bar when scrolled to. Zero width with a 100% minimum: as wide as
+              the heatmap, so a long model name is cut short rather than widening the page. */}
+          <Box
+            ref={timelineRef}
+            sx={{ mt: 3, width: 0, minWidth: "100%", scrollMarginTop: "calc(var(--topbar-height, 64px) + 8px)" }}
+          >
             <Timeline
               startMonth={startMonth}
               fromDay={selectedDay}

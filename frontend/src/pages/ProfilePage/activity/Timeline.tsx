@@ -17,10 +17,10 @@ import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
 import LaunchOutlinedIcon from "@mui/icons-material/LaunchOutlined";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import ViewInArIcon from "@mui/icons-material/ViewInAr";
-import { UnauthorizedError } from "../../api/client";
-import { activityApi, type ActivityItem, type ActivityKind, type ActivityMonth } from "../../api/activity";
-import { printsApi } from "../../api/prints";
-import { useInfiniteScroll } from "../../hooks/useInfiniteScroll";
+import { UnauthorizedError } from "../../../api/client";
+import { activityApi, type ActivityItem, type ActivityKind, type ActivityMonth } from "../../../api/activity";
+import { printsApi } from "../../../api/prints";
+import { useInfiniteScroll } from "../../../hooks/useInfiniteScroll";
 
 const KIND_ICONS: Record<ActivityKind, React.ReactNode> = {
   import: <CloudDownloadOutlinedIcon fontSize="small" />,

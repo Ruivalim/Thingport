@@ -178,27 +178,13 @@
         "heading": "Language",
         "subtitle": "Choose the language used throughout Thingport."
       },
-      "makerworld": {
-        "heading": "MakerWorld",
-        "description": "Required to import links or models from MakerWorld. Paste the Cookie header from a logged-in makerworld.com request.",
-        "added": "Added",
-        "notAdded": "Not added",
-        "add": "Add",
-        "placeholder": "example: mw_session=...; mw_token=...;",
-        "failed": "Failed to save -- try again."
-      },
       "slicer": {
-        "heading": "Slicer",
-        "description": "Your preferred slicer, used by a model's \"Open in Slicer\" action to launch it directly via that slicer's own link (e.g. bambustudio://).",
-        "label": "Slicer",
         "failed": "Failed to save -- try again.",
-        "bridgeRequiredPrefix": "{{slicer}} needs the Thingport Bridge helper app installed to open files from here --",
-        "bridgeRequiredLink": "get it from the Download page."
+        "bridgeRequiredPrefix": "For a model's \"Open in {{slicer}}\" button to work, install Thingport Bridge, a small helper app for your computer.",
+        "bridgeRequiredLink": "Download it"
       },
       "authorPreview": {
         "heading": "Author preview",
-        "description": "Show a preview card with the author's cover, details and latest models when you hover an author's name or avatar.",
-        "label": "Show author preview on hover",
         "failed": "Failed to save -- try again."
       }
     },
@@ -229,7 +215,7 @@
       "system": "Adapt to system",
       "serviceConnected": "{{service}}: connected",
       "serviceNotConnected": "{{service}}: not connected",
-      "makerworldDisabledReason": "MakerWorld: you haven't added a cookie in your profile yet",
+      "makerworldDisabledReason": "MakerWorld: not connected",
       "thingiverseDisabledReason": "Thingiverse: the admin hasn't configured an API key yet",
       "myModels": "My models"
     },
@@ -276,7 +262,11 @@
         "import": "Import from a link",
         "importFrom": "Import from {{provider}}",
         "importNotSupported": "Not a MakerWorld, Printables or Thingiverse link; opens the import window",
-        "language": "Language: {{name}}"
+        "language": "Language: {{name}}",
+        "appearance": "Open Appearance",
+        "providers": "Open Providers",
+        "slicer": "Open Slicer",
+        "configuration": "Open Configuration"
       },
       "searching": "Searching…",
       "keepTyping": "Keep typing to search models, collections and tags, or type ! for commands.",
@@ -796,7 +786,6 @@
       "loadFailed": "Couldn't load the image. Try a new one."
     },
     "activity": {
-      "title": "Activity",
       "totalLastYear_one": "{{count}} activity in the last year",
       "totalLastYear_other": "{{count}} activities in the last year",
       "totalInYear_one": "{{count}} activity in {{year}}",
@@ -843,6 +832,68 @@
         "fromDay": "From {{date}}",
         "emptyUntil": "No activity this month up to that day."
       }
+    },
+    "appearance": {
+      "title": "Appearance",
+      "subtitle": "Choose how Thingport looks and behaves.",
+      "themes": {
+        "light": "Light",
+        "dark": "Dark",
+        "system": "System"
+      },
+      "on": "On",
+      "off": "Off"
+    },
+    "configuration": {
+      "title": "Configuration",
+      "tabs": {
+        "appearance": "Appearance",
+        "providers": "Providers",
+        "slicer": "Slicer"
+      }
+    },
+    "providers": {
+      "title": "Providers",
+      "subtitle": "The sites you import models from. Right-click one to connect or disconnect it.",
+      "connected": "Connected",
+      "notConnected": "Not connected",
+      "connect": "Connect",
+      "connecting": "Connecting…",
+      "disconnect": "Disconnect",
+      "connectTitle": "Connect {{name}}",
+      "disconnectTitle": "Disconnect {{name}}?",
+      "disconnectMessage": "Your {{name}} key is removed, and imports from {{name}} stop working until you connect it again.",
+      "disconnectMessageShared": "The {{name}} token is removed for everyone on this Thingport, and imports from {{name}} stop working until it's connected again.",
+      "failed": "Failed to save -- try again.",
+      "makerworld": {
+        "placeholder": "example: mw_session=...; mw_token=...;",
+        "steps": [
+          "Sign in at makerworld.com in your browser.",
+          "Open the developer tools (F12 or ⌥⌘I) and go to the Network tab.",
+          "Reload the page and pick any request to makerworld.com.",
+          "Under Request Headers, copy the whole value of the Cookie header and paste it below."
+        ]
+      },
+      "thingiverse": {
+        "placeholder": "Paste the App Access Token",
+        "steps": [
+          "Sign in at thingiverse.com and open thingiverse.com/apps/create.",
+          "Create an app of any type, such as \"Desktop app\".",
+          "Copy the App Access Token it shows and paste it below."
+        ],
+        "shared": "This token is shared by everyone on this Thingport.",
+        "adminOnly": "Only an admin of this Thingport can set this up."
+      },
+      "printables": {
+        "alwaysConnected": "Printables is connected by default: it needs no account or key."
+      },
+      "comingSoon": "Coming soon"
+    },
+    "slicer": {
+      "subtitle": "The slicer a model's \"Open in Slicer\" opens it in. Right-click one and Activate it, or double-click it.",
+      "active": "Active",
+      "notActive": "Not active",
+      "activate": "Activate"
     }
   },
   "common": {

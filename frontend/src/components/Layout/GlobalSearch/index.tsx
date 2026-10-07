@@ -20,10 +20,13 @@ import SettingsBrightnessOutlinedIcon from "@mui/icons-material/SettingsBrightne
 import LogoutIcon from "@mui/icons-material/Logout";
 import LinkIcon from "@mui/icons-material/Link";
 import TranslateIcon from "@mui/icons-material/Translate";
+import PaletteIcon from "@mui/icons-material/Palette";
+import SettingsIcon from "@mui/icons-material/Settings";
+import HubIcon from "@mui/icons-material/Hub";
+import LayersIcon from "@mui/icons-material/Layers";
 import SpaceDashboardIcon from "@mui/icons-material/SpaceDashboard";
 import DownloadIcon from "@mui/icons-material/Download";
 import PersonIcon from "@mui/icons-material/Person";
-import InsightsIcon from "@mui/icons-material/Insights";
 import WebAssetIcon from "@mui/icons-material/WebAsset";
 import { UnauthorizedError } from "../../../api/client";
 import { type SearchResult, searchApi } from "../../../api/search";
@@ -34,6 +37,7 @@ import { detectImportProvider } from "../../../utils/importLinkDetection";
 import type { ThemeSelection } from "../../../constants/settingsOptions";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { veilColor, VEIL_BLUR } from "../../../theme";
+import type { ConfigurationTab } from "../ConfigurationDialog";
 import Keys, { chipBg, MOD_KEY, isMac } from "./Keys";
 import { bangArgument, bangText, isBangQuery, matchBang, type Command } from "./commands";
 import { bestScore, minScoreFor } from "./match";
@@ -55,6 +59,7 @@ type Props = {
   onLogout: () => void;
   /** Opens the import dialog, or with a link imports it (see AddMenuHandle). */
   onImport: (link?: string) => void;
+  onOpenConfiguration: (tab: ConfigurationTab) => void;
 };
 
 type Item = {
@@ -87,7 +92,6 @@ const PAGE_ICONS: Record<PageId, ReactNode> = {
   tags: <LocalOfferIcon />,
   downloads: <DownloadIcon />,
   myModels: <ViewInArIcon />,
-  activity: <InsightsIcon />,
   profile: <PersonIcon />,
 };
 
@@ -118,7 +122,14 @@ const selectedRowBg = (theme: Theme) =>
  * Command palette: focusing it dims the page and lists recents and commands; typing searches
  * models, collections and tags (ranked server-side, searchService.ts), pages and commands.
  */
-export default function GlobalSearch({ onUnauthorized, theme, onThemeChange, onLogout, onImport }: Props) {
+export default function GlobalSearch({
+  onUnauthorized,
+  theme,
+  onThemeChange,
+  onLogout,
+  onImport,
+  onOpenConfiguration,
+}: Props) {
   const { t, i18n } = useTranslation(["app", "common", "models"]);
   const navigate = useNavigate();
   const location = useLocation();
@@ -129,7 +140,10 @@ export default function GlobalSearch({ onUnauthorized, theme, onThemeChange, onL
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SearchResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [recents, setRecents] = useState<RecentEntry[]>(readRecents);
+  // A page that no longer exists is dropped.
+  const [recents, setRecents] = useState<RecentEntry[]>(() =>
+    readRecents().filter((entry) => entry.kind !== "page" || pageFor(entry)),
+  );
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   // Until the user arrows away, the selection tracks the top row, so results that arrive late take it.
   const userMovedRef = useRef(false);
@@ -267,6 +281,38 @@ export default function GlobalSearch({ onUnauthorized, theme, onThemeChange, onL
       icon: <TranslateIcon />,
       run: () => void i18n.changeLanguage(code),
     })),
+    {
+      id: "configuration",
+      bang: "configuration",
+      label: t("app:search.commands.configuration"),
+      keywords: ["configuration", "configure", "settings", "preferences", "konfigūracija", "nustatymai"],
+      icon: <SettingsIcon />,
+      run: () => onOpenConfiguration("appearance"),
+    },
+    {
+      id: "appearance",
+      bang: "appearance",
+      label: t("app:search.commands.appearance"),
+      keywords: ["appearance", "theme", "language", "author preview", "look"],
+      icon: <PaletteIcon />,
+      run: () => onOpenConfiguration("appearance"),
+    },
+    {
+      id: "providers",
+      bang: "providers",
+      label: t("app:search.commands.providers"),
+      keywords: ["providers", "makerworld", "cookie"],
+      icon: <HubIcon />,
+      run: () => onOpenConfiguration("providers"),
+    },
+    {
+      id: "slicer",
+      bang: "slicer",
+      label: t("app:search.commands.slicer"),
+      keywords: ["slicer", "bambu studio", "orca", "prusaslicer", "cura"],
+      icon: <LayersIcon />,
+      run: () => onOpenConfiguration("slicer"),
+    },
     importCommand(),
     {
       id: "logout",

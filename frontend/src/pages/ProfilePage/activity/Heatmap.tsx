@@ -5,7 +5,7 @@ import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { alpha, type Theme } from "@mui/material/styles";
-import type { ActivityDay, ActivityKind } from "../../api/activity";
+import type { ActivityDay, ActivityKind } from "../../../api/activity";
 import { buildWeeks, level, monthStarts, type DateRange } from "./calendar";
 
 const CELL = 11;

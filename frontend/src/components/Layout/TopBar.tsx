@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef } from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
@@ -8,7 +8,9 @@ import Typography from "@mui/material/Typography";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import type { AuthUser } from "../../api/auth";
 import type { ThemeSelection } from "../../constants/settingsOptions";
+import type { MakerWorldSettings } from "../../utils/settings";
 import AddMenu, { type AddMenuHandle } from "./AddMenu";
+import ConfigurationDialog, { type ConfigurationTab } from "./ConfigurationDialog";
 import NotificationBell from "./NotificationBell";
 import { UserMenu } from "./UserMenu";
 import GlobalSearch from "./GlobalSearch";
@@ -21,6 +23,7 @@ type Props = {
   actions?: React.ReactNode;
   categoryId: string | null;
   makerworldCookie: string;
+  onUpdateMakerWorld: (patch: Partial<MakerWorldSettings>) => void;
   onUploaded: () => void;
   onUnauthorized?: () => void;
   user: AuthUser | null;
@@ -38,6 +41,7 @@ export default function TopBar({
   actions,
   categoryId,
   makerworldCookie,
+  onUpdateMakerWorld,
   onUploaded,
   onUnauthorized,
   user,
@@ -49,6 +53,7 @@ export default function TopBar({
   const { t } = useTranslation("app");
   const rootRef = useRef<HTMLDivElement | null>(null);
   const addMenuRef = useRef<AddMenuHandle | null>(null);
+  const [configTab, setConfigTab] = useState<ConfigurationTab | null>(null);
 
   // Publishes the bar's real height (it can wrap) as a CSS var for sticky elements below it.
   useLayoutEffect(() => {
@@ -110,6 +115,7 @@ export default function TopBar({
           onThemeChange={onThemeChange}
           onLogout={onLogout}
           onImport={(link) => addMenuRef.current?.importFromCommand(link)}
+          onOpenConfiguration={setConfigTab}
         />
       </Box>
       <Stack direction="row" alignItems="center" spacing={1} minWidth={0} justifySelf="end">
@@ -121,14 +127,18 @@ export default function TopBar({
           onUnauthorized={onUnauthorized}
         />
         <NotificationBell />
-        <UserMenu
-          user={user}
-          theme={theme}
-          onThemeChange={onThemeChange}
-          onOpenProfile={onOpenProfile}
-          onLogout={onLogout}
-        />
+        <UserMenu user={user} onOpenConfiguration={setConfigTab} onOpenProfile={onOpenProfile} onLogout={onLogout} />
       </Stack>
+      <ConfigurationDialog
+        open={configTab}
+        onClose={() => setConfigTab(null)}
+        theme={theme}
+        onThemeChange={onThemeChange}
+        isAdmin={user?.role === "ADMIN"}
+        makerworldCookie={makerworldCookie}
+        onUpdateMakerWorld={onUpdateMakerWorld}
+        onUnauthorized={onUnauthorized}
+      />
     </Box>
   );
 }

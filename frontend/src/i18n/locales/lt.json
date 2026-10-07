@@ -178,27 +178,13 @@
         "heading": "Kalba",
         "subtitle": "Pasirinkite kalbą, naudojamą visame Thingport."
       },
-      "makerworld": {
-        "heading": "MakerWorld",
-        "description": "Reikalinga norint importuoti nuorodas ar modelius iš MakerWorld. Įklijuokite Cookie antraštę iš prisijungusio makerworld.com užklausos.",
-        "added": "Pridėta",
-        "notAdded": "Nepridėta",
-        "add": "Pridėti",
-        "placeholder": "pavyzdys: mw_session=...; mw_token=...;",
-        "failed": "Nepavyko išsaugoti -- bandykite dar kartą."
-      },
       "slicer": {
-        "heading": "Pjaustyklė",
-        "description": "Jūsų pageidaujama pjaustyklė, naudojama modelio veiksmo „Atverti pjaustyklėje“, kad modelis būtų atidarytas tiesiogiai per tos pjaustyklės nuorodą (pvz. bambustudio://).",
-        "label": "Pjaustyklė",
         "failed": "Nepavyko išsaugoti -- bandykite dar kartą.",
-        "bridgeRequiredPrefix": "{{slicer}} failams atverti iš čia reikalinga įdiegta Thingport Bridge pagalbinė programa --",
-        "bridgeRequiredLink": "atsisiųskite ją atsisiuntimo puslapyje."
+        "bridgeRequiredPrefix": "Kad modelio mygtukas „Atverti su {{slicer}}“ veiktų, įdiekite Thingport Bridge – nedidelę pagalbinę programą jūsų kompiuteriui.",
+        "bridgeRequiredLink": "Atsisiųsti"
       },
       "authorPreview": {
         "heading": "Autoriaus peržiūra",
-        "description": "Užvedus pelę ant autoriaus vardo ar avataro, rodyti kortelę su autoriaus viršelio nuotrauka, informacija ir naujausiais modeliais.",
-        "label": "Rodyti autoriaus peržiūrą užvedus pelę",
         "failed": "Nepavyko išsaugoti -- bandykite dar kartą."
       }
     },
@@ -229,7 +215,7 @@
       "system": "Pagal sistemą",
       "serviceConnected": "{{service}}: prijungta",
       "serviceNotConnected": "{{service}}: neprijungta",
-      "makerworldDisabledReason": "MakerWorld: profilyje dar nepridėjote slapuko (cookie)",
+      "makerworldDisabledReason": "MakerWorld: neprijungta",
       "thingiverseDisabledReason": "Thingiverse: administratorius dar nesukonfigūravo API rakto",
       "myModels": "Mano modeliai"
     },
@@ -276,7 +262,11 @@
         "import": "Importuoti iš nuorodos",
         "importFrom": "Importuoti iš {{provider}}",
         "importNotSupported": "Ne MakerWorld, Printables ar Thingiverse nuoroda; atidaromas importavimo langas",
-        "language": "Kalba: {{name}}"
+        "language": "Kalba: {{name}}",
+        "appearance": "Atidaryti išvaizdą",
+        "providers": "Atidaryti šaltinius",
+        "slicer": "Atidaryti pjaustyklę",
+        "configuration": "Atidaryti konfigūraciją"
       },
       "searching": "Ieškoma…",
       "keepTyping": "Rašykite toliau, kad ieškotumėte modelių, kolekcijų ir žymų, arba įveskite ! komandoms.",
@@ -798,7 +788,6 @@
       "loadFailed": "Nepavyko įkelti paveikslėlio. Bandykite naują."
     },
     "activity": {
-      "title": "Veikla",
       "totalLastYear_one": "{{count}} veiksmas per paskutinius metus",
       "totalLastYear_few": "{{count}} veiksmai per paskutinius metus",
       "totalLastYear_other": "{{count}} veiksmų per paskutinius metus",
@@ -870,6 +859,68 @@
         "fromDay": "Nuo {{date}}",
         "emptyUntil": "Šį mėnesį iki tos dienos veiklos nebuvo."
       }
+    },
+    "appearance": {
+      "title": "Išvaizda",
+      "subtitle": "Pasirinkite, kaip Thingport atrodo ir veikia.",
+      "themes": {
+        "light": "Šviesi",
+        "dark": "Tamsi",
+        "system": "Pagal sistemą"
+      },
+      "on": "Įjungta",
+      "off": "Išjungta"
+    },
+    "configuration": {
+      "title": "Konfigūracija",
+      "tabs": {
+        "appearance": "Išvaizda",
+        "providers": "Šaltiniai",
+        "slicer": "Pjaustyklė"
+      }
+    },
+    "providers": {
+      "title": "Šaltiniai",
+      "subtitle": "Svetainės, iš kurių importuojate modelius. Spustelėkite dešiniuoju pelės mygtuku, kad prijungtumėte ar atjungtumėte.",
+      "connected": "Prijungta",
+      "notConnected": "Neprijungta",
+      "connect": "Prijungti",
+      "connecting": "Jungiama…",
+      "disconnect": "Atjungti",
+      "connectTitle": "Prijungti {{name}}",
+      "disconnectTitle": "Atjungti {{name}}?",
+      "disconnectMessage": "Jūsų {{name}} raktas bus pašalintas, o importavimas iš {{name}} neveiks, kol vėl prijungsite.",
+      "disconnectMessageShared": "{{name}} raktas bus pašalintas visiems šio Thingport naudotojams, o importavimas iš {{name}} neveiks, kol jis vėl bus prijungtas.",
+      "failed": "Nepavyko išsaugoti -- bandykite dar kartą.",
+      "makerworld": {
+        "placeholder": "pavyzdys: mw_session=...; mw_token=...;",
+        "steps": [
+          "Naršyklėje prisijunkite prie makerworld.com.",
+          "Atverkite kūrėjo įrankius (F12 arba ⌥⌘I) ir eikite į skirtuką „Network“.",
+          "Perkraukite puslapį ir pasirinkite bet kurią užklausą į makerworld.com.",
+          "Skiltyje „Request Headers“ nukopijuokite visą Cookie antraštės reikšmę ir įklijuokite ją žemiau."
+        ]
+      },
+      "thingiverse": {
+        "placeholder": "Įklijuokite App Access Token",
+        "steps": [
+          "Prisijunkite prie thingiverse.com ir atverkite thingiverse.com/apps/create.",
+          "Sukurkite bet kokio tipo programą, pvz. „Desktop app“.",
+          "Nukopijuokite rodomą App Access Token ir įklijuokite jį žemiau."
+        ],
+        "shared": "Šis raktas bendras visiems šio Thingport naudotojams.",
+        "adminOnly": "Tai nustatyti gali tik šio Thingport administratorius."
+      },
+      "printables": {
+        "alwaysConnected": "Printables prijungta iš karto: nereikia paskyros ar rakto."
+      },
+      "comingSoon": "Jau netrukus"
+    },
+    "slicer": {
+      "subtitle": "Pjaustyklė, kurioje modelį atveria „Atverti pjaustyklėje“. Spustelėkite dešiniuoju pelės mygtuku ir pasirinkite „Aktyvuoti“ arba spustelėkite dukart.",
+      "active": "Aktyvi",
+      "notActive": "Neaktyvi",
+      "activate": "Aktyvuoti"
     }
   },
   "common": {
