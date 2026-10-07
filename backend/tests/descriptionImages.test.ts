@@ -138,14 +138,15 @@ describe("description images", () => {
     expect(fs.existsSync(descriptionImagePath(image.id))).toBe(false);
   });
 
-  it("refreshes the description from the source, images included", async () => {
+  it("fills an emptied description from the source, formatting and images included", async () => {
+    await request(app).post(`/api/print/${printId}/meta`).set("Authorization", `Bearer ${token}`).send({ notes: "" });
     global.fetch = mockFetch(`<p>Updated <strong>steps</strong></p><img src="${STEP_IMAGE}">`);
-    const res = await request(app)
-      .post(`/api/print/${printId}/refresh-description`)
-      .set("Authorization", `Bearer ${token}`);
+    const res = await request(app).post(`/api/print/${printId}/fill-gaps`).set("Authorization", `Bearer ${token}`);
     expect(res.status).toBe(200);
+    expect(res.body.filled).toContain("description");
     const image = await prisma.descriptionImage.findFirstOrThrow({ where: { printId } });
-    expect(res.body.print.notes).toBe(`Updated **steps**\n\n![](/description-image/${image.id})`);
+    const print = await prisma.print.findUniqueOrThrow({ where: { id: printId } });
+    expect(print.notes).toBe(`Updated **steps**\n\n![](/description-image/${image.id})`);
   });
 
   it("drops all stored images when the description is cleared", async () => {
@@ -160,7 +161,7 @@ describe("description images", () => {
 
     // Back again for the next test.
     global.fetch = mockFetch(`<img src="${STEP_IMAGE}">`);
-    await request(app).post(`/api/print/${printId}/refresh-description`).set("Authorization", `Bearer ${token}`);
+    await request(app).post(`/api/print/${printId}/fill-gaps`).set("Authorization", `Bearer ${token}`);
   });
 
   it("removes the stored images with the model", async () => {

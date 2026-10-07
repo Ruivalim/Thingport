@@ -26,7 +26,7 @@ import { RENDERABLE_MODEL_EXTS } from "../config";
 import { estimateDownloadSize, resolvePrintsForDownload, sendPrintsZip } from "../services/downloadZip";
 import { systemCollectionKeyForId } from "../services/collectionService";
 import { createLog } from "../services/auditLog";
-import { fillSourceGaps, refreshDescriptionFromSource } from "../services/fillGapsService";
+import { fillSourceGaps } from "../services/fillGapsService";
 import { isNormalizable3mf, normalize3mfStatus, normalized3mfFor } from "../services/normalized3mfCache";
 import type { Prisma } from "@prisma/client";
 
@@ -628,21 +628,6 @@ async function fillGaps(req: Request, res: Response): Promise<void> {
 }
 
 router.post("/print/:id/fill-gaps", asyncHandler(fillGaps));
-
-/** Replaces the description with the source's current one, formatting and images included. */
-router.post(
-  "/print/:id/refresh-description",
-  asyncHandler(async (req, res) => {
-    const sourceUrl = await refreshDescriptionFromSource(req.userId!, req.params.id);
-    res.json({ print: await printOutById(req.userId!, req.params.id) });
-    void createLog({
-      userId: req.userId!,
-      action: "model_edited",
-      targetId: req.params.id,
-      details: { field: "description_refreshed", source_url: sourceUrl },
-    });
-  }),
-);
 // Extension versions up to 1.3.0 call it by its old name.
 router.post("/print/:id/reimport", asyncHandler(fillGaps));
 

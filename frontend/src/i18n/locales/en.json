@@ -443,9 +443,20 @@
         "linkAuthorsProblems": {
           "thingiverse_no_token": "Thingiverse models were skipped: add a Thingiverse access token in Administration > Settings.",
           "thingiverse_token_rejected": "Thingiverse models were skipped: Thingiverse rejected the access token in Administration > Settings.",
+          "thingiverse_rate_limited": "Thingiverse models were skipped: Thingiverse started blocking requests with a rate limit. It usually clears after a while — try again later.",
           "makerworld_captcha": "MakerWorld models were skipped: MakerWorld asked for a CAPTCHA, and blocks further requests for about 2 hours. Try again later.",
           "makerworld_login_rejected": "MakerWorld models were skipped: MakerWorld rejected the saved MakerWorld login. Update it in Settings > Imports."
-        }
+        },
+        "refetchTitle": "Refetch model descriptions",
+        "refetchDesc": "Replaces the description of every model a user imported from MakerWorld, Printables or Thingiverse with the current one from that site, with its formatting and images. Use it to bring models imported before formatted descriptions were supported up to date. Changes the user made to those descriptions are lost. Models whose source is gone keep their description. It runs in the background — MakerWorld requests are spaced out to avoid its CAPTCHA, so a large library can take a while.",
+        "refetchUserOption": "{{name}} ({{email}}) — {{count}} imported models",
+        "refetchButton": "Refetch descriptions…",
+        "refetchConfirm": "Replace the descriptions of {{count}} imported model(s) belonging to {{email}} with the ones from their source sites? Any changes made to those descriptions will be lost.",
+        "refetchConfirmButton": "Refetch",
+        "refetchFailed": "Failed to start refetching descriptions.",
+        "refetchProgress": "Refetching descriptions for {{email}}: {{done}} of {{total}} — {{updated}} updated so far.",
+        "refetchDone": "Refetched descriptions for {{email}}: {{updated}} of {{total}} changed.",
+        "refetchFailedCount": "{{count}} couldn't be read from their source and were left as they were."
       },
       "thingiverse": {
         "heading": "Thingiverse Access Token",
@@ -610,9 +621,11 @@
           "collection_deleted": "Collection deleted",
           "collection_item_added": "Added to collection",
           "collection_item_removed": "Removed from collection",
-          "authors_linked": "Linked missing authors"
+          "authors_linked": "Linked missing authors",
+          "descriptions_refetched": "Refetched model descriptions"
         },
-        "authorsLinked": "{{count}} model(s) linked"
+        "authorsLinked": "{{count}} model(s) linked",
+        "descriptionsRefetched": "{{email}} — {{updated}} of {{total}} description(s) changed"
       },
       "rendering": {
         "heading": "Rendering",
@@ -1400,11 +1413,6 @@
       "fillGapsRemaining": "The source has nothing for: {{remaining}}.",
       "fillGapsNothing": "The source has nothing to fetch for these.",
       "fillGapsFailed": "Couldn't fetch the missing details. Please try again.",
-      "refreshDescription": "Refresh description from {{provider}}",
-      "confirmRefreshDescription": "Replace this model's description with the current one from {{provider}}? Any changes you made to the description will be lost.",
-      "refreshDescriptionConfirm": "Refresh",
-      "refreshDescriptionDone": "Description refreshed",
-      "refreshDescriptionFailed": "Couldn't refresh the description. Please try again.",
       "gap": {
         "title": "title",
         "description": "description",

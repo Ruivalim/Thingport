@@ -378,19 +378,6 @@ export const printsApi = {
     return res.json();
   },
 
-  /** Overwrites the description with the source's current one, formatting and images included. */
-  refreshDescription: async (id: string): Promise<Print> => {
-    const res = await fetch(`${apiBase()}/print/${id}/refresh-description`, {
-      method: "POST",
-      headers: authHeaders(),
-    });
-    if (res.status === 401) throw new UnauthorizedError();
-    if (!res.ok) {
-      throw new Error(await readErrorMessage(res, "Refreshing the description failed"));
-    }
-    return (await res.json()).print;
-  },
-
   delete: async (id: string) => {
     const res = await fetch(`${apiBase()}/print/${id}`, { method: "DELETE", headers: authHeaders() });
     assertOk(res, "Delete print failed");
