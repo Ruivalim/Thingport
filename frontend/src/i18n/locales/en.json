@@ -311,6 +311,13 @@
       "recentlyAdded": {
         "title": "Recently Added",
         "empty": "Nothing added yet — uploaded and imported models will show up here."
+      },
+      "widgets": {
+        "open": "Customize dashboard",
+        "title": "Customize dashboard",
+        "subtitle": "Choose which boxes your dashboard shows.",
+        "close": "Close",
+        "allHidden": "Every dashboard box is hidden."
       }
     },
     "adminSettings": {

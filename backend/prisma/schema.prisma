@@ -34,6 +34,9 @@ model User {
   themePreference          String?
   // Which tree the models page shows: "categories" | "folders"; null means categories.
   categoriesView           String?
+  // The dashboard widgets the user has switched on or off, as { [widgetId]: boolean }. A widget
+  // missing from it shows or hides by its own default, so new widgets need no migration.
+  dashboardWidgets         Json?
   authorPreviewEnabled     Boolean        @default(true)
   // Filled from the first linked Author with this data; later links never overwrite it.
   bio                      String?

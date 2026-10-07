@@ -311,6 +311,13 @@
       "recentlyAdded": {
         "title": "Naujausiai pridėti",
         "empty": "Dar nieko nepridėta — įkelti ir importuoti modeliai atsiras čia."
+      },
+      "widgets": {
+        "open": "Tvarkyti valdymo skydą",
+        "title": "Tvarkyti valdymo skydą",
+        "subtitle": "Pasirinkite, kuriuos langelius rodo jūsų valdymo skydas.",
+        "close": "Uždaryti",
+        "allHidden": "Visi valdymo skydo langeliai paslėpti."
       }
     },
     "adminSettings": {
