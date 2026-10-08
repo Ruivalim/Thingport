@@ -1,0 +1,34 @@
+name: Bug report
+description: Something in Thingport doesn't work as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what you saw instead.
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Where?
+      options:
+        - Thingport (web app)
+        - Thingport Grab (browser extension)
+        - Thingport Bridge (desktop helper)
+        - Website or docs
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or image tag
+      placeholder: "e.g. 1.4.0, sha-abc1234 or Grab 1.3.0"
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Browser, OS, model link, logs
+      description: Include the model URL if an import failed. Remove secrets and hostnames before pasting config or logs.

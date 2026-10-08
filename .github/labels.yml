@@ -1,0 +1,44 @@
+# Source of truth for repo labels, synced by .github/workflows/labels.yml.
+# Labels missing here are deleted from the repo, so rename with `from_name` to keep them on issues.
+- name: bug
+  color: d32f2f
+  description: Something isn't working
+- name: enhancement
+  color: 00b800
+  description: New feature or request
+- name: feature request
+  color: 009c00
+  description: ""
+- name: security
+  color: c62828
+  description: Hardening or a public, harmless-to-disclose security issue
+- name: accessibility
+  color: ff7220
+  description: Barrier affecting people with disabilities
+- name: documentation
+  color: 0288d1
+  description: Improvements or additions to documentation
+- name: question
+  color: 03a9f4
+  description: Further information is requested
+- name: investigating
+  color: ed6c02
+  description: Being looked into
+- name: Fixed
+  color: 5be584
+  description: Fix is merged
+- name: duplicate
+  color: ebebeb
+  description: This issue or pull request already exists
+- name: invalid
+  color: 858585
+  description: This doesn't seem right
+- name: wontfix
+  color: 1f1f1f
+  description: This will not be worked on
+- name: good first issue
+  color: "1e2746"
+  description: Good for newcomers
+- name: help wanted
+  color: 333a54
+  description: Extra attention is needed
