@@ -38,25 +38,6 @@ Bring your models together in one place, keep them organized, and preview them d
 
 Instead of having your collection scattered across different websites and your filesystem, Thingport gives you a single place to manage the models you actually want to keep.
 
-## Features
-
-- 🌐 **Import from MakerWorld, Printables and Thingiverse** — paste a link, or use the Thingport Grab browser extension. Whole collections, likes and MakerWorld print profiles come across with their title, description, tags, photos and author. Big imports run in the background and notify you when they finish, and a model you already have is never imported twice.
-- 📂 **Bring your existing library** — upload STL, 3MF, STEP, OBJ and LightBurn files, whole folder trees or ZIPs from the browser, and your folders come across as folders. Choose whether each file is a model, or each folder is one model with its images as photos and its manuals and notes attached. See [how to bring in your library](docs/guides/existing-library.md).
-- 📥 **Consume folder** — for big libraries and NAS shares: mount a folder, copy your files, folder trees and ZIPs into it, and Thingport imports everything and empties it, with a notification once it's done. Anything it can't import is set aside, never lost.
-- 🧊 **3D previews** — STL, 3MF, OBJ and STEP in the browser, with a thumbnail for every plate of a multi-plate 3MF. Very complex models can be simplified for the preview only.
-- 🗂️ **Organize and search** — nested categories, collections, tags, favourites and browsing history, with full-text search across names, tags, notes and authors. Pin the collections and tags you use most to the sidebar.
-- 📊 **Dashboard** — library stats, recently added models, your most viewed and most used models, and top authors.
-- 📈 **Profile and activity** — a year-long activity heatmap and a month-by-month timeline of the models you imported, uploaded, downloaded, opened in a slicer or deleted, plus a read-only [API token](docs/guides/api-token.md) for connecting other apps to your library.
-- 👤 **Author pages** — every model you've saved from an author, with a preview card when you hover their name.
-- 🖨️ **Open in your slicer** — Bambu Studio, OrcaSlicer, PrusaSlicer, Cura, Creality Print, Anycubic Slicer Next, Elegoo Slicer and Snapmaker Orca, choosing the file when a model has several.
-- 💡 **Normalized MakerWorld 3MFs** — slicers that mis-read Bambu Studio projects get an "Open normalized" option that keeps painted colours, plates and the designer's print settings.
-- 📎 **Everything to print it** — keep instructions, notes and a sliced, ready-to-print file next to the model.
-- 📦 **Download as ZIP** — a model's files, or a whole category, tag or collection in one archive.
-- 💾 **Plain files on your disk** — choose the folder layout (existing files are reorganized when you change it) and back up with any tool.
-- 👥 **Multi-user** — a separate library per person, open or invite-only registration, optional email verification and captcha, admin logs, and an update check that tells you when new Thingport images are out.
-- 🌍 **Light and dark themes**, in English and Lithuanian.
-- 🐳 **Self-hosted** — runs anywhere Docker does, from a NAS to a spare PC.
-
 ## Screenshots
 
 <table>
@@ -86,29 +67,6 @@ Instead of having your collection scattered across different websites and your f
     <td width="33%"><a href="extension/docs/screenshots/panel-makerworld.jpg" target="_blank"><img src="extension/docs/screenshots/panel-makerworld.jpg" width="100%" alt="Thingport Grab on MakerWorld"></a><br><sub><b>Thingport Grab — MakerWorld</b></sub></td>
   </tr>
 </table>
-
-## Companion Apps
-
-Thingport ships two small companion tools, each downloadable from the in-app Download page or GitHub Releases:
-
-- **[Thingport Bridge](bridge/README.md)** — a lightweight desktop helper that makes "Open in {Slicer}" work for slicers (Bambu Studio, PrusaSlicer, Cura, Anycubic Slicer Next) whose own URL-protocol handlers won't accept a link from a self-hosted domain.
-- **[Thingport Grab](extension/README.md)** — a browser extension for Chrome, Edge and Firefox that imports MakerWorld, Thingiverse, and Printables models straight from their own pages, without leaving the site (see the screenshots above). Even without a Thingport instance, it adds a "Download normalized" button to MakerWorld model pages that converts Bambu Studio projects into 3MFs other slicers open with their colours and settings. Get it from the [Chrome Web Store](https://chromewebstore.google.com/detail/nmblahmglpbplmfcggghdgohohlaeiee), [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/thingport-grab/) or [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/kahfidpmojfocohinlmglnfoaimocbol).
-
-## Provider Setup
-
-Printables imports work with no setup. MakerWorld and Thingiverse each need a credential from your own account first. Connect them under **Configuration → Providers** (from the user menu): right-click a provider to connect or disconnect it. See **[docs/PROVIDER_SETUP.md](docs/PROVIDER_SETUP.md)** for how to create a Thingiverse Access Token and how to grab a MakerWorld session cookie.
-
-<a href="frontend/src/assets/screenshots/11_configuration_providers.png" target="_blank"><img src="frontend/src/assets/screenshots/11_configuration_providers.png" width="600" alt="Configuration, Providers section with MakerWorld, Thingiverse and Printables connected"></a>
-
-## Bring Your Existing Library
-
-Already have folders of STLs, 3MF projects and ZIPs? You don't have to add them one at a time:
-
-- **[Upload files and ZIPs](docs/guides/upload-files.md)** — a few models at a time, with ZIPs unpacked into models and folders.
-- **[Upload a folder](docs/guides/upload-folders.md)** — a whole folder tree from the browser, kept as folders, as one model per file or one model per folder.
-- **[Consume folder](docs/guides/consume-folder.md)** — copy a large library into a folder on the server and Thingport imports it on its own.
-
-[Which one should I use?](docs/guides/existing-library.md)
 
 ## Installation
 
@@ -298,6 +256,48 @@ models go to and whether each model file becomes its own model (the default) or 
 model. Anything that can't be imported is moved to a `Not imported` folder inside the consume folder. Files are moved
 out as the backend's user, so `PUID`/`PGID` need write access to the folder. The
 [consume folder guide](docs/guides/consume-folder.md) walks through importing a whole library this way.
+
+## Features
+
+- 🌐 **Import from MakerWorld, Printables and Thingiverse** — paste a link, or use the Thingport Grab browser extension. Whole collections, likes and MakerWorld print profiles come across with their title, description, tags, photos and author. Big imports run in the background and notify you when they finish, and a model you already have is never imported twice.
+- 📂 **Bring your existing library** — upload STL, 3MF, STEP, OBJ and LightBurn files, whole folder trees or ZIPs from the browser, and your folders come across as folders. Choose whether each file is a model, or each folder is one model with its images as photos and its manuals and notes attached. See [how to bring in your library](docs/guides/existing-library.md).
+- 📥 **Consume folder** — for big libraries and NAS shares: mount a folder, copy your files, folder trees and ZIPs into it, and Thingport imports everything and empties it, with a notification once it's done. Anything it can't import is set aside, never lost.
+- 🧊 **3D previews** — STL, 3MF, OBJ and STEP in the browser, with a thumbnail for every plate of a multi-plate 3MF. Very complex models can be simplified for the preview only.
+- 🗂️ **Organize and search** — nested categories, collections, tags, favourites and browsing history, with full-text search across names, tags, notes and authors. Pin the collections and tags you use most to the sidebar.
+- 📊 **Dashboard** — library stats, recently added models, your most viewed and most used models, and top authors.
+- 📈 **Profile and activity** — a year-long activity heatmap and a month-by-month timeline of the models you imported, uploaded, downloaded, opened in a slicer or deleted, plus a read-only [API token](docs/guides/api-token.md) for connecting other apps to your library.
+- 👤 **Author pages** — every model you've saved from an author, with a preview card when you hover their name.
+- 🖨️ **Open in your slicer** — Bambu Studio, OrcaSlicer, PrusaSlicer, Cura, Creality Print, Anycubic Slicer Next, Elegoo Slicer and Snapmaker Orca, choosing the file when a model has several.
+- 💡 **Normalized MakerWorld 3MFs** — slicers that mis-read Bambu Studio projects get an "Open normalized" option that keeps painted colours, plates and the designer's print settings.
+- 📎 **Everything to print it** — keep instructions, notes and a sliced, ready-to-print file next to the model.
+- 📦 **Download as ZIP** — a model's files, or a whole category, tag or collection in one archive.
+- 💾 **Plain files on your disk** — choose the folder layout (existing files are reorganized when you change it) and back up with any tool.
+- 👥 **Multi-user** — a separate library per person, open or invite-only registration, optional email verification and captcha, admin logs, and an update check that tells you when new Thingport images are out.
+- 🌍 **Light and dark themes**, in English and Lithuanian.
+- 🐳 **Self-hosted** — runs anywhere Docker does, from a NAS to a spare PC.
+
+## Companion Apps
+
+Thingport ships two small companion tools, each downloadable from the in-app Download page or GitHub Releases:
+
+- **[Thingport Bridge](bridge/README.md)** — a lightweight desktop helper that makes "Open in {Slicer}" work for slicers (Bambu Studio, PrusaSlicer, Cura, Anycubic Slicer Next) whose own URL-protocol handlers won't accept a link from a self-hosted domain.
+- **[Thingport Grab](extension/README.md)** — a browser extension for Chrome, Edge and Firefox that imports MakerWorld, Thingiverse, and Printables models straight from their own pages, without leaving the site (see the screenshots above). Even without a Thingport instance, it adds a "Download normalized" button to MakerWorld model pages that converts Bambu Studio projects into 3MFs other slicers open with their colours and settings. Get it from the [Chrome Web Store](https://chromewebstore.google.com/detail/nmblahmglpbplmfcggghdgohohlaeiee), [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/thingport-grab/) or [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/kahfidpmojfocohinlmglnfoaimocbol).
+
+## Provider Setup
+
+Printables imports work with no setup. MakerWorld and Thingiverse each need a credential from your own account first. Connect them under **Configuration → Providers** (from the user menu): right-click a provider to connect or disconnect it. See **[docs/PROVIDER_SETUP.md](docs/PROVIDER_SETUP.md)** for how to create a Thingiverse Access Token and how to grab a MakerWorld session cookie.
+
+<a href="frontend/src/assets/screenshots/11_configuration_providers.png" target="_blank"><img src="frontend/src/assets/screenshots/11_configuration_providers.png" width="600" alt="Configuration, Providers section with MakerWorld, Thingiverse and Printables connected"></a>
+
+## Bring Your Existing Library
+
+Already have folders of STLs, 3MF projects and ZIPs? You don't have to add them one at a time:
+
+- **[Upload files and ZIPs](docs/guides/upload-files.md)** — a few models at a time, with ZIPs unpacked into models and folders.
+- **[Upload a folder](docs/guides/upload-folders.md)** — a whole folder tree from the browser, kept as folders, as one model per file or one model per folder.
+- **[Consume folder](docs/guides/consume-folder.md)** — copy a large library into a folder on the server and Thingport imports it on its own.
+
+[Which one should I use?](docs/guides/existing-library.md)
 
 ## Contributing
 
