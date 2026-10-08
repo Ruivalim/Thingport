@@ -18,6 +18,8 @@ import ModelCard from "../ModelsPage/ModelCard";
 import SortTabs from "../ModelsPage/SortTabs";
 import CollectionActionsMenu from "./CollectionActionsMenu";
 import CollectionBookmarkButton from "./CollectionBookmarkButton";
+import CollectionSyncDialog from "./CollectionSyncDialog";
+import CollectionSyncIndicator from "../../components/CollectionSyncIndicator";
 
 const PAGE_SIZE = 24;
 
@@ -40,6 +42,7 @@ export default function CollectionDetailPage({
   const navigate = useNavigate();
   const { t } = useTranslation(["models", "common"]);
   const [collection, setCollection] = useState<Collection | null>(null);
+  const [syncOpen, setSyncOpen] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [items, setItems] = useState<Print[]>([]);
   const [loading, setLoading] = useState(true);
@@ -173,9 +176,20 @@ export default function CollectionDetailPage({
           {collection.description}
         </Typography>
       )}
-      <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-        <SortTabs value={sortMode} onChange={setSortMode} />
+      <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+        {collection.sync && <CollectionSyncIndicator sync={collection.sync} onClick={() => setSyncOpen(true)} />}
+        <Box sx={{ ml: "auto" }}>
+          <SortTabs value={sortMode} onChange={setSortMode} />
+        </Box>
       </Box>
+      {syncOpen && collection.sync && (
+        <CollectionSyncDialog
+          collection={{ ...collection, sync: collection.sync }}
+          onClose={() => setSyncOpen(false)}
+          onUpdated={setCollection}
+          onUnauthorized={onUnauthorized}
+        />
+      )}
       {items.length ? (
         <Stack spacing={2}>
           <Box

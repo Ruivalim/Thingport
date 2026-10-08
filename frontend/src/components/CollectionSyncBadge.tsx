@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import Box from "@mui/material/Box";
 import ButtonBase from "@mui/material/ButtonBase";
 import Tooltip from "@mui/material/Tooltip";
-import SyncIcon from "@mui/icons-material/Sync";
+import CheckIcon from "@mui/icons-material/Check";
 import type { CollectionSync } from "../api/collections";
 import { importProviderInfo } from "../constants/importProviders";
 import { ProviderLogo, type ProviderId } from "./Layout/ConfigurationDialog/providerLogos";
@@ -52,12 +52,12 @@ export default function CollectionSyncBadge({ sync, size = 30, onClick }: Props)
           width: bubble,
           height: bubble,
           borderRadius: "50%",
-          bgcolor: "success.main",
+          bgcolor: "primary.main",
           color: "#fff",
           boxShadow: (theme) => `0 0 0 2px ${theme.palette.background.paper}`,
         }}
       >
-        <SyncIcon sx={{ fontSize: Math.round(bubble * 0.75) }} />
+        <CheckIcon sx={{ fontSize: Math.round(bubble * 0.75) }} />
       </Box>
     </>
   );
@@ -79,7 +79,7 @@ export default function CollectionSyncBadge({ sync, size = 30, onClick }: Props)
           e.stopPropagation();
           onClick();
         }}
-        sx={{ ...frame, "&:hover": { borderColor: "success.main" } }}
+        sx={{ ...frame, "&:hover": { borderColor: "primary.main" } }}
       >
         {content}
       </ButtonBase>
