@@ -174,6 +174,24 @@
       "saving": "Saugoma…",
       "genericError": "Kažkas nutiko ne taip. Bandykite dar kartą.",
       "backToProfile": "Grįžti į profilį",
+      "apiToken": {
+        "heading": "API raktas",
+        "description": "Leidžia kitoms programoms ir paslaugoms prisijungti prie jūsų Thingport bibliotekos tik skaitymo teisėmis.",
+        "created": "sukurtas {{date}}",
+        "lastUsed": "paskutinį kartą naudotas {{when}}",
+        "neverUsed": "dar nenaudotas",
+        "generate": "Generuoti",
+        "regenerate": "Generuoti iš naujo",
+        "revoke": "Atšaukti",
+        "regenerateTitle": "Generuoti API raktą iš naujo?",
+        "regenerateMessage": "Dabartinis raktas iškart nustos veikti. Viskam, kas jį naudoja, reikės naujo rakto.",
+        "revokeTitle": "Atšaukti API raktą?",
+        "revokeMessage": "Raktas iškart nustos veikti, ir viskas, kas jį naudoja, praras prieigą prie jūsų bibliotekos.",
+        "copyNow": "Nukopijuokite raktą dabar. Jis daugiau nebus rodomas.",
+        "copy": "Kopijuoti",
+        "copied": "Nukopijuota",
+        "failed": "Kažkas nepavyko su jūsų API raktu. Bandykite dar kartą."
+      },
       "language": {
         "heading": "Kalba",
         "subtitle": "Pasirinkite kalbą, naudojamą visame Thingport."
@@ -636,6 +654,8 @@
           "user_logged_out": "Atsijungė",
           "password_reset_requested": "Paprašė atkurti slaptažodį",
           "password_reset": "Atkūrė slaptažodį",
+          "api_token_generated": "Sugeneravo API raktą",
+          "api_token_revoked": "Atšaukė savo API raktą",
           "user_invited": "Pakvietė naudotoją",
           "model_uploaded": "Modelis įkeltas",
           "model_imported": "Modelis importuotas",

@@ -13,6 +13,7 @@ import { findValidInvitation } from "../services/invitationService";
 import { checkCaptcha } from "../services/captchaService";
 import { createLog } from "../services/auditLog";
 import { seedDefaultCategories } from "../services/categoryService";
+import { generateApiToken, getApiToken, revokeApiToken } from "../services/apiTokenService";
 import { toUserOut } from "../dto";
 import type { Prisma, Role } from "@prisma/client";
 
@@ -356,6 +357,35 @@ router.patch(
 
     const updated = await prisma.user.update({ where: { id: user.id }, data });
     res.json({ user: toUserOut(updated) });
+  }),
+);
+
+// The API token itself is only in the response that generates it; this shows which one is in use.
+// Generating and revoking can't be done with the token itself: requireAuth lets it only read.
+router.get(
+  "/profile/api-token",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    res.json(await getApiToken(req.userId!));
+  }),
+);
+
+router.post(
+  "/profile/api-token",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    res.json(await generateApiToken(req.userId!));
+    void createLog({ userId: req.userId!, action: "api_token_generated" });
+  }),
+);
+
+router.delete(
+  "/profile/api-token",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    await revokeApiToken(req.userId!);
+    res.json(await getApiToken(req.userId!));
+    void createLog({ userId: req.userId!, action: "api_token_revoked" });
   }),
 );
 

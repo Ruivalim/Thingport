@@ -15,6 +15,16 @@ export type AuthResult = { token: string; expires_in: number; user: AuthUser };
 // When SMTP is configured, the account awaits email verification instead of signing in.
 export type RegisterResult = AuthResult | { email_verification_required: true; email: string };
 
+/** Which API token is in use; the token itself is only in `GeneratedApiToken`. */
+export type ApiTokenInfo = {
+  configured: boolean;
+  /** The token's last four characters. */
+  hint: string | null;
+  created_at: string | null;
+  last_used_at: string | null;
+};
+export type GeneratedApiToken = ApiTokenInfo & { token: string };
+
 export type UpdateProfileInput = {
   current_password: string;
   email?: string;
@@ -96,6 +106,25 @@ export const authApi = {
     if (!res.ok) {
       throw new Error(await readErrorMessage(res, "Failed to update profile"));
     }
+    return res.json();
+  },
+
+  getApiToken: async (): Promise<ApiTokenInfo> => {
+    const res = await fetch(`${apiBase()}/profile/api-token`, { headers: authHeaders() });
+    assertOk(res, "Failed to load API token");
+    return res.json();
+  },
+
+  /** Replaces any existing token, which stops working at once. */
+  generateApiToken: async (): Promise<GeneratedApiToken> => {
+    const res = await fetch(`${apiBase()}/profile/api-token`, { method: "POST", headers: authHeaders() });
+    assertOk(res, "Failed to generate API token");
+    return res.json();
+  },
+
+  revokeApiToken: async (): Promise<ApiTokenInfo> => {
+    const res = await fetch(`${apiBase()}/profile/api-token`, { method: "DELETE", headers: authHeaders() });
+    assertOk(res, "Failed to revoke API token");
     return res.json();
   },
 

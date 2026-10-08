@@ -32,6 +32,8 @@ const ACTION_COLORS: Record<LogAction, ActionColor> = {
   user_logged_out: "default",
   password_reset_requested: "default",
   password_reset: "warning",
+  api_token_generated: "warning",
+  api_token_revoked: "default",
   user_invited: "info",
   authors_linked: "success",
   descriptions_refetched: "warning",

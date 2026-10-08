@@ -5,6 +5,8 @@ declare global {
     interface Request {
       userId?: string;
       userRole?: Role;
+      /** Signed in with the user's API token rather than a session. */
+      viaApiToken?: boolean;
     }
   }
 }

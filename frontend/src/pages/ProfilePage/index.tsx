@@ -8,6 +8,7 @@ import Button from "@mui/material/Button";
 import type { AuthUser } from "../../api/auth";
 import { useGravatarUrl } from "../../hooks/useGravatarUrl";
 import ActivitySection from "./activity/ActivitySection";
+import ApiTokenSection from "./ApiTokenSection";
 
 type Props = {
   user: AuthUser | null;
@@ -66,6 +67,8 @@ export default function ProfilePage({ user, onUnauthorized }: Props) {
               {t("profile.changePasswordLink")}
             </Button>
           </Stack>
+
+          <ApiTokenSection onUnauthorized={onUnauthorized} />
         </Stack>
       </Stack>
       <ActivitySection onUnauthorized={onUnauthorized} />

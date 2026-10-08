@@ -6,6 +6,8 @@ export type LogAction =
   | "user_logged_out"
   | "password_reset_requested"
   | "password_reset"
+  | "api_token_generated"
+  | "api_token_revoked"
   | "user_invited"
   | "authors_linked"
   | "descriptions_refetched"

@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["tests/**/*.test.ts"],
+    setupFiles: ["tests/setup.ts"],
     testTimeout: 20000,
     hookTimeout: 20000,
     // Files share one database and mutate the same global rows, so parallel files race.

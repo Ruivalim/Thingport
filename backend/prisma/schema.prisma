@@ -27,6 +27,13 @@ model User {
   // SHA-256 of the emailed token, so a database leak can't be used to take over accounts.
   passwordResetTokenHash   String?        @unique
   passwordResetExpires     DateTime?
+  // A read-only token other apps use to call the API as this user. Only its SHA-256
+  // is stored; the token itself is shown once, when generated. One per user: generating replaces it.
+  apiTokenHash             String?        @unique
+  // The token's last four characters, so the profile can show which one is in use.
+  apiTokenHint             String?
+  apiTokenCreatedAt        DateTime?
+  apiTokenLastUsedAt       DateTime?
   // Per-user, unlike the instance-wide Thingiverse token.
   makerworldCookie         String?
   slicer                   String?

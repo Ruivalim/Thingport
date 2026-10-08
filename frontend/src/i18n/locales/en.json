@@ -174,6 +174,24 @@
       "saving": "Saving…",
       "genericError": "Something went wrong. Please try again.",
       "backToProfile": "Back to Profile",
+      "apiToken": {
+        "heading": "API token",
+        "description": "Lets other apps and services connect to your Thingport library, with read-only access.",
+        "created": "created {{date}}",
+        "lastUsed": "last used {{when}}",
+        "neverUsed": "not used yet",
+        "generate": "Generate",
+        "regenerate": "Regenerate",
+        "revoke": "Revoke",
+        "regenerateTitle": "Regenerate API token?",
+        "regenerateMessage": "The current token stops working at once. Anything using it will need the new one.",
+        "revokeTitle": "Revoke API token?",
+        "revokeMessage": "The token stops working at once, and anything using it loses access to your library.",
+        "copyNow": "Copy your token now. It won't be shown again.",
+        "copy": "Copy",
+        "copied": "Copied",
+        "failed": "Something went wrong with your API token. Please try again."
+      },
       "language": {
         "heading": "Language",
         "subtitle": "Choose the language used throughout Thingport."
@@ -634,6 +652,8 @@
           "user_logged_out": "Logged out",
           "password_reset_requested": "Requested a password reset",
           "password_reset": "Reset password",
+          "api_token_generated": "Generated an API token",
+          "api_token_revoked": "Revoked their API token",
           "user_invited": "Invited a user",
           "model_uploaded": "Model uploaded",
           "model_imported": "Model imported",
