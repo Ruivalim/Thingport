@@ -8,8 +8,9 @@ import preview3d from "../../../frontend/src/assets/screenshots/04_model_details
 import tags from "../../../frontend/src/assets/screenshots/06_tags.png";
 import downloads from "../../../frontend/src/assets/screenshots/07_downloads.png";
 import myModels from "../../../frontend/src/assets/screenshots/08_my_models.png";
+import profile from "../../../frontend/src/assets/screenshots/10_profile.png";
 import grabMakerworld from "../../../extension/docs/screenshots/panel-makerworld.jpg";
-import grabImported from "../../../extension/docs/screenshots/imported-printables.jpg";
+import grabCollection from "../../../extension/docs/screenshots/collection-printables.jpg";
 import folderImport from "../../../docs/guides/images/folder-import-mode.png";
 
 const SECTIONS = [
@@ -65,8 +66,8 @@ const SECTIONS = [
       "Talks only to your own Thingport instance. Nothing goes anywhere else.",
     ],
     link: { label: "Thingport Grab", href: url("docs/grab/") },
-    image: grabImported,
-    alt: "Thingport Grab after importing a Printables model, with an Open in Thingport button",
+    image: grabCollection,
+    alt: "Thingport Grab on a Printables collection, picking which models to import",
   },
   {
     id: "preview",
@@ -100,6 +101,21 @@ const SECTIONS = [
     ],
     image: tags,
     alt: "Browsing models by tag in Thingport",
+  },
+  {
+    id: "activity",
+    short: "Activity",
+    icon: "activity",
+    title: "See what you've been up to",
+    intro: "Your profile keeps a record of how you use your library.",
+    points: [
+      "A year-long activity heatmap, like the one on your GitHub profile, with earlier years one click away.",
+      "A month-by-month timeline of the models you imported, uploaded, downloaded, opened in a slicer or deleted.",
+      "Generate a read-only API token to connect other apps and services to your library, and revoke it whenever you like.",
+    ],
+    link: { label: "Connect other apps", href: url("docs/guides/api-token/") },
+    image: profile,
+    alt: "A Thingport profile with its activity heatmap and timeline",
   },
   {
     id: "print",

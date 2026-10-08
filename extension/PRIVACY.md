@@ -42,7 +42,7 @@ the **provider site you're on**.
   knows whether to show its button. On a MakerWorld collection page, the same check runs for each
   model in the collection when you open the extension's panel there.
 - The address of whatever you import, and your choice of collection, when you import it.
-- A request for the slicer picked in your Thingport profile, when a MakerWorld model page opens, so
+- A request for the slicer picked in your Thingport Configuration, when a MakerWorld model page opens, so
   the extension knows whether to show its **Download normalized** button.
 - If you're logged into MakerWorld in this browser: your MakerWorld session cookie, when you import
   from MakerWorld. MakerWorld requires it to download files. The extension also saves it to your

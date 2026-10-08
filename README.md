@@ -46,6 +46,7 @@ Instead of having your collection scattered across different websites and your f
 - 🧊 **3D previews** — STL, 3MF, OBJ and STEP in the browser, with a thumbnail for every plate of a multi-plate 3MF. Very complex models can be simplified for the preview only.
 - 🗂️ **Organize and search** — nested categories, collections, tags, favourites and browsing history, with full-text search across names, tags, notes and authors. Pin the collections and tags you use most to the sidebar.
 - 📊 **Dashboard** — library stats, recently added models, your most viewed and most used models, and top authors.
+- 📈 **Profile and activity** — a year-long activity heatmap and a month-by-month timeline of the models you imported, uploaded, downloaded, opened in a slicer or deleted, plus a read-only [API token](docs/guides/api-token.md) for connecting other apps to your library.
 - 👤 **Author pages** — every model you've saved from an author, with a preview card when you hover their name.
 - 🖨️ **Open in your slicer** — Bambu Studio, OrcaSlicer, PrusaSlicer, Cura, Creality Print, Anycubic Slicer Next, Elegoo Slicer and Snapmaker Orca, choosing the file when a model has several.
 - 💡 **Normalized MakerWorld 3MFs** — slicers that mis-read Bambu Studio projects get an "Open normalized" option that keeps painted colours, plates and the designer's print settings.
@@ -75,6 +76,11 @@ Instead of having your collection scattered across different websites and your f
     <td width="33%"><a href="frontend/src/assets/screenshots/09_dark_theme.png" target="_blank"><img src="frontend/src/assets/screenshots/09_dark_theme.png" width="100%" alt="Dark theme"></a><br><sub><b>Dark Theme</b></sub></td>
   </tr>
   <tr>
+    <td width="33%"><a href="frontend/src/assets/screenshots/10_profile.png" target="_blank"><img src="frontend/src/assets/screenshots/10_profile.png" width="100%" alt="Profile with activity heatmap"></a><br><sub><b>Profile &amp; Activity</b></sub></td>
+    <td width="33%"><a href="frontend/src/assets/screenshots/11_configuration_providers.png" target="_blank"><img src="frontend/src/assets/screenshots/11_configuration_providers.png" width="100%" alt="Configuration, Providers section"></a><br><sub><b>Configuration — Providers</b></sub></td>
+    <td width="33%"><a href="extension/docs/screenshots/collection-printables.jpg" target="_blank"><img src="extension/docs/screenshots/collection-printables.jpg" width="100%" alt="Thingport Grab importing a Printables collection"></a><br><sub><b>Thingport Grab — Collections</b></sub></td>
+  </tr>
+  <tr>
     <td width="33%"><a href="extension/docs/screenshots/panel-printables.jpg" target="_blank"><img src="extension/docs/screenshots/panel-printables.jpg" width="100%" alt="Thingport Grab on Printables"></a><br><sub><b>Thingport Grab — Printables</b></sub></td>
     <td width="33%"><a href="extension/docs/screenshots/panel-thingiverse.jpg" target="_blank"><img src="extension/docs/screenshots/panel-thingiverse.jpg" width="100%" alt="Thingport Grab on Thingiverse"></a><br><sub><b>Thingport Grab — Thingiverse</b></sub></td>
     <td width="33%"><a href="extension/docs/screenshots/panel-makerworld.jpg" target="_blank"><img src="extension/docs/screenshots/panel-makerworld.jpg" width="100%" alt="Thingport Grab on MakerWorld"></a><br><sub><b>Thingport Grab — MakerWorld</b></sub></td>
@@ -90,7 +96,9 @@ Thingport ships two small companion tools, each downloadable from the in-app Dow
 
 ## Provider Setup
 
-Printables imports work with no setup. MakerWorld and Thingiverse each need a credential from your own account first -- see **[docs/PROVIDER_SETUP.md](docs/PROVIDER_SETUP.md)** for how to create a Thingiverse Access Token and how to grab a MakerWorld session cookie.
+Printables imports work with no setup. MakerWorld and Thingiverse each need a credential from your own account first. Connect them under **Configuration → Providers** (from the user menu): right-click a provider to connect or disconnect it. See **[docs/PROVIDER_SETUP.md](docs/PROVIDER_SETUP.md)** for how to create a Thingiverse Access Token and how to grab a MakerWorld session cookie.
+
+<a href="frontend/src/assets/screenshots/11_configuration_providers.png" target="_blank"><img src="frontend/src/assets/screenshots/11_configuration_providers.png" width="600" alt="Configuration, Providers section with MakerWorld, Thingiverse and Printables connected"></a>
 
 ## Bring Your Existing Library
 

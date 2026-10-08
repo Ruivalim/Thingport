@@ -72,7 +72,15 @@ async function scrollToTop(page) {
 
 async function openUserMenu(page, displayName) {
   await page.getByRole("button", { name: displayName }).click();
-  await page.getByRole("menuitem", { name: "Theme" }).waitFor();
+  await page.getByRole("menuitem", { name: "Configuration" }).waitFor();
+}
+
+async function openConfiguration(page, displayName, tab) {
+  await openUserMenu(page, displayName);
+  await page.getByRole("menuitem", { name: "Configuration" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("button", { name: tab, exact: true }).click();
+  return dialog;
 }
 
 const SHOTS = [
@@ -143,16 +151,31 @@ const SHOTS = [
     run: async (page, ctx) => {
       await page.goto("/models");
       await settle(page, 0);
-      await openUserMenu(page, ctx.displayName);
-      await page.getByRole("menuitem", { name: "Theme" }).click();
-      await page.getByRole("menuitem", { name: "Dark" }).click();
+      const dialog = await openConfiguration(page, ctx.displayName, "Appearance");
+      await dialog.getByRole("button", { name: "Dark", exact: true }).click();
       await page.keyboard.press("Escape");
+      await dialog.waitFor({ state: "hidden" });
       await settle(page, 0);
-      // Shown with the choice that made it: the user menu and its theme list.
       await openUserMenu(page, ctx.displayName);
-      await page.getByRole("menuitem", { name: "Theme" }).click();
-      await page.getByRole("menuitem", { name: "Dark" }).waitFor();
       await scrollToTop(page);
+    },
+  },
+  {
+    name: "10_profile",
+    run: async (page) => {
+      await page.goto("/profile");
+      await page
+        .getByText(/activit(y|ies) in /)
+        .first()
+        .waitFor();
+    },
+  },
+  {
+    name: "11_configuration_providers",
+    run: async (page, ctx) => {
+      await page.goto("/models");
+      await settle(page, 0);
+      await openConfiguration(page, ctx.displayName, "Providers");
     },
   },
 ];
@@ -220,6 +243,8 @@ try {
   const ctx = { displayName, modelId };
   for (const shot of SHOTS.filter(wanted)) {
     process.stdout.write(`${shot.name}... `);
+    // 09 switches to dark through the UI, which saves it to the account.
+    await api(token, "PATCH", "/settings/theme", { theme: "light" });
     await shot.run(page, ctx);
     await settle(page);
     await page.screenshot({ path: path.join(outDir, `${shot.name}.png`) });

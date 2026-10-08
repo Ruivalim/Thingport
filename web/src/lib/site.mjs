@@ -124,6 +124,14 @@ export const DOCS = [
       "A small desktop helper that makes “Open in slicer” work for Bambu Studio, PrusaSlicer, Cura and Anycubic Slicer Next.",
   },
   {
+    slug: "guides/api-token",
+    source: "docs/guides/api-token.md",
+    group: "Integrations",
+    title: "Connect other apps with an API token",
+    nav: "API token",
+    description: "Generate a read-only token that lets other apps, scripts and dashboards read your Thingport library.",
+  },
+  {
     slug: "contributing",
     source: "CONTRIBUTING.md",
     group: "Contributing",

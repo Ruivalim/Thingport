@@ -27,7 +27,11 @@ it stores and sends.
   </tr>
   <tr>
     <td width="50%"><a href="docs/screenshots/panel-makerworld.jpg"><img src="docs/screenshots/panel-makerworld.jpg" alt="Import panel on a MakerWorld model page"></a><br><sub><b>MakerWorld</b> -- import panel on a model page</sub></td>
-    <td width="50%"><a href="docs/screenshots/panel-thingiverse.jpg"><img src="docs/screenshots/panel-thingiverse.jpg" alt="Import panel on a Thingiverse thing page"></a><br><sub><b>Thingiverse</b> -- import panel on a thing page</sub></td>
+    <td width="50%"><a href="docs/screenshots/panel-thingiverse.jpg"><img src="docs/screenshots/panel-thingiverse.jpg" alt="Import panel on a Thingiverse thing page, filing into a new collection"></a><br><sub><b>Thingiverse</b> -- import panel, filing into a new collection</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><a href="docs/screenshots/collection-printables.jpg"><img src="docs/screenshots/collection-printables.jpg" alt="Import panel on a Printables collection, listing its models"></a><br><sub><b>Printables collection</b> -- pick which models to import</sub></td>
+    <td width="50%"><a href="docs/screenshots/collection-makerworld.jpg"><img src="docs/screenshots/collection-makerworld.jpg" alt="Guided import of a MakerWorld collection, waiting 30 seconds between models"></a><br><sub><b>MakerWorld collection</b> -- guided import, paced between models</sub></td>
   </tr>
   <tr>
     <td width="50%"><a href="docs/screenshots/setup-dialog-makerworld.jpg"><img src="docs/screenshots/setup-dialog-makerworld.jpg" alt="Setup dialog opened from the grayed-out icon"></a><br><sub><b>Not set up yet</b> -- the grayed-out icon's setup dialog</sub></td>
@@ -125,7 +129,7 @@ per-object overrides and layer color changes are dropped, and you pick your own 
 Hover the bulb on the button for the same summary.
 
 - **Who sees it:** everyone who hasn't connected the extension to a Thingport instance, and people
-  who have, when their Thingport profile's slicer is one of those above (with Bambu Studio or
+  who have, when the slicer chosen in Thingport's Configuration > Slicer is one of those above (with Bambu Studio or
   OrcaSlicer picked, the original file is the right one, so the button stays hidden).
 - **Where it runs:** entirely in your browser, the same conversion Thingport's "Open normalized"
   does on the server. The file goes nowhere but your downloads folder.
@@ -151,15 +155,15 @@ those no longer work.
 
 ### MakerWorld: no separate cookie setup needed
 
-Importing from MakerWorld normally requires pasting a session cookie into Thingport's Profile
-settings by hand (MakerWorld's own site sets it `HttpOnly`, which blocks a normal web page from
+Importing from MakerWorld normally requires pasting a session cookie into Thingport's
+Configuration > Providers by hand (MakerWorld's own site sets it `HttpOnly`, which blocks a normal web page from
 reading it -- that's the whole reason for the manual copy/paste). This extension reads that same
 cookie directly from your browser instead, using the `cookies` API -- a privileged, extension-only
 capability explicitly allowed to read `HttpOnly` cookies, unlike a regular page's own JavaScript.
 It's sent only to your own Thingport instance, as part of the same import request that needs it,
 exactly like the cookie you'd otherwise paste in by hand -- never anywhere else. If your Thingport
-account doesn't already have a MakerWorld cookie saved, the extension also pushes this one to
-Profile > MakerWorld for you, so the plain web app's own imports benefit too, not just ones started
+account doesn't already have a MakerWorld cookie saved, the extension also connects MakerWorld in
+Configuration > Providers for you, so the plain web app's own imports benefit too, not just ones started
 from the extension.
 
 ## What counts as "importable"

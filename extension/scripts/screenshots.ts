@@ -8,6 +8,9 @@
 //
 //   npm run screenshots -- --makerworld=https://makerworld.com/en/models/123 --printables=...
 //
+// The collection shots use fixed collections, changeable with --printables-collection=<url> and
+// --makerworld-collection=<url>.
+//
 // Needs Playwright's Chromium once: `npx playwright install chromium`.
 
 import { mkdir, rm } from "node:fs/promises";
@@ -17,6 +20,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium, type BrowserContext, type Page, type Worker } from "playwright";
+import type { BatchEntriesResult } from "../src/shared/api";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const EXTENSION_DIR = path.join(ROOT, "dist", "chrome");
@@ -24,6 +28,9 @@ const OUT_DIR = path.join(ROOT, "docs", "screenshots");
 const PAGE_VIEWPORT = { width: 1280, height: 800 };
 const DEMO_HOST = "thingport.home.arpa";
 const POPUP_WIDTH = 320;
+const NEW_COLLECTION_NAME = "Desk organizers";
+const PRINTABLES_COLLECTION = "https://www.printables.com/@Thinkable/collections/342542";
+const MAKERWORLD_COLLECTION = "https://makerworld.com/en/collections/15756490-little-coin";
 
 type ProviderName = "makerworld" | "thingiverse" | "printables";
 const PROVIDERS: { name: ProviderName; label: string; home: string; modelLink: RegExp }[] = [
@@ -48,7 +55,7 @@ const PROVIDERS: { name: ProviderName; label: string; home: string; modelLink: R
 ];
 
 /** CORS is open, so the extension reaches it without a host permission. */
-type MockState = { inspectTitle: string | null };
+type MockState = { inspectTitle: string | null; batch: BatchEntriesResult | null };
 
 function startMockInstance(state: MockState): Promise<{ url: string; close: () => void }> {
   const collections = [
@@ -58,7 +65,7 @@ function startMockInstance(state: MockState): Promise<{ url: string; close: () =
   ];
   const server = http.createServer((req, res) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
+    res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Thingport-Client");
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS");
     if (req.method === "OPTIONS") {
       res.writeHead(204).end();
@@ -74,13 +81,19 @@ function startMockInstance(state: MockState): Promise<{ url: string; close: () =
         return json({ already_imported: false, state: "not_imported", print_id: null });
       case "POST /api/import/inspect":
         return json({ title: state.inspectTitle, is_zip: false });
+      case "POST /api/import/printables-collection/entries":
+        return json(state.batch ?? { title: null, entries: [] });
       case "GET /api/collections":
         return json(collections);
       case "POST /api/import":
         return json({ id: "demo-imported", title: state.inspectTitle, import_outcome: "created", thumb_url: null });
+      // No slicer, so MakerWorld pages don't add their "Download normalized" button.
+      case "GET /api/settings/slicer":
+        return json({ slicer: null });
       case "PATCH /api/settings/makerworld":
         return json({});
       default:
+        console.warn(`  mock instance: ${route} isn't mocked`);
         return json({ detail: `Not mocked: ${route}` }, 404);
     }
   });
@@ -162,6 +175,31 @@ async function readModelInfo(page: Page): Promise<ModelInfo> {
   return { url: page.url(), title, image: meta.image };
 }
 
+/** What the instance would list for a Printables collection, read from the page itself. */
+async function readPrintablesCollection(page: Page): Promise<BatchEntriesResult> {
+  await page.locator('a[href*="/model/"]').first().waitFor({ timeout: 30000 });
+  const { title, links } = await page.evaluate(() => ({
+    title: document.querySelector("h1")?.textContent?.trim() || null,
+    links: [...document.querySelectorAll<HTMLAnchorElement>('a[href*="/model/"]')].map((a) => ({
+      href: a.href,
+      text: a.textContent?.trim() || "",
+    })),
+  }));
+  const titles = new Map<string, string>();
+  for (const { href, text } of links) {
+    const id = href.match(/\/model\/(\d+)/)?.[1];
+    // A card links its model twice: the image (no text), then the name.
+    if (id && !titles.get(id)) titles.set(id, text);
+  }
+  const entries = [...titles].map(([id, name], i) => ({
+    design_id: id,
+    title: name || null,
+    // A couple already in the library, to show how those are marked.
+    already_imported: i === 1 || i === 4,
+  }));
+  return { title, entries };
+}
+
 async function toDataUrl(imageUrl: string | null): Promise<string | null> {
   if (!imageUrl) return null;
   try {
@@ -197,7 +235,7 @@ async function screenshotViewport(page: Page, file: string): Promise<void> {
 async function main(): Promise<void> {
   await rm(OUT_DIR, { recursive: true, force: true });
   await mkdir(OUT_DIR, { recursive: true });
-  const mockState: MockState = { inspectTitle: null };
+  const mockState: MockState = { inspectTitle: null, batch: null };
   const instance = await startMockInstance(mockState);
   const mockPort = Number(new URL(instance.url).port);
   const instanceUrl = `http://${DEMO_HOST}`;
@@ -249,6 +287,10 @@ async function main(): Promise<void> {
       await openPage(page, model.url);
       await page.locator(".tg-fab:not(.tg-fab--inactive)").click();
       await page.locator('.tg-panel [data-action="import"]').waitFor({ timeout: 20000 });
+      if (provider.name === "thingiverse") {
+        await page.locator("#tg-collection").selectOption("__new__");
+        await page.locator("#tg-new-collection").fill(NEW_COLLECTION_NAME);
+      }
       await screenshotViewport(page, `panel-${provider.name}.jpg`);
 
       // Not MakerWorld: its import clicks the page's real Download button.
@@ -258,6 +300,25 @@ async function main(): Promise<void> {
         await screenshotViewport(page, `imported-${provider.name}.jpg`);
       }
     }
+
+    const printablesCollection = argValue("printables-collection") ?? PRINTABLES_COLLECTION;
+    await openPage(page, printablesCollection);
+    mockState.batch = await readPrintablesCollection(page);
+    console.log(`Printables collection: ${printablesCollection} -- ${mockState.batch.entries.length} models`);
+    await page.locator(".tg-fab:not(.tg-fab--inactive)").click();
+    await page.locator('.tg-panel [data-action="import"]').waitFor({ timeout: 20000 });
+    await screenshotViewport(page, "collection-printables.jpg");
+
+    // The panel comes up once the whole collection has been scrolled through.
+    const makerworldCollection = argValue("makerworld-collection") ?? MAKERWORLD_COLLECTION;
+    await openPage(page, makerworldCollection);
+    console.log(`MakerWorld collection: ${makerworldCollection}`);
+    await page.locator(".tg-fab:not(.tg-fab--inactive)").click();
+    await page.locator('.tg-panel [data-action="start"]').waitFor({ timeout: 180000 });
+    await page.locator("#tg-step-delay").selectOption("30000");
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await screenshotViewport(page, "collection-makerworld.jpg");
+
     console.log(`Screenshots written to ${path.relative(process.cwd(), OUT_DIR)}/`);
   } finally {
     await context.close();

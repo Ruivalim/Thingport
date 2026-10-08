@@ -11,6 +11,8 @@ import models from "../../../frontend/src/assets/screenshots/02_models.png";
 import modelDetails from "../../../frontend/src/assets/screenshots/03_model_details.png";
 import preview3d from "../../../frontend/src/assets/screenshots/04_model_details_3d_preview.png";
 import collections from "../../../frontend/src/assets/screenshots/05_collections.png";
+import profile from "../../../frontend/src/assets/screenshots/10_profile.png";
+import configProviders from "../../../frontend/src/assets/screenshots/11_configuration_providers.png";
 import grabPrintables from "../../../extension/docs/screenshots/panel-printables.jpg";
 
 const FEATURES = [
@@ -163,6 +165,8 @@ const jsonLd = [
             { img: modelDetails, caption: "Every model's files, photos and source" },
             { img: preview3d, caption: "Inspect models in 3D" },
             { img: collections, caption: "Group models into collections" },
+            { img: profile, caption: "Look back on your activity" },
+            { img: configProviders, caption: "Connect the sites you import from" },
           ].map(({ img, caption }) => (
             <figure class="shot">
               <Image src={img} alt={caption} widths={[480, 800, 1100]} sizes="(min-width: 48rem) 34rem, 100vw" />
