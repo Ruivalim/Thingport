@@ -9,15 +9,19 @@ type Props<T extends string> = {
   options: { value: T; label: string }[];
   onChange: (value: T) => void;
   label: string;
+  disabled?: boolean;
 };
 
 /** One track, the chosen option raised on a lighter pill. */
-export default function Segmented<T extends string>({ value, options, onChange, label }: Props<T>) {
+export default function Segmented<T extends string>({ value, options, onChange, label, disabled }: Props<T>) {
   return (
     <Box
       aria-label={label}
       sx={{
         display: "inline-flex",
+        // Many options wrap on a narrow screen instead of running off it.
+        flexWrap: "wrap",
+        maxWidth: "100%",
         gap: "2px",
         p: "3px",
         borderRadius: "10px",
@@ -34,10 +38,12 @@ export default function Segmented<T extends string>({ value, options, onChange, 
             component="button"
             type="button"
             aria-pressed={chosen}
+            disabled={disabled}
             onClick={() => onChange(option.value)}
             sx={{
               border: 0,
-              cursor: "pointer",
+              cursor: disabled ? "default" : "pointer",
+              opacity: disabled && !chosen ? 0.6 : 1,
               px: 1.75,
               py: 0.625,
               borderRadius: "7px",

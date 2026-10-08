@@ -3,7 +3,7 @@
 // it has as many as the page's own data says the collection holds.
 // Every not-yet-imported model is queued.
 
-import type { ImportStatus } from "../../shared/api";
+import type { ImportStatus, SyncLookup } from "../../shared/api";
 import { request } from "../../shared/messages";
 import { makerworldModelUrl } from "../../shared/urls";
 import { ctx } from "../context";
@@ -14,6 +14,7 @@ import { mountScanOverlay } from "../overlays";
 import { api, escapeHtml, sleep } from "../runtime";
 import { getShadowRoot, onPanelAction, panelQuery, renderPanel } from "../shell";
 import { errorHtml, statusHtml, successHtml } from "./results";
+import { applySyncToggle, loadSyncState, readSyncToggle, syncChangeNote, syncToggleHtml } from "./syncToggle";
 
 // The page may still be hydrating; checking too early sees zero cards and looks like the end.
 const SCAN_START_DELAY_MS = 1500;
@@ -114,6 +115,7 @@ export async function loadMakerworldGuidedCollection(): Promise<void> {
   const root = getShadowRoot();
   if (!root) return;
   const scan = mountScanOverlay(root);
+  const syncState = loadSyncState();
   const total = await loadMakerworldCollectionTotal(location.href);
   const ids = await scrollToEnd(total, (count, expected) => scan.update(count, expected));
   scan.remove();
@@ -139,26 +141,46 @@ export async function loadMakerworldGuidedCollection(): Promise<void> {
   );
   const toImport = statuses.filter((s) => !s.already_imported);
   const alreadyImported = statuses.filter((s) => s.already_imported);
+  const sync = await syncState;
 
   const parts: string[] = [];
   if (toImport.length) parts.push(`${toImport.length} new model${toImport.length === 1 ? "" : "s"} to import`);
-  if (alreadyImported.length) parts.push(`${alreadyImported.length} already in your library`);
+  if (alreadyImported.length) {
+    parts.push(toImport.length ? `${alreadyImported.length} already in your library` : "all already in your library");
+  }
+  const target = sync?.sync
+    ? `Models go into "${escapeHtml(sync.sync.collection_name)}", the Thingport collection synced with this one. `
+    : collectionTitle
+      ? `Models go into a Thingport collection named "${escapeHtml(collectionTitle)}" (created if it doesn't exist yet). `
+      : "";
   renderPanel(`
     <div class="tg-title">${escapeHtml(collectionTitle || "Import collection")}</div>
     <div class="tg-hint">${parts.join(", ") || "No models found."}</div>
-    <label class="tg-label" for="tg-step-delay">Wait between models</label>
-    <select id="tg-step-delay" class="tg-select">${stepDelayOptions(await rememberedStepDelay())}</select>
-    <button class="tg-btn" type="button" data-action="start">Start import</button>
+    ${
+      toImport.length
+        ? `<label class="tg-label" for="tg-step-delay">Wait between models</label>
+           <select id="tg-step-delay" class="tg-select">${stepDelayOptions(await rememberedStepDelay())}</select>`
+        : ""
+    }
+    ${syncToggleHtml(sync)}
+    <button class="tg-btn" type="button" data-action="start">${toImport.length ? "Start import" : sync ? "Save" : "Add to collection"}</button>
     <div class="tg-hint tg-hint--spaced">
-      ${collectionTitle ? `Models go into a Thingport collection named "${escapeHtml(collectionTitle)}" (created if it doesn't exist yet). ` : ""}New
-      models are imported one page visit at a time, pacing itself to avoid MakerWorld's rate
-      limiting -- this can take a while for a large collection.
+      ${target}${
+        toImport.length
+          ? `New models are imported one page visit at a time, pacing itself to avoid MakerWorld's rate
+             limiting -- this can take a while for a large collection.`
+          : ""
+      }
     </div>
   `);
   onPanelAction("start", () => {
     const stepDelayMs = Number(panelQuery<HTMLSelectElement>("#tg-step-delay")?.value) || STEP_DELAY_CHOICES[0].ms;
-    void rememberStepDelay(stepDelayMs);
-    void startGuidedImport(toImport, alreadyImported, collectionTitle, stepDelayMs);
+    if (toImport.length) void rememberStepDelay(stepDelayMs);
+    void startGuidedImport(toImport, alreadyImported, collectionTitle, stepDelayMs, {
+      state: sync,
+      wanted: readSyncToggle(),
+      knownIds: ids,
+    });
   });
 }
 
@@ -167,10 +189,25 @@ async function startGuidedImport(
   alreadyImported: ModelStatus[],
   collectionTitle: string | null,
   stepDelayMs: number,
+  sync: { state: SyncLookup | null; wanted: boolean; knownIds: string[] },
 ): Promise<void> {
   const { url: originalUrl, instanceUrl } = ctx();
   renderPanel(statusHtml("Preparing your collection…"));
-  const collectionId = await findOrCreateCollection(collectionTitle);
+  let syncNote: string | null;
+  let collectionId: string | null;
+  try {
+    const { change, link } = await applySyncToggle(sync.state, sync.wanted, {
+      title: collectionTitle,
+      knownIds: sync.knownIds,
+    });
+    syncNote = syncChangeNote(change, link);
+    // A synced collection keeps getting this page's models whatever it's been renamed to.
+    collectionId =
+      link?.collection_id ?? sync.state?.sync?.collection_id ?? (await findOrCreateCollection(collectionTitle));
+  } catch (err) {
+    renderPanel(errorHtml(err));
+    return;
+  }
 
   // Already-imported models need no page visit, so they're filed here directly.
   if (alreadyImported.length && collectionId) {
@@ -188,8 +225,8 @@ async function startGuidedImport(
   if (!toImport.length) {
     renderPanel(
       successHtml(
-        `${instanceUrl}/models`,
-        "Nothing new to import -- already-imported models were added to your collection.",
+        collectionId ? `${instanceUrl}/models/collections/${collectionId}` : `${instanceUrl}/models`,
+        `Nothing new to import -- already-imported models were added to your collection.${syncNote ? ` ${syncNote}` : ""}`,
       ),
     );
     return;

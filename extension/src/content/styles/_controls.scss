@@ -26,3 +26,31 @@
   @include m.text-input;
   margin-bottom: 10px;
 }
+
+// A checkbox with its label and an explanation under it, e.g. "Keep this collection in sync".
+.tg-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: t.$space-2;
+  margin: t.$space-2 0;
+  cursor: pointer;
+
+  input {
+    flex: none;
+    margin: 2px 0 0;
+    accent-color: t.c("accent");
+  }
+
+  &__label {
+    display: block;
+    font-weight: 600;
+  }
+
+  &__hint {
+    display: block;
+    margin-top: 2px;
+    font-size: t.$font-size-sm;
+    line-height: 1.45;
+    color: t.c("text-muted");
+  }
+}

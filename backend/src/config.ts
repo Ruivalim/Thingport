@@ -109,6 +109,11 @@ export const IMPORT_COLLECTION_DELAY_MS = envInt("IMPORT_COLLECTION_DELAY_MS", 1
 // MakerWorld's CAPTCHA trips on bursts, so in collection imports this delay precedes every
 // MakerWorld request (listing pages, each resolution step, each image), not just each model.
 export const IMPORT_MAKERWORLD_CALL_DELAY_MS = envInt("IMPORT_MAKERWORLD_CALL_DELAY_MS", 5000);
+// Synced collections are checked on each one's own interval; "false" turns the scheduled sync off
+// ("Sync now" still works).
+export const COLLECTION_SYNC_ENABLED = (process.env.COLLECTION_SYNC_ENABLED ?? "").trim().toLowerCase() !== "false";
+// Gap between the models a sync imports. Nobody is waiting on it, so it can be long.
+export const COLLECTION_SYNC_ITEM_DELAY_MS = envInt("COLLECTION_SYNC_ITEM_DELAY_MS", 60_000);
 // Gap between a single import's preview-image fetches (up to ~20 per model).
 export const IMPORT_PREVIEW_IMAGE_DELAY_MS = envInt("IMPORT_PREVIEW_IMAGE_DELAY_MS", 250);
 export const IMPORT_USER_AGENT = "Thingport/1.0";

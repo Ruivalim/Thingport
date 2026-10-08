@@ -27,6 +27,7 @@ async function linksJobBody(job: ImportJob): Promise<LinksImportJobBody> {
     category_id: (payload.category_id as string | null) ?? null,
     scope: payload.scope === "designer" || payload.scope === "all" ? payload.scope : "url",
     makerworld_cookie: cookie ?? undefined,
+    itemDelayMs: typeof payload.item_delay_ms === "number" ? payload.item_delay_ms : undefined,
   };
 }
 
@@ -141,8 +142,9 @@ export async function queueLink(userId: string, url: string, options: QueuedLink
     if (!collection) throw new HttpError(404, "Collection not found");
   }
   return withUserLock(userId, async () => {
+    // A paused sync job is that sync's own; links sent from Grab start a queue of their own.
     let job = await prisma.importJob.findFirst({
-      where: { userId, type: "LINKS", status: "PAUSED" },
+      where: { userId, type: "LINKS", status: "PAUSED", collectionSyncId: null },
       orderBy: { createdAt: "asc" },
     });
     if (!job) {

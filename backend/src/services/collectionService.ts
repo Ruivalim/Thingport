@@ -29,13 +29,20 @@ export async function assertCollectionNameAvailable(userId: string, name: string
   if (existing) throw new HttpError(409, `A collection named "${name.trim()}" already exists`);
 }
 
-/** Case-insensitive, so re-importing a collection reuses the same row. */
+/** Case-insensitive, so re-importing a collection reuses the same row. Safe to call twice at once:
+ *  the one that loses the race to create it gets the row the other made. */
 export async function findOrCreateCollectionByName(userId: string, name: string): Promise<Collection> {
   const trimmed = name.trim();
   const nameNormalized = normalizeCollectionName(trimmed);
   const existing = await prisma.collection.findFirst({ where: { userId, nameNormalized } });
   if (existing) return existing;
-  return prisma.collection.create({ data: { userId, name: trimmed, nameNormalized } });
+  try {
+    return await prisma.collection.create({ data: { userId, name: trimmed, nameNormalized } });
+  } catch (err) {
+    const raced = await prisma.collection.findFirst({ where: { userId, nameNormalized } });
+    if (raced) return raced;
+    throw err;
+  }
 }
 
 /** Skips prints already present, then moves files if the storage template has a {collection}

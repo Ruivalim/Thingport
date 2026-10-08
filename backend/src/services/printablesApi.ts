@@ -252,6 +252,29 @@ export async function fetchPrintablesCollectionTitle(collectionId: string): Prom
   return typeof name === "string" && name.trim() ? name.trim() : null;
 }
 
+// How a GraphQL resolver says "no such object", e.g. Django's "Collection matching query does not
+// exist." or a "not_found" code. Throttling and other errors don't match.
+const NOT_FOUND_ERROR = /not[\s_-]?found|does ?n[o']t exist/i;
+
+/** For a sync: null when Printables answers that the collection doesn't exist, as `collection: null`
+ * alone or alongside a not-found error. Throws when there's no clear answer, so an outage is never
+ * taken for a deleted collection. */
+export async function checkPrintablesCollection(collectionId: string): Promise<{ title: string | null } | null> {
+  const data = await fetchPrintablesGraphql(COLLECTION_TITLE_QUERY, { id: collectionId });
+  const payload = isRecord(data) && isRecord(data.data) ? data.data : null;
+  const errors = isRecord(data) && Array.isArray(data.errors) ? data.errors : [];
+  const notFound =
+    errors.length > 0 &&
+    errors.every((err) => isRecord(err) && typeof err.message === "string" && NOT_FOUND_ERROR.test(err.message));
+  if (!payload || !("collection" in payload) || (errors.length && !notFound)) {
+    throw new Error("Couldn't read the Printables collection");
+  }
+  const collection = payload.collection;
+  if (collection === null) return null;
+  const name = isRecord(collection) ? collection.name : null;
+  return { title: typeof name === "string" && name.trim() ? name.trim() : null };
+}
+
 // The site's own "load more" query. The last page ends with an empty-string cursor, not null --
 // a `cursor == null` check restarts from page 1 forever.
 const COLLECTION_MODELS_QUERY = `

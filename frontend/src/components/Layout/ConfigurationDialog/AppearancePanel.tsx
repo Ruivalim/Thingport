@@ -8,6 +8,7 @@ import { SUPPORTED_LANGUAGES, type LanguageCode } from "../../../constants/langu
 import type { ThemeSelection } from "../../../constants/settingsOptions";
 import { setCachedAuthorPreviewEnabled, useAuthorPreviewEnabled } from "../../../hooks/useAuthorPreviewEnabled";
 import Segmented from "../../controls/Segmented";
+import HelpTip from "../../HelpTip";
 import { PanelHeader, SectionLabel } from "./parts";
 
 const THEMES: ThemeSelection[] = ["light", "dark", "system"];
@@ -63,7 +64,10 @@ export default function AppearancePanel({ theme, onThemeChange, onUnauthorized }
           />
         </div>
         <div>
-          <SectionLabel>{t("profile.authorPreview.heading")}</SectionLabel>
+          <SectionLabel>
+            {t("profile.authorPreview.heading")}
+            <HelpTip text={t("profile.authorPreview.help")} />
+          </SectionLabel>
           <Segmented
             label={t("profile.authorPreview.heading")}
             value={authorPreview ? "on" : "off"}

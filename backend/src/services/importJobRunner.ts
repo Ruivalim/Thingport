@@ -5,6 +5,7 @@ import { IMPORT_COLLECTION_DELAY_MS, IMPORT_MAKERWORLD_CALL_DELAY_MS } from "../
 import { countJobItems, getJob, getJobStatus, listJobItems, updateJob, updateJobItem } from "./importJobService";
 import { createNotification } from "./notificationService";
 import { addPrintsToCollection, findOrCreateCollectionByName } from "./collectionService";
+import { likesCollectionName, providerName, syncedCollectionFor } from "./collectionSyncService";
 import { resolveMakerworldCookie } from "./importResolvers";
 import { decodeHtmlEntities } from "../utils/htmlEntities";
 import {
@@ -30,6 +31,7 @@ import { fetchPrintablesCollectionTitle } from "./printablesApi";
 import { createLog } from "./auditLog";
 import { HttpError } from "../utils/fileUtils";
 import { prisma } from "../db";
+import type { ImportJob } from "@prisma/client";
 
 // Sequential on purpose: parallel bursts of api.bambulab.com calls trip MakerWorld's CAPTCHA.
 const COLLECTION_IMPORT_CONCURRENCY = 1;
@@ -248,7 +250,12 @@ export async function runCollectionImportJob(
 
     let resultCollectionId: string | null = null;
     let collectionTitle: string | null = null;
-    if (successPrintIds.length) {
+    const synced = successPrintIds.length ? await syncedCollectionFor(userId, body.url) : null;
+    if (synced) {
+      await addPrintsToCollection(synced.id, successPrintIds);
+      resultCollectionId = synced.id;
+      collectionTitle = synced.name;
+    } else if (successPrintIds.length) {
       const url = body.url;
       const parsed = parseMakerworldCollectionUrl(url);
       if (parsed) {
@@ -379,7 +386,8 @@ async function runThingiverseThingsImportJob(
     let resultCollectionId: string | null = null;
     const collectionTitle = await resolveCollectionTitle(accessToken);
     if (successPrintIds.length) {
-      const collection = await findOrCreateCollectionByName(userId, collectionTitle);
+      const collection =
+        (await syncedCollectionFor(userId, body.url)) ?? (await findOrCreateCollectionByName(userId, collectionTitle));
       await addPrintsToCollection(collection.id, successPrintIds);
       resultCollectionId = collection.id;
     }
@@ -439,7 +447,7 @@ export async function runThingiverseLikesImportJob(
     jobId,
     userId,
     body,
-    async () => "Thingiverse Likes",
+    async () => likesCollectionName(body.username),
     () => `@${body.username}'s Likes`,
   );
 }
@@ -505,7 +513,8 @@ export async function runPrintablesCollectionImportJob(
     const collectionTitle =
       (await fetchPrintablesCollectionTitle(body.collectionId)) ?? `Printables Collection ${body.collectionId}`;
     if (successPrintIds.length) {
-      const collection = await findOrCreateCollectionByName(userId, collectionTitle);
+      const collection =
+        (await syncedCollectionFor(userId, body.url)) ?? (await findOrCreateCollectionByName(userId, collectionTitle));
       await addPrintsToCollection(collection.id, successPrintIds);
       resultCollectionId = collection.id;
     }
@@ -608,7 +617,8 @@ export async function runZipImportJob(jobId: string, userId: string, body: ZipIm
   }
 }
 
-export type LinksImportJobBody = ImportRequestBody & { scope?: MakerworldProfileScope };
+/** `itemDelayMs` waits between links; a collection sync's queue is paced that way. */
+export type LinksImportJobBody = ImportRequestBody & { scope?: MakerworldProfileScope; itemDelayMs?: number };
 
 /** What a link sent from the extension's "Add to the queue" carries on its own item, over the job's
  *  shared body: the panel's collection and profile scope, and the page title for the queue page. */
@@ -722,8 +732,11 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
     let printId: string | null = null;
     let stopReason: StopReason | null = null;
     let processed = (await countJobItems(jobId, "DONE")) + (await countJobItems(jobId, "FAILED"));
+    // The models this run brought in new, for a sync's notification.
+    const newPrintIds: string[] = [];
 
-    for (const item of items) {
+    for (const [index, item] of items.entries()) {
+      if (index > 0 && body.itemDelayMs) await sleep(body.itemDelayMs);
       // Pausing only flips the status; the link that's importing finishes and the rest wait.
       if ((await getJobStatus(jobId)) === "PAUSED") {
         console.log(`[import] job ${jobId}: paused, ${processed} of ${total} links processed`);
@@ -749,6 +762,7 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
         try {
           const result = await importOneLink(userId, item.url, itemBody);
           // A link is one model however many of its profiles came in.
+          if (result.imported && result.printId) newPrintIds.push(result.printId);
           if (result.imported) imported++;
           else if (result.alreadyInLibrary) alreadyInLibrary++;
           if (result.profiles) {
@@ -791,6 +805,18 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
       }
       if (itemError) console.error(`[import] job ${jobId}: ${item.url} failed: ${itemError}`);
       else console.log(`[import] job ${jobId}: ${item.url} imported`);
+      // A sync can't ask anyone to retry, so a rate limit pauses it instead of failing the rest. A
+      // link that got nothing in waits with them; one that got some of its profiles in is done.
+      if (job.collectionSyncId && stopReason) {
+        const nothingIn = itemError !== null && !/ of \d+ print profiles failed/.test(itemError);
+        await updateJobItem(item.id, {
+          status: nothingIn ? "PENDING" : "FAILED",
+          attempts,
+          errorMessage: itemError,
+        }).catch(() => undefined);
+        await pauseSyncJob(job, stopReason, newPrintIds);
+        return;
+      }
       await updateJobItem(item.id, {
         status: itemError ? "FAILED" : "DONE",
         attempts,
@@ -825,6 +851,8 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
       details: { provider: "links", imported, alreadyInLibrary, failed: failedCount },
     });
 
+    if (job.collectionSyncId && (await notifySyncJobDone(job, newPrintIds, alreadyInLibrary, failedCount))) return;
+
     const bodyParts: string[] = [];
     if (profilesProcessed) bodyParts.push(`${profilesImported} of ${profilesProcessed} print profiles imported`);
     if (alreadyInLibrary) bodyParts.push(`${alreadyInLibrary} already in your library`);
@@ -853,6 +881,115 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
   } catch (err) {
     await markJobFailed(jobId, err);
   }
+}
+
+// ---- Collection sync jobs ----
+
+/** The pause reason a restart leaves on a sync job, so the next sync picks it up again by itself.
+ *  A rate-limited one waits for someone to start it. */
+export const SYNC_JOB_INTERRUPTED = "Interrupted by server restart";
+
+const SYNC_NAMES_SHOWN = 3;
+
+async function syncOfJob(job: ImportJob) {
+  if (!job.collectionSyncId) return null;
+  return prisma.collectionSync.findUnique({ where: { id: job.collectionSyncId }, include: { collection: true } });
+}
+
+/** "A, B and 3 more", by the models' titles. */
+async function modelNames(printIds: string[]): Promise<string> {
+  const prints = await prisma.print.findMany({
+    where: { id: { in: printIds.slice(0, SYNC_NAMES_SHOWN) } },
+    select: { id: true, name: true, title: true },
+  });
+  const byId = new Map(prints.map((p) => [p.id, p.title?.trim() || p.name]));
+  const names = printIds.slice(0, SYNC_NAMES_SHOWN).flatMap((id) => (byId.has(id) ? [`"${byId.get(id)}"`] : []));
+  const more = printIds.length - names.length;
+  if (!names.length) return `${printIds.length} model${printIds.length === 1 ? "" : "s"}`;
+  if (!more) return names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  return `${names.join(", ")} and ${more} more`;
+}
+
+function syncStopText(reason: StopReason, provider: string): string {
+  if (reason === "downloadLimit") return "MakerWorld's daily download limit was reached";
+  if (reason === "auth") {
+    return provider === "makerworld"
+      ? "your MakerWorld session expired, so connect MakerWorld again in Configuration > Providers"
+      : `${providerName(provider)} rejected Thingport's credentials`;
+  }
+  return provider === "makerworld"
+    ? "MakerWorld asked for a CAPTCHA (too many requests)"
+    : `${providerName(provider)} is rate-limiting imports`;
+}
+
+/** The rest of the job waits, paused, in the import queue. */
+async function pauseSyncJob(job: ImportJob, reason: StopReason, newPrintIds: string[]): Promise<void> {
+  const sync = await syncOfJob(job);
+  const provider = sync?.provider ?? job.provider ?? "makerworld";
+  const stopText = syncStopText(reason, provider);
+  const waiting = await countJobItems(job.id, "PENDING");
+  await updateJob(job.id, {
+    status: "PAUSED",
+    errorMessage: stopText.charAt(0).toUpperCase() + stopText.slice(1),
+    processed: (await countJobItems(job.id, "DONE")) + (await countJobItems(job.id, "FAILED")),
+    failedCount: await countJobItems(job.id, "FAILED"),
+  });
+  console.warn(`[sync] job ${job.id}: paused, ${stopText}; ${waiting} links waiting`);
+  const owner = await prisma.user.findUnique({ where: { id: job.userId }, select: { role: true } });
+  const isAdmin = owner?.role === "ADMIN";
+  const name = sync?.collection.name ?? job.sourceLabel ?? "a synced collection";
+  const parts: string[] = [];
+  if (newPrintIds.length) parts.push(`${await modelNames(newPrintIds)} came in first.`);
+  parts.push(
+    `${waiting} new model${waiting === 1 ? "" : "s"} wait${waiting === 1 ? "s" : ""} in the import queue, paused because ${stopText}.`,
+  );
+  parts.push(
+    isAdmin
+      ? "Start it again from Administration > Import queue once that clears."
+      : "An admin can start it again from the import queue once that clears.",
+  );
+  await createNotification(job.userId, {
+    title: `Syncing "${name}" is paused`,
+    body: parts.join(" "),
+    externalUrl: sync?.sourceUrl ?? job.sourceUrl,
+    internalPath: isAdmin ? "/admin-queue" : sync ? `/models/collections/${sync.collectionId}` : null,
+  });
+}
+
+/** Says which new models came in. False when the sync is gone, for the plain notification. */
+async function notifySyncJobDone(
+  job: ImportJob,
+  newPrintIds: string[],
+  alreadyInLibrary: number,
+  failedCount: number,
+): Promise<boolean> {
+  const sync = await syncOfJob(job);
+  if (!sync) return false;
+  const payload = (job.payload ?? {}) as Record<string, unknown>;
+  const filed = (typeof payload.sync_filed === "number" ? payload.sync_filed : 0) + alreadyInLibrary;
+  const name = sync.collection.name;
+  const parts: string[] = [];
+  if (newPrintIds.length) parts.push(`${await modelNames(newPrintIds)} from ${providerName(sync.provider)}.`);
+  if (filed) {
+    parts.push(
+      `${filed} model${filed === 1 ? " that was" : "s that were"} already in your library ${filed === 1 ? "was" : "were"} added to it too.`,
+    );
+  }
+  if (failedCount) {
+    parts.push(
+      `${failedCount} couldn't be imported (private, deleted, or failed); retry ${failedCount === 1 ? "it" : "them"} from the import queue.`,
+    );
+  }
+  const count = newPrintIds.length;
+  await createNotification(job.userId, {
+    title: count
+      ? `${count} new model${count === 1 ? "" : "s"} synced into "${name}"`
+      : `Couldn't sync new models into "${name}"`,
+    body: parts.join(" ") || null,
+    externalUrl: sync.sourceUrl,
+    internalPath: `/models/collections/${sync.collectionId}`,
+  });
+  return true;
 }
 
 /** The collection picked in the extension's panel. Checked against the owner at run time, since

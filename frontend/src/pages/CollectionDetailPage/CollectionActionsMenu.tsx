@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import IconButton from "@mui/material/IconButton";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
+import Divider from "@mui/material/Divider";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -12,12 +13,14 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import DownloadIcon from "@mui/icons-material/Download";
 import BookmarkIcon from "@mui/icons-material/Bookmark";
 import BookmarkBorderIcon from "@mui/icons-material/BookmarkBorder";
+import SyncIcon from "@mui/icons-material/Sync";
 import type { SxProps, Theme } from "@mui/material/styles";
 import { UnauthorizedError } from "../../api/client";
 import { type Collection, type CollectionInput, collectionsApi } from "../../api/collections";
 import { useConfirm } from "../../components/ConfirmProvider";
 import DownloadZipConfirmDialog from "../../components/DownloadZipConfirmDialog";
 import CollectionFormModal from "../CollectionsPage/CollectionFormModal";
+import CollectionSyncDialog from "./CollectionSyncDialog";
 
 type Props = {
   collection: Collection;
@@ -44,6 +47,7 @@ export default function CollectionActionsMenu({
   const [deleting, setDeleting] = useState(false);
   const [bookmarking, setBookmarking] = useState(false);
   const [downloadOpen, setDownloadOpen] = useState(false);
+  const [syncOpen, setSyncOpen] = useState(false);
 
   const closeMenu = () => setAnchorEl(null);
 
@@ -157,10 +161,35 @@ export default function CollectionActionsMenu({
           </ListItemIcon>
           <ListItemText sx={{ color: "error.main" }}>{t("common:delete")}</ListItemText>
         </MenuItem>
+        {/* Menu needs its items as direct children, not wrapped in a fragment. */}
+        {collection.sync && [
+          <Divider key="sync-divider" />,
+          <MenuItem
+            key="sync"
+            onClick={() => {
+              closeMenu();
+              setSyncOpen(true);
+            }}
+          >
+            <ListItemIcon>
+              <SyncIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>{t("models:collections.sync.menu")}</ListItemText>
+          </MenuItem>,
+        ]}
       </Menu>
 
       {editOpen && (
         <CollectionFormModal collection={collection} onClose={() => setEditOpen(false)} onSubmit={handleEdit} />
+      )}
+
+      {syncOpen && collection.sync && (
+        <CollectionSyncDialog
+          collection={{ ...collection, sync: collection.sync }}
+          onClose={() => setSyncOpen(false)}
+          onUpdated={onUpdated}
+          onUnauthorized={onUnauthorized}
+        />
       )}
 
       <DownloadZipConfirmDialog

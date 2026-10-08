@@ -1,5 +1,7 @@
 import fs from "node:fs";
+import { nextSyncAt, syncNowAvailableAt } from "./services/collectionSyncSchedule";
 import type {
+  CollectionSync,
   Author,
   Collection,
   Category,
@@ -316,7 +318,53 @@ export type CollectionOut = {
   system_key: SystemCollectionKey | null;
   /** Always false for a system pseudo-collection, which can't be bookmarked. */
   bookmarked: boolean;
+  /** Set while the collection is synced with one on a provider. */
+  sync: CollectionSyncOut | null;
 };
+
+export type SyncProfileScope = "url" | "designer" | "all";
+
+export type CollectionSyncOut = {
+  provider: string;
+  source_url: string;
+  profile_scope: SyncProfileScope;
+  last_checked_at: string | null;
+  last_error: string | null;
+  /** Set when the sync follows a Thingiverse user's Likes rather than a collection: their username. */
+  likes_of: string | null;
+  /** How often the provider's collection is checked: 1, 6 or 24. */
+  interval_hours: number;
+  /** Roughly when it's next checked; null with scheduled sync off. */
+  next_sync_at: string | null;
+  /** When "Sync now" can be used again; null when it can be now. */
+  sync_now_at: string | null;
+};
+
+// A Likes sync's externalId; collection ids are numeric, so the two never collide.
+export const LIKES_ID_PREFIX = "likes:";
+
+/** The Thingiverse user whose Likes a sync follows, as written in its page address, or null for a
+ *  collection sync. */
+export function syncLikesUsername(sync: { externalId: string; sourceUrl: string }): string | null {
+  if (!sync.externalId.startsWith(LIKES_ID_PREFIX)) return null;
+  const fromUrl = new URL(sync.sourceUrl).pathname.split("/").find(Boolean);
+  return fromUrl ? decodeURIComponent(fromUrl) : sync.externalId.slice(LIKES_ID_PREFIX.length);
+}
+
+export function toCollectionSyncOut(sync: CollectionSync): CollectionSyncOut {
+  const syncNowAt = syncNowAvailableAt(sync.lastCheckedAt);
+  return {
+    provider: sync.provider,
+    source_url: sync.sourceUrl,
+    profile_scope: sync.profileScope as SyncProfileScope,
+    last_checked_at: sync.lastCheckedAt?.toISOString() ?? null,
+    last_error: sync.lastError,
+    likes_of: syncLikesUsername(sync),
+    interval_hours: sync.intervalHours,
+    next_sync_at: nextSyncAt(sync)?.toISOString() ?? null,
+    sync_now_at: syncNowAt && syncNowAt.getTime() > Date.now() ? syncNowAt.toISOString() : null,
+  };
+}
 
 /** `coverPrints`: up to 4, in item position order. */
 export function toCollectionOut(
@@ -324,6 +372,7 @@ export function toCollectionOut(
   itemCount: number,
   coverPrints: PrintOut[],
   bookmarked: boolean,
+  sync: CollectionSync | null = null,
 ): CollectionOut {
   return {
     id: collection.id,
@@ -335,6 +384,7 @@ export function toCollectionOut(
     created_at: collection.createdAt.toISOString(),
     system_key: null,
     bookmarked,
+    sync: sync ? toCollectionSyncOut(sync) : null,
   };
 }
 
@@ -356,6 +406,7 @@ export function toSystemCollectionOut(
     created_at: new Date(0).toISOString(),
     system_key: key,
     bookmarked: false,
+    sync: null,
   };
 }
 

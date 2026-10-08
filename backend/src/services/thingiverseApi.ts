@@ -86,6 +86,14 @@ async function rawApiFetch(url: string): Promise<Response> {
 /** Once a challenge is seen, calls go straight through FlareSolverr for a while. JSON API calls
  * only: FlareSolverr can't relay binary file downloads. */
 async function fetchThingiverseApiJson(path: string, accessToken: string): Promise<unknown> {
+  const { ok, data } = await fetchThingiverseApi(path, accessToken);
+  return ok ? data : null;
+}
+
+async function fetchThingiverseApi(
+  path: string,
+  accessToken: string,
+): Promise<{ ok: boolean; status: number; data: unknown }> {
   const url = `${THINGIVERSE_API_BASE}${path}${path.includes("?") ? "&" : "?"}access_token=${encodeURIComponent(accessToken)}`;
 
   let res: Response;
@@ -124,9 +132,7 @@ async function fetchThingiverseApiJson(path: string, accessToken: string): Promi
   }
   if (res.status === 429) throw new ThingiverseRateLimitError();
   if (res.status === 401 || res.status === 403) throw new ThingiverseAuthError();
-  if (res.status === 404) return null;
-  if (!res.ok) return null;
-  return data;
+  return { ok: res.ok, status: res.status, data };
 }
 
 /** Checks /users/me. A rate-limit counts as invalid, since the token can't be confirmed. */
@@ -312,6 +318,30 @@ export async function fetchThingiverseCollectionTitle(
 ): Promise<string | null> {
   const data = await fetchThingiverseApiJson(`/collections/${encodeURIComponent(collectionId)}`, accessToken);
   return isRecord(data) && typeof data.name === "string" && data.name.trim() ? data.name.trim() : null;
+}
+
+/** For a sync: null when Thingiverse answers 404 for the collection. Throws on any other failure,
+ * so an outage is never taken for a deleted collection. */
+export async function checkThingiverseCollection(
+  collectionId: string,
+  accessToken: string,
+): Promise<{ title: string | null } | null> {
+  const { ok, status, data } = await fetchThingiverseApi(
+    `/collections/${encodeURIComponent(collectionId)}`,
+    accessToken,
+  );
+  if (status === 404) return null;
+  if (!ok || !isRecord(data)) throw new Error(`Couldn't read the Thingiverse collection (HTTP ${status})`);
+  return { title: typeof data.name === "string" && data.name.trim() ? data.name.trim() : null };
+}
+
+/** For a Likes sync: null when Thingiverse answers 404 for the user. Throws on any other failure,
+ * so an outage is never taken for a deleted account. */
+export async function checkThingiverseUser(username: string, accessToken: string): Promise<boolean> {
+  const { ok, status } = await fetchThingiverseApi(`/users/${encodeURIComponent(username)}`, accessToken);
+  if (status === 404) return false;
+  if (!ok) throw new Error(`Couldn't read the Thingiverse user (HTTP ${status})`);
+  return true;
 }
 
 /** The username in the URL is cosmetic; only the collection id is needed. */

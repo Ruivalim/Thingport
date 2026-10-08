@@ -42,6 +42,16 @@ export type ImportJob = {
   error_message?: string | null;
 };
 
+/** A Thingport collection kept in step with this provider collection. */
+export type SyncLink = {
+  provider: string;
+  collection_id: string;
+  collection_name: string;
+};
+
+/** GET /collection-sync: `supported` is false on pages a sync can't follow, e.g. Thingiverse Likes. */
+export type SyncLookup = { supported: boolean; sync: SyncLink | null };
+
 /** POST /import/queue: the link waits, paused, in the user's queue on the instance. */
 export type QueueImportResult = { job_id: string; item_id: string; duplicate: boolean; waiting: number };
 

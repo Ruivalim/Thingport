@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
@@ -13,6 +14,8 @@ import { type ResolvedTheme } from "../../constants/settingsOptions";
 import { renderPreviewContent } from "../../components/media/renderPreviewContent";
 import { collectionDisplayName } from "../../utils/collectionDisplay";
 import CollectionActionsMenu from "../CollectionDetailPage/CollectionActionsMenu";
+import CollectionSyncBadge from "../../components/CollectionSyncBadge";
+import CollectionSyncDialog from "../CollectionDetailPage/CollectionSyncDialog";
 
 type Props = {
   collection: Collection;
@@ -96,6 +99,7 @@ export default function CollectionCard({
   // With a single model, go straight to it.
   const soleModelId = collection.item_count === 1 ? coverItems[0]?.id : undefined;
   const openTarget = soleModelId ? `/models/${soleModelId}` : `/models/collections/${collection.id}`;
+  const [syncOpen, setSyncOpen] = useState(false);
 
   return (
     <Box sx={{ position: "relative", pb: `${STACK_DEPTH_PX}px` }}>
@@ -204,26 +208,39 @@ export default function CollectionCard({
             "&:hover": { bgcolor: "background.paper" },
           }}
         >
-          <Stack direction="row" alignItems="center" spacing={0.5} minWidth={0}>
-            {collection.system_key && <LockIcon sx={{ fontSize: 14, color: "text.disabled", flexShrink: 0 }} />}
-            <Typography
-              variant="body2"
-              fontWeight={600}
-              noWrap
-              title={displayName}
-              sx={{ color: (muiTheme) => muiTheme.thingport.headingText }}
-            >
-              {displayName}
-            </Typography>
-          </Stack>
-          <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mt: 0.5, color: "#858585" }}>
-            <Inventory2OutlinedIcon sx={{ fontSize: 14 }} />
-            <Typography variant="caption">
-              {t("models:collections.card.itemCount", { count: collection.item_count })}
-            </Typography>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+              <Stack direction="row" alignItems="center" spacing={0.5} minWidth={0}>
+                {collection.system_key && <LockIcon sx={{ fontSize: 14, color: "text.disabled", flexShrink: 0 }} />}
+                <Typography
+                  variant="body2"
+                  fontWeight={600}
+                  noWrap
+                  title={displayName}
+                  sx={{ color: (muiTheme) => muiTheme.thingport.headingText }}
+                >
+                  {displayName}
+                </Typography>
+              </Stack>
+              <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mt: 0.5, color: "#858585" }}>
+                <Inventory2OutlinedIcon sx={{ fontSize: 14 }} />
+                <Typography variant="caption">
+                  {t("models:collections.card.itemCount", { count: collection.item_count })}
+                </Typography>
+              </Stack>
+            </Box>
+            {collection.sync && <CollectionSyncBadge sync={collection.sync} onClick={() => setSyncOpen(true)} />}
           </Stack>
         </Box>
       </Paper>
+      {syncOpen && collection.sync && (
+        <CollectionSyncDialog
+          collection={{ ...collection, sync: collection.sync }}
+          onClose={() => setSyncOpen(false)}
+          onUpdated={onUpdated}
+          onUnauthorized={onUnauthorized}
+        />
+      )}
     </Box>
   );
 }

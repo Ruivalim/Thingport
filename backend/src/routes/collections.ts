@@ -36,6 +36,21 @@ const collectionSchema = z.object({
 
 const COVER_ITEM_LIMIT = 4;
 
+/** The collection's first few models, as its card shows them. */
+async function coverPrints(userId: string, collectionId: string): Promise<PrintOut[]> {
+  const items = await prisma.collectionItem.findMany({
+    where: { collectionId },
+    orderBy: { position: "asc" },
+    take: COVER_ITEM_LIMIT,
+    select: { printId: true },
+  });
+  const printOuts = await printOutsByIds(
+    userId,
+    items.map((i) => i.printId),
+  );
+  return items.map((i) => printOuts.get(i.printId)).filter((p): p is PrintOut => Boolean(p));
+}
+
 async function collectionPrintIds(collectionId: string): Promise<string[]> {
   const items = await prisma.collectionItem.findMany({ where: { collectionId }, select: { printId: true } });
   return items.map((item) => item.printId);
@@ -52,6 +67,7 @@ router.get(
         include: {
           _count: { select: { items: true } },
           items: { orderBy: { position: "asc" }, take: COVER_ITEM_LIMIT },
+          sync: true,
         },
       }),
       listBookmarkedCollectionIdSet(req.userId!),
@@ -66,6 +82,7 @@ router.get(
           c._count.items,
           c.items.map((i) => printOuts.get(i.printId)).filter((p): p is PrintOut => Boolean(p)),
           bookmarkedIds.has(c.id),
+          c.sync,
         ),
       ),
     ]);
@@ -106,7 +123,7 @@ router.get(
     }
     const collection = await prisma.collection.findFirst({
       where: { id: req.params.id, userId: req.userId },
-      include: { _count: { select: { items: true } } },
+      include: { _count: { select: { items: true } }, sync: true },
     });
     if (!collection) throw new HttpError(404, "Collection not found");
     const bookmarked = Boolean(
@@ -114,7 +131,15 @@ router.get(
         where: { userId: req.userId, type: "COLLECTION", collectionId: collection.id },
       }),
     );
-    res.json(toCollectionOut(collection, collection._count.items, [], bookmarked));
+    res.json(
+      toCollectionOut(
+        collection,
+        collection._count.items,
+        await coverPrints(req.userId!, collection.id),
+        bookmarked,
+        collection.sync,
+      ),
+    );
   }),
 );
 
@@ -139,11 +164,13 @@ router.patch(
       },
     });
     if (renamed) await relocatePrintsForToken("collection", await collectionPrintIds(updated.id));
-    const [itemCount, bookmarked] = await Promise.all([
+    const [itemCount, covers, bookmarked, sync] = await Promise.all([
       prisma.collectionItem.count({ where: { collectionId: updated.id } }),
+      coverPrints(req.userId!, updated.id),
       prisma.bookmark.findFirst({ where: { userId: req.userId, type: "COLLECTION", collectionId: updated.id } }),
+      prisma.collectionSync.findUnique({ where: { collectionId: updated.id } }),
     ]);
-    res.json(toCollectionOut(updated, itemCount, [], Boolean(bookmarked)));
+    res.json(toCollectionOut(updated, itemCount, covers, Boolean(bookmarked), sync));
     void createLog({
       userId: req.userId!,
       action: "collection_edited",

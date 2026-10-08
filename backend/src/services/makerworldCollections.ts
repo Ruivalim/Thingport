@@ -40,10 +40,37 @@ function collectionHeaders(bearerToken: string | null): Record<string, string> {
   return headers;
 }
 
+// What a strict fetch returns for a collection MakerWorld says doesn't exist.
+const NOT_FOUND = Symbol("not found");
+
+class MakerworldCollectionFetchError extends Error {
+  constructor(detail: string) {
+    super(`Couldn't read the MakerWorld collection (${detail})`);
+    this.name = "MakerworldCollectionFetchError";
+  }
+}
+
 /** Retries once through FlareSolverr if Cloudflare ever appears. Shares the CAPTCHA cooldown and
  * `paceMs` convention with makerworldCloudApi.ts, since a large collection's pagination is its
- * own burst. */
-async function fetchCollectionJson(url: string, bearerToken: string | null, paceMs?: number): Promise<unknown | null> {
+ * own burst. A `strict` fetch answers NOT_FOUND only for a 404 or 410 and throws on any other
+ * failure, so a sync never takes an outage for a deleted collection. */
+async function fetchCollectionJson(url: string, bearerToken: string | null, paceMs?: number): Promise<unknown | null>;
+async function fetchCollectionJson(
+  url: string,
+  bearerToken: string | null,
+  paceMs: number | undefined,
+  strict: true,
+): Promise<unknown | typeof NOT_FOUND>;
+async function fetchCollectionJson(
+  url: string,
+  bearerToken: string | null,
+  paceMs?: number,
+  strict = false,
+): Promise<unknown | typeof NOT_FOUND | null> {
+  const fail = (detail: string) => {
+    if (strict) throw new MakerworldCollectionFetchError(detail);
+    return null;
+  };
   if (makerworldCaptchaCooloffActive()) throw new MakerworldCaptchaError();
   await maybeSleep(paceMs);
   const controller = new AbortController();
@@ -56,9 +83,9 @@ async function fetchCollectionJson(url: string, bearerToken: string | null, pace
     });
     if (res.status === 403 && isFlaresolverrEnabled() && looksLikeCloudflareBlock(res.headers)) {
       const solved = await fetchViaFlaresolverr(url, bearerToken ? `token=${bearerToken}` : null);
-      if (!solved) return null;
+      if (!solved) return fail("blocked by Cloudflare");
       const data = extractJsonFromBrowserBody(solved.body);
-      if (data === null) return null;
+      if (data === null) return fail("unreadable answer");
       if (isCaptchaChallenge(data)) {
         noteCaptchaChallenge();
         throw new MakerworldCaptchaError();
@@ -66,14 +93,15 @@ async function fetchCollectionJson(url: string, bearerToken: string | null, pace
       return data;
     }
     if (res.status === 401 || res.status === 403) throw new MakerworldAuthError();
-    if (!res.ok) return null;
+    if (strict && (res.status === 404 || res.status === 410)) return NOT_FOUND;
+    if (!res.ok) return fail(`HTTP ${res.status}`);
     const text = await res.text();
-    if (!text.trim()) return null;
+    if (!text.trim()) return fail("empty answer");
     let data: unknown;
     try {
       data = JSON.parse(text);
     } catch {
-      return null;
+      return fail("unreadable answer");
     }
     if (isCaptchaChallenge(data)) {
       noteCaptchaChallenge();
@@ -81,8 +109,14 @@ async function fetchCollectionJson(url: string, bearerToken: string | null, pace
     }
     return data;
   } catch (err) {
-    if (err instanceof MakerworldCaptchaError || err instanceof MakerworldAuthError) throw err;
-    return null;
+    if (
+      err instanceof MakerworldCaptchaError ||
+      err instanceof MakerworldAuthError ||
+      err instanceof MakerworldCollectionFetchError
+    ) {
+      throw err;
+    }
+    return fail(err instanceof Error ? err.message : "network error");
   } finally {
     clearTimeout(timeout);
   }
@@ -108,6 +142,19 @@ export async function fetchMakerworldCollectionTitle(
   const data = await fetchCollectionJson(`${COLLECTION_API_BASE}/${collectionId}`, bearerToken, paceMs);
   if (!isRecord(data)) return null;
   return typeof data.title === "string" && data.title.trim() ? data.title.trim() : null;
+}
+
+/** For a sync: null when MakerWorld says the collection doesn't exist any more. Throws on anything
+ * else that goes wrong, a CAPTCHA or a private collection included. */
+export async function checkMakerworldCollection(
+  collectionId: string,
+  bearerToken: string | null,
+  paceMs?: number,
+): Promise<{ title: string | null } | null> {
+  const data = await fetchCollectionJson(`${COLLECTION_API_BASE}/${collectionId}`, bearerToken, paceMs, true);
+  if (data === NOT_FOUND) return null;
+  if (!isRecord(data)) throw new MakerworldCollectionFetchError("unexpected answer");
+  return { title: typeof data.title === "string" && data.title.trim() ? data.title.trim() : null };
 }
 
 /** maxItems is a safety cap against a misreported `total`, not a UX limit. `paceMs` is awaited

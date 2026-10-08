@@ -249,7 +249,7 @@ describe("runThingiverseLikesImportJob", () => {
     expect(finished?.errorMessage).toMatch(/isn't configured/i);
   });
 
-  it("imports every liked Thing into a shared 'Thingiverse Likes' collection, one at a time with pacing", async () => {
+  it("imports every liked Thing into the user's 'Thingiverse likes (@user)' collection, one at a time with pacing", async () => {
     await setThingiverseAccessToken("test-token");
     let active = 0;
     let maxActive = 0;
@@ -291,7 +291,7 @@ describe("runThingiverseLikesImportJob", () => {
     expect(finished?.imported).toBe(3);
     expect(finished?.resultCollectionId).toBeTruthy();
 
-    const collection = await prisma.collection.findFirst({ where: { userId, name: "Thingiverse Likes" } });
+    const collection = await prisma.collection.findFirst({ where: { userId, name: "Thingiverse likes (@someuser)" } });
     expect(collection?.id).toBe(finished?.resultCollectionId);
     const itemCount = await prisma.collectionItem.count({ where: { collectionId: collection!.id } });
     expect(itemCount).toBe(3);
@@ -302,7 +302,7 @@ describe("runThingiverseLikesImportJob", () => {
     expect(notification!.body).toBe("From @someuser's Likes.");
   });
 
-  it("reuses the same 'Thingiverse Likes' collection across separate likes imports", async () => {
+  it("gives each user's Likes their own collection, and reuses it on the next import", async () => {
     await setThingiverseAccessToken("test-token");
     const mockedImport = vi.mocked(importPrintFromUrl);
     mockedImport.mockImplementation(async (_userId: string, url: string) => ({
@@ -315,36 +315,23 @@ describe("runThingiverseLikesImportJob", () => {
       alreadyImported: false,
     }));
 
-    const job1 = await createJob(userId, "COLLECTION", {
-      sourceUrl: "https://www.thingiverse.com/userA/likes",
-      provider: "thingiverse",
-      total: 1,
-    });
-    await runThingiverseLikesImportJob(job1.id, userId, {
-      url: "https://www.thingiverse.com/userA/likes",
-      username: "userA",
-      thing_ids: ["201"],
-      tags: [],
-    });
+    const importLikes = async (username: string, thingId: string) => {
+      const url = `https://www.thingiverse.com/${username}/likes`;
+      const job = await createJob(userId, "COLLECTION", { sourceUrl: url, provider: "thingiverse", total: 1 });
+      await runThingiverseLikesImportJob(job.id, userId, { url, username, thing_ids: [thingId], tags: [] });
+      return (await getJob(job.id, userId))?.resultCollectionId;
+    };
 
-    const job2 = await createJob(userId, "COLLECTION", {
-      sourceUrl: "https://www.thingiverse.com/userB/likes",
-      provider: "thingiverse",
-      total: 1,
-    });
-    await runThingiverseLikesImportJob(job2.id, userId, {
-      url: "https://www.thingiverse.com/userB/likes",
-      username: "userB",
-      thing_ids: ["202"],
-      tags: [],
-    });
+    const a1 = await importLikes("userA", "201");
+    const a2 = await importLikes("userA", "202");
+    const b = await importLikes("userB", "203");
+    expect(a2).toBe(a1);
+    expect(b).not.toBe(a1);
 
-    const finished1 = await getJob(job1.id, userId);
-    const finished2 = await getJob(job2.id, userId);
-    expect(finished1?.resultCollectionId).toBe(finished2?.resultCollectionId);
-
-    const collections = await prisma.collection.findMany({ where: { userId, name: "Thingiverse Likes" } });
-    expect(collections.length).toBe(1);
+    const names = (await prisma.collection.findMany({ where: { id: { in: [a1!, b!] } } }))
+      .map((c) => c.name)
+      .toSorted();
+    expect(names).toEqual(["Thingiverse likes (@userA)", "Thingiverse likes (@userB)"]);
   });
 });
 

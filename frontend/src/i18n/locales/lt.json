@@ -203,6 +203,7 @@
       },
       "authorPreview": {
         "heading": "Autoriaus peržiūra",
+        "help": "Užvedus pelę ant autoriaus vardo, rodoma kortelė su jo viršelio nuotrauka, vardu ir keliais jo modeliais iš jūsų bibliotekos.",
         "failed": "Nepavyko išsaugoti -- bandykite dar kartą."
       }
     },
@@ -668,6 +669,8 @@
           "collection_deleted": "Kolekcija ištrinta",
           "collection_item_added": "Pridėta į kolekciją",
           "collection_item_removed": "Pašalinta iš kolekcijos",
+          "collection_sync_enabled": "Įjungtas kolekcijos sinchronizavimas",
+          "collection_sync_disabled": "Išjungtas kolekcijos sinchronizavimas",
           "authors_linked": "Susieti trūkstami autoriai",
           "descriptions_refetched": "Iš naujo gauti modelių aprašymai"
         },
@@ -1738,6 +1741,51 @@
       "errors": {
         "loadFailed": "Nepavyko įkelti kolekcijų.",
         "notFound": "Kolekcija nerasta."
+      },
+      "sync": {
+        "badge": "Sinchronizuojama su {{provider}} kolekcija",
+        "menu": "Sinchronizavimo konfigūracija",
+        "title": "Sinchronizavimo konfigūracija",
+        "openSource": "Atidaryti {{provider}}",
+        "lastChecked": "Paskutinį kartą tikrinta {{when}}",
+        "notCheckedYet": "Dar netikrinta",
+        "profilesLabel": "Kiekvienam naujam modeliui importuoti",
+        "profiles": {
+          "url": "Numatytąjį profilį",
+          "designer": "Autoriaus profilius",
+          "all": "Visus profilius"
+        },
+        "profilesHelp": "„Visus profilius“ apima ir bendruomenės profilius. Kiekvienas spausdinimo profilis tampa atskiru modelio failu. Taikoma nuo šiol rastiems modeliams.",
+        "stop": "Nebesinchronizuoti",
+        "stopTitle": "Nebesinchronizuoti?",
+        "stopMessage": "Nauji modeliai į „{{name}}“ nebebus įtraukiami. Kolekcija ir jos modeliai liks, o sinchronizavimą vėl galėsite įjungti per Thingport Grab.",
+        "saveFailed": "Nepavyko išsaugoti sinchronizavimo nustatymų.",
+        "syncNow": "Sinchronizuoti dabar",
+        "syncNowTitle": "Sinchronizuoti dabar?",
+        "syncNowMessage": "Thingport patikrins {{provider}} kolekciją ir naujus modelius importuos į „{{name}}“. Kai baigs, gausite pranešimą.",
+        "syncNowStarted": "Sinchronizuojama „{{name}}“. Kai baigs, gausite pranešimą.",
+        "nextSync": "kitas sinchronizavimas apie {{time}}",
+        "syncNowIn": "Sinchronizuoti dabar vėl galėsite po {{time}}",
+        "stopped": "„{{name}}“ nebesinchronizuojama.",
+        "saved": "Sinchronizavimo konfigūracija išsaugota.",
+        "sections": {
+          "overview": "Apžvalga",
+          "settings": "Nustatymai"
+        },
+        "intro_one": "Į {{provider}} kolekciją pridėti modeliai čia importuojami kas valandą.",
+        "intro_few": "Į {{provider}} kolekciją pridėti modeliai čia importuojami kas {{count}} valandas.",
+        "intro_many": "Į {{provider}} kolekciją pridėti modeliai čia importuojami kas {{count}} valandos.",
+        "intro_other": "Į {{provider}} kolekciją pridėti modeliai čia importuojami kas {{count}} valandų.",
+        "intervalLabel": "Tikrinti, ar yra naujų modelių, kas",
+        "intervalOption_one": "Valandą",
+        "intervalOption_few": "{{count}} valandas",
+        "intervalOption_many": "{{count}} valandos",
+        "intervalOption_other": "{{count}} valandų",
+        "badgeLikes": "Sinchronizuojama su @{{user}} pamėgtais Thingiverse modeliais",
+        "introLikes_one": "Modeliai, kurie patinka @{{user}} Thingiverse, čia importuojami kas valandą.",
+        "introLikes_few": "Modeliai, kurie patinka @{{user}} Thingiverse, čia importuojami kas {{count}} valandas.",
+        "introLikes_many": "Modeliai, kurie patinka @{{user}} Thingiverse, čia importuojami kas {{count}} valandos.",
+        "introLikes_other": "Modeliai, kurie patinka @{{user}} Thingiverse, čia importuojami kas {{count}} valandų."
       }
     },
     "tags": {

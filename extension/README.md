@@ -174,11 +174,45 @@ from the extension.
   lets you import the listed designs in one go.
 
 Picking a destination collection is only offered for a single-model import; a batch import instead
-lands in Thingport's own auto-named collection for that batch (e.g. "Thingiverse Likes"), matching
+lands in Thingport's own auto-named collection for that batch (e.g. "Thingiverse likes (@username)"), matching
 how the web app's own batch imports already work.
 
 A batch import keeps running on the server even if you close the panel or the tab -- closing it
 just stops showing progress, it doesn't cancel anything.
+
+### Synced collections
+
+On a MakerWorld, Printables or Thingiverse collection page, the panel's **Keep this collection in
+sync** box (off by default) links the collection to its Thingport counterpart. A Thingiverse user's
+Likes page works the same way (**Keep these likes in sync**), filing into "Thingiverse likes
+(@username)" and picking up models they like later. Thingport then checks
+it every hour (or every 6 or 24 hours, picked per collection) and imports models added to it later, pausing a minute between models, and sends a
+notification saying what came in. Models already on the page when you turn sync on, including any
+you leave unticked, aren't imported by the sync.
+
+It works for collections you imported before, too: open the collection page, click the icon, and
+tick the box -- the panel says everything is already imported, and **Save** turns sync on. Only the
+extension can turn sync on, since it has just seen which models the collection holds.
+
+- Sync only ever adds. A model removed from the provider's collection stays in the Thingport
+  collection and your library, and nothing is deleted on either side.
+- A synced collection's tile in Thingport shows the provider's logo with a green sync bubble.
+  Clicking it, or **... > Sync configuration**, opens the collection's sync configuration: when it
+  was last checked and when the next sync is due, **Sync now** and **Stop syncing**, and under
+  Settings how often it's checked and, for MakerWorld, which print profiles each new model brings
+  (the default one, all of the designer's, or all of them).
+- The link follows the provider's collection id, so renaming the Thingport collection, or the
+  provider's, keeps it synced. A provider collection syncs with one Thingport collection at most,
+  and the other way round: if a collection of the same name already follows another source, the
+  new one gets its own, named after the provider (e.g. "Things (MakerWorld)").
+- If the provider rate-limits the imports (a MakerWorld CAPTCHA or daily download limit, say), the
+  rest wait, paused, in the import queue until it's started again from Administration > Import queue.
+- If the provider's collection is deleted, the Thingport collection is unsynced (its models stay)
+  and you get a notification. Deleting the Thingport collection removes the sync with it.
+- **Sync now** checks the collection right away instead of waiting for the hour, and a notification
+  says how it went, "up to date" included. It's available again 5 minutes after the last check.
+- To turn sync off, untick the box on the collection page, or use **Stop syncing** in the
+  collection's sync configuration.
 
 ## Privacy
 

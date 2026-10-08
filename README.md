@@ -259,7 +259,7 @@ out as the backend's user, so `PUID`/`PGID` need write access to the folder. The
 
 ## Features
 
-- 🌐 **Import from MakerWorld, Printables and Thingiverse** — paste a link, or use the Thingport Grab browser extension. Whole collections, likes and MakerWorld print profiles come across with their title, description, tags, photos and author. Big imports run in the background and notify you when they finish, and a model you already have is never imported twice.
+- 🌐 **Import from MakerWorld, Printables and Thingiverse** — paste a link, or use the Thingport Grab browser extension. Whole collections, likes and MakerWorld print profiles come across with their title, description, tags, photos and author. Big imports run in the background and notify you when they finish, and a model you already have is never imported twice. Synced collections pick up models added to a provider collection later, as often as every hour.
 - 📂 **Bring your existing library** — upload STL, 3MF, STEP, OBJ and LightBurn files, whole folder trees or ZIPs from the browser, and your folders come across as folders. Choose whether each file is a model, or each folder is one model with its images as photos and its manuals and notes attached. See [how to bring in your library](docs/guides/existing-library.md).
 - 📥 **Consume folder** — for big libraries and NAS shares: mount a folder, copy your files, folder trees and ZIPs into it, and Thingport imports everything and empties it, with a notification once it's done. Anything it can't import is set aside, never lost.
 - 🧊 **3D previews** — STL, 3MF, OBJ and STEP in the browser, with a thumbnail for every plate of a multi-plate 3MF. Very complex models can be simplified for the preview only.

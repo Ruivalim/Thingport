@@ -86,6 +86,30 @@ describe("collections routes", () => {
   });
 });
 
+describe("a single collection's cover", () => {
+  it("comes with its first models when read or edited, as the collections list has it", async () => {
+    const uploadRes = await request(app)
+      .post("/api/upload")
+      .set(auth())
+      .attach("files", tmpFile("cover-item.stl", "solid cover-item endsolid"));
+    const printId = uploadRes.body.prints[0].id;
+    const created = await request(app)
+      .post("/api/collections")
+      .set(auth())
+      .send({ name: `Cover ${Date.now()}` });
+    await addPrintsToCollection(created.body.id, [printId]);
+
+    const read = await request(app).get(`/api/collection/${created.body.id}`).set(auth());
+    expect(read.body.cover_items.map((p: { id: string }) => p.id)).toEqual([printId]);
+
+    const edited = await request(app)
+      .patch(`/api/collection/${created.body.id}`)
+      .set(auth())
+      .send({ name: `Cover renamed ${Date.now()}` });
+    expect(edited.body.cover_items.map((p: { id: string }) => p.id)).toEqual([printId]);
+  });
+});
+
 describe("removing one item from a collection", () => {
   it("drops membership without deleting the print, leaving other collections untouched", async () => {
     const uploadRes = await request(app)

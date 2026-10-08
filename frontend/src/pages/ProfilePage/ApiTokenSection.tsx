@@ -14,25 +14,11 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { authApi, type ApiTokenInfo } from "../../api/auth";
 import { UnauthorizedError } from "../../api/client";
 import { useConfirm } from "../../components/ConfirmProvider";
+import { relativeTime } from "../../utils/relativeTime";
 
 type Props = {
   onUnauthorized?: () => void;
 };
-
-const RELATIVE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
-  ["day", 24 * 60 * 60 * 1000],
-  ["hour", 60 * 60 * 1000],
-  ["minute", 60 * 1000],
-];
-
-function relativeTime(iso: string, locale: string): string {
-  const diffMs = new Date(iso).getTime() - Date.now();
-  const format = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
-  for (const [unit, ms] of RELATIVE_UNITS) {
-    if (Math.abs(diffMs) >= ms) return format.format(Math.round(diffMs / ms), unit);
-  }
-  return format.format(0, "minute");
-}
 
 /** The read-only token other apps and services use to read this user's library. The token
  *  is shown once, right after it's generated; after that only its last four characters. */

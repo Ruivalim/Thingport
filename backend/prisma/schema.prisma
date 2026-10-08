@@ -13,23 +13,23 @@ enum Role {
 }
 
 model User {
-  id                       String         @id @default(cuid())
-  email                    String         @unique
+  id                       String           @id @default(cuid())
+  email                    String           @unique
   passwordHash             String
   displayName              String
-  role                     Role           @default(MEMBER)
+  role                     Role             @default(MEMBER)
   // Defaults true so existing accounts aren't locked out; registration sets false when SMTP is on.
-  emailVerified            Boolean        @default(true)
-  emailVerificationToken   String?        @unique
+  emailVerified            Boolean          @default(true)
+  emailVerificationToken   String?          @unique
   emailVerificationExpires DateTime?
   // Awaiting confirmation of an email change.
   pendingEmail             String?
   // SHA-256 of the emailed token, so a database leak can't be used to take over accounts.
-  passwordResetTokenHash   String?        @unique
+  passwordResetTokenHash   String?          @unique
   passwordResetExpires     DateTime?
   // A read-only token other apps use to call the API as this user. Only its SHA-256
   // is stored; the token itself is shown once, when generated. One per user: generating replaces it.
-  apiTokenHash             String?        @unique
+  apiTokenHash             String?          @unique
   // The token's last four characters, so the profile can show which one is in use.
   apiTokenHint             String?
   apiTokenCreatedAt        DateTime?
@@ -44,13 +44,14 @@ model User {
   // The dashboard widgets the user has switched on or off, as { [widgetId]: boolean }. A widget
   // missing from it shows or hides by its own default, so new widgets need no migration.
   dashboardWidgets         Json?
-  authorPreviewEnabled     Boolean        @default(true)
+  authorPreviewEnabled     Boolean          @default(true)
   // Filled from the first linked Author with this data; later links never overwrite it.
   bio                      String?
   backgroundUrl            String?
   categories               Category[]
   prints                   Print[]
   collections              Collection[]
+  collectionSyncs          CollectionSync[]
   importJobs               ImportJob[]
   notifications            Notification[]
   logs                     Log[]
@@ -58,8 +59,8 @@ model User {
   bookmarks                Bookmark[]
   activities               Activity[]
   invitationsSent          Invitation[]
-  createdAt                DateTime       @default(now())
-  updatedAt                DateTime       @updatedAt
+  createdAt                DateTime         @default(now())
+  updatedAt                DateTime         @updatedAt
 }
 
 // Lets one email register while registrations are closed. Re-inviting replaces the token.
@@ -165,6 +166,7 @@ model Collection {
   tags           String[]                 @default([])
   items          CollectionItem[]
   bookmarks      Bookmark[]
+  sync           CollectionSync?
   createdAt      DateTime                 @default(now())
   updatedAt      DateTime                 @updatedAt
   // Generated column (name A, tags B, description C); see Print.searchVector.
@@ -172,6 +174,35 @@ model Collection {
 
   @@unique([userId, nameNormalized])
   @@index([tags], type: Gin)
+}
+
+/// Keeps a collection in step with one on a provider: models added there later are imported into
+/// it by the scheduled sync (services/collectionSyncRunner.ts). Only Thingport Grab creates these.
+/// Tracked by the provider's own id, so renaming either side keeps the link.
+model CollectionSync {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  collectionId  String      @unique
+  collection    Collection  @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  provider      String
+  externalId    String
+  sourceUrl     String
+  // MakerWorld only: which print profiles a new model brings ("url" is the model's default one).
+  profileScope  String      @default("url")
+  // How often the provider's collection is checked: 1, 6 or 24.
+  intervalHours Int         @default(1)
+  // Every model id the provider's collection has listed, so a sync only imports what's new since.
+  knownIds      String[]    @default([])
+  // Checks in a row that found the provider's collection gone. One bad answer doesn't unsync it.
+  missingChecks Int         @default(0)
+  lastCheckedAt DateTime?
+  lastError     String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  importJobs    ImportJob[]
+
+  @@unique([userId, provider, externalId])
 }
 
 enum BookmarkType {
@@ -252,11 +283,16 @@ model ImportJob {
   payload            Json?
   // The "N links waiting" notification of a PAUSED queue, updated as links are added to it.
   notificationId     String?
+  // Set on the LINKS jobs a collection sync queues. They pause on a rate limit instead of failing
+  // the rest, and are kept out of the extension's "Add to the queue" job.
+  collectionSyncId   String?
+  collectionSync     CollectionSync? @relation(fields: [collectionSyncId], references: [id], onDelete: SetNull)
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
   items              ImportJobItem[]
 
   @@index([userId, status])
+  @@index([collectionSyncId])
 }
 
 enum ImportJobItemStatus {

@@ -48,6 +48,8 @@ const ACTION_COLORS: Record<LogAction, ActionColor> = {
   collection_deleted: "error",
   collection_item_added: "info",
   collection_item_removed: "default",
+  collection_sync_enabled: "info",
+  collection_sync_disabled: "default",
 };
 
 function isoDateOnly(d: Date): string {
@@ -111,6 +113,8 @@ export default function LogsPage({ onUnauthorized }: Props) {
       case "collection_deleted":
       case "collection_item_added":
       case "collection_item_removed":
+      case "collection_sync_enabled":
+      case "collection_sync_disabled":
         return typeof d.name === "string" ? d.name : "";
       case "user_invited":
         return typeof d.email === "string" ? d.email : "";
