@@ -1,5 +1,19 @@
 # Thingport Grab changelog
 
+# [thingport-grab-v1.4.0](https://github.com/TautvydasDerzinskas/Thingport/compare/thingport-grab-v1.3.0...thingport-grab-v1.4.0) (2026-10-08)
+
+
+### Bug Fixes
+
+* **extension:** store imports in shared storage ([84b4f5b](https://github.com/TautvydasDerzinskas/Thingport/commit/84b4f5bd141e2187cbfe980f7cfc9925829fd467))
+* **extension:** use template for Edge certification notes ([30be8c4](https://github.com/TautvydasDerzinskas/Thingport/commit/30be8c434901438225f4a3fd15ed63c222ce4173))
+
+
+### Features
+
+* **collection-sync:** allow syncing collections with provider collections ([ef9152d](https://github.com/TautvydasDerzinskas/Thingport/commit/ef9152df6cd0edee4fff8355434c9e2e09f73731)), closes [#10](https://github.com/TautvydasDerzinskas/Thingport/issues/10)
+* handle download limit error gracefully ([fd7c26a](https://github.com/TautvydasDerzinskas/Thingport/commit/fd7c26a760b82142b8be74634f1461e2007d5ab1))
+
 # [thingport-grab-v1.3.0](https://github.com/TautvydasDerzinskas/Thingport/compare/thingport-grab-v1.2.0...thingport-grab-v1.3.0) (2026-10-05)
 
 
