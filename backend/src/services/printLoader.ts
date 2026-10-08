@@ -56,7 +56,7 @@ export async function printOutsByIds(userId: string, printIds: string[]): Promis
   const out = new Map<string, PrintOut>();
   if (!printIds.length) return out;
   const [prints, plates, files, previewImages] = await Promise.all([
-    prisma.print.findMany({ where: { id: { in: printIds }, userId }, include: { author: true } }),
+    prisma.print.findMany({ where: { id: { in: printIds }, userId }, include: { author: true, category: true } }),
     prisma.plate.findMany({ where: { printId: { in: printIds } }, orderBy: { position: "asc" } }),
     prisma.printFile.findMany({ where: { printId: { in: printIds } } }),
     prisma.previewImage.findMany({ where: { printId: { in: printIds } }, orderBy: { position: "asc" } }),
@@ -76,6 +76,8 @@ export async function printOutsByIds(userId: string, printIds: string[]): Promis
         preparedFile,
         print.author,
         previewsByPrint.get(print.id) || [],
+        // The search palette shows it under each model.
+        print.category,
       ),
     );
   }

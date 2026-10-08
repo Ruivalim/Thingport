@@ -79,13 +79,14 @@ async function searchTags(userId: string, rawQuery: string, limit: number): Prom
   return rows.map((r) => ({ tag: r.tag, count: Number(r.count) }));
 }
 
-export async function search(userId: string, rawQuery: string): Promise<SearchResult> {
+/** `limit`, when given, replaces the model and collection limits; tags keep theirs. */
+export async function search(userId: string, rawQuery: string, limit?: number): Promise<SearchResult> {
   const tsQuery = buildPrefixTsQuery(rawQuery);
   if (!tsQuery) return EMPTY_RESULT;
 
   const [modelIds, collections, tags] = await Promise.all([
-    searchPrintIds(userId, tsQuery, MODEL_RESULT_LIMIT),
-    searchCollections(userId, tsQuery, COLLECTION_RESULT_LIMIT),
+    searchPrintIds(userId, tsQuery, limit ?? MODEL_RESULT_LIMIT),
+    searchCollections(userId, tsQuery, limit ?? COLLECTION_RESULT_LIMIT),
     searchTags(userId, rawQuery.trim(), TAG_RESULT_LIMIT),
   ]);
 

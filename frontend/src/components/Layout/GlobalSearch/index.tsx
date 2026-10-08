@@ -159,6 +159,27 @@ export default function GlobalSearch({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 
+  // `?q=` on any page opens the search with that query, for links from elsewhere (a dashboard's
+  // "More in Thingport"). The parameter is dropped straight away so a reload doesn't reopen it.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const linked = params.get("q");
+    if (linked === null) return;
+    params.delete("q");
+    const search = params.toString();
+    navigate(
+      { pathname: location.pathname, search: search ? `?${search}` : "", hash: location.hash },
+      { replace: true },
+    );
+    if (!linked.trim()) return;
+    returnFocusRef.current = null;
+    setQuery(linked);
+    userMovedRef.current = false;
+    setOpen(true);
+    inputRef.current?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search]);
+
   // Locks page scroll while open, padding for the scrollbar so the content doesn't shift.
   useEffect(() => {
     if (!open) return;
