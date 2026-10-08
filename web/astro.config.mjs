@@ -1,4 +1,5 @@
 // @ts-check
+import { copyFile } from "node:fs/promises";
 import { defineConfig } from "astro/config";
 import sitemap from "@astrojs/sitemap";
 import { unified } from "@astrojs/markdown-remark";
@@ -13,7 +14,18 @@ export default defineConfig({
   site,
   base,
   trailingSlash: "always",
-  integrations: [sitemap({ filter: (page) => !page.endsWith("/404/") })],
+  integrations: [
+    sitemap({ filter: (page) => !page.endsWith("/404/") }),
+    // Search Console and crawlers try /sitemap.xml first; the integration only writes sitemap-index.xml.
+    {
+      name: "sitemap-xml-alias",
+      hooks: {
+        "astro:build:done": async ({ dir }) => {
+          await copyFile(new URL("sitemap-index.xml", dir), new URL("sitemap.xml", dir));
+        },
+      },
+    },
+  ],
   markdown: {
     shikiConfig: { themes: { light: "github-light", dark: "github-dark" }, defaultColor: false },
     // The unified pipeline, needed for this plugin.
