@@ -10,6 +10,9 @@ const REPO_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
  * resolve against the file's own folder. On the site, links to another rendered doc go to its
  * page, anything else in the repo goes to GitHub, and images load from the raw file. Root-relative
  * links (`/docs/install/`, used in blog posts) get the base path prefixed.
+ *
+ * A `<picture>` with a `prefers-color-scheme: dark` source (GitHub's way of theming an image)
+ * becomes two images shown by the site's own theme, so the header's theme toggle switches it too.
  */
 export function rehypeRepoLinks({ base = "/" } = {}) {
   const basePrefix = base.endsWith("/") ? base : `${base}/`;
@@ -24,12 +27,23 @@ export function rehypeRepoLinks({ base = "/" } = {}) {
     });
     // Inline HTML stays a raw string, so its attributes are rewritten textually.
     visit(tree, "raw", (node) => {
-      node.value = node.value.replace(
+      node.value = themedPictures(node.value).replace(
         /\b(href|src)="([^"]*)"/g,
         (_, attr, value) => `${attr}="${rewrite(attr, value, dir, basePrefix)}"`,
       );
     });
   };
+}
+
+const THEMED_PICTURE =
+  /<picture>\s*<source\s+media="\(prefers-color-scheme:\s*dark\)"\s+srcset="([^"]+)"\s*\/?>\s*<img\s+([^>]*?)\s*\/?>\s*<\/picture>/g;
+
+function themedPictures(html) {
+  return html.replace(
+    THEMED_PICTURE,
+    (_, dark, attrs) =>
+      `<img class="only-light" ${attrs}><img class="only-dark" ${attrs.replace(/\bsrc="[^"]*"/, `src="${dark}"`)}>`,
+  );
 }
 
 function rewrite(attr, value, dir, basePrefix) {

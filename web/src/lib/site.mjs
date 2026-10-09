@@ -74,6 +74,15 @@ export const DOCS = [
       "Mount a folder on your server and copy your library into it. Thingport imports everything and empties it.",
   },
   {
+    slug: "guides/synced-collections",
+    source: "docs/guides/synced-collections.md",
+    group: "Add your library",
+    title: "Synced collections",
+    nav: "Synced collections",
+    description:
+      "Link a MakerWorld, Printables or Thingiverse collection to Thingport, and models added to it later are imported on their own.",
+  },
+  {
     slug: "install/unraid",
     source: "docs/install/unraid/README.md",
     group: "Platform guides",

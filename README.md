@@ -66,6 +66,11 @@ Instead of having your collection scattered across different websites and your f
     <td width="33%"><a href="extension/docs/screenshots/panel-thingiverse.jpg" target="_blank"><img src="extension/docs/screenshots/panel-thingiverse.jpg" width="100%" alt="Thingport Grab on Thingiverse"></a><br><sub><b>Thingport Grab — Thingiverse</b></sub></td>
     <td width="33%"><a href="extension/docs/screenshots/panel-makerworld.jpg" target="_blank"><img src="extension/docs/screenshots/panel-makerworld.jpg" width="100%" alt="Thingport Grab on MakerWorld"></a><br><sub><b>Thingport Grab — MakerWorld</b></sub></td>
   </tr>
+  <tr>
+    <td width="33%"><a href="frontend/src/assets/screenshots/12_collection_sync.png" target="_blank"><img src="frontend/src/assets/screenshots/12_collection_sync.png" width="100%" alt="A synced collection's sync configuration"></a><br><sub><b>Synced Collection</b></sub></td>
+    <td width="33%"><a href="extension/docs/screenshots/collection-makerworld.jpg" target="_blank"><img src="extension/docs/screenshots/collection-makerworld.jpg" width="100%" alt="Thingport Grab syncing a MakerWorld collection"></a><br><sub><b>Thingport Grab — Sync a Collection</b></sub></td>
+    <td width="33%"></td>
+  </tr>
 </table>
 
 ## Installation
@@ -259,7 +264,7 @@ out as the backend's user, so `PUID`/`PGID` need write access to the folder. The
 
 ## Features
 
-- 🌐 **Import from MakerWorld, Printables and Thingiverse** — paste a link, or use the Thingport Grab browser extension. Whole collections, likes and MakerWorld print profiles come across with their title, description, tags, photos and author. Big imports run in the background and notify you when they finish, and a model you already have is never imported twice. Synced collections pick up models added to a provider collection later, as often as every hour.
+- 🌐 **Import from MakerWorld, Printables and Thingiverse** — paste a link, or use the Thingport Grab browser extension. Whole collections, likes and MakerWorld print profiles come across with their title, description, tags, photos and author. Big imports run in the background and notify you when they finish, and a model you already have is never imported twice. [Synced collections](docs/guides/synced-collections.md) pick up models added to a provider collection later, as often as every hour.
 - 📂 **Bring your existing library** — upload STL, 3MF, STEP, OBJ and LightBurn files, whole folder trees or ZIPs from the browser, and your folders come across as folders. Choose whether each file is a model, or each folder is one model with its images as photos and its manuals and notes attached. See [how to bring in your library](docs/guides/existing-library.md).
 - 📥 **Consume folder** — for big libraries and NAS shares: mount a folder, copy your files, folder trees and ZIPs into it, and Thingport imports everything and empties it, with a notification once it's done. Anything it can't import is set aside, never lost.
 - 🧊 **3D previews** — STL, 3MF, OBJ and STEP in the browser, with a thumbnail for every plate of a multi-plate 3MF. Very complex models can be simplified for the preview only.
@@ -275,6 +280,18 @@ out as the backend's user, so `PUID`/`PGID` need write access to the folder. The
 - 👥 **Multi-user** — a separate library per person, open or invite-only registration, optional email verification and captcha, admin logs, and an update check that tells you when new Thingport images are out.
 - 🌍 **Light and dark themes**, in English and Lithuanian.
 - 🐳 **Self-hosted** — runs anywhere Docker does, from a NAS to a spare PC.
+
+## Synced Collections
+
+Link a MakerWorld, Printables or Thingiverse collection to Thingport once, with one tick in Thingport Grab, and every
+model added to it later is imported into your library on its own. Thingport checks it every hour, 6 hours or 24 hours,
+imports new models one at a time and sends a notification saying what came in. Sync only ever adds: nothing is deleted
+on either side. See the **[synced collections guide](docs/guides/synced-collections.md)**.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/collection-sync-dark.gif">
+  <img src="docs/assets/collection-sync-light.gif" width="600" alt="Models flowing from a MakerWorld, Printables or Thingiverse collection, through Thingport, into a synced collection">
+</picture>
 
 ## Companion Apps
 

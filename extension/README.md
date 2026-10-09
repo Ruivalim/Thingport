@@ -214,6 +214,8 @@ extension can turn sync on, since it has just seen which models the collection h
 - To turn sync off, untick the box on the collection page, or use **Stop syncing** in the
   collection's sync configuration.
 
+The [synced collections guide](../docs/guides/synced-collections.md) walks through it end to end.
+
 ## Privacy
 
 Thingport Grab has no servers of its own and sends nothing to its developer or any third party --

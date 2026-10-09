@@ -9,6 +9,7 @@
 //   --email     THINGPORT_EMAIL     account to sign in with (required)
 //   --password  THINGPORT_PASSWORD
 //   --model     SCREENSHOT_MODEL    search text picking the model for the details and 3D shots
+//   --collection SCREENSHOT_COLLECTION  name of the synced collection for the sync shot (default: the largest)
 //   --only      SCREENSHOT_ONLY     comma-separated shot names or numbers, e.g. 03,04
 //   --out       SCREENSHOT_OUT      output folder
 //   --headed                        show the browser
@@ -26,6 +27,7 @@ const { values: args } = parseArgs({
     email: { type: "string" },
     password: { type: "string" },
     model: { type: "string" },
+    collection: { type: "string" },
     only: { type: "string" },
     out: { type: "string" },
     headed: { type: "boolean", default: false },
@@ -36,6 +38,7 @@ const baseUrl = (args.url || process.env.THINGPORT_URL || "").replace(/\/+$/, ""
 const email = args.email || process.env.THINGPORT_EMAIL;
 const password = args.password || process.env.THINGPORT_PASSWORD;
 const modelQuery = args.model || process.env.SCREENSHOT_MODEL || "Adjustable Telescopic Wall Hook";
+const collectionName = args.collection || process.env.SCREENSHOT_COLLECTION;
 const outDir = path.resolve(
   args.out || process.env.SCREENSHOT_OUT || path.join(here, "../frontend/src/assets/screenshots"),
 );
@@ -120,6 +123,18 @@ const SHOTS = [
     name: "05_collections",
     run: async (page) => {
       await page.goto("/models/collections");
+    },
+  },
+  {
+    name: "12_collection_sync",
+    needsSyncedCollection: true,
+    run: async (page, ctx) => {
+      await page.goto(`/models/collections/${ctx.syncedCollectionId}`);
+      await settle(page, 0);
+      await page.getByRole("button", { name: /Sync configuration$/ }).click();
+      await page.getByRole("dialog").waitFor();
+      // Lets the chain's pulse get going.
+      await page.waitForTimeout(1500);
     },
   },
   {
@@ -240,7 +255,15 @@ try {
     throw new Error(`No model matches "${modelQuery}"; pick one with --model`);
   }
 
-  const ctx = { displayName, modelId };
+  const synced = (await api(token, "GET", "/collections"))
+    .filter((c) => c.sync && (!collectionName || c.name === collectionName))
+    .toSorted((a, b) => b.item_count - a.item_count);
+  const syncedCollectionId = synced[0]?.id;
+  if (!syncedCollectionId && SHOTS.some((shot) => wanted(shot) && shot.needsSyncedCollection)) {
+    throw new Error(`No synced collection${collectionName ? ` named "${collectionName}"` : ""}; sync one with Grab`);
+  }
+
+  const ctx = { displayName, modelId, syncedCollectionId };
   for (const shot of SHOTS.filter(wanted)) {
     process.stdout.write(`${shot.name}... `);
     // 09 switches to dark through the UI, which saves it to the account.

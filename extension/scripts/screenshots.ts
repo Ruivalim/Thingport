@@ -9,7 +9,8 @@
 //   npm run screenshots -- --makerworld=https://makerworld.com/en/models/123 --printables=...
 //
 // The collection shots use fixed collections, changeable with --printables-collection=<url> and
-// --makerworld-collection=<url>.
+// --makerworld-collection=<url>. --only=<names> refreshes just those shots, e.g.
+// --only=collection-printables,collection-makerworld.
 //
 // Needs Playwright's Chromium once: `npx playwright install chromium`.
 
@@ -85,6 +86,8 @@ function startMockInstance(state: MockState): Promise<{ url: string; close: () =
         return json(state.batch ?? { title: null, entries: [] });
       case "GET /api/collections":
         return json(collections);
+      case "GET /api/collection-sync":
+        return json({ supported: true, sync: null });
       case "POST /api/import":
         return json({ id: "demo-imported", title: state.inspectTitle, import_outcome: "created", thumb_url: null });
       // No slicer, so MakerWorld pages don't add their "Download normalized" button.
@@ -110,6 +113,12 @@ function argValue(name: string): string | undefined {
   return process.argv.find((arg) => arg.startsWith(prefix))?.slice(prefix.length);
 }
 
+const ONLY = argValue("only")?.split(",").filter(Boolean) ?? [];
+
+function wanted(...files: string[]): boolean {
+  return !ONLY.length || files.some((file) => ONLY.includes(file.replace(/\.\w+$/, "")));
+}
+
 async function launch(mockPort: number): Promise<{ context: BrowserContext; worker: Worker; extensionId: string }> {
   const userDataDir = path.join(os.tmpdir(), `thingport-grab-screenshots-${process.pid}`);
   const context = await chromium.launchPersistentContext(userDataDir, {
@@ -133,7 +142,10 @@ async function dismissBanners(page: Page): Promise<void> {
   const button = page
     .getByRole("button", { name: /^(accept( all)?( cookies)?|allow all|agree|i agree|got it|ok)$/i })
     .first();
-  if (await button.isVisible().catch(() => false)) await button.click({ timeout: 2000 }).catch(() => undefined);
+  // Through the DOM: Grab's own button can sit on top of it.
+  if (await button.isVisible().catch(() => false)) {
+    await button.evaluate((el) => (el as HTMLElement).click()).catch(() => undefined);
+  }
 }
 
 async function openPage(page: Page, url: string): Promise<void> {
@@ -218,6 +230,7 @@ async function screenshotPopup(
   file: string,
   colorScheme: "light" | "dark",
 ): Promise<void> {
+  if (!wanted(file)) return;
   const page = await context.newPage();
   await page.emulateMedia({ colorScheme });
   await page.setViewportSize({ width: POPUP_WIDTH, height: 600 });
@@ -228,12 +241,15 @@ async function screenshotPopup(
 }
 
 async function screenshotViewport(page: Page, file: string): Promise<void> {
+  if (!wanted(file)) return;
+  // Some cookie banners only show up after a while.
+  await dismissBanners(page);
   await page.waitForTimeout(1500);
   await page.screenshot({ path: path.join(OUT_DIR, file), type: "jpeg", quality: 82 });
 }
 
 async function main(): Promise<void> {
-  await rm(OUT_DIR, { recursive: true, force: true });
+  if (!ONLY.length) await rm(OUT_DIR, { recursive: true, force: true });
   await mkdir(OUT_DIR, { recursive: true });
   const mockState: MockState = { inspectTitle: null, batch: null };
   const instance = await startMockInstance(mockState);
@@ -245,9 +261,12 @@ async function main(): Promise<void> {
   try {
     await screenshotPopup(context, extensionId, "popup-setup.png", "light");
 
+    const modelShots =
+      wanted("setup-dialog-makerworld", "popup-connected", "popup-connected-dark") ||
+      PROVIDERS.some((p) => wanted(`panel-${p.name}`, `imported-${p.name}`));
     const models = new Map<ProviderName, ModelInfo>();
     const recentModels: ModelInfo[] = [];
-    for (const provider of PROVIDERS) {
+    for (const provider of modelShots ? PROVIDERS : []) {
       const urls = await findModelUrls(page, provider, provider.name === "thingiverse" ? 1 : 2);
       for (const url of urls) {
         await openPage(page, url);
@@ -258,10 +277,12 @@ async function main(): Promise<void> {
       }
     }
 
-    await openPage(page, models.get("makerworld")!.url);
-    await page.locator(".tg-fab--inactive").click();
-    await page.locator(".tg-modal").waitFor();
-    await screenshotViewport(page, "setup-dialog-makerworld.jpg");
+    if (wanted("setup-dialog-makerworld")) {
+      await openPage(page, models.get("makerworld")!.url);
+      await page.locator(".tg-fab--inactive").click();
+      await page.locator(".tg-modal").waitFor();
+      await screenshotViewport(page, "setup-dialog-makerworld.jpg");
+    }
 
     const recent = await Promise.all(
       recentModels.slice(0, 5).map(async (model, i) => ({
@@ -281,7 +302,8 @@ async function main(): Promise<void> {
     await screenshotPopup(context, extensionId, "popup-connected.png", "light");
     await screenshotPopup(context, extensionId, "popup-connected-dark.png", "dark");
 
-    for (const provider of PROVIDERS) {
+    for (const provider of PROVIDERS.filter((p) => models.has(p.name))) {
+      if (!wanted(`panel-${provider.name}`, `imported-${provider.name}`)) continue;
       const model = models.get(provider.name)!;
       mockState.inspectTitle = model.title;
       await openPage(page, model.url);
@@ -301,23 +323,30 @@ async function main(): Promise<void> {
       }
     }
 
-    const printablesCollection = argValue("printables-collection") ?? PRINTABLES_COLLECTION;
-    await openPage(page, printablesCollection);
-    mockState.batch = await readPrintablesCollection(page);
-    console.log(`Printables collection: ${printablesCollection} -- ${mockState.batch.entries.length} models`);
-    await page.locator(".tg-fab:not(.tg-fab--inactive)").click();
-    await page.locator('.tg-panel [data-action="import"]').waitFor({ timeout: 20000 });
-    await screenshotViewport(page, "collection-printables.jpg");
+    // The sync box is shown ticked, so the shots show what it's for.
+    if (wanted("collection-printables")) {
+      const printablesCollection = argValue("printables-collection") ?? PRINTABLES_COLLECTION;
+      await openPage(page, printablesCollection);
+      mockState.batch = await readPrintablesCollection(page);
+      console.log(`Printables collection: ${printablesCollection} -- ${mockState.batch.entries.length} models`);
+      await page.locator(".tg-fab:not(.tg-fab--inactive)").click();
+      await page.locator('.tg-panel [data-action="import"]').waitFor({ timeout: 20000 });
+      await page.locator("#tg-sync").check();
+      await screenshotViewport(page, "collection-printables.jpg");
+    }
 
     // The panel comes up once the whole collection has been scrolled through.
-    const makerworldCollection = argValue("makerworld-collection") ?? MAKERWORLD_COLLECTION;
-    await openPage(page, makerworldCollection);
-    console.log(`MakerWorld collection: ${makerworldCollection}`);
-    await page.locator(".tg-fab:not(.tg-fab--inactive)").click();
-    await page.locator('.tg-panel [data-action="start"]').waitFor({ timeout: 180000 });
-    await page.locator("#tg-step-delay").selectOption("30000");
-    await page.evaluate(() => window.scrollTo(0, 0));
-    await screenshotViewport(page, "collection-makerworld.jpg");
+    if (wanted("collection-makerworld")) {
+      const makerworldCollection = argValue("makerworld-collection") ?? MAKERWORLD_COLLECTION;
+      await openPage(page, makerworldCollection);
+      console.log(`MakerWorld collection: ${makerworldCollection}`);
+      await page.locator(".tg-fab:not(.tg-fab--inactive)").click();
+      await page.locator('.tg-panel [data-action="start"]').waitFor({ timeout: 180000 });
+      await page.locator("#tg-step-delay").selectOption("30000");
+      await page.locator("#tg-sync").check();
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await screenshotViewport(page, "collection-makerworld.jpg");
+    }
 
     console.log(`Screenshots written to ${path.relative(process.cwd(), OUT_DIR)}/`);
   } finally {
