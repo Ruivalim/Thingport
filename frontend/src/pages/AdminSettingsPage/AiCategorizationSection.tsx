@@ -5,6 +5,7 @@ import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import FormControl from "@mui/material/FormControl";
 import FormControlLabel from "@mui/material/FormControlLabel";
+import InputAdornment from "@mui/material/InputAdornment";
 import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
@@ -168,25 +169,37 @@ export default function AiCategorizationSection({ onUnauthorized }: Props) {
               update("api_key", event.target.value);
               setClearKey(false);
             }}
-            placeholder={hasApiKey ? (t("adminSettings.aiCategorization.keySet") ?? undefined) : undefined}
-            helperText={hasApiKey ? t("adminSettings.aiCategorization.keySet") : undefined}
+            helperText={
+              clearKey
+                ? t("adminSettings.aiCategorization.keyWillClear")
+                : hasApiKey
+                  ? t("adminSettings.aiCategorization.keySet")
+                  : undefined
+            }
             disabled={loading || saving}
             autoComplete="new-password"
             fullWidth
+            slotProps={{
+              input: {
+                endAdornment:
+                  hasApiKey && !clearKey ? (
+                    <InputAdornment position="end">
+                      <Button
+                        size="small"
+                        color="error"
+                        onClick={() => {
+                          setClearKey(true);
+                          update("api_key", "");
+                        }}
+                        disabled={loading || saving}
+                      >
+                        {t("adminSettings.aiCategorization.clearKey")}
+                      </Button>
+                    </InputAdornment>
+                  ) : undefined,
+              },
+            }}
           />
-          {hasApiKey && (
-            <Button
-              color="error"
-              variant="outlined"
-              onClick={() => {
-                setClearKey(true);
-                update("api_key", "");
-              }}
-              disabled={loading || saving}
-            >
-              {t("adminSettings.aiCategorization.clearKey")}
-            </Button>
-          )}
           <TextField
             type="number"
             label={t("adminSettings.aiCategorization.threshold")}

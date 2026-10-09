@@ -533,6 +533,7 @@
         "apiKey": "API raktas",
         "keySet": "Raktas jau nustatytas",
         "clearKey": "Pašalinti API raktą",
+        "keyWillClear": "Raktas bus pašalintas išsaugojus",
         "threshold": "Automatinio taikymo patikimumo riba",
         "concurrency": "Lygiagrečios užklausos (1-4)",
         "timeout": "Užklausos skirtasis laikas (ms)",

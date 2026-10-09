@@ -531,6 +531,7 @@
         "apiKey": "API key",
         "keySet": "A key is already configured",
         "clearKey": "Clear API key",
+        "keyWillClear": "The key will be removed when you save",
         "threshold": "Auto-apply confidence threshold",
         "concurrency": "Concurrent requests (1-4)",
         "timeout": "Request timeout (ms)",
