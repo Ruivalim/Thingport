@@ -292,24 +292,13 @@ export default function AiCategorizationControls({ onUnauthorized, onPrintUpdate
               </Stack>
               <List dense>
                 {items.map((item) => (
+                  // The actions sit in the row rather than in secondaryAction: that one is absolutely
+                  // positioned over a fixed padding, and two buttons overlap a long reason.
                   <ListItem
                     key={item.id}
                     divider
-                    secondaryAction={
-                      <Stack direction="row" spacing={0.5}>
-                        <Button size="small" onClick={() => void actOnItems("accept", [item.id])} disabled={busy}>
-                          {t("models:aiCategorization.accept")}
-                        </Button>
-                        <Button
-                          size="small"
-                          color="error"
-                          onClick={() => void actOnItems("reject", [item.id])}
-                          disabled={busy}
-                        >
-                          {t("models:aiCategorization.reject")}
-                        </Button>
-                      </Stack>
-                    }
+                    alignItems="flex-start"
+                    sx={{ gap: 1, flexWrap: { xs: "wrap", sm: "nowrap" } }}
                   >
                     <Checkbox
                       checked={selected.includes(item.id)}
@@ -320,13 +309,42 @@ export default function AiCategorizationControls({ onUnauthorized, onPrintUpdate
                       }
                     />
                     <ListItemText
+                      sx={{ flex: "1 1 0", minWidth: 0 }}
                       primary={item.title || item.name}
                       secondary={
-                        item.ai_suggestion
-                          ? `${item.ai_suggestion.category_path} · ${Math.round(item.ai_suggestion.confidence * 100)}% · ${item.ai_suggestion.reason}`
-                          : ""
+                        item.ai_suggestion && (
+                          <>
+                            <Typography component="span" variant="body2" fontWeight={600} sx={{ display: "block" }}>
+                              {`${item.ai_suggestion.category_path} · ${Math.round(item.ai_suggestion.confidence * 100)}%`}
+                            </Typography>
+                            {item.ai_suggestion.reason}
+                          </>
+                        )
                       }
                     />
+                    <Stack
+                      direction="row"
+                      spacing={0.5}
+                      sx={{
+                        flexShrink: 0,
+                        pt: 0.5,
+                        // On a phone the actions take their own line instead of squeezing the reason.
+                        flexBasis: { xs: "100%", sm: "auto" },
+                        justifyContent: "flex-end",
+                      }}
+                    >
+                      <Button size="small" onClick={() => void actOnItems("accept", [item.id])} disabled={busy}>
+                        {t("models:aiCategorization.accept")}
+                      </Button>
+                      <Button
+                        size="small"
+                        color="error"
+                        onClick={() => void actOnItems("reject", [item.id])}
+                        disabled={busy}
+                      >
+                        {t("models:aiCategorization.reject")}
+                      </Button>
+                    </Stack>
                   </ListItem>
                 ))}
               </List>
