@@ -49,25 +49,25 @@ Instead of having your collection scattered across different websites and your f
   <tr>
     <td width="33%"><a href="frontend/src/assets/screenshots/04_model_details_3d_preview.png" target="_blank"><img src="frontend/src/assets/screenshots/04_model_details_3d_preview.png" width="100%" alt="3D preview"></a><br><sub><b>3D Preview</b></sub></td>
     <td width="33%"><a href="frontend/src/assets/screenshots/05_collections.png" target="_blank"><img src="frontend/src/assets/screenshots/05_collections.png" width="100%" alt="Collections"></a><br><sub><b>Collections</b></sub></td>
-    <td width="33%"><a href="frontend/src/assets/screenshots/06_tags.png" target="_blank"><img src="frontend/src/assets/screenshots/06_tags.png" width="100%" alt="Tags"></a><br><sub><b>Tags</b></sub></td>
+    <td width="33%"><a href="frontend/src/assets/screenshots/12_collection_sync.png" target="_blank"><img src="frontend/src/assets/screenshots/12_collection_sync.png" width="100%" alt="A synced collection's sync configuration"></a><br><sub><b>Synced Collection</b></sub></td>
   </tr>
   <tr>
+    <td width="33%"><a href="frontend/src/assets/screenshots/06_tags.png" target="_blank"><img src="frontend/src/assets/screenshots/06_tags.png" width="100%" alt="Tags"></a><br><sub><b>Tags</b></sub></td>
     <td width="33%"><a href="frontend/src/assets/screenshots/07_downloads.png" target="_blank"><img src="frontend/src/assets/screenshots/07_downloads.png" width="100%" alt="Downloads"></a><br><sub><b>Downloads</b></sub></td>
     <td width="33%"><a href="frontend/src/assets/screenshots/08_my_models.png" target="_blank"><img src="frontend/src/assets/screenshots/08_my_models.png" width="100%" alt="My models"></a><br><sub><b>My Models</b></sub></td>
-    <td width="33%"><a href="frontend/src/assets/screenshots/09_dark_theme.png" target="_blank"><img src="frontend/src/assets/screenshots/09_dark_theme.png" width="100%" alt="Dark theme"></a><br><sub><b>Dark Theme</b></sub></td>
   </tr>
   <tr>
+    <td width="33%"><a href="frontend/src/assets/screenshots/09_dark_theme.png" target="_blank"><img src="frontend/src/assets/screenshots/09_dark_theme.png" width="100%" alt="Dark theme"></a><br><sub><b>Dark Theme</b></sub></td>
     <td width="33%"><a href="frontend/src/assets/screenshots/10_profile.png" target="_blank"><img src="frontend/src/assets/screenshots/10_profile.png" width="100%" alt="Profile with activity heatmap"></a><br><sub><b>Profile &amp; Activity</b></sub></td>
     <td width="33%"><a href="frontend/src/assets/screenshots/11_configuration_providers.png" target="_blank"><img src="frontend/src/assets/screenshots/11_configuration_providers.png" width="100%" alt="Configuration, Providers section"></a><br><sub><b>Configuration — Providers</b></sub></td>
-    <td width="33%"><a href="extension/docs/screenshots/collection-printables.jpg" target="_blank"><img src="extension/docs/screenshots/collection-printables.jpg" width="100%" alt="Thingport Grab importing a Printables collection"></a><br><sub><b>Thingport Grab — Collections</b></sub></td>
   </tr>
   <tr>
+    <td width="33%"><a href="extension/docs/screenshots/collection-printables.jpg" target="_blank"><img src="extension/docs/screenshots/collection-printables.jpg" width="100%" alt="Thingport Grab importing a Printables collection"></a><br><sub><b>Thingport Grab — Collections</b></sub></td>
     <td width="33%"><a href="extension/docs/screenshots/panel-printables.jpg" target="_blank"><img src="extension/docs/screenshots/panel-printables.jpg" width="100%" alt="Thingport Grab on Printables"></a><br><sub><b>Thingport Grab — Printables</b></sub></td>
     <td width="33%"><a href="extension/docs/screenshots/panel-thingiverse.jpg" target="_blank"><img src="extension/docs/screenshots/panel-thingiverse.jpg" width="100%" alt="Thingport Grab on Thingiverse"></a><br><sub><b>Thingport Grab — Thingiverse</b></sub></td>
-    <td width="33%"><a href="extension/docs/screenshots/panel-makerworld.jpg" target="_blank"><img src="extension/docs/screenshots/panel-makerworld.jpg" width="100%" alt="Thingport Grab on MakerWorld"></a><br><sub><b>Thingport Grab — MakerWorld</b></sub></td>
   </tr>
   <tr>
-    <td width="33%"><a href="frontend/src/assets/screenshots/12_collection_sync.png" target="_blank"><img src="frontend/src/assets/screenshots/12_collection_sync.png" width="100%" alt="A synced collection's sync configuration"></a><br><sub><b>Synced Collection</b></sub></td>
+    <td width="33%"><a href="extension/docs/screenshots/panel-makerworld.jpg" target="_blank"><img src="extension/docs/screenshots/panel-makerworld.jpg" width="100%" alt="Thingport Grab on MakerWorld"></a><br><sub><b>Thingport Grab — MakerWorld</b></sub></td>
     <td width="33%"><a href="extension/docs/screenshots/collection-makerworld.jpg" target="_blank"><img src="extension/docs/screenshots/collection-makerworld.jpg" width="100%" alt="Thingport Grab syncing a MakerWorld collection"></a><br><sub><b>Thingport Grab — Sync a Collection</b></sub></td>
     <td width="33%"></td>
   </tr>
