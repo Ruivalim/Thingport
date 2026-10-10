@@ -481,11 +481,13 @@ export function cancelAiCategorizationRun(userId: string): AiCategorizationRun |
   return run;
 }
 
-export async function testAiCategorizationProvider(): Promise<
-  { ok: true; latencyMs: number; model: string } | { ok: false; error: string }
-> {
-  const settings = await getAiCategorizationSettings();
-  if (!aiCategorizationEnabled(settings)) return { ok: false, error: "AI categorization is disabled" };
+/** Tests the given connection values, falling back to the saved ones, so a connection can be checked before saving. */
+export async function testAiCategorizationProvider(
+  overrides: Partial<Pick<AiCategorizationSettings, "baseUrl" | "model" | "apiKey" | "timeoutMs">> = {},
+): Promise<{ ok: true; latencyMs: number; model: string } | { ok: false; error: string }> {
+  const settings = { ...(await getAiCategorizationSettings()), ...overrides };
+  // The connection is tested on its own, so categorization may still be off.
+  if (!settings.baseUrl || !settings.model) return { ok: false, error: "Set the API base URL and model name first" };
   const start = Date.now();
   try {
     const fake = {
@@ -512,6 +514,7 @@ export async function testAiCategorizationProvider(): Promise<
     );
     return { ok: true, latencyMs: Date.now() - start, model: settings.model! };
   } catch (error) {
-    return { ok: false, error: noSecretError(error).message };
+    const message = noSecretError(error).message;
+    return { ok: false, error: settings.apiKey ? message.replaceAll(settings.apiKey, "[redacted]") : message };
   }
 }

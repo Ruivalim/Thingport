@@ -102,6 +102,9 @@ function useRouteChrome() {
   } else if (path.startsWith("/admin-rendering")) {
     title = t("adminSettings.rendering.heading");
     onBack = () => navigate("/admin");
+  } else if (path.startsWith("/admin-ai")) {
+    title = t("adminSettings.ai.heading");
+    onBack = () => navigate("/admin");
   } else if (path.startsWith("/admin-users")) {
     title = t("adminSettings.users.heading");
     onBack = () => navigate("/admin");

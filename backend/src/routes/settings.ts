@@ -503,26 +503,53 @@ router.patch(
   requireAdmin,
   asyncHandler(async (req, res) => {
     const body = parseBody(aiCategorizationSettingsSchema, req.body);
-    const settings = await setAiCategorizationSettings({
-      ...(body.mode !== undefined ? { mode: body.mode } : {}),
+    const connection = {
       ...(body.base_url !== undefined ? { baseUrl: body.base_url?.replace(/\/+$/, "") || null } : {}),
       ...(body.api_key !== undefined ? { apiKey: body.api_key } : {}),
-      ...(body.model !== undefined ? { model: body.model } : {}),
+      ...(body.model !== undefined ? { model: body.model || null } : {}),
+      ...(body.timeout_ms !== undefined ? { timeoutMs: body.timeout_ms } : {}),
+    };
+    // A changed connection is only saved once it answers; clearing the URL or model disconnects without a test.
+    if (Object.keys(connection).length) {
+      const next = { ...(await getAiCategorizationSettings()), ...connection };
+      if (next.baseUrl && next.model) {
+        const result = await testAiCategorizationProvider(connection);
+        if (!result.ok)
+          throw new HttpError(422, `Could not connect to the AI provider: ${result.error}`, "ai_connection_failed");
+      }
+    }
+    const settings = await setAiCategorizationSettings({
+      ...connection,
+      ...(body.mode !== undefined ? { mode: body.mode } : {}),
       ...(body.threshold !== undefined ? { threshold: body.threshold } : {}),
       ...(body.on_import !== undefined ? { onImport: body.on_import } : {}),
       ...(body.concurrency !== undefined ? { concurrency: body.concurrency } : {}),
       ...(body.send_image !== undefined ? { sendImage: body.send_image } : {}),
-      ...(body.timeout_ms !== undefined ? { timeoutMs: body.timeout_ms } : {}),
     });
     res.json(aiCategorizationSettingsOut(settings));
   }),
 );
 
+// Omitted fields use the saved value; api_key null tests without a key.
+const aiCategorizationTestSchema = z
+  .object({
+    base_url: z.string().trim().min(1).optional(),
+    model: z.string().trim().min(1).optional(),
+    api_key: z.string().nullable().optional(),
+    timeout_ms: z.number().int().min(1).max(300000).optional(),
+  })
+  .strict();
 router.post(
   "/settings/ai-categorization/test",
   requireAdmin,
-  asyncHandler(async (_req, res) => {
-    const result = await testAiCategorizationProvider();
+  asyncHandler(async (req, res) => {
+    const body = parseBody(aiCategorizationTestSchema, req.body ?? {});
+    const result = await testAiCategorizationProvider({
+      ...(body.base_url !== undefined ? { baseUrl: body.base_url.replace(/\/+$/, "") } : {}),
+      ...(body.model !== undefined ? { model: body.model } : {}),
+      ...(body.api_key !== undefined ? { apiKey: body.api_key || null } : {}),
+      ...(body.timeout_ms !== undefined ? { timeoutMs: body.timeout_ms } : {}),
+    });
     res.json(result.ok ? { ok: true, latency_ms: result.latencyMs, model: result.model } : result);
   }),
 );

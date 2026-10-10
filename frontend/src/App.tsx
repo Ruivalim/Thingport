@@ -31,6 +31,7 @@ import ConnectionsPage from "./pages/ConnectionsPage";
 import CaptchaPage from "./pages/CaptchaPage";
 import ImportQueuePage from "./pages/ImportQueuePage";
 import RenderingPage from "./pages/RenderingPage";
+import AiPage from "./pages/AiPage";
 import { healthApi, type HealthInfo } from "./api/health";
 import { authApi, type AuthUser } from "./api/auth";
 import { settingsApi, type PreviewMode } from "./api/settings";
@@ -226,6 +227,10 @@ function AppShell({
               <Navigate to="/" replace />
             )
           }
+        />
+        <Route
+          path="/admin-ai"
+          element={isAdmin ? <AiPage onUnauthorized={onUnauthorized} /> : <Navigate to="/" replace />}
         />
         <Route
           path="/admin-users"

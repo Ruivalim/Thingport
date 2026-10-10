@@ -127,10 +127,14 @@ export const settingsApi = {
     return res.json();
   },
 
-  testAiCategorization: async (): Promise<{ ok: boolean; latency_ms?: number; model?: string; error?: string }> => {
+  // Omitted fields use the saved value, so a connection can be tested before saving.
+  testAiCategorization: async (
+    payload: Pick<AiCategorizationSettingsInput, "base_url" | "model" | "api_key" | "timeout_ms"> = {},
+  ): Promise<{ ok: boolean; latency_ms?: number; model?: string; error?: string }> => {
     const res = await fetch(`${apiBase()}/settings/ai-categorization/test`, {
       method: "POST",
-      headers: authHeaders(),
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
     });
     if (res.status === 401) throw new UnauthorizedError();
     if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to test AI connection"));

@@ -207,6 +207,46 @@ describe("AI categorization", () => {
     expect(detail.body.category_source).toBe("legacy");
   });
 
+  it("saves a connection only after it answers, and tests unsaved values", async () => {
+    await setAiCategorizationSettings(DEFAULT_AI_CATEGORIZATION_SETTINGS);
+    const deadUrl = await startProvider(() => ({ category_id: null, confidence: 1, reason: "none" }));
+    await stopProvider();
+    const tested = await request(app)
+      .post("/api/settings/ai-categorization/test")
+      .set(auth())
+      .send({ base_url: deadUrl, model: "local-model", timeout_ms: 1000 });
+    expect(tested.body.ok).toBe(false);
+    const refused = await request(app)
+      .patch("/api/settings/ai-categorization")
+      .set(auth())
+      .send({ base_url: deadUrl, model: "local-model", timeout_ms: 1000 });
+    expect(refused.status).toBe(422);
+    expect(refused.body.code).toBe("ai_connection_failed");
+    const unchanged = await request(app).get("/api/settings/ai-categorization").set(auth());
+    expect(unchanged.body.base_url).toBeNull();
+
+    const liveUrl = await startProvider(() => ({ category_id: null, confidence: 1, reason: "none" }));
+    const draft = await request(app)
+      .post("/api/settings/ai-categorization/test")
+      .set(auth())
+      .send({ base_url: liveUrl, model: "local-model" });
+    expect(draft.body).toMatchObject({ ok: true, model: "local-model" });
+    const saved = await request(app)
+      .patch("/api/settings/ai-categorization")
+      .set(auth())
+      .send({ base_url: liveUrl, model: "local-model" });
+    expect(saved.status).toBe(200);
+    expect(saved.body.base_url).toBe(liveUrl);
+
+    await stopProvider();
+    const cleared = await request(app)
+      .patch("/api/settings/ai-categorization")
+      .set(auth())
+      .send({ base_url: null, model: null });
+    expect(cleared.status).toBe(200);
+    expect(cleared.body).toMatchObject({ base_url: null, model: null });
+  });
+
   it("waits before retrying 429 responses both without and with Retry-After", async () => {
     const target = await category("Retry target");
     const withoutHeader = await startProvider(() =>
