@@ -1,9 +1,5 @@
 import { Fragment, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
-import DialogActions from "@mui/material/DialogActions";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
@@ -60,7 +56,6 @@ type Props = {
   /** Only the trees of this kind; it also picks the labels. */
   kind: CategoryKind;
   categories: Category[];
-  onClose: () => void;
   onCreate: (name: string, parentId: string | null) => Promise<void>;
   onRename: (id: string, name: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
@@ -471,10 +466,10 @@ function AddRow({
   );
 }
 
-export default function CategoryManagerModal({
+/** Add, rename, reorder and nest one kind's trees. Rendered inside the models manager dialog. */
+export default function CategoryManager({
   kind,
   categories,
-  onClose,
   onCreate,
   onRename,
   onDelete,
@@ -617,118 +612,104 @@ export default function CategoryManagerModal({
 
   return (
     <>
-      <Dialog open onClose={onClose} fullWidth maxWidth="sm">
-        <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          {t(`${labels}.title`)}
-          <IconButton size="small" onClick={onClose} aria-label={t("common:close") ?? undefined}>
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent dividers>
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            // Folding the dragged subtree shifts the rows below, so keep re-measuring.
-            measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
-            onDragStart={handleDragStart}
-            onDragMove={handleDragMove}
-            onDragOver={handleDragOver}
-            onDragEnd={handleDragEnd}
-            onDragCancel={resetDrag}
-          >
-            <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-              <List disablePadding>
-                {flat.map(({ category, depth }) => {
-                  const rootIndex = depth === 0 ? tree.roots.findIndex((r) => r.id === category.id) : -1;
-                  return (
-                    <Fragment key={category.id}>
-                      {rootIndex > 0 && <Box sx={{ height: 12 }} />}
-                      <TreeRow
-                        id={category.id}
-                        depth={category.id === activeId && projection ? projection.depth : depth}
-                        name={category.name || untitledLabel}
-                        busy={busyId === category.id}
-                        move={
-                          depth === 0
-                            ? {
-                                canMoveUp: rootIndex > 0,
-                                canMoveDown: rootIndex < tree.roots.length - 1,
-                                onMoveUp: () => moveRoot(rootIndex, -1),
-                                onMoveDown: () => moveRoot(rootIndex, 1),
-                              }
-                            : undefined
-                        }
-                        metaTitle={category.meta_title}
-                        metaDescription={category.meta_description}
-                        hasDetails={hasMeta(category)}
-                        onOpenMeta={() => setMetaCategory(category)}
-                        onAddChild={() => setAddingUnderId(category.id)}
-                        addChildLabel={t(`${labels}.addSubcategory`)}
-                        onRename={(name) => onRename(category.id, name)}
-                        onDelete={() => handleDelete(category)}
-                      />
-                      {addAfterId === category.id && addingUnderId && (
-                        <InlineAddRow
-                          depth={addingDepth}
-                          busy={busyId === `new-sub-${addingUnderId}`}
-                          placeholder={t(`${labels}.addSubcategory`)}
-                          onCancel={() => setAddingUnderId(null)}
-                          onAdd={async (name) => {
-                            setBusyId(`new-sub-${addingUnderId}`);
-                            try {
-                              await onCreate(name, addingUnderId);
-                              setAddingUnderId(null);
-                            } finally {
-                              setBusyId(null);
+      <Box>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          // Folding the dragged subtree shifts the rows below, so keep re-measuring.
+          measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+          onDragStart={handleDragStart}
+          onDragMove={handleDragMove}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+          onDragCancel={resetDrag}
+        >
+          <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+            <List disablePadding>
+              {flat.map(({ category, depth }) => {
+                const rootIndex = depth === 0 ? tree.roots.findIndex((r) => r.id === category.id) : -1;
+                return (
+                  <Fragment key={category.id}>
+                    {rootIndex > 0 && <Box sx={{ height: 12 }} />}
+                    <TreeRow
+                      id={category.id}
+                      depth={category.id === activeId && projection ? projection.depth : depth}
+                      name={category.name || untitledLabel}
+                      busy={busyId === category.id}
+                      move={
+                        depth === 0
+                          ? {
+                              canMoveUp: rootIndex > 0,
+                              canMoveDown: rootIndex < tree.roots.length - 1,
+                              onMoveUp: () => moveRoot(rootIndex, -1),
+                              onMoveDown: () => moveRoot(rootIndex, 1),
                             }
-                          }}
-                        />
-                      )}
-                    </Fragment>
-                  );
-                })}
+                          : undefined
+                      }
+                      metaTitle={category.meta_title}
+                      metaDescription={category.meta_description}
+                      hasDetails={hasMeta(category)}
+                      onOpenMeta={() => setMetaCategory(category)}
+                      onAddChild={() => setAddingUnderId(category.id)}
+                      addChildLabel={t(`${labels}.addSubcategory`)}
+                      onRename={(name) => onRename(category.id, name)}
+                      onDelete={() => handleDelete(category)}
+                    />
+                    {addAfterId === category.id && addingUnderId && (
+                      <InlineAddRow
+                        depth={addingDepth}
+                        busy={busyId === `new-sub-${addingUnderId}`}
+                        placeholder={t(`${labels}.addSubcategory`)}
+                        onCancel={() => setAddingUnderId(null)}
+                        onAdd={async (name) => {
+                          setBusyId(`new-sub-${addingUnderId}`);
+                          try {
+                            await onCreate(name, addingUnderId);
+                            setAddingUnderId(null);
+                          } finally {
+                            setBusyId(null);
+                          }
+                        }}
+                      />
+                    )}
+                  </Fragment>
+                );
+              })}
 
-                {!tree.roots.length && (
-                  <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
-                    {t(`${labels}.noCategories`)}
-                  </Typography>
-                )}
-              </List>
-            </SortableContext>
-            <DragOverlay>
-              {activeCategory && (
-                <Paper
-                  elevation={6}
-                  sx={{ display: "flex", alignItems: "center", px: 1, py: 0.75, cursor: "grabbing" }}
-                >
-                  <DragIndicatorIcon fontSize="small" sx={{ mr: 0.75, color: "action.active" }} />
-                  <Typography variant="body2" noWrap>
-                    {activeCategory.name || untitledLabel}
-                  </Typography>
-                </Paper>
+              {!tree.roots.length && (
+                <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
+                  {t(`${labels}.noCategories`)}
+                </Typography>
               )}
-            </DragOverlay>
-          </DndContext>
+            </List>
+          </SortableContext>
+          <DragOverlay>
+            {activeCategory && (
+              <Paper elevation={6} sx={{ display: "flex", alignItems: "center", px: 1, py: 0.75, cursor: "grabbing" }}>
+                <DragIndicatorIcon fontSize="small" sx={{ mr: 0.75, color: "action.active" }} />
+                <Typography variant="body2" noWrap>
+                  {activeCategory.name || untitledLabel}
+                </Typography>
+              </Paper>
+            )}
+          </DragOverlay>
+        </DndContext>
 
-          <Divider sx={{ my: 1.5 }} />
+        <Divider sx={{ my: 1.5 }} />
 
-          <AddRow
-            placeholder={t(`${labels}.addCategory`)}
-            busy={busyId === "new-root"}
-            onAdd={async (name) => {
-              setBusyId("new-root");
-              try {
-                await onCreate(name, null);
-              } finally {
-                setBusyId(null);
-              }
-            }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose}>{t("common:close")}</Button>
-        </DialogActions>
-      </Dialog>
+        <AddRow
+          placeholder={t(`${labels}.addCategory`)}
+          busy={busyId === "new-root"}
+          onAdd={async (name) => {
+            setBusyId("new-root");
+            try {
+              await onCreate(name, null);
+            } finally {
+              setBusyId(null);
+            }
+          }}
+        />
+      </Box>
       {metaCategory && (
         <CategoryMetaDialog
           category={metaCategory}

@@ -1582,9 +1582,10 @@
     },
     "aiCategorization": {
       "folderSkipped": "Modeliai aplankuose paliekami kaip yra: aplankai yra jūsų pačių medis.",
+      "section": "DI kategorizavimas",
       "recategorize": "Kategorizuoti iš naujo naudojant DI",
       "runAll": "Kategorizuoti visus iš naujo naudojant DI",
-      "pending": "Laukiantys pasiūlymai ({{count}})",
+      "runHint": "Surūšiuoja nekategorizuotus modelius ir gali iš naujo patikrinti jau kategorizuotus.",
       "runTitle": "Kategorizuoti modelius naudojant DI",
       "countUncategorized": "Nekategorizuoti modeliai visada įtraukiami: {{count}}",
       "includeAi": "Įtraukti DI anksčiau kategorizuotus modelius: {{count}}",
@@ -1952,6 +1953,9 @@
         "addSubcategory": "Pridėti poaplankį",
         "noCategories": "Kol kas nėra aplankų. Pridėkite arba įkelkite modelių aplanką."
       }
+    },
+    "manager": {
+      "title": "Kategorijų tvarkymas"
     }
   }
 }

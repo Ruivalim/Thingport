@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { Theme } from "@mui/material/styles";
 import Paper from "@mui/material/Paper";
@@ -13,11 +13,10 @@ import Collapse from "@mui/material/Collapse";
 import CircularProgress from "@mui/material/CircularProgress";
 import SettingsIcon from "@mui/icons-material/Settings";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import type { Category, CategoryKind, CategoryMetaInput } from "../../api/categories";
+import type { Category, CategoryKind } from "../../api/categories";
 import { translateCategoryDisplay } from "../../utils/translateCategoryDisplay";
 import { dividerBorderColor } from "../../theme";
 import { ancestorPath, buildCategoryTree } from "../../utils/categoryTree";
-import CategoryManagerModal from "./CategoryManagerModal";
 
 type Props = {
   /** Which box this is; `categories` holds only that kind. */
@@ -26,12 +25,8 @@ type Props = {
   loading: boolean;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
-  onCreate: (name: string, parentId: string | null) => Promise<void>;
-  onRename: (id: string, name: string) => Promise<void>;
-  onDelete: (id: string) => Promise<void>;
-  onReorder: (categoryIds: string[]) => Promise<void>;
-  onMove: (id: string, parentId: string | null, position: number) => Promise<void>;
-  onUpdateMeta: (id: string, meta: CategoryMetaInput) => Promise<void>;
+  /** The cog: opens the models manager on this kind. */
+  onManage: () => void;
 };
 
 function rowSx(active: boolean) {
@@ -62,21 +57,8 @@ function rowTextSx(active: boolean, extra?: object) {
 }
 
 /** Any depth; a category selects the models at every level beneath it. Only the selected path is open. */
-export default function CategoriesPanel({
-  kind,
-  categories,
-  loading,
-  selectedId,
-  onSelect,
-  onCreate,
-  onRename,
-  onDelete,
-  onReorder,
-  onMove,
-  onUpdateMeta,
-}: Props) {
+export default function CategoriesPanel({ kind, categories, loading, selectedId, onSelect, onManage }: Props) {
   const { t, i18n } = useTranslation(["models", "common"]);
-  const [managerOpen, setManagerOpen] = useState(false);
   const displayName = (category: Category) => translateCategoryDisplay(category, i18n).name;
 
   const untitledLabel = t("models:categories.untitled");
@@ -132,71 +114,51 @@ export default function CategoriesPanel({
   };
 
   return (
-    <>
-      <Paper
-        variant="outlined"
-        sx={{
-          width: 260,
-          flexShrink: 0,
-          borderRadius: "12px",
-          p: 1.5,
-          alignSelf: "flex-start",
-          bgcolor: "background.paper",
-          borderColor: dividerBorderColor,
-        }}
-      >
-        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 0.5, pb: 1 }}>
-          <Typography variant="subtitle1" fontWeight={700}>
-            {t(`${labels}.title`)}
+    <Paper
+      variant="outlined"
+      sx={{
+        width: 260,
+        flexShrink: 0,
+        borderRadius: "12px",
+        p: 1.5,
+        alignSelf: "flex-start",
+        bgcolor: "background.paper",
+        borderColor: dividerBorderColor,
+      }}
+    >
+      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 0.5, pb: 1 }}>
+        <Typography variant="subtitle1" fontWeight={700}>
+          {t(`${labels}.title`)}
+        </Typography>
+        <Tooltip title={t(`${labels}.manageTooltip`) ?? ""}>
+          <IconButton size="small" onClick={onManage} aria-label={t(`${labels}.manageTooltip`) ?? undefined}>
+            <SettingsIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </Stack>
+
+      <List disablePadding>
+        <ListItemButton onClick={() => onSelect(null)} sx={rowSx(selectedId === null)}>
+          <ListItemText
+            primary={t("models:categories.all")}
+            primaryTypographyProps={rowTextSx(selectedId === null, { fontWeight: 600 })}
+          />
+        </ListItemButton>
+
+        {loading && (
+          <Stack alignItems="center" sx={{ py: 2 }}>
+            <CircularProgress size={18} />
+          </Stack>
+        )}
+
+        {!loading && tree.roots.map((root) => renderCategory(root, 0))}
+
+        {!loading && !tree.roots.length && (
+          <Typography variant="body2" color="text.secondary" sx={{ px: 1, py: 1 }}>
+            {t(`${labels}.empty`)}
           </Typography>
-          <Tooltip title={t(`${labels}.manageTooltip`) ?? ""}>
-            <IconButton
-              size="small"
-              onClick={() => setManagerOpen(true)}
-              aria-label={t(`${labels}.manageTooltip`) ?? undefined}
-            >
-              <SettingsIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </Stack>
-
-        <List disablePadding>
-          <ListItemButton onClick={() => onSelect(null)} sx={rowSx(selectedId === null)}>
-            <ListItemText
-              primary={t("models:categories.all")}
-              primaryTypographyProps={rowTextSx(selectedId === null, { fontWeight: 600 })}
-            />
-          </ListItemButton>
-
-          {loading && (
-            <Stack alignItems="center" sx={{ py: 2 }}>
-              <CircularProgress size={18} />
-            </Stack>
-          )}
-
-          {!loading && tree.roots.map((root) => renderCategory(root, 0))}
-
-          {!loading && !tree.roots.length && (
-            <Typography variant="body2" color="text.secondary" sx={{ px: 1, py: 1 }}>
-              {t(`${labels}.empty`)}
-            </Typography>
-          )}
-        </List>
-      </Paper>
-
-      {managerOpen && (
-        <CategoryManagerModal
-          kind={kind}
-          categories={categories}
-          onClose={() => setManagerOpen(false)}
-          onCreate={onCreate}
-          onRename={onRename}
-          onDelete={onDelete}
-          onReorder={onReorder}
-          onMove={onMove}
-          onUpdateMeta={onUpdateMeta}
-        />
-      )}
-    </>
+        )}
+      </List>
+    </Paper>
   );
 }

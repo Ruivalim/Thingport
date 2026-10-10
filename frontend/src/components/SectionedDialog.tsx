@@ -14,6 +14,12 @@ const selectedBg = (theme: Theme) =>
   theme.palette.mode === "dark" ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.06)";
 const hoverBg = (theme: Theme) => (theme.palette.mode === "dark" ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.03)");
 
+// "large" fits wider section names on one line and longer content, e.g. tree editors and lists.
+const SIZES = {
+  default: { width: 620, height: 520, navWidth: 170 },
+  large: { width: 920, height: 680, navWidth: 210 },
+};
+
 type Props<T extends string> = {
   open: boolean;
   onClose: () => void;
@@ -21,6 +27,7 @@ type Props<T extends string> = {
   sections: DialogSection<T>[];
   section: T;
   onSectionChange: (section: T) => void;
+  size?: keyof typeof SIZES;
   children: React.ReactNode;
 };
 
@@ -33,9 +40,11 @@ export default function SectionedDialog<T extends string>({
   sections,
   section,
   onSectionChange,
+  size = "default",
   children,
 }: Props<T>) {
   const { t } = useTranslation("common");
+  const { width, height, navWidth } = SIZES[size];
 
   const sectionButton = ({ id, label, icon }: DialogSection<T>, compact: boolean) => {
     const chosen = id === section;
@@ -56,6 +65,8 @@ export default function SectionedDialog<T extends string>({
           borderRadius: "8px",
           fontSize: "0.8rem",
           fontWeight: 500,
+          // Phone tabs share the width, so only the side menu keeps labels on one line.
+          whiteSpace: compact ? "normal" : "nowrap",
           color: chosen ? (muiTheme) => muiTheme.thingport.headingText : "text.secondary",
           bgcolor: chosen ? selectedBg : "transparent",
           transition: "background-color 150ms",
@@ -76,9 +87,9 @@ export default function SectionedDialog<T extends string>({
       slotProps={{
         paper: {
           sx: {
-            width: 620,
+            width,
             maxWidth: "calc(100% - 32px)",
-            height: { xs: "75vh", md: 520 },
+            height: { xs: "75vh", md: height },
             maxHeight: "calc(100% - 32px)",
             m: 2,
             display: "flex",
@@ -135,7 +146,7 @@ export default function SectionedDialog<T extends string>({
             display: { xs: "none", md: "flex" },
             flexDirection: "column",
             gap: 0.25,
-            width: 170,
+            width: navWidth,
             flexShrink: 0,
             p: 1.25,
             borderRight: 1,

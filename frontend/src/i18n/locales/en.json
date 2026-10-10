@@ -1555,9 +1555,10 @@
     },
     "aiCategorization": {
       "folderSkipped": "Models in folders are left as they are: folders are your own tree.",
+      "section": "AI Categorization",
       "recategorize": "Recategorize with AI",
       "runAll": "Recategorize all with AI",
-      "pending": "Pending suggestions ({{count}})",
+      "runHint": "Sorts uncategorized models, and can re-check ones that already have a category.",
       "runTitle": "Recategorize models with AI",
       "countUncategorized": "Uncategorized models are always included: {{count}}",
       "includeAi": "Include models last categorized by AI: {{count}}",
@@ -1916,6 +1917,9 @@
         "addSubcategory": "Add subfolder",
         "noCategories": "No folders yet. Add one, or upload a folder of models."
       }
+    },
+    "manager": {
+      "title": "Manage categories"
     }
   }
 }

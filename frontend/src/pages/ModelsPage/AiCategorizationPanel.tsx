@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
+import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Checkbox from "@mui/material/Checkbox";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -10,6 +11,7 @@ import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
+import Divider from "@mui/material/Divider";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import LinearProgress from "@mui/material/LinearProgress";
 import List from "@mui/material/List";
@@ -26,12 +28,11 @@ type Props = { onUnauthorized?: () => void; onPrintUpdated?: (print: Print) => v
 const initialCounts: AiRunCounts = { uncategorized: 0, ai: 0, rule: 0, legacy: 0, manual: 0, folder: 0 };
 const initialScope: AiRunScope = { include_ai: false, include_rule: false, include_legacy: false };
 
-export default function AiCategorizationControls({ onUnauthorized, onPrintUpdated }: Props) {
+/** The AI section of the models manager: a library run above the pending suggestions. */
+export default function AiCategorizationPanel({ onUnauthorized, onPrintUpdated }: Props) {
   const { t } = useTranslation(["models", "common"]);
   const showToast = useToast();
-  const [enabled, setEnabled] = useState(false);
   const [runOpen, setRunOpen] = useState(false);
-  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [counts, setCounts] = useState(initialCounts);
   const [run, setRun] = useState<AiRun | null>(null);
   const [scope, setScope] = useState(initialScope);
@@ -39,6 +40,7 @@ export default function AiCategorizationControls({ onUnauthorized, onPrintUpdate
   const [total, setTotal] = useState(0);
   const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(true);
 
   const loadRun = async () => {
     const state = await aiCategorizationApi.runState();
@@ -52,24 +54,30 @@ export default function AiCategorizationControls({ onUnauthorized, onPrintUpdate
     if (!append) setSelected([]);
   };
 
+  // Reloaded when the run dialog closes, since a run adds suggestions.
   useEffect(() => {
+    if (runOpen) return;
     let active = true;
+    setSuggestionsLoading(true);
     void aiCategorizationApi
-      .status()
-      .then(async (status) => {
-        if (active) setEnabled(status.enabled);
-        if (active && status.enabled) {
-          const suggestions = await aiCategorizationApi.suggestions(1, 0);
-          if (active) setTotal(suggestions.total);
-        }
+      .suggestions(50, 0)
+      .then((result) => {
+        if (!active) return;
+        setItems(result.items);
+        setTotal(result.total);
+        setSelected([]);
       })
       .catch((err: unknown) => {
         if (err instanceof UnauthorizedError) onUnauthorized?.();
+        else if (active) showToast({ message: err instanceof Error ? err.message : String(err), severity: "error" });
+      })
+      .finally(() => {
+        if (active) setSuggestionsLoading(false);
       });
     return () => {
       active = false;
     };
-  }, [onUnauthorized]);
+  }, [runOpen, onUnauthorized, showToast]);
 
   useEffect(() => {
     if (!runOpen) return;
@@ -98,19 +106,6 @@ export default function AiCategorizationControls({ onUnauthorized, onPrintUpdate
     setBusy(true);
     try {
       await loadRun();
-    } catch (err) {
-      if (err instanceof UnauthorizedError) onUnauthorized?.();
-      else showToast({ message: err instanceof Error ? err.message : String(err), severity: "error" });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const openSuggestions = async () => {
-    setSuggestionsOpen(true);
-    setBusy(true);
-    try {
-      await loadSuggestions();
     } catch (err) {
       if (err instanceof UnauthorizedError) onUnauthorized?.();
       else showToast({ message: err instanceof Error ? err.message : String(err), severity: "error" });
@@ -165,19 +160,19 @@ export default function AiCategorizationControls({ onUnauthorized, onPrintUpdate
     }
   };
 
-  if (!enabled) return null;
   const toggleScope = (key: keyof AiRunScope) => setScope((current) => ({ ...current, [key]: !current[key] }));
 
   return (
     <>
-      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+      <Stack spacing={1} alignItems="flex-start" sx={{ mb: 2.5 }}>
         <Button size="small" variant="outlined" startIcon={<AutoAwesomeIcon />} onClick={() => void openRun()}>
           {t("models:aiCategorization.runAll")}
         </Button>
-        <Button size="small" variant="outlined" onClick={() => void openSuggestions()}>
-          {t("models:aiCategorization.pending", { count: total })}
-        </Button>
+        <Typography variant="caption" color="text.secondary">
+          {t("models:aiCategorization.runHint")}
+        </Typography>
       </Stack>
+      <Divider sx={{ mb: 2 }} />
       <Dialog open={runOpen} onClose={() => setRunOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>{t("models:aiCategorization.runTitle")}</DialogTitle>
         <DialogContent>
@@ -257,135 +252,132 @@ export default function AiCategorizationControls({ onUnauthorized, onPrintUpdate
           )}
         </DialogActions>
       </Dialog>
-      <Dialog open={suggestionsOpen} onClose={() => setSuggestionsOpen(false)} fullWidth maxWidth="md">
-        <DialogTitle>{t("models:aiCategorization.suggestionsTitle", { count: total })}</DialogTitle>
-        <DialogContent>
-          {busy && !items.length ? (
-            <CircularProgress size={22} />
-          ) : items.length ? (
-            <>
-              <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+      <Typography variant="body2" fontWeight={600} sx={{ mb: 1 }}>
+        {t("models:aiCategorization.suggestionsTitle", { count: total })}
+      </Typography>
+      <Box>
+        {suggestionsLoading && !items.length ? (
+          <CircularProgress size={22} />
+        ) : items.length ? (
+          <>
+            <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+              <Button
+                size="small"
+                onClick={() => setSelected(selected.length === items.length ? [] : items.map((item) => item.id))}
+              >
+                {selected.length === items.length
+                  ? t("models:aiCategorization.deselectAll")
+                  : t("models:aiCategorization.selectAll")}
+              </Button>
+              <Button
+                size="small"
+                startIcon={<CheckIcon />}
+                onClick={() => void actOnItems("accept", selected)}
+                disabled={!selected.length || busy}
+              >
+                {t("models:aiCategorization.acceptSelected")}
+              </Button>
+              <Button
+                size="small"
+                startIcon={<CloseIcon />}
+                onClick={() => void actOnItems("reject", selected)}
+                disabled={!selected.length || busy}
+              >
+                {t("models:aiCategorization.rejectSelected")}
+              </Button>
+            </Stack>
+            <List dense>
+              {items.map((item) => (
+                // The actions sit in the row rather than in secondaryAction: that one is absolutely
+                // positioned over a fixed padding, and two buttons overlap a long reason.
+                <ListItem
+                  key={item.id}
+                  divider
+                  alignItems="flex-start"
+                  sx={{ gap: 1, flexWrap: { xs: "wrap", sm: "nowrap" } }}
+                >
+                  <Checkbox
+                    checked={selected.includes(item.id)}
+                    onChange={() =>
+                      setSelected((ids) =>
+                        ids.includes(item.id) ? ids.filter((id) => id !== item.id) : [...ids, item.id],
+                      )
+                    }
+                  />
+                  <ListItemText
+                    sx={{ flex: "1 1 0", minWidth: 0 }}
+                    primary={item.title || item.name}
+                    secondary={
+                      item.ai_suggestion && (
+                        <>
+                          <Typography component="span" variant="body2" fontWeight={600} sx={{ display: "block" }}>
+                            {`${item.ai_suggestion.category_path} · ${Math.round(item.ai_suggestion.confidence * 100)}%`}
+                          </Typography>
+                          {item.ai_suggestion.reason}
+                        </>
+                      )
+                    }
+                  />
+                  <Stack
+                    direction="row"
+                    spacing={0.5}
+                    sx={{
+                      flexShrink: 0,
+                      pt: 0.5,
+                      // On a phone the actions take their own line instead of squeezing the reason.
+                      flexBasis: { xs: "100%", sm: "auto" },
+                      justifyContent: "flex-end",
+                    }}
+                  >
+                    <Button size="small" onClick={() => void actOnItems("accept", [item.id])} disabled={busy}>
+                      {t("models:aiCategorization.accept")}
+                    </Button>
+                    <Button
+                      size="small"
+                      color="error"
+                      onClick={() => void actOnItems("reject", [item.id])}
+                      disabled={busy}
+                    >
+                      {t("models:aiCategorization.reject")}
+                    </Button>
+                  </Stack>
+                </ListItem>
+              ))}
+            </List>
+            {total > items.length && (
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <Typography variant="caption" color="text.secondary">
+                  {t("models:aiCategorization.firstPage", { shown: items.length, total })}
+                </Typography>
                 <Button
                   size="small"
-                  onClick={() => setSelected(selected.length === items.length ? [] : items.map((item) => item.id))}
+                  disabled={busy}
+                  onClick={() =>
+                    void (async () => {
+                      setBusy(true);
+                      try {
+                        await loadSuggestions(items.length, true);
+                      } catch (err) {
+                        if (err instanceof UnauthorizedError) onUnauthorized?.();
+                        else
+                          showToast({ message: err instanceof Error ? err.message : String(err), severity: "error" });
+                      } finally {
+                        setBusy(false);
+                      }
+                    })()
+                  }
                 >
-                  {selected.length === items.length
-                    ? t("models:aiCategorization.deselectAll")
-                    : t("models:aiCategorization.selectAll")}
-                </Button>
-                <Button
-                  size="small"
-                  startIcon={<CheckIcon />}
-                  onClick={() => void actOnItems("accept", selected)}
-                  disabled={!selected.length || busy}
-                >
-                  {t("models:aiCategorization.acceptSelected")}
-                </Button>
-                <Button
-                  size="small"
-                  startIcon={<CloseIcon />}
-                  onClick={() => void actOnItems("reject", selected)}
-                  disabled={!selected.length || busy}
-                >
-                  {t("models:aiCategorization.rejectSelected")}
+                  {t("models:aiCategorization.loadMore")}
                 </Button>
               </Stack>
-              <List dense>
-                {items.map((item) => (
-                  // The actions sit in the row rather than in secondaryAction: that one is absolutely
-                  // positioned over a fixed padding, and two buttons overlap a long reason.
-                  <ListItem
-                    key={item.id}
-                    divider
-                    alignItems="flex-start"
-                    sx={{ gap: 1, flexWrap: { xs: "wrap", sm: "nowrap" } }}
-                  >
-                    <Checkbox
-                      checked={selected.includes(item.id)}
-                      onChange={() =>
-                        setSelected((ids) =>
-                          ids.includes(item.id) ? ids.filter((id) => id !== item.id) : [...ids, item.id],
-                        )
-                      }
-                    />
-                    <ListItemText
-                      sx={{ flex: "1 1 0", minWidth: 0 }}
-                      primary={item.title || item.name}
-                      secondary={
-                        item.ai_suggestion && (
-                          <>
-                            <Typography component="span" variant="body2" fontWeight={600} sx={{ display: "block" }}>
-                              {`${item.ai_suggestion.category_path} · ${Math.round(item.ai_suggestion.confidence * 100)}%`}
-                            </Typography>
-                            {item.ai_suggestion.reason}
-                          </>
-                        )
-                      }
-                    />
-                    <Stack
-                      direction="row"
-                      spacing={0.5}
-                      sx={{
-                        flexShrink: 0,
-                        pt: 0.5,
-                        // On a phone the actions take their own line instead of squeezing the reason.
-                        flexBasis: { xs: "100%", sm: "auto" },
-                        justifyContent: "flex-end",
-                      }}
-                    >
-                      <Button size="small" onClick={() => void actOnItems("accept", [item.id])} disabled={busy}>
-                        {t("models:aiCategorization.accept")}
-                      </Button>
-                      <Button
-                        size="small"
-                        color="error"
-                        onClick={() => void actOnItems("reject", [item.id])}
-                        disabled={busy}
-                      >
-                        {t("models:aiCategorization.reject")}
-                      </Button>
-                    </Stack>
-                  </ListItem>
-                ))}
-              </List>
-              {total > items.length && (
-                <Stack direction="row" alignItems="center" spacing={1}>
-                  <Typography variant="caption" color="text.secondary">
-                    {t("models:aiCategorization.firstPage", { shown: items.length, total })}
-                  </Typography>
-                  <Button
-                    size="small"
-                    disabled={busy}
-                    onClick={() =>
-                      void (async () => {
-                        setBusy(true);
-                        try {
-                          await loadSuggestions(items.length, true);
-                        } catch (err) {
-                          if (err instanceof UnauthorizedError) onUnauthorized?.();
-                          else
-                            showToast({ message: err instanceof Error ? err.message : String(err), severity: "error" });
-                        } finally {
-                          setBusy(false);
-                        }
-                      })()
-                    }
-                  >
-                    {t("models:aiCategorization.loadMore")}
-                  </Button>
-                </Stack>
-              )}
-            </>
-          ) : (
-            <Typography variant="body2" color="text.secondary">
-              {t("models:aiCategorization.noSuggestions")}
-            </Typography>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setSuggestionsOpen(false)}>{t("common:close")}</Button>
-        </DialogActions>
-      </Dialog>
+            )}
+          </>
+        ) : (
+          <Typography variant="body2" color="text.secondary">
+            {t("models:aiCategorization.noSuggestions")}
+          </Typography>
+        )}
+      </Box>
     </>
   );
 }
