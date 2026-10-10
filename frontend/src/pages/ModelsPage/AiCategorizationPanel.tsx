@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import CheckIcon from "@mui/icons-material/Check";
@@ -24,12 +24,17 @@ import { aiCategorizationApi, type AiRun, type AiRunCounts, type AiRunScope } fr
 import type { Print } from "../../api/prints";
 import { useToast } from "../../components/ToastProvider";
 
-type Props = { onUnauthorized?: () => void; onPrintUpdated?: (print: Print) => void };
+type Props = {
+  onUnauthorized?: () => void;
+  onPrintUpdated?: (print: Print) => void;
+  /** Many models may have changed category: after a run, or a bulk accept or reject. */
+  onLibraryChanged?: () => void;
+};
 const initialCounts: AiRunCounts = { uncategorized: 0, ai: 0, rule: 0, legacy: 0, manual: 0, folder: 0 };
 const initialScope: AiRunScope = { include_ai: false, include_rule: false, include_legacy: false };
 
 /** The AI section of the models manager: a library run above the pending suggestions. */
-export default function AiCategorizationPanel({ onUnauthorized, onPrintUpdated }: Props) {
+export default function AiCategorizationPanel({ onUnauthorized, onPrintUpdated, onLibraryChanged }: Props) {
   const { t } = useTranslation(["models", "common"]);
   const showToast = useToast();
   const [runOpen, setRunOpen] = useState(false);
@@ -101,6 +106,19 @@ export default function AiCategorizationPanel({ onUnauthorized, onPrintUpdated }
     };
   }, [runOpen, onUnauthorized]);
 
+  // A run that finishes while the dialog is open has changed the library behind it.
+  const wasRunning = useRef(false);
+  useEffect(() => {
+    if (wasRunning.current && !run?.running) onLibraryChanged?.();
+    wasRunning.current = Boolean(run?.running);
+  }, [run?.running, onLibraryChanged]);
+
+  // Closed mid-run, it shows what the run has done so far.
+  const closeRun = () => {
+    if (run?.running) onLibraryChanged?.();
+    setRunOpen(false);
+  };
+
   const openRun = async () => {
     setRunOpen(true);
     setBusy(true);
@@ -149,6 +167,7 @@ export default function AiCategorizationPanel({ onUnauthorized, onPrintUpdated }
         onPrintUpdated?.(result.print);
       } else {
         await aiCategorizationApi.bulk(action, ids);
+        onLibraryChanged?.();
       }
       await loadSuggestions();
       showToast({ message: t(`models:aiCategorization.${action}Done`, { count: ids.length }) });
@@ -173,7 +192,7 @@ export default function AiCategorizationPanel({ onUnauthorized, onPrintUpdated }
         </Typography>
       </Stack>
       <Divider sx={{ mb: 2 }} />
-      <Dialog open={runOpen} onClose={() => setRunOpen(false)} fullWidth maxWidth="sm">
+      <Dialog open={runOpen} onClose={closeRun} fullWidth maxWidth="sm">
         <DialogTitle>{t("models:aiCategorization.runTitle")}</DialogTitle>
         <DialogContent>
           <Stack spacing={1.5} sx={{ pt: 1 }}>
@@ -229,7 +248,7 @@ export default function AiCategorizationPanel({ onUnauthorized, onPrintUpdated }
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setRunOpen(false)}>{t("common:close")}</Button>
+          <Button onClick={closeRun}>{t("common:close")}</Button>
           {run?.running ? (
             <Button color="error" onClick={() => void cancel()} disabled={busy}>
               {t("models:aiCategorization.cancel")}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import Box from "@mui/material/Box";
@@ -61,6 +61,9 @@ export default function ModelsPage({
   const panelKind = categoriesView === "folders" ? "folder" : "category";
   const panelCategories = useMemo(() => categories.filter((c) => c.kind === panelKind), [categories, panelKind]);
   const [managerSection, setManagerSection] = useState<ModelsManagerSection | null>(null);
+  // Bumped when AI categorization changes many models at once, to refetch the grid.
+  const [libraryVersion, setLibraryVersion] = useState(0);
+  const refreshLibrary = useCallback(() => setLibraryVersion((version) => version + 1), []);
   const sortModeParam = searchParams.get("orderBy");
   const sortMode: PrintSortMode =
     sortModeParam === "popular" || sortModeParam === "downloads" ? sortModeParam : "newest";
@@ -163,7 +166,7 @@ export default function ModelsPage({
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoryIdFilter, printsVersion, sortMode]);
+  }, [categoryIdFilter, printsVersion, libraryVersion, sortMode]);
 
   const loadMore = async () => {
     if (loadingMore || !hasMore) return;
@@ -273,6 +276,7 @@ export default function ModelsPage({
         onMove={moveCategory}
         onUpdateMeta={updateCategoryMeta}
         onPrintUpdated={(updated) => setItems((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))}
+        onLibraryChanged={refreshLibrary}
         onUnauthorized={onUnauthorized}
       />
       <Stack direction="row" spacing={2} alignItems="flex-start">

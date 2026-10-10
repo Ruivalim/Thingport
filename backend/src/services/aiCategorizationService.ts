@@ -111,24 +111,42 @@ function chatUrl(baseUrl: string): string {
   return `${baseUrl.replace(/\/+$/, "")}/chat/completions`;
 }
 
+/** What a failed fetch means to an admin; fetch itself only says "fetch failed" or "aborted". */
+function readableNetworkError(error: unknown, settings: AiCategorizationSettings): unknown {
+  if (error instanceof Error && error.name === "AbortError")
+    return new Error(`The AI provider did not answer within ${Math.round(settings.timeoutMs / 1000)} s`);
+  if (error instanceof TypeError) return new Error("Could not reach the AI provider. Check the API base URL.");
+  return error;
+}
+
 async function requestProvider(
   print: Print,
   candidates: Candidate[],
   settings: AiCategorizationSettings,
+  attempts = 3,
 ): Promise<ProviderResult> {
   const image = await previewPart(print.id, settings.sendImage);
+  // A model that already has a category says so; on its own the model often misses an obvious fit.
+  const current = print.categoryId ? candidates.find((candidate) => candidate.id === print.categoryId) : undefined;
   const content: ({ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } })[] = [
     {
       type: "text",
       text: [
-        "Classify this 3D-print model into one candidate category. Return null if none fits.",
+        // "Classify this 3D-print model" pulled answers toward 3D printer categories; ask about the object instead.
+        "Pick the candidate category that best fits this model. It is a file for a physical object that gets 3D printed, " +
+          "so choose by what the printed object is or is used for, not by the fact that it is 3D printed. " +
+          "Categories about 3D printers fit only parts and accessories for a 3D printer itself.",
+        "Give your reason first and name the category you pick in it, then give that candidate's number. " +
+          "If the model has a current category that still fits, pick it again. Use null only if no candidate fits.",
         `Title: ${print.title ?? print.name}`,
         `Tags: ${print.tags.join(", ") || "none"}`,
         `Creator: ${print.creator ?? "unknown"}`,
         `Source: ${print.sourceProvider ?? "unknown"}`,
+        ...(current ? [`Current category: ${current.path}`] : []),
         `Description: ${plainText(print.notes) || "none"}`,
         "Candidates:",
-        ...candidates.map((candidate) => `${candidate.id}: ${candidate.path}`),
+        // Numbered rather than by id: small models misread near-identical ids and return a neighbour's.
+        ...candidates.map((candidate, index) => `${index + 1}: ${candidate.path}`),
       ].join("\n"),
     },
   ];
@@ -136,15 +154,18 @@ async function requestProvider(
   const schema = {
     type: "object",
     additionalProperties: false,
+    // Fields are generated in this order: the reason comes first so the answer follows it rather than being
+    // justified afterwards.
     properties: {
-      category_id: { anyOf: [{ type: "string", enum: candidates.map((candidate) => candidate.id) }, { type: "null" }] },
-      confidence: { type: "number", minimum: 0, maximum: 1 },
       reason: { type: "string", maxLength: 300 },
+      category: { anyOf: [{ type: "integer", enum: candidates.map((_, index) => index + 1) }, { type: "null" }] },
+      confidence: { type: "number", minimum: 0, maximum: 1 },
     },
-    required: ["category_id", "confidence", "reason"],
+    required: ["reason", "category", "confidence"],
   };
 
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    const last = attempt === attempts - 1;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), settings.timeoutMs);
     try {
@@ -165,7 +186,7 @@ async function requestProvider(
       });
       if (!response.ok) {
         const retryable = response.status === 429 || response.status >= 500;
-        if (!retryable || attempt === 2) throw new Error(`AI provider returned HTTP ${response.status}`);
+        if (!retryable || last) throw new Error(`AI provider returned HTTP ${response.status}`);
         const retryAfterHeader = response.headers.get("retry-after");
         const retryAfter = retryAfterHeader === null ? Number.NaN : Number(retryAfterHeader);
         const delay =
@@ -185,24 +206,28 @@ async function requestProvider(
         .replace(/^```(?:json)?\s*/i, "")
         .replace(/\s*```$/, "");
       const parsed = z
-        .object({ category_id: z.string().nullable(), confidence: z.number().finite(), reason: z.string() })
+        .object({
+          // Providers without a grammar sometimes quote the number.
+          category: z.union([z.number().int(), z.string().regex(/^\d+$/).transform(Number)]).nullable(),
+          confidence: z.number().finite(),
+          reason: z.string(),
+        })
         .safeParse(JSON.parse(unfenced));
-      if (!parsed.success || parsed.data.confidence < 0 || parsed.data.confidence > 1)
-        throw new Error("AI provider returned invalid classification");
-      if (
-        parsed.data.category_id !== null &&
-        !candidates.some((candidate) => candidate.id === parsed.data.category_id)
-      ) {
-        throw new Error("AI provider returned a category outside the candidate list");
-      }
+      if (!parsed.success) throw new Error("AI provider returned invalid classification");
+      // Providers that ignore the schema's range (Ollama) can answer a whole percentage such as 85.
+      const { confidence: stated } = parsed.data;
+      const confidence = Number.isInteger(stated) && stated > 1 && stated <= 100 ? stated / 100 : stated;
+      if (confidence < 0 || confidence > 1) throw new Error("AI provider returned invalid classification");
+      const chosen = parsed.data.category === null ? null : candidates[parsed.data.category - 1];
+      if (chosen === undefined) throw new Error("AI provider returned a category outside the candidate list");
       return {
-        categoryId: parsed.data.category_id,
-        confidence: parsed.data.confidence,
+        categoryId: chosen?.id ?? null,
+        confidence,
         reason: parsed.data.reason.slice(0, 300),
       };
     } catch (error) {
       const retryable = error instanceof TypeError || (error instanceof Error && error.name === "AbortError");
-      if (!retryable || attempt === 2) throw noSecretError(error);
+      if (!retryable || last) throw noSecretError(readableNetworkError(error, settings));
       await retryDelay(attempt === 0 ? 1000 : 3000);
     } finally {
       clearTimeout(timeout);
@@ -511,6 +536,8 @@ export async function testAiCategorizationProvider(
         { id: "b", path: "Other" },
       ],
       settings,
+      // A test answers the admin who is waiting on it; one attempt says whether the connection works.
+      1,
     );
     return { ok: true, latencyMs: Date.now() - start, model: settings.model! };
   } catch (error) {

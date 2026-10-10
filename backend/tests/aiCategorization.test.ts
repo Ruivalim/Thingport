@@ -4,7 +4,7 @@ import request from "supertest";
 import { createApp } from "../src/app";
 import { prisma } from "../src/db";
 import { DEFAULT_AI_CATEGORIZATION_SETTINGS, setAiCategorizationSettings } from "../src/services/settingsService";
-import { setAiCategorizationRetryDelayForTest } from "../src/services/aiCategorizationService";
+import { aiCategoryPaths, setAiCategorizationRetryDelayForTest } from "../src/services/aiCategorizationService";
 
 const app = createApp();
 const stamp = Date.now();
@@ -13,6 +13,7 @@ let token: string;
 let userId: string;
 let userNumber = 0;
 let printNumber = 0;
+let categoryNumber = 0;
 const createdPrints: string[] = [];
 const createdCategories: string[] = [];
 const createdUsers: string[] = [];
@@ -37,6 +38,34 @@ function isAnswer(reply: ProviderReply): reply is ProviderAnswer {
   return "category_id" in reply;
 }
 
+function promptText(body: Record<string, unknown>): string {
+  return (body.messages as { content: { text: string }[] }[])[0].content[0].text;
+}
+
+// Handlers answer with real category ids for readability; the prompt numbers its candidates, so
+// translate an id into its number there. An id the prompt doesn't list becomes an out-of-range number.
+async function candidateNumber(body: Record<string, unknown>, categoryId: string): Promise<number> {
+  const row = await prisma.category.findUnique({ where: { id: categoryId } });
+  const path = row ? (await aiCategoryPaths(row.userId)).get(categoryId) : undefined;
+  const line = promptText(body)
+    .split("\n")
+    .find((text) => path !== undefined && text.replace(/^\d+: /, "") === path);
+  return line ? Number(line.split(":")[0]) : 9999;
+}
+
+async function toProviderJson(body: Record<string, unknown>, answer: ProviderAnswer) {
+  const { category_id: categoryId, ...rest } = answer;
+  return { category: categoryId === null ? null : await candidateNumber(body, categoryId), ...rest };
+}
+
+async function toProviderText(body: Record<string, unknown>, text: string): Promise<string> {
+  let out = text.replace(/"category_id":null/g, '"category":null');
+  for (const [match, categoryId] of text.matchAll(/"category_id":"([^"]+)"/g)) {
+    out = out.replace(match, `"category":${await candidateNumber(body, categoryId)}`);
+  }
+  return out;
+}
+
 async function startProvider(handler: ProviderHandler) {
   providerRequests = 0;
   providerInFlight = 0;
@@ -49,7 +78,8 @@ async function startProvider(handler: ProviderHandler) {
       const chunks: Buffer[] = [];
       try {
         for await (const chunk of req) chunks.push(Buffer.from(chunk));
-        const reply = await handler(JSON.parse(Buffer.concat(chunks).toString("utf8")));
+        const body = JSON.parse(Buffer.concat(chunks).toString("utf8")) as Record<string, unknown>;
+        const reply = await handler(body);
         if (!isAnswer(reply) && reply.never) return;
         const status = isAnswer(reply) ? 200 : reply.status;
         const headers = isAnswer(reply) ? {} : reply.headers || {};
@@ -57,11 +87,11 @@ async function startProvider(handler: ProviderHandler) {
           ? reply
           : (reply.content ?? { category_id: null, confidence: 1, reason: "none" });
         res.writeHead(status, { "content-type": "application/json", ...headers });
-        res.end(
-          JSON.stringify({
-            choices: [{ message: { content: typeof content === "string" ? content : JSON.stringify(content) } }],
-          }),
-        );
+        const text =
+          typeof content === "string"
+            ? await toProviderText(body, content)
+            : JSON.stringify(await toProviderJson(body, content));
+        res.end(JSON.stringify({ choices: [{ message: { content: text } }] }));
       } catch (error) {
         res.writeHead(500, { "content-type": "application/json" });
         res.end(JSON.stringify({ error: error instanceof Error ? error.message : "provider failed" }));
@@ -99,7 +129,8 @@ async function enable(baseUrl: string, patch: Partial<typeof DEFAULT_AI_CATEGORI
 }
 
 async function categoryFor(ownerId: string, name: string, kind = "category") {
-  const row = await prisma.category.create({ data: { userId: ownerId, name, kind } });
+  // Unique, so a test's answer maps to exactly one numbered candidate in the prompt.
+  const row = await prisma.category.create({ data: { userId: ownerId, name: `${name} ${categoryNumber++}`, kind } });
   createdCategories.push(row.id);
   return row;
 }
@@ -215,7 +246,7 @@ describe("AI categorization", () => {
       .post("/api/settings/ai-categorization/test")
       .set(auth())
       .send({ base_url: deadUrl, model: "local-model", timeout_ms: 1000 });
-    expect(tested.body.ok).toBe(false);
+    expect(tested.body).toMatchObject({ ok: false, error: expect.stringContaining("Could not reach the AI provider") });
     const refused = await request(app)
       .patch("/api/settings/ai-categorization")
       .set(auth())
@@ -224,6 +255,16 @@ describe("AI categorization", () => {
     expect(refused.body.code).toBe("ai_connection_failed");
     const unchanged = await request(app).get("/api/settings/ai-categorization").set(auth());
     expect(unchanged.body.base_url).toBeNull();
+
+    // A test makes one attempt rather than retrying a failing provider.
+    const failingUrl = await startProvider(() => ({ status: 500 }));
+    const failing = await request(app)
+      .post("/api/settings/ai-categorization/test")
+      .set(auth())
+      .send({ base_url: failingUrl, model: "local-model" });
+    expect(failing.body).toMatchObject({ ok: false, error: "AI provider returned HTTP 500" });
+    expect(providerRequests).toBe(1);
+    await stopProvider();
 
     const liveUrl = await startProvider(() => ({ category_id: null, confidence: 1, reason: "none" }));
     const draft = await request(app)
@@ -313,7 +354,7 @@ describe("AI categorization", () => {
       { category_id: null, confidence: 1, reason: "none" },
       {
         status: 200,
-        content: `\`\`\`json\n${JSON.stringify({ category_id: target.id, confidence: 0.5, reason: longReason })}\n\`\`\``,
+        content: `\`\`\`json\n${JSON.stringify({ category_id: target.id, confidence: 50, reason: longReason })}\n\`\`\``,
       },
       { status: 200, content: '{"category_id":null,"confidence":NaN,"reason":"bad"}' },
       { category_id: target.id, confidence: 1.1, reason: "bad" },
@@ -339,7 +380,16 @@ describe("AI categorization", () => {
     expect(fenced.status).toBe(200);
     expect(fenced.body).toMatchObject({ outcome: "suggested", print: { ai_suggestion: { category_id: target.id } } });
     expect(fenced.body.print.ai_suggestion.reason).toHaveLength(300);
+    // Answered as a whole percentage, which some providers do despite the 0-1 range.
+    expect(fenced.body.print.ai_suggestion.confidence).toBe(0.5);
     expect(JSON.stringify(schema)).toContain('"maxLength":300');
+    // Candidates go out as numbers; a near-identical id is easy for a small model to misread.
+    expect(JSON.stringify(schema)).not.toContain(target.id);
+    expect(JSON.stringify(schema)).toContain('"type":"integer"');
+    // The reason is generated before the answer.
+    const properties = (schema as unknown as { json_schema: { schema: { properties: object } } }).json_schema.schema
+      .properties;
+    expect(Object.keys(properties)[0]).toBe("reason");
 
     for (let i = 0; i < 3; i++) {
       const invalid = await request(app)
@@ -349,6 +399,26 @@ describe("AI categorization", () => {
       expect(invalid.status).toBe(502);
       expect(invalid.body.code).toBe("ai_failed");
     }
+  });
+
+  it("tells the provider a model's current category", async () => {
+    const current = await category("Current hint");
+    const prompts: string[] = [];
+    const baseUrl = await startProvider((body) => {
+      prompts.push(promptText(body));
+      return { category_id: null, confidence: 1, reason: "none" };
+    });
+    await enable(baseUrl);
+    await request(app)
+      .post(`/api/print/${(await print(current.id, "LEGACY")).id}/recategorize`)
+      .set(auth())
+      .send({});
+    await request(app)
+      .post(`/api/print/${(await print()).id}/recategorize`)
+      .set(auth())
+      .send({});
+    expect(prompts[0]).toContain(`Current category: ${current.name}`);
+    expect(prompts[1]).not.toContain("Current category:");
   });
 
   it("preserves hyphens in plain-text prompt descriptions", async () => {
@@ -411,7 +481,7 @@ describe("AI categorization", () => {
     expect(bulk.body).toMatchObject({ accepted: 0, rejected: 1, failed: 0 });
     const repeated = await request(app).post(`/api/print/${model.id}/recategorize`).set(auth()).send({});
     expect(repeated.body).toMatchObject({ outcome: "suggested", print: { ai_suggestion: { category_id: second.id } } });
-    expect(JSON.stringify(received[1])).not.toContain(first.id);
+    expect(promptText(received[1] as Record<string, unknown>)).not.toContain(first.name);
 
     const accepted = await print();
     await request(app).post(`/api/print/${accepted.id}/recategorize`).set(auth()).send({});
@@ -495,9 +565,8 @@ describe("AI categorization", () => {
     const bodies: Record<string, unknown>[] = [];
     const baseUrl = await startProvider((body) => {
       bodies.push(body);
-      const messages = body.messages as { content: { text: string }[] }[];
       return {
-        category_id: messages[0].content[0].text.includes(ownCategory.id) ? ownCategory.id : otherCategory.id,
+        category_id: promptText(body).includes(ownCategory.name) ? ownCategory.id : otherCategory.id,
         confidence: 0.2,
         reason: "review",
       };
@@ -507,9 +576,9 @@ describe("AI categorization", () => {
     const otherPrint = await printFor(other.id);
     await request(app).post(`/api/print/${ownPrint.id}/recategorize`).set(auth(owner.token)).send({});
     await request(app).post(`/api/print/${otherPrint.id}/recategorize`).set(auth(other.token)).send({});
-    expect(JSON.stringify(bodies[0])).toContain(ownCategory.id);
-    expect(JSON.stringify(bodies[0])).not.toContain(ownFolder.id);
-    expect(JSON.stringify(bodies[0])).not.toContain(otherCategory.id);
+    expect(promptText(bodies[0])).toContain(ownCategory.name);
+    expect(promptText(bodies[0])).not.toContain(ownFolder.name);
+    expect(promptText(bodies[0])).not.toContain(otherCategory.name);
 
     const suggestions = await request(app).get("/api/ai-categorization/suggestions").set(auth(owner.token));
     expect(suggestions.body.total).toBe(1);

@@ -26,6 +26,7 @@ type Props = {
   onMove: (id: string, parentId: string | null, position: number) => Promise<void>;
   onUpdateMeta: (id: string, meta: CategoryMetaInput) => Promise<void>;
   onPrintUpdated?: (print: Print) => void;
+  onLibraryChanged?: () => void;
   onUnauthorized?: () => void;
 };
 
@@ -36,6 +37,7 @@ export default function ModelsManagerDialog({
   categories,
   onCreate,
   onPrintUpdated,
+  onLibraryChanged,
   onUnauthorized,
   ...handlers
 }: Props) {
@@ -108,7 +110,13 @@ export default function ModelsManagerDialog({
     >
       {section === "categories" && managerFor("category")}
       {section === "folders" && managerFor("folder")}
-      {section === "ai" && <AiCategorizationPanel onUnauthorized={onUnauthorized} onPrintUpdated={onPrintUpdated} />}
+      {section === "ai" && (
+        <AiCategorizationPanel
+          onUnauthorized={onUnauthorized}
+          onPrintUpdated={onPrintUpdated}
+          onLibraryChanged={onLibraryChanged}
+        />
+      )}
     </SectionedDialog>
   );
 }
