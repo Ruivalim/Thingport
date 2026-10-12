@@ -2,7 +2,7 @@
 // then the enable switch and recent imports.
 
 import { fillIcons } from "../shared/icon";
-import { send, type ExtensionState } from "../shared/messages";
+import { send, type Connection, type ExtensionState } from "../shared/messages";
 import { normalizeInstanceUrl } from "../shared/storage";
 import { clearError, els, showError } from "./dom";
 import { loadRecentImports } from "./recentImports";
@@ -44,14 +44,35 @@ function showSetupForm(prefillUrl = "", prefillEmail = ""): void {
   els.instanceUrlInput.focus();
 }
 
-async function refresh(): Promise<void> {
+function connectionProblem(connection: Extract<Connection, { connected: false }>): string {
+  return connection.reason === "credentials"
+    ? `Your Thingport instance turned down the saved email and password -- they were probably changed there. Sign in again with the current ones. (${connection.detail})`
+    : `Your Thingport instance didn't answer -- it may not be running or reachable right now. Check its URL, or try again later. (${connection.detail})`;
+}
+
+/** Opens on the edit form when the saved connection no longer signs in. `checkConnection` is off
+ *  after Cancel, which then shows the problem above the configured view instead. */
+async function refresh({ checkConnection = true } = {}): Promise<void> {
   const res = await send("GET_STATE");
   if (!res?.ok) {
     showError(res?.error ?? "The extension background isn't responding");
     return;
   }
-  if (res.data.configured) showConfiguredView(res.data);
-  else showSetupForm();
+  if (!res.data.configured) {
+    showSetupForm();
+    return;
+  }
+  showConfiguredView(res.data);
+  if (res.data.disabled) return;
+  const connection = await send("CHECK_CONNECTION");
+  if (!connection?.ok || connection.data.connected) return;
+  if (checkConnection) {
+    showSetupForm(res.data.instanceUrl, res.data.email);
+    showError(connectionProblem(connection.data));
+    (connection.data.reason === "credentials" ? els.passwordInput : els.instanceUrlInput).focus();
+  } else {
+    showError(connectionProblem(connection.data), els.configuredError);
+  }
 }
 
 els.editInstanceBtn.addEventListener("click", async () => {
@@ -59,7 +80,7 @@ els.editInstanceBtn.addEventListener("click", async () => {
   showSetupForm(res?.ok ? res.data.instanceUrl : "", res?.ok ? res.data.email : "");
 });
 
-els.cancelBtn.addEventListener("click", () => void refresh());
+els.cancelBtn.addEventListener("click", () => void refresh({ checkConnection: false }));
 
 els.enabledSwitch.addEventListener("change", async () => {
   clearError(els.configuredError);

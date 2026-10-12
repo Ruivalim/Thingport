@@ -12,6 +12,10 @@ export type ExtensionState = {
   email: string;
 };
 
+/** Whether the saved instance URL, email and password still sign in. */
+export type Connection =
+  { connected: true } | { connected: false; reason: "credentials" | "unreachable"; detail: string };
+
 /** The signed-in account's recent imports, as the popup shows them. */
 export type RecentImport = {
   printId: string;
@@ -71,6 +75,7 @@ export type BackgroundMessages = {
   SAVE_CONFIG: { payload: { instanceUrl: string; email: string; password: string }; result: null };
   SET_DISABLED: { payload: { disabled: boolean }; result: null };
   GET_RECENT_IMPORTS: { payload: void; result: RecentImport[] };
+  CHECK_CONNECTION: { payload: void; result: Connection };
   OPEN_SETUP: { payload: void; result: "popup" | "tab" };
   SET_TAB_ICON_STATE: { payload: { active: boolean }; result: null };
   API_CALL: { payload: ApiCallPayload; result: unknown };

@@ -31,7 +31,12 @@ export function unmountHost(): void {
   contentEl = null;
 }
 
-type FabOptions = { variant?: "in-library" | "inactive"; label: string; title?: string; onClick: () => void };
+type FabOptions = {
+  variant?: "in-library" | "inactive" | "disconnected";
+  label: string;
+  title?: string;
+  onClick: () => void;
+};
 
 export function mountFab(root: ShadowRoot, { variant, label, title, onClick }: FabOptions): void {
   const button = document.createElement("button");

@@ -52,7 +52,8 @@
 
   // Supported page, extension not configured yet (see setupModal.ts). Grayed out so it doesn't
   // read as "ready to import", but still clearly the Thingport icon.
-  &--inactive {
+  &--inactive,
+  &--disconnected {
     background: t.c("surface-sunken");
     box-shadow: 0 2px 10px t.c("shadow");
 
@@ -64,5 +65,22 @@
     &:hover svg {
       opacity: 0.75;
     }
+  }
+
+  // Set up, but signing in failed (see setupModal.ts): grayed out like --inactive, plus a red dot.
+  &--disconnected::after {
+    content: "!";
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 20px;
+    height: 20px;
+    box-sizing: border-box;
+    border: 2px solid t.c("surface");
+    border-radius: 50%;
+    background: t.c("danger");
+    color: t.c("on-accent");
+    font: 700 11px/16px t.$font-stack;
+    text-align: center;
   }
 }

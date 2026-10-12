@@ -2,7 +2,7 @@
 // and every request to the Thingport instance.
 
 import { listen, type BackgroundMessages } from "../shared/messages";
-import { apiCall } from "./api";
+import { apiCall, checkConnection } from "./api";
 import { getState, saveConfig, setDisabled } from "./config";
 import { armDownloadCapture, awaitDownloadCapture, disarmDownloadCapture } from "./downloadCapture";
 import { importSingle, queueImport } from "./importJobs";
@@ -29,6 +29,7 @@ listen<BackgroundMessages>({
   SAVE_CONFIG: (payload) => saveConfig(payload),
   SET_DISABLED: ({ disabled }) => setDisabled(disabled),
   GET_RECENT_IMPORTS: () => getRecentImports(),
+  CHECK_CONNECTION: () => checkConnection(),
   OPEN_SETUP: (_payload, sender) => openSetup(sender.tab?.id),
   SET_TAB_ICON_STATE: ({ active }, sender) => setTabIconState(senderTabId(sender), active),
   API_CALL: ({ method, path, body }) => apiCall(method, path, body),
@@ -55,6 +56,10 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   // "complete" wakes a suspended background to drive the guided import.
   if (changeInfo.status === "complete") void advanceJob(tabId);
 });
+
+// Before the user reaches a provider page, so the toolbar badge already shows a broken connection.
+chrome.runtime.onStartup.addListener(() => void checkConnection());
+chrome.runtime.onInstalled.addListener(() => void checkConnection());
 
 chrome.tabs.onRemoved.addListener((tabId) => {
   void dropJobIfForTab(tabId);

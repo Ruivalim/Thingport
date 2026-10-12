@@ -81,6 +81,32 @@ async function init(): Promise<void> {
     return;
   }
 
+  // Before anything else asks the instance, so a stale password or a down instance shows as such
+  // rather than as every model looking new.
+  const connectionRes = await send("CHECK_CONNECTION");
+  if (isStale()) return;
+  if (connectionRes?.ok && !connectionRes.data.connected) {
+    const problem = connectionRes.data;
+    const root = mountHost();
+    mountFab(root, {
+      variant: "disconnected",
+      label: "Thingport Grab can't sign in to your Thingport instance",
+      title: "Thingport Grab can't sign in to your Thingport instance",
+      onClick: () =>
+        openSetupModal(root, {
+          problem,
+          instanceUrl: stateRes.data.instanceUrl,
+          // A failed check isn't cached, so this signs in again.
+          onRetry: () => {
+            unmount();
+            void init();
+          },
+        }),
+    });
+    reportTabIconState(false);
+    return;
+  }
+
   let library: LibraryState | null = null;
   if (classification.kind === "single") {
     try {

@@ -9,6 +9,8 @@ export const STORAGE_KEYS = {
   isAdmin: "isAdmin",
   token: "token",
   tokenExpiresAt: "tokenExpiresAt",
+  // Last successful sign-in; the connection check signs in again once it's a few minutes old.
+  loginVerifiedAt: "loginVerifiedAt",
   // Lets the cookie sync skip a redundant PATCH.
   lastSyncedMakerworldCookie: "lastSyncedMakerworldCookie",
 } as const;
@@ -21,6 +23,7 @@ export type StoredConfig = {
   isAdmin?: boolean;
   token?: string;
   tokenExpiresAt?: number;
+  loginVerifiedAt?: number;
   lastSyncedMakerworldCookie?: string;
 };
 

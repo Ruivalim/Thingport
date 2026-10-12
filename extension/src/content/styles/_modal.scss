@@ -1,4 +1,4 @@
-// The grayed-out icon's setup dialog (see setupModal.ts).
+// The grayed-out icon's setup or can't-sign-in dialog (see setupModal.ts).
 @use "../../styles/tokens" as t;
 @use "../../styles/mixins" as m;
 
@@ -53,6 +53,16 @@
 
   .tg-btn {
     margin-top: 14px;
+  }
+
+  .tg-btn + .tg-btn {
+    margin-top: t.$space-2;
+  }
+
+  // The instance's own error, for when the explanation above doesn't fit.
+  &__detail {
+    word-break: break-word;
+    font-size: 11px;
   }
 
   &__status {

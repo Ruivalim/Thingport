@@ -1,22 +1,15 @@
-// The grayed-out icon's dialog. Setup happens in an extension page: saving needs a host-permission
-// prompt, and the password never enters this page's DOM.
+// The grayed-out icon's dialog: not set up yet, or set up but unable to sign in. Setup happens in an
+// extension page: saving needs a host-permission prompt, and the password never enters this page's
+// DOM.
 
-import { send } from "../shared/messages";
+import { send, type Connection } from "../shared/messages";
 import { fillIcons } from "../shared/icon";
+import { escapeHtml } from "./runtime";
 
-let open: { backdrop: HTMLElement; onKeydown: (event: KeyboardEvent) => void } | null = null;
+type Disconnected = Extract<Connection, { connected: false }>;
 
-export function openSetupModal(root: ShadowRoot): void {
-  if (open) return;
-  const backdrop = document.createElement("div");
-  backdrop.className = "tg-modal-backdrop";
-  backdrop.innerHTML = `
-    <div class="tg-modal" role="dialog" aria-modal="true" aria-labelledby="tg-setup-title">
-      <button class="tg-close" type="button" aria-label="Close">×</button>
-      <div class="tg-modal__header">
-        <span class="tg-modal__icon" data-icon></span>
-        <div class="tg-title" id="tg-setup-title">Connect Thingport Grab</div>
-      </div>
+function setupBodyHtml(): string {
+  return `
       <div class="tg-hint">
         To import from this page, Thingport Grab needs to know where your Thingport instance is
         and how to sign in to it:
@@ -29,8 +22,46 @@ export function openSetupModal(root: ShadowRoot): void {
         They're stored only in this browser's extension storage and sent only to your own
         instance. You can also open this any time from the Thingport Grab icon in your browser
         toolbar.
+      </div>`;
+}
+
+function disconnectedBodyHtml(problem: Disconnected, instanceUrl: string): string {
+  const instance = `<strong>${escapeHtml(instanceUrl.replace(/^https?:\/\//i, ""))}</strong>`;
+  const cause =
+    problem.reason === "credentials"
+      ? `${instance} turned down the email and password saved in Thingport Grab. They were probably
+         changed in Thingport since -- sign in again with the current ones.`
+      : `${instance} didn't answer. It may not be running, or not be reachable from this network
+         right now. If it moved, update its URL.`;
+  return `
+      <div class="tg-hint">${cause}</div>
+      <div class="tg-hint tg-modal__detail">${escapeHtml(problem.detail)}</div>`;
+}
+
+let open: { backdrop: HTMLElement; onKeydown: (event: KeyboardEvent) => void } | null = null;
+
+/** `problem` set: configured, but signing in failed. `onRetry` re-checks after it's fixed. */
+export function openSetupModal(
+  root: ShadowRoot,
+  disconnected?: { problem: Disconnected; instanceUrl: string; onRetry: () => void },
+): void {
+  if (open) return;
+  const backdrop = document.createElement("div");
+  backdrop.className = "tg-modal-backdrop";
+  backdrop.innerHTML = `
+    <div class="tg-modal" role="dialog" aria-modal="true" aria-labelledby="tg-setup-title">
+      <button class="tg-close" type="button" aria-label="Close">×</button>
+      <div class="tg-modal__header">
+        <span class="tg-modal__icon" data-icon></span>
+        <div class="tg-title" id="tg-setup-title">
+          ${disconnected ? "Thingport Grab can't sign in" : "Connect Thingport Grab"}
+        </div>
       </div>
-      <button class="tg-btn" type="button" data-action="open-setup">Open setup</button>
+      ${disconnected ? disconnectedBodyHtml(disconnected.problem, disconnected.instanceUrl) : setupBodyHtml()}
+      <button class="tg-btn" type="button" data-action="open-setup">
+        ${disconnected ? "Edit connection" : "Open setup"}
+      </button>
+      ${disconnected ? `<button class="tg-btn tg-btn--secondary" type="button" data-action="retry">Try again</button>` : ""}
       <div class="tg-hint tg-modal__status" hidden></div>
     </div>
   `;
@@ -47,6 +78,11 @@ export function openSetupModal(root: ShadowRoot): void {
     statusEl.textContent = res?.ok
       ? "Setup opened in a new tab -- you'll be brought back here once it's saved."
       : "Couldn't open setup automatically -- click the Thingport Grab icon in your browser toolbar (it may be under the Extensions menu).";
+  });
+
+  backdrop.querySelector("[data-action=retry]")?.addEventListener("click", () => {
+    closeSetupModal();
+    disconnected?.onRetry();
   });
 
   const onKeydown = (event: KeyboardEvent) => {

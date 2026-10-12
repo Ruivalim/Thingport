@@ -2,7 +2,8 @@
 // the instance URL live in one place. The host permission granted at setup bypasses CORS.
 
 import type { LoginResult } from "../shared/api";
-import { apiUrl } from "../shared/storage";
+import type { Connection } from "../shared/messages";
+import { STORAGE_KEYS, apiUrl } from "../shared/storage";
 import { isMakerworldUrl } from "../shared/urls";
 import { getStoredConfig, isConfigured, type ConfiguredConfig } from "./config";
 import { getLiveMakerworldCookie, maybeSyncMakerworldCookie } from "./makerworldCookie";
@@ -22,6 +23,26 @@ async function errorDetail(res: Response, fallback: string): Promise<string> {
   return fallback;
 }
 
+/** The instance turned the saved email/password down (401/403), as opposed to not answering. */
+export class LoginRejectedError extends Error {
+  /** The instance's own message, without advice added for where it's shown. */
+  constructor(
+    message: string,
+    readonly detail = message,
+  ) {
+    super(message);
+  }
+}
+
+// A JWT outlives a password change, so only signing in proves the saved password still works.
+const CONNECTION_RECHECK_MS = 10 * 60 * 1000;
+
+/** Mirrored on the toolbar icon, so a broken connection shows before the user reaches a provider. */
+function setConnectionBadge(connected: boolean): void {
+  void chrome.action.setBadgeText({ text: connected ? "" : "!" }).catch(() => undefined);
+  if (!connected) void chrome.action.setBadgeBackgroundColor({ color: "#d32f2f" }).catch(() => undefined);
+}
+
 /** Also called once on a 401, so a password change doesn't require reopening the popup. */
 export async function loginAndStoreToken(credentials: Credentials): Promise<string> {
   const res = await fetch(apiUrl(credentials.instanceUrl, "/login"), {
@@ -29,12 +50,27 @@ export async function loginAndStoreToken(credentials: Credentials): Promise<stri
     headers: { ...CLIENT_HEADERS, "Content-Type": "application/json" },
     body: JSON.stringify({ email: credentials.email, password: credentials.password }),
   });
-  if (!res.ok) throw new Error(await errorDetail(res, "Could not sign in to this Thingport instance"));
+  if (!res.ok) {
+    const detail = await errorDetail(res, `Could not sign in to this Thingport instance (${res.status})`);
+    throw res.status === 401 || res.status === 403 ? new LoginRejectedError(detail) : new Error(detail);
+  }
   const data = (await res.json()) as LoginResult;
   const tokenExpiresAt = Date.now() + data.expires_in * 1000;
-  await chrome.storage.local.set({ token: data.token, tokenExpiresAt, isAdmin: data.user?.role === "ADMIN" });
+  const isAdmin = data.user?.role === "ADMIN";
+  // isAdmin is a config key: rewriting it re-initializes every open provider tab.
+  const stored = await getStoredConfig();
+  await chrome.storage.local.set({
+    token: data.token,
+    tokenExpiresAt,
+    loginVerifiedAt: Date.now(),
+    ...(stored.isAdmin === isAdmin ? {} : { isAdmin }),
+  });
+  setConnectionBadge(true);
   return data.token;
 }
+
+// Shared, so a burst of calls with an expired token signs in once rather than once per call.
+let pendingLogin: Promise<string> | null = null;
 
 export async function ensureToken(config: ConfiguredConfig, { forceRefresh = false } = {}): Promise<string> {
   if (
@@ -45,7 +81,42 @@ export async function ensureToken(config: ConfiguredConfig, { forceRefresh = fal
   ) {
     return config.token;
   }
-  return loginAndStoreToken(config);
+  pendingLogin ??= loginAndStoreToken(config)
+    .catch((err: unknown) => {
+      void chrome.storage.local.remove(STORAGE_KEYS.loginVerifiedAt);
+      setConnectionBadge(false);
+      // A silent re-login has no form to show the error next to, so say where to fix it.
+      if (err instanceof LoginRejectedError) {
+        throw new LoginRejectedError(
+          `Thingport rejected the email or password saved in Thingport Grab (${err.message}). ` +
+            "Open the extension popup, click the instance and sign in again.",
+          err.detail,
+        );
+      }
+      throw err;
+    })
+    .finally(() => {
+      pendingLogin = null;
+    });
+  return pendingLogin;
+}
+
+/** Signs in at most every few minutes; a failed check isn't remembered, so the next one retries. */
+export async function checkConnection(): Promise<Connection> {
+  const config = await getStoredConfig();
+  if (!isConfigured(config) || config.disabled) {
+    setConnectionBadge(true);
+    return { connected: true };
+  }
+  // Credentials only change through saveConfig, which signs in and so resets this.
+  if (config.loginVerifiedAt && Date.now() - config.loginVerifiedAt < CONNECTION_RECHECK_MS) return { connected: true };
+  try {
+    await ensureToken(config, { forceRefresh: true });
+    return { connected: true };
+  } catch (err) {
+    const detail = err instanceof LoginRejectedError ? err.detail : err instanceof Error ? err.message : String(err);
+    return { connected: false, reason: err instanceof LoginRejectedError ? "credentials" : "unreachable", detail };
+  }
 }
 
 export async function requireConfig(): Promise<ConfiguredConfig> {
