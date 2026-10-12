@@ -22,7 +22,12 @@ import {
 import { validateRemoteUrl } from "../utils/urlUtils";
 import { readCapped } from "../utils/readCapped";
 import { maybeSleep, sleep } from "../utils/concurrency";
-import { fetchViaFlaresolverr, looksLikeCloudflareBlock, shouldProxyHost } from "./flaresolverr";
+import {
+  CLOUDFLARE_BLOCKED_CODE,
+  fetchViaFlaresolverr,
+  looksLikeCloudflareBlock,
+  shouldProxyHost,
+} from "./flaresolverr";
 import {
   emptyImportedPageMetadata,
   extractNextDataJson,
@@ -38,6 +43,7 @@ import {
 } from "./importResolvers";
 import {
   extractMakerworldBearerToken,
+  MAKERWORLD_AUTH_CODE,
   MakerworldAuthError,
   MakerworldCaptchaError,
   makerworldCaptchaCooloffActive,
@@ -146,6 +152,13 @@ async function fetchWithGuard(url: string, headers: Record<string, string>): Pro
       }
     }
 
+    if (res.status === 403 && looksLikeCloudflareBlock(res.headers)) {
+      throw new HttpError(
+        403,
+        "Cloudflare blocked the request and FlareSolverr didn't get past it",
+        CLOUDFLARE_BLOCKED_CODE,
+      );
+    }
     if (!res.ok) {
       throw new HttpError(res.status || 400, `Failed to fetch URL: ${res.statusText || res.status}`);
     }
@@ -174,7 +187,9 @@ async function fetchMakerworldPageDesign(
       Accept: "*/*",
       ...makerworldHtmlHeaders(url, cookie),
     });
-  } catch {
+  } catch (err) {
+    // Kept apart from "couldn't read the model", so a sync hands the model back for later.
+    if (err instanceof HttpError && err.code === CLOUDFLARE_BLOCKED_CODE) throw err;
     return null;
   }
   if (!isHtmlContentType(res.headers.get("content-type") || "")) return null;
@@ -273,7 +288,7 @@ async function tryMakerworldCloudApi(url: string, body: ImportRequestBody): Prom
       throw new HttpError(429, err.message, MAKERWORLD_DOWNLOAD_LIMIT_CODE);
     }
     // 400, not 401: the frontend treats any 401 as an expired Thingport session and logs out.
-    if (err instanceof MakerworldAuthError) throw new HttpError(400, err.message);
+    if (err instanceof MakerworldAuthError) throw new HttpError(400, err.message, MAKERWORLD_AUTH_CODE);
     throw err;
   }
 }

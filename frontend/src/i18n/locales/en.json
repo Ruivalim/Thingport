@@ -1030,6 +1030,8 @@
       "disconnectMessageShared": "The {{name}} token is removed for everyone on this Thingport, and imports from {{name}} stop working until it's connected again.",
       "failed": "Failed to save -- try again.",
       "makerworld": {
+        "expiredStatus": "Sign-in expired",
+        "expired": "Sign-in expired. Connect MakerWorld again with a fresh cookie in Configuration → Providers.",
         "placeholder": "example: mw_session=...; mw_token=...;",
         "steps": [
           "Sign in at makerworld.com in your browser.",

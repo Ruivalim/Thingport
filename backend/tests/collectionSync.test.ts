@@ -63,6 +63,10 @@ function design(designId: string) {
 const collections = new Map<string, string[] | "gone">();
 /** Designs whose download hits MakerWorld's daily limit. */
 const limited = new Set<string>();
+/** Designs MakerWorld answers with 401, as with an expired sign-in. */
+const signInRejected = new Set<string>();
+/** Designs Cloudflare stands in front of, with no FlareSolverr to get past it. */
+const cloudflared = new Set<string>();
 
 function mockFetch() {
   global.fetch = vi.fn<(input: RequestInfo | URL) => Promise<Response>>(async (input) => {
@@ -82,7 +86,18 @@ function mockFetch() {
       return json({ id: Number(head[1]), title: "Phoenix flock" });
     }
     const model = url.match(/^https:\/\/api\.bambulab\.com\/v1\/design-service\/design\/(\d+)/);
-    if (model) return json(design(model[1]));
+    if (model) {
+      if (signInRejected.has(model[1])) return json({ error: "unauthorized" }, 401);
+      if (cloudflared.has(model[1])) return json({ error: "unavailable" }, 500);
+      return json(design(model[1]));
+    }
+    const page = url.match(/^https:\/\/makerworld\.com\/en\/models\/(\d+)/);
+    if (page && cloudflared.has(page[1])) {
+      return new Response("Just a moment...", {
+        status: 403,
+        headers: { server: "cloudflare", "cf-mitigated": "challenge" },
+      });
+    }
     const profile = url.match(
       /^https:\/\/api\.bambulab\.com\/v1\/iot-service\/api\/user\/profile\/(\d+)\?model_id=US(\d+)/,
     );
@@ -138,6 +153,8 @@ describe("synced collections", () => {
     global.fetch = originalFetch;
     mockFetch();
     limited.clear();
+    signInRejected.clear();
+    cloudflared.clear();
     // A finished job mustn't hold the one-running-import lock for the next test.
     await prisma.importJob.updateMany({ where: { userId, status: "RUNNING" }, data: { status: "DONE" } });
   });
@@ -703,6 +720,144 @@ describe("synced collections", () => {
     const after = await syncOf(enabled.body.collection_id);
     expect(after.missingChecks).toBe(0);
     expect(after.lastError).toMatch(/HTTP 502/);
+  });
+
+  it("waits without unsyncing while MakerWorld isn't connected, telling the user once for all", async () => {
+    const [one, two] = [newId(), newId()];
+    collections.set(one, ["1"]);
+    collections.set(two, ["1"]);
+    const first = await enable({ url: collectionUrl(one), title: `Flock ${one}`, known_ids: [] });
+    const second = await enable({ url: collectionUrl(two), title: `Flock ${two}`, known_ids: [] });
+    const sync = await syncOf(first.body.collection_id);
+    await request(app).patch("/api/settings/makerworld").set(auth()).send({ cookie: null });
+    try {
+      const calls = vi.mocked(global.fetch).mock.calls.length;
+      const before = await prisma.notification.count({ where: { userId } });
+
+      expect(await syncCollection(sync.id)).toBe("disconnected");
+      expect(await syncCollection((await syncOf(second.body.collection_id)).id)).toBe("disconnected");
+      expect(vi.mocked(global.fetch).mock.calls.length).toBe(calls);
+      for (const enabled of [first, second]) {
+        const held = await syncOf(enabled.body.collection_id);
+        expect(held.lastError).toBe("MakerWorld isn't connected");
+        expect(held.lastCheckedAt).toBeNull();
+      }
+      // Every MakerWorld sync of the user's, in one notification.
+      expect(await prisma.notification.count({ where: { userId } })).toBe(before + 1);
+      const note = await latestNotification();
+      expect(note.title).toMatch(/^Couldn't sync \d+ MakerWorld collections$/);
+      expect(note.body).toMatch(/^MakerWorld isn't connected\. .+ won't sync until you connect it again/);
+
+      // Sync now still answers, for its own collection.
+      expect(await runManualSync(sync.id)).toBe("disconnected");
+      expect(await prisma.notification.count({ where: { userId } })).toBe(before + 2);
+      expect((await latestNotification()).title).toBe(`Couldn't sync "Flock ${one}"`);
+    } finally {
+      await request(app).patch("/api/settings/makerworld").set(auth()).send({ cookie: "token=test-bearer" });
+    }
+    expect(await syncCollection(sync.id)).not.toBe("disconnected");
+    expect((await syncOf(first.body.collection_id)).lastError).toBeNull();
+  });
+
+  it("holds MakerWorld syncs once the sign-in is turned down, until the cookie changes", async () => {
+    const cid = newId();
+    collections.set(cid, ["1"]);
+    const enabled = await enable({ url: collectionUrl(cid), title: `Flock ${cid}`, known_ids: [] });
+    const sync = await syncOf(enabled.body.collection_id);
+    global.fetch = vi.fn<() => Promise<Response>>(async () =>
+      json({ error: "unauthorized" }, 401),
+    ) as unknown as typeof fetch;
+    try {
+      expect(await syncCollection(sync.id)).toBe("disconnected");
+      expect(await prisma.collectionSync.findUnique({ where: { id: sync.id } })).not.toBeNull();
+      expect((await syncOf(enabled.body.collection_id)).lastError).toBe("Your MakerWorld sign-in has expired");
+      const settings = await request(app).get("/api/settings/makerworld").set(auth());
+      expect(settings.body).toEqual({ configured: true, expired: true });
+
+      const calls = vi.mocked(global.fetch).mock.calls.length;
+      expect(await syncCollection(sync.id)).toBe("disconnected");
+      expect(vi.mocked(global.fetch).mock.calls.length).toBe(calls);
+
+      // The extension sending the same cookie again doesn't count as fixing it.
+      await request(app).patch("/api/settings/makerworld").set(auth()).send({ cookie: "token=test-bearer" });
+      expect(await syncCollection(sync.id)).toBe("disconnected");
+    } finally {
+      mockFetch();
+      await request(app).patch("/api/settings/makerworld").set(auth()).send({ cookie: "token=fresh-bearer" });
+    }
+    expect(await syncCollection(sync.id)).not.toBe("disconnected");
+    const settings = await request(app).get("/api/settings/makerworld").set(auth());
+    expect(settings.body).toEqual({ configured: true, expired: false });
+    await prisma.user.update({ where: { id: userId }, data: { makerworldCookie: "token=test-bearer" } });
+  });
+
+  it("hands models back to the sync when the sign-in is turned down mid-import, for after reconnecting", async () => {
+    const cid = newId();
+    const [first, second, third] = [newId(), newId(), newId()];
+    collections.set(cid, []);
+    const enabled = await enable({ url: collectionUrl(cid), title: `Flock ${cid}`, known_ids: [] });
+    const collectionId = enabled.body.collection_id;
+    const sync = await syncOf(collectionId);
+    collections.set(cid, [first, second, third]);
+    signInRejected.add(second);
+
+    expect(await syncCollection(sync.id)).toBe("queued");
+    expect(await prisma.print.findFirst({ where: { userId, sourceExternalId: first } })).not.toBeNull();
+    const after = await syncOf(collectionId);
+    expect(after.knownIds).toContain(first);
+    expect(after.knownIds).not.toContain(second);
+    expect(after.knownIds).not.toContain(third);
+    expect(after.lastError).toBe("Your MakerWorld sign-in has expired");
+    // Nothing left in the queue to retry by hand.
+    const job = await prisma.importJob.findFirstOrThrow({ where: { collectionSyncId: sync.id } });
+    expect(job.status).toBe("DONE");
+    expect(await prisma.importJobItem.count({ where: { jobId: job.id, status: { not: "DONE" } } })).toBe(0);
+    const note = await latestNotification();
+    expect(note.title).toBe(`1 new model synced into "Flock ${cid}"`);
+    expect(note.body).toContain("2 more models will come in on the next sync once you connect MakerWorld again");
+    expect((await request(app).get("/api/settings/makerworld").set(auth())).body.expired).toBe(true);
+    expect(await syncCollection(sync.id)).toBe("disconnected");
+
+    signInRejected.clear();
+    await request(app).patch("/api/settings/makerworld").set(auth()).send({ cookie: "token=fresh-bearer" });
+    try {
+      expect(await syncCollection(sync.id)).toBe("queued");
+      for (const id of [second, third]) {
+        expect(await prisma.print.findFirst({ where: { userId, sourceExternalId: id } })).not.toBeNull();
+      }
+      expect((await syncOf(collectionId)).knownIds).toEqual(expect.arrayContaining([first, second, third]));
+    } finally {
+      await prisma.user.update({ where: { id: userId }, data: { makerworldCookie: "token=test-bearer" } });
+    }
+  });
+
+  it("hands models back to the sync when Cloudflare blocks them, without holding MakerWorld", async () => {
+    const cid = newId();
+    const [first, second] = [newId(), newId()];
+    collections.set(cid, []);
+    const enabled = await enable({ url: collectionUrl(cid), title: `Flock ${cid}`, known_ids: [] });
+    const collectionId = enabled.body.collection_id;
+    // The model's own profile, whose page fallback is what Cloudflare stands in front of.
+    const sync = await prisma.collectionSync.update({ where: { collectionId }, data: { profileScope: "url" } });
+    collections.set(cid, [first, second]);
+    cloudflared.add(first);
+
+    expect(await syncCollection(sync.id)).toBe("queued");
+    const after = await syncOf(collectionId);
+    expect(after.knownIds).not.toContain(first);
+    expect(after.knownIds).not.toContain(second);
+    expect(after.lastError).toBe("Cloudflare blocked MakerWorld and FlareSolverr didn't get past it");
+    const job = await prisma.importJob.findFirstOrThrow({ where: { collectionSyncId: sync.id } });
+    expect(await prisma.importJobItem.count({ where: { jobId: job.id } })).toBe(0);
+    expect((await latestNotification()).body).toContain(
+      "2 more models will come in on a later sync: Cloudflare blocked",
+    );
+    expect((await request(app).get("/api/settings/makerworld").set(auth())).body.expired).toBe(false);
+
+    cloudflared.clear();
+    expect(await syncCollection(sync.id)).toBe("queued");
+    expect((await syncOf(collectionId)).knownIds).toEqual(expect.arrayContaining([first, second]));
+    expect((await syncOf(collectionId)).lastError).toBeNull();
   });
 
   it("is removed with its collection, and can be turned off without touching the collection", async () => {

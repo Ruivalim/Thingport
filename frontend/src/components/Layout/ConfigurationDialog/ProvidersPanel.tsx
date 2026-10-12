@@ -50,6 +50,7 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
     thangs: false,
   });
   const [menu, setMenu] = React.useState<{ id: ProviderId; top: number; left: number } | null>(null);
+  const [makerworldExpired, setMakerworldExpired] = React.useState(false);
   const [connecting, setConnecting] = React.useState<ProviderId | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [notice, setNotice] = React.useState<string | null>(null);
@@ -58,7 +59,11 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
     let active = true;
     settingsApi
       .getMakerworld()
-      .then((res) => active && setConnected((current) => ({ ...current, makerworld: res.configured })))
+      .then((res) => {
+        if (!active) return;
+        setConnected((current) => ({ ...current, makerworld: res.configured }));
+        setMakerworldExpired(res.expired);
+      })
       .catch(() => undefined);
     settingsApi
       .getThingiverse()
@@ -84,6 +89,7 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
       const result = await settingsApi.updateMakerworld(value);
       onUpdateMakerWorld({ cookie: value ?? "" });
       setConnected((current) => ({ ...current, makerworld: result.configured }));
+      setMakerworldExpired(false);
     } else if (id === "thingiverse") {
       const result = await settingsApi.updateThingiverse(value);
       setConnected((current) => ({ ...current, thingiverse: result.configured }));
@@ -103,7 +109,7 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
     if (locked) {
       setConnecting(null);
       setNotice(locked);
-    } else if (connected[id] === false) {
+    } else if (connected[id] === false || (id === "makerworld" && makerworldExpired)) {
       startConnect(id);
     }
   };
@@ -137,6 +143,8 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
 
   const menuId = menu?.id;
   const menuConnected = menuId ? Boolean(connected[menuId]) : false;
+  // Still connected, so it can be disconnected, but offered a fresh connect first.
+  const menuExpired = menuId === "makerworld" && menuConnected && makerworldExpired;
   const menuLocked = menuId ? lockedReason(menuId) : null;
 
   return (
@@ -146,14 +154,17 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
         {PROVIDERS.map(({ id, name }) => {
           const isConnected = Boolean(connected[id]);
           const locked = lockedReason(id);
-          const status = connected[id] === null ? null : isConnected;
+          const expired = id === "makerworld" && isConnected && makerworldExpired;
+          const status = connected[id] === null ? null : isConnected && !expired;
           const tooltip = isComingSoon(id)
             ? t("providers.comingSoon")
-            : id === "thingiverse" && locked && !isConnected
-              ? locked
-              : isConnected
-                ? t("providers.connected")
-                : t("providers.notConnected");
+            : expired
+              ? t("providers.makerworld.expired")
+              : id === "thingiverse" && locked && !isConnected
+                ? locked
+                : isConnected
+                  ? t("providers.connected")
+                  : t("providers.notConnected");
           return (
             <AppTile
               key={id}
@@ -163,7 +174,7 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
               badge={status === null || isComingSoon(id) ? undefined : status}
               highlighted={connecting === id || menuId === id}
               tooltip={status === null ? undefined : tooltip}
-              ariaLabel={`${name}: ${isConnected ? t("providers.connected") : t("providers.notConnected")}`}
+              ariaLabel={`${name}: ${expired ? t("providers.makerworld.expired") : isConnected ? t("providers.connected") : t("providers.notConnected")}`}
               onContextMenu={(event) => openMenu(id, event)}
               onActivate={() => activate(id)}
             />
@@ -185,11 +196,26 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
             status={
               isComingSoon(menuId)
                 ? t("providers.comingSoon")
-                : menuConnected
-                  ? t("providers.connected")
-                  : t("providers.notConnected")
+                : menuExpired
+                  ? t("providers.makerworld.expiredStatus")
+                  : menuConnected
+                    ? t("providers.connected")
+                    : t("providers.notConnected")
             }
           />
+        )}
+        {menuId && menuExpired && (
+          <MenuItem
+            onClick={() => {
+              setMenu(null);
+              startConnect(menuId);
+            }}
+          >
+            <ListItemIcon>
+              <LinkIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>{t("providers.connect")}</ListItemText>
+          </MenuItem>
         )}
         {menuId && (
           <MenuItem

@@ -26,6 +26,7 @@ import {
 export {
   MAKERWORLD_CAPTCHA_MESSAGE,
   makerworldCaptchaCooloffActive,
+  MAKERWORLD_AUTH_CODE,
   MakerworldAuthError,
   MakerworldCaptchaError,
   MAKERWORLD_DOWNLOAD_LIMIT_CODE,

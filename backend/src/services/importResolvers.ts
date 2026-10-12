@@ -46,7 +46,7 @@ function firstNonEmptyLine(raw: string): string | null {
 }
 
 export function resolveMakerworldCookie(body: ImportCookies): string | null {
-  const raw = (body.makerworld_cookie || process.env.MAKERWORLD_COOKIE || "").trim();
+  const raw = (body.makerworld_cookie || "").trim();
   if (!raw) return null;
   return firstNonEmptyLine(raw);
 }

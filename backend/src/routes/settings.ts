@@ -35,7 +35,7 @@ import {
   setStorageTemplate,
   validateStorageTemplate,
 } from "../services/printService";
-import { getUserMakerworldCookie, setUserMakerworldCookie } from "../services/makerworldCookieService";
+import { getMakerworldConnection, setUserMakerworldCookie } from "../services/makerworldCookieService";
 import { type MakerworldCookieCheck, verifyMakerworldCookie } from "../services/makerworldCloudApi";
 import { verifyThingiverseAccessToken } from "../services/thingiverseApi";
 import { SLICER_IDS, getUserSlicer, setUserSlicer } from "../services/slicerPreferenceService";
@@ -363,11 +363,13 @@ router.post(
   }),
 );
 
-// Per-user, unlike the instance-wide Thingiverse token. GET only reports whether one is set.
+// Per-user, unlike the instance-wide Thingiverse token. GET only reports whether one is set, and
+// whether MakerWorld has since turned it down.
 router.get(
   "/settings/makerworld",
   asyncHandler(async (req, res) => {
-    res.json({ configured: Boolean(await getUserMakerworldCookie(req.userId!)) });
+    const connection = await getMakerworldConnection(req.userId!);
+    res.json({ configured: connection !== "disconnected", expired: connection === "expired" });
   }),
 );
 
@@ -390,6 +392,7 @@ router.patch(
   asyncHandler(async (req, res) => {
     const body = parseBody(makerworldSettingsSchema, req.body);
     const trimmed = (body.cookie ?? "").trim();
+    let verified = false;
     if (body.verify && trimmed) {
       const check = await verifyMakerworldCookie(trimmed);
       if (check.result === "invalid") {
@@ -400,8 +403,9 @@ router.patch(
       }
       // 503, not 422: nothing is known to be wrong with the cookie.
       if (check.result === "unverifiable") throw new HttpError(503, MAKERWORLD_UNVERIFIABLE_MESSAGES[check.reason]);
+      verified = true;
     }
-    const configured = await setUserMakerworldCookie(req.userId!, body.cookie);
+    const configured = await setUserMakerworldCookie(req.userId!, body.cookie, { verified });
     res.json({ configured });
   }),
 );

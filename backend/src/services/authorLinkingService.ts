@@ -167,7 +167,7 @@ async function lookUpAuthor(candidate: Candidate, thingiverseToken: string | nul
       return (await resolvePrintablesModel(candidate.externalId))?.meta.author ?? null;
     }
     case "makerworld": {
-      const cookie = (await getUserMakerworldCookie(candidate.userId)) ?? process.env.MAKERWORLD_COOKIE ?? null;
+      const cookie = await getUserMakerworldCookie(candidate.userId);
       const bearer = extractMakerworldBearerToken(cookie);
       return bearer
         ? fetchMakerworldDesignAuthor(candidate.externalId, bearer, IMPORT_MAKERWORLD_CALL_DELAY_MS)

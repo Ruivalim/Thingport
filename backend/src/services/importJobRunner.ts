@@ -5,7 +5,7 @@ import { IMPORT_COLLECTION_DELAY_MS, IMPORT_MAKERWORLD_CALL_DELAY_MS } from "../
 import { countJobItems, getJob, getJobStatus, listJobItems, updateJob, updateJobItem } from "./importJobService";
 import { createNotification } from "./notificationService";
 import { addPrintsToCollection, findOrCreateCollectionByName } from "./collectionService";
-import { likesCollectionName, providerName, syncedCollectionFor } from "./collectionSyncService";
+import { likesCollectionName, modelIdFromUrl, providerName, syncedCollectionFor } from "./collectionSyncService";
 import { resolveMakerworldCookie } from "./importResolvers";
 import { decodeHtmlEntities } from "../utils/htmlEntities";
 import {
@@ -13,6 +13,8 @@ import {
   parseMakerworldModelUrl,
   selectMakerworldProfiles,
   type MakerworldProfileScope,
+  MAKERWORLD_AUTH_CODE,
+  MakerworldAuthError,
   MAKERWORLD_DOWNLOAD_LIMIT_CODE,
   MAKERWORLD_DOWNLOAD_LIMIT_MESSAGE,
 } from "./makerworldCloudApi";
@@ -29,6 +31,8 @@ import { fetchThingiverseCollectionTitle } from "./thingiverseApi";
 import { getThingiverseAccessToken } from "./settingsService";
 import { fetchPrintablesCollectionTitle } from "./printablesApi";
 import { createLog } from "./auditLog";
+import { MAKERWORLD_REJECTED_ERROR, markMakerworldCookieRejected } from "./makerworldCookieService";
+import { CLOUDFLARE_BLOCKED_CODE } from "./flaresolverr";
 import { HttpError } from "../utils/fileUtils";
 import { prisma } from "../db";
 import type { ImportJob } from "@prisma/client";
@@ -48,13 +52,19 @@ type PrintablesCollectionImportJobBody = ImportRequestBody & {
 type MakerworldProfilesImportJobBody = ImportRequestBody & { scope: Exclude<MakerworldProfileScope, "url"> };
 
 // Why a design failed, so a batch reads as one clear cause instead of "N failed". Once a CAPTCHA
-// ("rateLimited"), the daily download limit or an auth failure hits, every remaining item fails
-// the same way.
-type ImportFailureReason = "unavailable" | "rateLimited" | "downloadLimit" | "auth" | "other";
-type StopReason = "rateLimited" | "downloadLimit" | "auth";
+// ("rateLimited"), the daily download limit, an auth failure or a Cloudflare block ("blocked")
+// hits, every remaining item fails the same way.
+type ImportFailureReason = "unavailable" | "rateLimited" | "downloadLimit" | "auth" | "blocked" | "other";
+type StopReason = "rateLimited" | "downloadLimit" | "auth" | "blocked";
+
+const BLOCKED_RETRY_TEXT =
+  "Cloudflare blocked the request and FlareSolverr didn't get past it — check FlareSolverr in Administration → Connections, then retry";
 
 function classifyImportFailure(err: unknown): ImportFailureReason {
+  if (err instanceof MakerworldAuthError) return "auth";
   if (err instanceof HttpError) {
+    if (err.code === MAKERWORLD_AUTH_CODE) return "auth";
+    if (err.code === CLOUDFLARE_BLOCKED_CODE) return "blocked";
     if (err.status === 403 || err.status === 404) return "unavailable";
     if (err.status === 429) return err.code === MAKERWORLD_DOWNLOAD_LIMIT_CODE ? "downloadLimit" : "rateLimited";
     if (err.status === 401) return "auth";
@@ -63,7 +73,9 @@ function classifyImportFailure(err: unknown): ImportFailureReason {
 }
 
 function asStopReason(reason: ImportFailureReason): StopReason | null {
-  return reason === "rateLimited" || reason === "downloadLimit" || reason === "auth" ? reason : null;
+  return reason === "rateLimited" || reason === "downloadLimit" || reason === "auth" || reason === "blocked"
+    ? reason
+    : null;
 }
 
 async function markJobFailed(jobId: string, err: unknown): Promise<void> {
@@ -172,6 +184,7 @@ export async function runMakerworldProfilesImportJob(
       details: { provider: "makerworld", sourceLabel: title, imported, alreadyInLibrary, failed },
     });
 
+    if (stopReason === "auth") await noteMakerworldRejected(userId);
     const bodyParts: string[] = [];
     if (alreadyInLibrary) bodyParts.push(`${alreadyInLibrary} already on the model`);
     if (stopReason === "rateLimited") {
@@ -301,6 +314,7 @@ export async function runCollectionImportJob(
       },
     });
 
+    if (authFailed) await noteMakerworldRejected(userId);
     const label = collectionTitle ? `"${collectionTitle}"` : "a MakerWorld collection";
     const bodyParts: string[] = [];
     if (alreadyInLibrary) bodyParts.push(`${alreadyInLibrary} already in your library`);
@@ -667,6 +681,7 @@ const LINKS_MAX_ATTEMPTS = 3;
 const LINKS_RETRY_DELAY_MS = 2000;
 
 function isTransientImportFailure(err: unknown): boolean {
+  if (err instanceof MakerworldAuthError) return false;
   return !(err instanceof HttpError) || err.transient === true;
 }
 
@@ -742,6 +757,10 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
     let profilesProcessed = 0;
     let printId: string | null = null;
     let stopReason: StopReason | null = null;
+    // The link the stop reason came from, so only a MakerWorld one marks its cookie rejected.
+    let stopUrl: string | null = null;
+    // A sync's links handed back to it by deferSyncRest.
+    let deferred: SyncDeferral | null = null;
     let processed = (await countJobItems(jobId, "DONE")) + (await countJobItems(jobId, "FAILED"));
     // The models this run brought in new, for a sync's notification.
     const newPrintIds: string[] = [];
@@ -768,6 +787,7 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
             rateLimited: "blocked by a MakerWorld CAPTCHA challenge — retry once it clears (usually 1-4 hours)",
             downloadLimit: "MakerWorld's daily download limit was reached — retry tomorrow",
             auth: "the MakerWorld session expired — update the cookie in Settings, then retry",
+            blocked: BLOCKED_RETRY_TEXT,
           }[stopReason];
           settled = true;
           break;
@@ -797,6 +817,7 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
                 rateLimited: " (MakerWorld CAPTCHA challenge — retry once it clears)",
                 downloadLimit: " (MakerWorld's daily download limit — retry tomorrow)",
                 auth: " (the MakerWorld session expired — update the cookie in Settings, then retry)",
+                blocked: ` (${BLOCKED_RETRY_TEXT})`,
               }[result.stopReason];
             }
             settled = true;
@@ -819,6 +840,18 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
       }
       if (itemError) console.error(`[import] job ${jobId}: ${item.url} failed: ${itemError}`);
       else console.log(`[import] job ${jobId}: ${item.url} imported`);
+      if (stopReason && !stopUrl) stopUrl = item.url;
+      // The connection failed, not the models: the rest go back to unseen, for the next sync to find
+      // again once it works. A link that got some of its profiles in is done.
+      if (job.collectionSyncId && (stopReason === "auth" || stopReason === "blocked")) {
+        const nothingIn = itemError !== null && !partlyIn;
+        if (!nothingIn) {
+          await updateJobItem(item.id, { status: "FAILED", attempts, errorMessage: itemError }).catch(() => undefined);
+          processed++;
+        }
+        deferred = { count: await deferSyncRest(job, nothingIn ? item.id : null, stopReason), reason: stopReason };
+        break;
+      }
       // A sync can't ask anyone to retry, so a rate limit pauses it instead of failing the rest. A
       // link that got nothing in waits with them; one that got some of its profiles in is done.
       if (job.collectionSyncId && stopReason) {
@@ -864,7 +897,10 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
       details: { provider: "links", imported, alreadyInLibrary, failed: failedCount },
     });
 
-    if (job.collectionSyncId && (await notifySyncJobDone(job, newPrintIds, alreadyInLibrary, failedCount))) return;
+    if (stopReason === "auth" && stopUrl && parseMakerworldModelUrl(stopUrl)) await noteMakerworldRejected(userId);
+    if (job.collectionSyncId && (await notifySyncJobDone(job, newPrintIds, alreadyInLibrary, failedCount, deferred))) {
+      return;
+    }
 
     const bodyParts: string[] = [];
     if (profilesProcessed) bodyParts.push(`${profilesImported} of ${profilesProcessed} print profiles imported`);
@@ -881,6 +917,8 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
       bodyParts.push(
         `the rest failed because your MakerWorld session expired — update the cookie in Settings, then retry`,
       );
+    } else if (stopReason === "blocked") {
+      bodyParts.push(`the rest failed: ${BLOCKED_RETRY_TEXT}`);
     } else if (failedCount) {
       bodyParts.push(`${failedCount} failed — retry them from the import's progress bar`);
     }
@@ -926,6 +964,7 @@ async function modelNames(printIds: string[]): Promise<string> {
 
 function syncStopText(reason: StopReason, provider: string): string {
   if (reason === "downloadLimit") return "MakerWorld's daily download limit was reached";
+  if (reason === "blocked") return `Cloudflare blocked ${providerName(provider)} and FlareSolverr didn't get past it`;
   if (reason === "auth") {
     return provider === "makerworld"
       ? "your MakerWorld session expired, so connect MakerWorld again in Configuration > Providers"
@@ -971,12 +1010,59 @@ async function pauseSyncJob(job: ImportJob, reason: StopReason, newPrintIds: str
   });
 }
 
+/** Scheduled MakerWorld syncs then wait for a new cookie instead of meeting the same refusal. */
+async function noteMakerworldRejected(userId: string): Promise<void> {
+  await markMakerworldCookieRejected(userId).catch((err) => console.error("[import] couldn't mark cookie:", err));
+}
+
+type SyncDeferral = { count: number; reason: "auth" | "blocked" };
+
+/** Takes the sync job's links that haven't run (and `currentItemId`'s, which got nothing in) out of
+ *  the job, and out of the sync's seen ids, so its next check queues them again. How many. */
+async function deferSyncRest(job: ImportJob, currentItemId: string | null, reason: SyncDeferral["reason"]) {
+  // One transaction: links gone from the job but still seen by the sync would never come in.
+  const handedBack = await prisma.$transaction(async (tx) => {
+    const items = await tx.importJobItem.findMany({
+      where: { jobId: job.id, OR: [{ status: "PENDING" }, ...(currentItemId ? [{ id: currentItemId }] : [])] },
+      select: { id: true, url: true },
+    });
+    await tx.importJobItem.deleteMany({ where: { id: { in: items.map((item) => item.id) } } });
+    await tx.importJob.update({
+      where: { id: job.id },
+      data: { total: await tx.importJobItem.count({ where: { jobId: job.id } }) },
+    });
+    const sync = job.collectionSyncId
+      ? await tx.collectionSync.findUnique({ where: { id: job.collectionSyncId } })
+      : null;
+    if (sync) {
+      const unseen = new Set(items.flatMap((item) => modelIdFromUrl(sync.provider, item.url) ?? []));
+      await tx.collectionSync.update({
+        where: { id: sync.id },
+        data: {
+          knownIds: sync.knownIds.filter((id) => !unseen.has(id)),
+          // For MakerWorld, already held, so holdProvider leaves it out of the notification about the others.
+          lastError:
+            reason === "blocked"
+              ? `Cloudflare blocked ${providerName(sync.provider)} and FlareSolverr didn't get past it`
+              : sync.provider === "makerworld"
+                ? MAKERWORLD_REJECTED_ERROR
+                : `${providerName(sync.provider)} turned Thingport's sign-in down`,
+        },
+      });
+    }
+    return items;
+  });
+  console.warn(`[sync] job ${job.id}: ${handedBack.length} links handed back to the sync (${reason})`);
+  return handedBack.length;
+}
+
 /** Says which new models came in. False when the sync is gone, for the plain notification. */
 async function notifySyncJobDone(
   job: ImportJob,
   newPrintIds: string[],
   alreadyInLibrary: number,
   failedCount: number,
+  deferred: SyncDeferral | null,
 ): Promise<boolean> {
   const sync = await syncOfJob(job);
   if (!sync) return false;
@@ -990,6 +1076,16 @@ async function notifySyncJobDone(
       `${filed} model${filed === 1 ? " that was" : "s that were"} already in your library ${filed === 1 ? "was" : "were"} added to it too.`,
     );
   }
+  if (deferred) {
+    const more = `${deferred.count} more model${deferred.count === 1 ? "" : "s"}`;
+    parts.push(
+      deferred.reason === "auth" && sync.provider === "makerworld"
+        ? `${more} will come in on the next sync once you connect MakerWorld again in Configuration → Providers: MakerWorld turned your sign-in down, and it may have expired.`
+        : deferred.reason === "auth"
+          ? `${more} will come in on a later sync: ${providerName(sync.provider)} turned Thingport's sign-in down.`
+          : `${more} will come in on a later sync: Cloudflare blocked ${providerName(sync.provider)} and FlareSolverr didn't get past it. An admin can check FlareSolverr in Administration → Connections.`,
+    );
+  }
   if (failedCount) {
     parts.push(
       `${failedCount} couldn't be imported (private, deleted, or failed); retry ${failedCount === 1 ? "it" : "them"} from the import queue.`,
@@ -1000,7 +1096,7 @@ async function notifySyncJobDone(
     type: "sync",
     title: count
       ? `${count} new model${count === 1 ? "" : "s"} synced into "${name}"`
-      : `Couldn't sync new models into "${name}"`,
+      : `Couldn't sync new models into "${name}"${deferred ? " yet" : ""}`,
     body: parts.join(" ") || null,
     externalUrl: sync.sourceUrl,
     internalPath: `/models/collections/${sync.collectionId}`,

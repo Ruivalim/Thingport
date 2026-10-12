@@ -47,6 +47,7 @@ export function UserMenu({ user, onOpenConfiguration, onOpenProfile, onLogout }:
   const avatarUrl = useGravatarUrl(user?.email, 128);
   const [anchorEl, setAnchorEl] = React.useState<HTMLElement | null>(null);
   const [makerworldConfigured, setMakerworldConfigured] = React.useState(false);
+  const [makerworldExpired, setMakerworldExpired] = React.useState(false);
   const [thingiverseConfigured, setThingiverseConfigured] = React.useState(false);
 
   const menuOpen = Boolean(anchorEl);
@@ -57,7 +58,9 @@ export function UserMenu({ user, onOpenConfiguration, onOpenProfile, onLogout }:
     settingsApi
       .getMakerworld()
       .then((res) => {
-        if (active) setMakerworldConfigured(res.configured);
+        if (!active) return;
+        setMakerworldConfigured(res.configured);
+        setMakerworldExpired(res.expired);
       })
       .catch(() => undefined);
     settingsApi
@@ -77,8 +80,8 @@ export function UserMenu({ user, onOpenConfiguration, onOpenProfile, onLogout }:
     {
       key: "makerworld",
       ...IMPORT_PROVIDER_INFO.makerworld,
-      connected: makerworldConfigured,
-      disabledReason: t("userMenu.makerworldDisabledReason"),
+      connected: makerworldConfigured && !makerworldExpired,
+      disabledReason: makerworldExpired ? t("providers.makerworld.expired") : t("userMenu.makerworldDisabledReason"),
     },
     {
       key: "thingiverse",

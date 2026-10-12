@@ -55,6 +55,8 @@ export const MAKERWORLD_DOWNLOAD_LIMIT_MESSAGE =
 
 // The HttpError code, so batch runners can tell it from a CAPTCHA (both are 429).
 export const MAKERWORLD_DOWNLOAD_LIMIT_CODE = "MAKERWORLD_DOWNLOAD_LIMIT";
+// On the 400 a MakerworldAuthError becomes, so a queued import can tell it from a bad link.
+export const MAKERWORLD_AUTH_CODE = "MAKERWORLD_AUTH";
 
 export class MakerworldDownloadLimitError extends Error {
   constructor() {

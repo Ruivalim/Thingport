@@ -36,6 +36,9 @@ export async function testFlaresolverr(
   }
 }
 
+// Cloudflare still said no after FlareSolverr, or with none set up: nothing to do with the link.
+export const CLOUDFLARE_BLOCKED_CODE = "CLOUDFLARE_BLOCKED";
+
 /** A Cloudflare edge block rather than an application-level 403. */
 export function looksLikeCloudflareBlock(headers: Headers): boolean {
   const server = (headers.get("server") || "").toLowerCase();

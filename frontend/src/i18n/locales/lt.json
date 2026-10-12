@@ -1057,6 +1057,8 @@
       "disconnectMessageShared": "{{name}} raktas bus pašalintas visiems šio Thingport naudotojams, o importavimas iš {{name}} neveiks, kol jis vėl bus prijungtas.",
       "failed": "Nepavyko išsaugoti -- bandykite dar kartą.",
       "makerworld": {
+        "expiredStatus": "Prisijungimas nebegalioja",
+        "expired": "Prisijungimo galiojimas baigėsi. Vėl prijunkite MakerWorld su nauju slapuku skiltyje Konfigūracija → Šaltiniai.",
         "placeholder": "pavyzdys: mw_session=...; mw_token=...;",
         "steps": [
           "Naršyklėje prisijunkite prie makerworld.com.",

@@ -97,6 +97,13 @@ export function modelUrlFor(provider: string, externalId: string): string {
   return `https://www.thingiverse.com/thing:${externalId}`;
 }
 
+/** The model id in a link modelUrlFor made. */
+export function modelIdFromUrl(provider: string, url: string): string | null {
+  const pattern =
+    provider === "makerworld" ? /\/models\/(\d+)/ : provider === "printables" ? /\/model\/(\d+)/ : /thing:(\d+)/;
+  return url.match(pattern)?.[1] ?? null;
+}
+
 /** What Thingport Grab reads on a provider's collection page. */
 export type SyncLinkOut = CollectionSyncOut & { collection_id: string; collection_name: string };
 

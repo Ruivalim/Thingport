@@ -342,7 +342,8 @@ export const settingsApi = {
     return res.json();
   },
 
-  getMakerworld: async (): Promise<{ configured: boolean }> => {
+  // `expired`: MakerWorld turned the saved cookie down; scheduled syncs wait for a new one.
+  getMakerworld: async (): Promise<{ configured: boolean; expired: boolean }> => {
     const res = await fetch(`${apiBase()}/settings/makerworld`, { headers: authHeaders() });
     assertOk(res, "Failed to load MakerWorld settings");
     return res.json();

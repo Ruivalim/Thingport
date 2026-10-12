@@ -26,9 +26,14 @@ import {
 import { getActiveJob } from "./importJobService";
 import { runLinksImportJob, SYNC_JOB_INTERRUPTED } from "./importJobRunner";
 import { startLinksJob } from "./importQueueService";
-import { extractMakerworldBearerToken } from "./makerworldCloudApi";
+import { extractMakerworldBearerToken, MakerworldAuthError } from "./makerworldCloudApi";
 import { checkMakerworldCollection, fetchMakerworldCollectionEntries } from "./makerworldCollections";
-import { getUserMakerworldCookie } from "./makerworldCookieService";
+import {
+  getMakerworldConnection,
+  getUserMakerworldCookie,
+  MAKERWORLD_REJECTED_ERROR,
+  markMakerworldCookieRejected,
+} from "./makerworldCookieService";
 import { checkPrintablesCollection, fetchPrintablesCollectionEntries } from "./printablesApi";
 import {
   checkThingiverseCollection,
@@ -96,6 +101,7 @@ export type SyncOutcome =
   | "busy" // an import of the user's is running; tried again next time
   | "resumed" // a job a restart cut off was picked up again
   | "error" // the provider couldn't be read
+  | "disconnected" // the provider isn't connected, or turned the login down; not checked till it is
   | "gone" // the provider's collection wasn't found, not yet often enough to unsync
   | "unsynced"
   | "unchanged"
@@ -128,10 +134,95 @@ export function syncCollection(syncId: string, { reserved = false } = {}): Promi
   return run;
 }
 
+type ConnectionProblem = { error: string; reason: string; fix: string };
+
+const CONNECTION_PROBLEMS = {
+  makerworldDisconnected: {
+    error: "MakerWorld isn't connected",
+    reason: "MakerWorld isn't connected.",
+    fix: "you connect it again",
+  },
+  makerworldExpired: {
+    error: MAKERWORLD_REJECTED_ERROR,
+    reason: "MakerWorld turned your sign-in down; it may have expired.",
+    fix: "you connect MakerWorld again",
+  },
+  thingiverseDisconnected: {
+    error: "Thingiverse isn't connected on this Thingport",
+    reason: "Thingiverse isn't connected on this Thingport.",
+    fix: "an admin connects it again",
+  },
+} satisfies Record<string, ConnectionProblem>;
+
+/** `"A"`, `"A" and "B"`, or the first few and how many more. */
+function listNames(names: string[]): string {
+  const quoted = names.map((name) => `"${name}"`);
+  if (quoted.length === 1) return quoted[0];
+  if (quoted.length <= 3) return `${quoted.slice(0, -1).join(", ")} and ${quoted[quoted.length - 1]}`;
+  return `${quoted.slice(0, 2).join(", ")} and ${quoted.length - 2} more`;
+}
+
+/** One notification for every collection the problem holds. */
+async function notifyHeld(
+  userId: string,
+  provider: string,
+  problem: ConnectionProblem,
+  syncs: SyncWithCollection[],
+): Promise<void> {
+  if (!syncs.length) return;
+  const one = syncs.length === 1 ? syncs[0] : null;
+  await createNotification(userId, {
+    type: "sync",
+    title: one
+      ? `Couldn't sync "${one.collection.name}"`
+      : `Couldn't sync ${syncs.length} ${providerName(provider)} collections`,
+    body: `${problem.reason} ${listNames(syncs.map((sync) => sync.collection.name))} won't sync until ${problem.fix} in Configuration → Providers. ${one ? "It stays synced, and its models stay." : "They stay synced, and their models stay."}`,
+    externalUrl: one?.sourceUrl ?? null,
+    internalPath: one ? `/models/collections/${one.collectionId}` : "/models/collections",
+  });
+}
+
+/** Why the provider can't be reached for this sync right now, or null when it can. Checked before
+ *  any provider call, so a sync with nothing to sign in with waits instead of failing every round. */
+async function connectionProblem(sync: Pick<CollectionSync, "userId" | "provider">): Promise<ConnectionProblem | null> {
+  if (sync.provider === "makerworld") {
+    const connection = await getMakerworldConnection(sync.userId);
+    if (connection === "disconnected") return CONNECTION_PROBLEMS.makerworldDisconnected;
+    if (connection === "expired") return CONNECTION_PROBLEMS.makerworldExpired;
+  }
+  if (sync.provider === "thingiverse" && !(await getThingiverseAccessToken())) {
+    return CONNECTION_PROBLEMS.thingiverseDisconnected;
+  }
+  return null;
+}
+
+/** Holds every one of the user's syncs with this provider at once, with one notification for the
+ *  ones not already held; later rounds find the error saved and stay quiet. Last check times are
+ *  left alone, so they're due again as soon as the provider is connected. */
+async function holdProvider(userId: string, provider: string, problem: ConnectionProblem): Promise<void> {
+  const fresh = await prisma.collectionSync.findMany({
+    where: { userId, provider, OR: [{ lastError: null }, { lastError: { not: problem.error } }] },
+    include: { collection: true },
+    orderBy: { createdAt: "asc" },
+  });
+  if (!fresh.length) return;
+  await prisma.collectionSync.updateMany({
+    where: { id: { in: fresh.map((sync) => sync.id) } },
+    data: { lastError: problem.error },
+  });
+  console.warn(`[sync] ${fresh.length} ${provider} collection(s) of user ${userId} held: ${problem.error}`);
+  await notifyHeld(userId, provider, problem, fresh);
+}
+
 async function runSync(syncId: string): Promise<SyncOutcome> {
   const sync = await prisma.collectionSync.findUnique({ where: { id: syncId }, include: { collection: true } });
   if (!sync) return "missing";
   const { userId } = sync;
+  const problem = await connectionProblem(sync);
+  if (problem) {
+    await holdProvider(userId, sync.provider, problem);
+    return "disconnected";
+  }
 
   let openJob = await prisma.importJob.findFirst({
     where: { collectionSyncId: sync.id, status: { in: ["RUNNING", "PAUSED"] } },
@@ -157,6 +248,11 @@ async function runSync(syncId: string): Promise<SyncOutcome> {
   try {
     listing = await fetchListing(sync);
   } catch (err) {
+    if (err instanceof MakerworldAuthError) {
+      await markMakerworldCookieRejected(userId);
+      await holdProvider(userId, sync.provider, CONNECTION_PROBLEMS.makerworldExpired);
+      return "disconnected";
+    }
     const message = err instanceof Error && err.message.trim() ? err.message.trim() : "Sync failed";
     console.warn(`[sync] "${sync.collection.name}" (${sync.provider} ${sync.externalId}): ${message}`);
     await prisma.collectionSync
@@ -336,6 +432,12 @@ export async function runManualSync(syncId: string, { reserved = false } = {}): 
 /** The answer to "Sync now" for the outcomes that send no notification of their own. */
 async function notifyManualOutcome(before: SyncWithCollection, outcome: SyncOutcome): Promise<void> {
   const after = await prisma.collectionSync.findUnique({ where: { id: before.id } });
+  // holdProvider only notifies the first time; a click after that still gets an answer.
+  if (outcome === "disconnected" && after?.lastError === before.lastError) {
+    const problem = Object.values(CONNECTION_PROBLEMS).find((p) => p.error === after?.lastError);
+    if (problem) await notifyHeld(before.userId, before.provider, problem, [before]);
+    return;
+  }
   const name = before.collection.name;
   const provider = providerName(before.provider);
   const message: Partial<Record<SyncOutcome, { title: string; body: string }>> = {
@@ -372,10 +474,29 @@ export function runSyncRound(): Promise<void> {
   currentRound = (async () => {
     const syncs = await prisma.collectionSync.findMany({
       orderBy: { lastCheckedAt: { sort: "asc", nulls: "first" } },
-      select: { id: true, lastCheckedAt: true, intervalHours: true },
+      select: { id: true, userId: true, provider: true, lastCheckedAt: true, intervalHours: true },
     });
-    const due = syncs.filter((sync) => isSyncDue(sync));
-    for (const [index, { id }] of due.entries()) {
+    const due: string[] = [];
+    // Each user's connection to each provider, looked up once a round.
+    const problems = new Map<string, ConnectionProblem | null>();
+    for (const sync of syncs.filter((s) => isSyncDue(s))) {
+      const key = `${sync.userId} ${sync.provider}`;
+      if (problems.has(key)) {
+        if (!problems.get(key)) due.push(sync.id);
+        continue;
+      }
+      const problem = await connectionProblem(sync);
+      problems.set(key, problem);
+      if (!problem) {
+        due.push(sync.id);
+        continue;
+      }
+      // Held here rather than in the lane: there's no provider call to pace.
+      await holdProvider(sync.userId, sync.provider, problem).catch((err) =>
+        console.error(`[sync] holding ${key} failed:`, err),
+      );
+    }
+    for (const [index, id] of due.entries()) {
       if (index > 0) await sleep(IMPORT_COLLECTION_DELAY_MS);
       try {
         const outcome = await syncCollection(id);
