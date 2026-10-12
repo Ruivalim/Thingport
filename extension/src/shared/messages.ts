@@ -16,6 +16,10 @@ export type ExtensionState = {
 export type Connection =
   { connected: true } | { connected: false; reason: "credentials" | "unreachable"; detail: string };
 
+/** Providers whose signed-in user the extension tells the instance, for its Browse tab. MakerWorld
+ *  needs none: the instance has its session cookie. */
+export type AccountProvider = "printables" | "thingiverse";
+
 /** The signed-in account's recent imports, as the popup shows them. */
 export type RecentImport = {
   printId: string;
@@ -76,6 +80,10 @@ export type BackgroundMessages = {
   SET_DISABLED: { payload: { disabled: boolean }; result: null };
   GET_RECENT_IMPORTS: { payload: void; result: RecentImport[] };
   CHECK_CONNECTION: { payload: void; result: Connection };
+  /** Printables' session token, which the page itself can't read. Null when signed out. */
+  GET_PRINTABLES_TOKEN: { payload: void; result: string | null };
+  /** Who the user is signed in as on a provider, read from its pages. */
+  REPORT_PROVIDER_ACCOUNT: { payload: { provider: AccountProvider; value: string }; result: null };
   OPEN_SETUP: { payload: void; result: "popup" | "tab" };
   SET_TAB_ICON_STATE: { payload: { active: boolean }; result: null };
   API_CALL: { payload: ApiCallPayload; result: unknown };

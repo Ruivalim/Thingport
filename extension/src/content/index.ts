@@ -10,6 +10,7 @@ import { isMakerworldBlockingError, resolveMakerworldDownloadUrl } from "./maker
 import { offerNormalizedDownload, unmountNormalizedDownload } from "./makerworld/normalizedDownload";
 import { mountJobOverlay, mountPausedJobOverlay } from "./overlays";
 import { loadPanel } from "./panels";
+import { captureProviderAccount } from "./providerAccount";
 import { errorHtml } from "./panels/results";
 import { api } from "./runtime";
 import { closeSetupModal, openSetupModal } from "./setupModal";
@@ -56,6 +57,8 @@ async function init(): Promise<void> {
     reportTabIconState(false);
     return;
   }
+  // On every page, importable or not: the header shows who's signed in everywhere.
+  if (stateRes.data.configured) captureProviderAccount(location.hostname);
 
   const url = location.href;
   const classification = classifyUrl(url);

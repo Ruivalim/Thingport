@@ -13,6 +13,8 @@ export const STORAGE_KEYS = {
   loginVerifiedAt: "loginVerifiedAt",
   // Lets the cookie sync skip a redundant PATCH.
   lastSyncedMakerworldCookie: "lastSyncedMakerworldCookie",
+  // The Printables and Thingiverse usernames last sent to the instance, so unchanged ones aren't.
+  lastSentProviderAccounts: "lastSentProviderAccounts",
 } as const;
 
 export type StoredConfig = {
@@ -25,6 +27,8 @@ export type StoredConfig = {
   tokenExpiresAt?: number;
   loginVerifiedAt?: number;
   lastSyncedMakerworldCookie?: string;
+  /** `account` is the Thingport instance and email they were sent to. */
+  lastSentProviderAccounts?: { account: string; values: Record<string, string> };
 };
 
 export const CONFIG_CHANGE_KEYS: readonly string[] = [

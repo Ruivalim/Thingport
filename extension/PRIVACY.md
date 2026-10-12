@@ -25,6 +25,8 @@ the list of recent imports, which is synced between your browsers as described b
   password: entries are tied to your Thingport account by a one-way hash of your instance address
   and email. Each model's thumbnail is fetched from your Thingport instance and kept in local
   storage on each device; it isn't synced.
+- **Your Printables and Thingiverse usernames,** as last sent to your Thingport instance, so they're
+  only sent again when they change.
 - **Collection import progress:** while a MakerWorld collection import is running, the list of
   model pages still to visit, so it can carry on across page loads. It's deleted when the import
   ends.
@@ -50,6 +52,9 @@ the **provider site you're on**.
 - If you're logged into MakerWorld in this browser: your MakerWorld session cookie, when you import
   from MakerWorld. MakerWorld requires it to download files. The extension also saves it to your
   Thingport account's MakerWorld setting, so imports made from Thingport's own web app work too.
+- If you're logged into Printables or Thingiverse in this browser: your username there, when it
+  first sees it or it changes, so Thingport's web app can list your collections on that site when
+  you pick one to sync with.
 
 **To MakerWorld, Printables and Thingiverse:**
 
@@ -63,9 +68,12 @@ the **provider site you're on**.
   browser and saves the result to your downloads. The file isn't sent anywhere else.
 - On a MakerWorld collection import, the extension moves your tab from one model page to the next,
   just as if you were clicking through them.
+- On Printables, once per open tab, the extension asks Printables' own API which account you're
+  logged in as, the same way the page does, using your existing Printables session.
 
 **The extension reads, on supported pages only:** the model's title, MakerWorld's page data for the
-model, and the model links listed on collection pages. It doesn't read any other websites.
+model, the model links listed on collection pages, and, on Thingiverse, your username from the
+page's header. It doesn't read any other websites.
 
 ## What the extension doesn't do
 
@@ -80,7 +88,7 @@ model, and the model links listed on collection pages. It doesn't read any other
 | Permission                                       | Why                                                                                            |
 | ------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
 | Storage                                          | Keeps the settings and data listed under "What the extension stores".                          |
-| Cookies                                          | Reads MakerWorld's session cookie, only on makerworld.com, for MakerWorld imports.             |
+| Cookies                                          | Reads MakerWorld's and Printables' session cookies, only on their sites (see above).           |
 | Downloads                                        | Reads the link from the MakerWorld download it starts, then cancels and removes that download. |
 | Access to MakerWorld, Printables and Thingiverse | Shows the import button, and MakerWorld's Download normalized button, on their pages.          |
 | Access to your Thingport instance                | Requested for that one address when you set the extension up, so it can talk to your instance. |

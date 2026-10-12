@@ -15,6 +15,7 @@ import {
   resumeJob,
   startJob,
 } from "./makerworldJob";
+import { getPrintablesToken, reportProviderAccount } from "./providerAccounts";
 import { getRecentImports } from "./recentImports";
 import { openSetup } from "./setup";
 import { setTabIconState } from "./tabIcon";
@@ -30,6 +31,8 @@ listen<BackgroundMessages>({
   SET_DISABLED: ({ disabled }) => setDisabled(disabled),
   GET_RECENT_IMPORTS: () => getRecentImports(),
   CHECK_CONNECTION: () => checkConnection(),
+  GET_PRINTABLES_TOKEN: () => getPrintablesToken(),
+  REPORT_PROVIDER_ACCOUNT: ({ provider, value }) => reportProviderAccount(provider, value),
   OPEN_SETUP: (_payload, sender) => openSetup(sender.tab?.id),
   SET_TAB_ICON_STATE: ({ active }, sender) => setTabIconState(senderTabId(sender), active),
   API_CALL: ({ method, path, body }) => apiCall(method, path, body),
