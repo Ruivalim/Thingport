@@ -109,6 +109,38 @@ function stepDelayOptions(selectedMs: number): string {
 
 type ModelStatus = { url: string; already_imported: boolean; print_id: string | null };
 
+// Per-model checks, for instances without the batch endpoint, run a few at a time.
+const STATUS_CHECK_CONCURRENCY = 6;
+
+/** Throws rather than guessing: an unchecked model counted as new would be re-imported. */
+async function checkLibrary(ids: string[]): Promise<ModelStatus[]> {
+  let printIds: Record<string, string>;
+  try {
+    ({ print_ids: printIds } = await api<{ print_ids: Record<string, string> }>("POST", "/import/status/batch", {
+      provider: "makerworld",
+      external_ids: ids,
+    }));
+  } catch {
+    printIds = {};
+    const queue = [...ids];
+    const worker = async () => {
+      for (let id = queue.shift(); id; id = queue.shift()) {
+        const status = await api<ImportStatus>(
+          "GET",
+          `/import/status?url=${encodeURIComponent(makerworldModelUrl(id))}`,
+        );
+        if (status.already_imported && status.print_id) printIds[id] = status.print_id;
+      }
+    };
+    await Promise.all(Array.from({ length: STATUS_CHECK_CONCURRENCY }, worker));
+  }
+  return ids.map((id) => ({
+    url: makerworldModelUrl(id),
+    already_imported: id in printIds,
+    print_id: printIds[id] ?? null,
+  }));
+}
+
 export async function loadMakerworldGuidedCollection(): Promise<void> {
   const collectionTitle = document.getElementsByTagName("h1")[0]?.innerText?.trim() || null;
 
@@ -128,17 +160,13 @@ export async function loadMakerworldGuidedCollection(): Promise<void> {
   }
 
   renderPanel(statusHtml(`Checking ${ids.length} models against your library…`));
-  const statuses: ModelStatus[] = await Promise.all(
-    ids.map(async (id) => {
-      const url = makerworldModelUrl(id);
-      try {
-        const status = await api<ImportStatus>("GET", `/import/status?url=${encodeURIComponent(url)}`);
-        return { url, already_imported: status.already_imported, print_id: status.print_id ?? null };
-      } catch {
-        return { url, already_imported: false, print_id: null };
-      }
-    }),
-  );
+  let statuses: ModelStatus[];
+  try {
+    statuses = await checkLibrary(ids);
+  } catch (err) {
+    renderPanel(errorHtml(err));
+    return;
+  }
   const toImport = statuses.filter((s) => !s.already_imported);
   const alreadyImported = statuses.filter((s) => s.already_imported);
   const sync = await syncState;

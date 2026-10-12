@@ -16,6 +16,7 @@ import {
   importPrintFromUrl,
   inspectImportLink,
 } from "../services/importService";
+import { findLibraryPrints } from "../services/collectionSyncService";
 import { resolveMakerworldCookie } from "../services/importResolvers";
 import {
   extractMakerworldBearerToken,
@@ -187,6 +188,21 @@ router.get(
     const url = typeof req.query.url === "string" ? req.query.url.trim() : "";
     if (!url) throw new HttpError(400, "url is required");
     res.json(await checkImportStatus(req.userId!, url));
+  }),
+);
+
+const statusBatchSchema = z.object({
+  provider: z.enum(["makerworld", "thingiverse", "printables"]),
+  external_ids: z.array(z.string().max(64)).max(10_000),
+});
+
+// One query for a whole collection page; per-model /import/status calls bog down on big ones.
+router.post(
+  "/import/status/batch",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(statusBatchSchema, req.body);
+    const prints = await findLibraryPrints(req.userId!, body.provider, body.external_ids);
+    res.json({ print_ids: Object.fromEntries(prints) });
   }),
 );
 

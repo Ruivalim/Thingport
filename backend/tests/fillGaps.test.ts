@@ -227,6 +227,11 @@ describe("filling a model's missing details from its source", () => {
       .get(`/api/import/status?url=${encodeURIComponent(`https://makerworld.com/en/models/${designId}`)}`)
       .set(auth());
     expect(status.body.gaps).toEqual([]);
+    const batch = await request(app)
+      .post("/api/import/status/batch")
+      .set(auth())
+      .send({ provider: "makerworld", external_ids: [designId, "0"] });
+    expect(batch.body.print_ids).toEqual({ [designId]: print.id });
 
     // Clearing a field the source does have opens a gap again.
     await prisma.print.update({ where: { id: print.id }, data: { notes: null } });
