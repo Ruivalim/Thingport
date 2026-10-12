@@ -4,7 +4,7 @@
 
 import { COLLECTION_SYNC_ENABLED } from "../config";
 
-/** The intervals a collection can pick, in hours. The shortest is also the default. */
+/** The intervals a collection can pick, in hours. New syncs get 24 (see CollectionSync.intervalHours). */
 export const SYNC_INTERVAL_HOURS = [1, 6, 24] as const;
 export type SyncIntervalHours = (typeof SYNC_INTERVAL_HOURS)[number];
 

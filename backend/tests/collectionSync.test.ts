@@ -120,7 +120,7 @@ async function importDirectly(designId: string) {
 }
 
 async function latestNotification() {
-  return prisma.notification.findFirstOrThrow({ where: { userId }, orderBy: { createdAt: "desc" } });
+  return prisma.notification.findFirstOrThrow({ where: { userId }, orderBy: [{ createdAt: "desc" }, { id: "desc" }] });
 }
 
 describe("synced collections", () => {
@@ -164,7 +164,12 @@ describe("synced collections", () => {
 
     const list = await request(app).get("/api/collections").set(auth());
     const listed = list.body.find((c: { id: string }) => c.id === res.body.collection_id);
-    expect(listed.sync).toMatchObject({ provider: "makerworld", profile_scope: "url" });
+    expect(listed.sync).toMatchObject({ provider: "makerworld", profile_scope: "designer", interval_hours: 24 });
+
+    const notification = await latestNotification();
+    expect(notification.title).toBe(`"Phoenix flock" is now synced`);
+    expect(notification.body).toContain("once a day, each with all of the designer's print profiles");
+    expect(notification.internalPath).toBe(`/models/collections/${res.body.collection_id}`);
   });
 
   it("brings back a deleted collection of already-imported models, in the provider's order", async () => {
@@ -556,13 +561,13 @@ describe("synced collections", () => {
     expect(res.status).toBe(400);
   });
 
-  it("checks every collection on its own interval, 1 hour unless it picks 6 or 24", async () => {
+  it("checks every collection on its own interval, 24 hours unless it picks 1 or 6", async () => {
     const enabled = await enable({
       url: `https://www.thingiverse.com/collections/${newId()}`,
       title: `Thingiverse ${newId()}`,
       known_ids: [],
     });
-    expect(enabled.body.interval_hours).toBe(1);
+    expect(enabled.body.interval_hours).toBe(24);
     const patch = (body: Record<string, unknown>) =>
       request(app).patch(`/api/collection/${enabled.body.collection_id}/sync`).set(auth()).send(body);
 

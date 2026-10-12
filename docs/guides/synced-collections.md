@@ -43,6 +43,8 @@ out: sync only picks up models added **after** you turn it on.
 Already imported the collection before? Open its page again, open the panel and tick the box. The panel says
 everything is already in your library, and **Save** turns sync on.
 
+Thingport sends a notification once sync is on, naming the collection it follows and its settings.
+
 ## Find it in Thingport
 
 A synced collection's tile on the **Collections** page shows the provider's logo with a green tick.
@@ -57,12 +59,13 @@ linked:
 - **Overview** shows the chain from the provider's collection to yours, when it was last checked and when the next
   check is due, and a link to the collection on the provider's site. **Sync now** checks it right away. **Stop
   syncing** unlinks it.
-- **Settings** sets how often it's checked: every hour, 6 hours or 24 hours. For MakerWorld it also sets which print
-  profiles each new model brings: the default one, the designer's, or all of them, community ones included.
+- **Settings** sets how often it's checked: every hour, 6 hours or 24 hours (the default). For MakerWorld it also sets
+  which print profiles each new model brings: the default one, the designer's (the default), or all of them, community
+  ones included.
 
 ## How it works
 
-- **On a schedule.** Each synced collection is checked on its own interval, every hour unless you change it. A check
+- **On a schedule.** Each synced collection is checked on its own interval, once a day unless you change it. A check
   compares the provider's collection with the models Thingport has already seen there.
 - **New models only.** A model that's already in your library is just added to the collection. The rest are queued and
   imported one at a time, a minute apart, so the provider isn't flooded with requests. You get a notification when

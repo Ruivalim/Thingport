@@ -208,9 +208,10 @@ model CollectionSync {
   externalId    String
   sourceUrl     String
   // MakerWorld only: which print profiles a new model brings ("url" is the model's default one).
+  // New MakerWorld syncs start on "designer" (see createSync).
   profileScope  String      @default("url")
   // How often the provider's collection is checked: 1, 6 or 24.
-  intervalHours Int         @default(1)
+  intervalHours Int         @default(24)
   // Every model id the provider's collection has listed, so a sync only imports what's new since.
   knownIds      String[]    @default([])
   // Checks in a row that found the provider's collection gone. One bad answer doesn't unsync it.

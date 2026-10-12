@@ -285,7 +285,7 @@ out as the backend's user, so `PUID`/`PGID` need write access to the folder. The
 ## Synced Collections
 
 Link a MakerWorld, Printables or Thingiverse collection to Thingport once, with one tick in Thingport Grab, and every
-model added to it later is imported into your library on its own. Thingport checks it every hour, 6 hours or 24 hours,
+model added to it later is imported into your library on its own. Thingport checks it once a day, or every 6 hours or every hour,
 imports new models one at a time and sends a notification saying what came in. Sync only ever adds: nothing is deleted
 on either side. See the **[synced collections guide](docs/guides/synced-collections.md)**.
 

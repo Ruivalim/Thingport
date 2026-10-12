@@ -34,7 +34,7 @@ collection before? Tick the box and click **Save**.
 
 ## What happens next
 
-Thingport checks the collection every hour (or every 6 or 24 hours, if you'd rather) and imports what's new, one model
+Thingport checks the collection once a day (or every 6 hours or every hour, if you'd rather) and imports what's new, one model
 at a time, a minute apart, so the provider's limits aren't hit. A notification tells you what came in.
 
 Synced collections show the provider's logo on the Collections page. Open one and click the logo to see its sync

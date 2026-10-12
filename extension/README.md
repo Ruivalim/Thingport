@@ -186,7 +186,7 @@ On a MakerWorld, Printables or Thingiverse collection page, the panel's **Keep t
 sync** box (off by default) links the collection to its Thingport counterpart. A Thingiverse user's
 Likes page works the same way (**Keep these likes in sync**), filing into "Thingiverse likes
 (@username)" and picking up models they like later. Thingport then checks
-it every hour (or every 6 or 24 hours, picked per collection) and imports models added to it later, pausing a minute between models, and sends a
+it once a day (or every hour or 6 hours, picked per collection) and imports models added to it later, pausing a minute between models, and sends a
 notification saying what came in. Models already on the page when you turn sync on, including any
 you leave unticked, aren't imported by the sync.
 
@@ -209,7 +209,7 @@ extension can turn sync on, since it has just seen which models the collection h
   rest wait, paused, in the import queue until it's started again from Administration > Import queue.
 - If the provider's collection is deleted, the Thingport collection is unsynced (its models stay)
   and you get a notification. Deleting the Thingport collection removes the sync with it.
-- **Sync now** checks the collection right away instead of waiting for the hour, and a notification
+- **Sync now** checks the collection right away instead of waiting for the next check, and a notification
   says how it went, "up to date" included. It's available again 5 minutes after the last check.
 - To turn sync off, untick the box on the collection page, or use **Stop syncing** in the
   collection's sync configuration.

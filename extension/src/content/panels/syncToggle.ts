@@ -35,7 +35,7 @@ export function syncToggleHtml(state: SyncLookup | null): string {
   const added = isLikes() ? "Models liked later" : `Models added to it on ${provider} later`;
   const hint = state.sync
     ? `Synced with "${escapeHtml(state.sync.collection_name)}" in Thingport. Untick to stop.`
-    : `${added} are imported into Thingport automatically, every hour unless you change it there. Models you leave out now stay out.`;
+    : `${added} are imported into Thingport automatically, on a schedule you can change there. Models you leave out now stay out.`;
   return `
     <label class="tg-toggle">
       <input id="tg-sync" type="checkbox" ${state.sync ? "checked" : ""} />

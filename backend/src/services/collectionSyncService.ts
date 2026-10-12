@@ -10,6 +10,7 @@ import { parseMakerworldCollectionUrl } from "./makerworldCollections";
 import { parsePrintablesCollectionUrl } from "./printablesApi";
 import { parseThingiverseCollectionUrl, parseThingiverseLikesUrl } from "./thingiverseApi";
 import { createLog } from "./auditLog";
+import { createNotification } from "./notificationService";
 import type { SyncIntervalHours } from "./collectionSyncSchedule";
 import {
   LIKES_ID_PREFIX,
@@ -206,7 +207,36 @@ export async function enableSync(userId: string, input: EnableSyncInput): Promis
     targetId: created.collectionId,
     details: { name: created.collection.name, provider: source.provider, url: source.url },
   });
+  // The sync exists by now, so a failed notification mustn't fail the request: a retry finds the
+  // sync and wouldn't send it either.
+  await notifySyncEnabled(created).catch((err) => console.error("[sync] enable notification failed", err));
   return toSyncLinkOut(created);
+}
+
+const INTERVAL_PHRASES: Record<number, string> = { 1: "every hour", 6: "every 6 hours", 24: "once a day" };
+const PROFILE_SCOPE_PHRASES: Record<string, string> = {
+  url: "its default print profile",
+  designer: "all of the designer's print profiles",
+  all: "all of its print profiles, community ones included",
+};
+
+/** Confirms in the app what was switched on from Thingport Grab, with the defaults it got. */
+async function notifySyncEnabled(sync: CollectionSync & { collection: Collection }): Promise<void> {
+  const name = sync.collection.name;
+  const interval = INTERVAL_PHRASES[sync.intervalHours] ?? `every ${sync.intervalHours} hours`;
+  const profiles =
+    sync.provider === "makerworld" && PROFILE_SCOPE_PHRASES[sync.profileScope]
+      ? `, each with ${PROFILE_SCOPE_PHRASES[sync.profileScope]}`
+      : "";
+  await createNotification(sync.userId, {
+    type: "sync",
+    title: `"${name}" is now synced`,
+    body:
+      `New models in ${sourceDescription(sync)} are imported here ${interval}${profiles}. ` +
+      "Change this in the collection's sync configuration.",
+    externalUrl: sync.sourceUrl,
+    internalPath: `/models/collections/${sync.collectionId}`,
+  });
 }
 
 // How many "Things (MakerWorld 2)"-style names to try before giving up.
@@ -221,6 +251,9 @@ function* collectionNamesFor(title: string, provider: string): Generator<string>
   yield `${title} (${label})`;
   for (let n = 2; n <= MAX_NAME_SUFFIX; n++) yield `${title} (${label} ${n})`;
 }
+
+// A synced collection follows what the designer publishes, so new models bring all of their profiles.
+const NEW_MAKERWORLD_SYNC_PROFILE_SCOPE: SyncProfileScope = "designer";
 
 /** Links `collection` to `source`. `takenBy` names the provider when the collection already follows
  *  another source; `link` is the existing one when another request just made this same link. */
@@ -241,6 +274,7 @@ async function createSync(
         externalId: source.externalId,
         sourceUrl: source.url,
         knownIds,
+        ...(source.provider === "makerworld" ? { profileScope: NEW_MAKERWORLD_SYNC_PROFILE_SCOPE } : {}),
       },
       include: { collection: true },
     });
