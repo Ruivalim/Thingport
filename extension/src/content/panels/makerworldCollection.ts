@@ -244,9 +244,14 @@ async function startGuidedImport(
         `Adding ${alreadyImported.length} existing model${alreadyImported.length === 1 ? "" : "s"} to your collection…`,
       ),
     );
-    for (const entry of alreadyImported) {
-      if (entry.print_id)
-        await api("POST", `/collection/${collectionId}/items/${entry.print_id}`).catch(() => undefined);
+    const printIds = alreadyImported.flatMap((entry) => (entry.print_id ? [entry.print_id] : []));
+    try {
+      await api("POST", `/collection/${collectionId}/items`, { print_ids: printIds });
+    } catch {
+      // Instances without the bulk endpoint, one model at a time.
+      for (const printId of printIds) {
+        await api("POST", `/collection/${collectionId}/items/${printId}`).catch(() => undefined);
+      }
     }
   }
 

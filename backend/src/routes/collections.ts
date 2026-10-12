@@ -245,6 +245,38 @@ router.post(
   }),
 );
 
+const addItemsSchema = z.object({ print_ids: z.array(z.string()).max(10_000) });
+
+// Many at once, e.g. Thingport Grab filing a provider collection's already-imported models.
+router.post(
+  "/collection/:id/items",
+  asyncHandler(async (req, res) => {
+    if (isSystemCollectionId(req.params.id)) {
+      throw new HttpError(400, "This collection can't be edited");
+    }
+    const body = parseBody(addItemsSchema, req.body);
+    const collection = await prisma.collection.findFirst({ where: { id: req.params.id, userId: req.userId } });
+    if (!collection) throw new HttpError(404, "Collection not found");
+    const prints = await prisma.print.findMany({
+      where: { id: { in: body.print_ids }, userId: req.userId },
+      select: { id: true },
+    });
+    await addPrintsToCollection(
+      collection.id,
+      prints.map((p) => p.id),
+    );
+    res.json({ ok: true });
+    if (prints.length) {
+      void createLog({
+        userId: req.userId!,
+        action: "collection_item_added",
+        targetId: collection.id,
+        details: { name: collection.name, count: prints.length },
+      });
+    }
+  }),
+);
+
 router.post(
   "/collection/:id/bookmark",
   asyncHandler(async (req, res) => {

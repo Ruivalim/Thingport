@@ -155,6 +155,34 @@ describe("removing one item from a collection", () => {
   });
 });
 
+describe("adding many items to a collection at once", () => {
+  it("adds the caller's own prints, skipping unknown ids and ones already in it", async () => {
+    const uploads = await Promise.all(
+      ["bulk-add-1", "bulk-add-2"].map((name) =>
+        request(app)
+          .post("/api/upload")
+          .set(auth())
+          .attach("files", tmpFile(`${name}.stl`, `solid ${name} endsolid`)),
+      ),
+    );
+    const [first, second] = uploads.map((res) => res.body.prints[0].id as string);
+    const collection = await request(app).post("/api/collections").set(auth()).send({ name: "Bulk Add" });
+    await addPrintsToCollection(collection.body.id, [first]);
+
+    const res = await request(app)
+      .post(`/api/collection/${collection.body.id}/items`)
+      .set(auth())
+      .send({ print_ids: [first, second, "not-a-print"] });
+    expect(res.status).toBe(200);
+
+    const after = await request(app).get(`/api/collection/${collection.body.id}`).set(auth());
+    expect(after.body.item_count).toBe(2);
+
+    for (const id of [first, second]) await request(app).delete(`/api/print/${id}`).set(auth());
+    await request(app).delete(`/api/collection/${collection.body.id}`).set(auth());
+  });
+});
+
 describe("collection/print deletion cascades", () => {
   it("deleting a collection does not delete the models in it", async () => {
     const uploadRes = await request(app)
