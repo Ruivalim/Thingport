@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import Box from "@mui/material/Box";
 import ButtonBase from "@mui/material/ButtonBase";
+import Skeleton from "@mui/material/Skeleton";
 import Typography from "@mui/material/Typography";
 import type { Theme } from "@mui/material/styles";
 import CheckIcon from "@mui/icons-material/Check";
@@ -134,9 +135,10 @@ function PrintablesTile({ collection }: { collection: ProviderCollection }) {
       <Typography noWrap sx={{ fontWeight: 700, fontSize: "0.875rem", mt: 1 }}>
         {collection.name}
       </Typography>
-      <Typography sx={{ fontSize: "0.8rem", color: "text.secondary" }}>
+      <Box sx={{ display: "flex", alignItems: "center", fontSize: "0.8rem", color: "text.secondary" }}>
         <ModelCount count={collection.model_count} provider="printables" />
-      </Typography>
+        {collection.private && <LockOutlinedIcon sx={{ fontSize: 14, ml: "auto" }} />}
+      </Box>
     </Box>
   );
 }
@@ -218,9 +220,11 @@ const TILES: Record<BrowsableProvider, (props: { collection: ProviderCollection 
 
 /** A provider's collection to pick, drawn in that provider's colours and manner. One already synced
  *  with another Thingport collection can't be picked, and says with which. */
-export default function ProviderCollectionTile({ provider, collection, selected, onSelect }: Props) {
+export default function ProviderCollectionTile({ provider, collection: given, selected, onSelect }: Props) {
   const { t } = useTranslation("models");
   const Tile = TILES[provider];
+  // A user's likes come as a collection the instance names in English.
+  const collection = given.likes ? { ...given, name: t("collections.sync.browse.likes") } : given;
   const taken = collection.synced !== null;
   return (
     <Box>
@@ -269,6 +273,67 @@ export default function ProviderCollectionTile({ provider, collection, selected,
           {t("collections.sync.browse.takenBy", { name: collection.synced!.collection_name })}
         </Typography>
       )}
+    </Box>
+  );
+}
+
+/** A tile's shape while the provider's collections load, in that provider's manner. */
+export function ProviderCollectionTileSkeleton({ provider }: { provider: BrowsableProvider }) {
+  const lines = (
+    <>
+      <Skeleton variant="text" sx={{ fontSize: "0.875rem", width: "70%" }} />
+      <Skeleton variant="text" sx={{ fontSize: "0.75rem", width: "40%" }} />
+    </>
+  );
+  if (provider === "makerworld") {
+    return (
+      <Box aria-hidden sx={{ borderRadius: "12px", border: 1, borderColor: "divider", overflow: "hidden", mb: "11px" }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px", aspectRatio: "4 / 3" }}>
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} variant="rectangular" sx={{ width: "100%", height: "100%" }} />
+          ))}
+        </Box>
+        <Box sx={{ px: 1.5, py: 1.25 }}>{lines}</Box>
+      </Box>
+    );
+  }
+  if (provider === "printables") {
+    return (
+      <Box
+        aria-hidden
+        sx={{
+          borderRadius: "4px",
+          border: 1,
+          borderColor: "divider",
+          borderTop: `3px solid ${PROVIDER_ACCENTS.printables}`,
+          p: 1.25,
+        }}
+      >
+        <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "4px", mb: 1 }}>
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} variant="rectangular" sx={{ width: "100%", height: "auto", aspectRatio: "1 / 1" }} />
+          ))}
+        </Box>
+        {lines}
+      </Box>
+    );
+  }
+  return (
+    <Box
+      aria-hidden
+      sx={{
+        borderRadius: "8px",
+        aspectRatio: "4 / 3",
+        bgcolor: PROVIDER_ACCENTS.thingiverse,
+        opacity: 0.35,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        pt: 1.5,
+      }}
+    >
+      <Skeleton variant="text" sx={{ fontSize: "1rem", width: "60%", bgcolor: "rgba(255, 255, 255, 0.5)" }} />
+      <Skeleton variant="text" sx={{ fontSize: "0.8rem", width: "30%", bgcolor: "rgba(255, 255, 255, 0.5)" }} />
     </Box>
   );
 }

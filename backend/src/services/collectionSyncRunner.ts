@@ -17,6 +17,12 @@ import { COLLECTION_SYNC_ITEM_DELAY_MS, IMPORT_COLLECTION_DELAY_MS, IMPORT_MAKER
 import { sleep } from "../utils/concurrency";
 import { addPrintsToCollection } from "./collectionService";
 import { findLibraryPrints, modelUrlFor, providerName, sourceDescription } from "./collectionSyncService";
+import {
+  PRINTABLES_FORGOTTEN,
+  printablesPushIsOff,
+  pushedPrintablesModels,
+  WAITING_FOR_GRAB,
+} from "./providerListingsService";
 import { getActiveJob } from "./importJobService";
 import { runLinksImportJob, SYNC_JOB_INTERRUPTED } from "./importJobRunner";
 import { startLinksJob } from "./importQueueService";
@@ -56,7 +62,16 @@ export async function fetchListing(
     return entries.map((e) => e.designId);
   }
   if (sync.provider === "printables") {
-    if (!(await checkPrintablesCollection(id))) return null;
+    // Private collections and likes come from Thingport Grab, as of the user's last visit.
+    const pushed = await pushedPrintablesModels(sync.userId, id);
+    if (pushed === "waiting") throw new Error(WAITING_FOR_GRAB);
+    if (pushed) return pushed;
+    if (!(await checkPrintablesCollection(id))) {
+      // Private, most likely: with the user's Printables account forgotten, Grab no longer says which
+      // ones are. Paused rather than unsynced, until they give it again.
+      if (await printablesPushIsOff(sync.userId)) throw new Error(PRINTABLES_FORGOTTEN);
+      return null;
+    }
     const { entries } = await fetchPrintablesCollectionEntries(id);
     return entries.map((e) => e.modelId);
   }
@@ -263,7 +278,7 @@ async function notifyFiled(sync: SyncWithCollection, printIds: string[]): Promis
     type: "sync",
     title: `${n} model${n === 1 ? "" : "s"} added to "${sync.collection.name}"`,
     body: syncLikesUsername(sync)
-      ? `${n === 1 ? "It was" : "They were"} liked on Thingiverse and already in your library.`
+      ? `${n === 1 ? "It was" : "They were"} liked on ${providerName(sync.provider)} and already in your library.`
       : `${n === 1 ? "It was" : "They were"} added to the ${providerName(sync.provider)} collection and already in your library.`,
     externalUrl: sync.sourceUrl,
     internalPath: `/models/collections/${sync.collectionId}`,

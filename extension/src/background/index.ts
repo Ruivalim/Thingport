@@ -15,7 +15,7 @@ import {
   resumeJob,
   startJob,
 } from "./makerworldJob";
-import { getPrintablesToken, reportProviderAccount } from "./providerAccounts";
+import { getPrintablesToken, printablesPushDue, pushPrintables, reportProviderAccount } from "./providerAccounts";
 import { getRecentImports } from "./recentImports";
 import { openSetup } from "./setup";
 import { setTabIconState } from "./tabIcon";
@@ -33,6 +33,8 @@ listen<BackgroundMessages>({
   CHECK_CONNECTION: () => checkConnection(),
   GET_PRINTABLES_TOKEN: () => getPrintablesToken(),
   REPORT_PROVIDER_ACCOUNT: ({ provider, value }) => reportProviderAccount(provider, value),
+  PRINTABLES_PUSH_DUE: ({ now }) => printablesPushDue({ now }),
+  PUSH_PRINTABLES: (push) => pushPrintables(push),
   OPEN_SETUP: (_payload, sender) => openSetup(sender.tab?.id),
   SET_TAB_ICON_STATE: ({ active }, sender) => setTabIconState(senderTabId(sender), active),
   API_CALL: ({ method, path, body }) => apiCall(method, path, body),

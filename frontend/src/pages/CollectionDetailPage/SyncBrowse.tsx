@@ -3,8 +3,8 @@ import { useTranslation } from "react-i18next";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import CircularProgress from "@mui/material/CircularProgress";
 import Link from "@mui/material/Link";
+import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
@@ -17,11 +17,13 @@ import {
   providerCollectionsApi,
 } from "../../api/providerCollections";
 import { importProviderInfo } from "../../constants/importProviders";
+import HelpTip from "../../components/HelpTip";
 import Segmented from "../../components/controls/Segmented";
 import { SectionLabel } from "../../components/Layout/ConfigurationDialog/parts";
 import { useSlicerPreference } from "../../hooks/useSlicerPreference";
+import { useConfirm } from "../../components/ConfirmProvider";
 import { onConfigurationClosed, openConfiguration } from "../../utils/configurationEvents";
-import ProviderCollectionTile from "./ProviderCollectionTile";
+import ProviderCollectionTile, { ProviderCollectionTileSkeleton } from "./ProviderCollectionTile";
 
 export type BrowsePick = { provider: BrowsableProvider; collection: ProviderCollection };
 
@@ -34,6 +36,8 @@ type Props = {
 };
 
 const PASTE_DEBOUNCE_MS = 400;
+// Two rows' worth at the dialog's width.
+const LOADING_TILES = 6;
 
 const PASTE_EXAMPLES: Record<BrowsableProvider, string> = {
   makerworld: "https://makerworld.com/en/collections/…",
@@ -62,6 +66,7 @@ function providerOfUrl(url: string): BrowsableProvider | null {
 export default function SyncBrowse({ provider, onProviderChange, picked, onPick, onUnauthorized }: Props) {
   const { t } = useTranslation(["models", "common"]);
   const slicer = useSlicerPreference();
+  const confirm = useConfirm();
   const [accounts, setAccounts] = useState<ProviderAccounts | null>(null);
   const [collections, setCollections] = useState<Partial<Record<BrowsableProvider, ProviderCollection[]>>>({});
   const [loading, setLoading] = useState(false);
@@ -174,11 +179,38 @@ export default function SyncBrowse({ provider, onProviderChange, picked, onPick,
     }
   };
 
+  /** For Printables, also stops Thingport Grab sending what only the user sees there. */
+  const forgetAccount = async () => {
+    if (!provider) return;
+    const ok = await confirm({
+      title: t("models:collections.sync.browse.forgetTitle", { provider: importProviderInfo(provider)?.label }),
+      message: t(`models:collections.sync.browse.forgetMessage.${provider}`),
+      confirmLabel: t("models:collections.sync.browse.forget"),
+      destructive: true,
+    });
+    if (!ok) return;
+    setError(null);
+    try {
+      setAccounts(await providerCollectionsApi.setAccount(provider, null));
+      setCollections((current) => ({ ...current, [provider]: undefined }));
+    } catch (err) {
+      fail(err, t("models:collections.sync.browse.usernameFailed"));
+    }
+  };
+
   const isPicked = (p: BrowsableProvider, collection: ProviderCollection) =>
     picked?.provider === p && picked.collection.id === collection.id;
 
+  const grid = { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 2 };
+  const skeletons = (p: BrowsableProvider, count: number) => (
+    <Box sx={grid}>
+      {Array.from({ length: count }, (_, i) => (
+        <ProviderCollectionTileSkeleton key={i} provider={p} />
+      ))}
+    </Box>
+  );
   const tiles = (p: BrowsableProvider, list: ProviderCollection[]) => (
-    <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 2 }}>
+    <Box sx={grid}>
       {list.map((collection) => (
         <ProviderCollectionTile
           key={collection.id}
@@ -192,7 +224,19 @@ export default function SyncBrowse({ provider, onProviderChange, picked, onPick,
   );
 
   if (!accounts || !provider) {
-    return error ? <Alert severity="error">{error}</Alert> : <CircularProgress size={24} />;
+    if (error) return <Alert severity="error">{error}</Alert>;
+    // The picker, the paste field and a row of tiles, until it's known which provider to show.
+    return (
+      <Stack spacing={2.5} aria-hidden>
+        <Skeleton variant="rounded" width={290} height={38} sx={{ borderRadius: "10px" }} />
+        <Skeleton variant="rounded" height={40} />
+        <Box sx={grid}>
+          {Array.from({ length: 3 }, (_, i) => (
+            <Skeleton key={i} variant="rounded" sx={{ height: "auto", aspectRatio: "1 / 1", borderRadius: "12px" }} />
+          ))}
+        </Box>
+      </Stack>
+    );
   }
   const name = importProviderInfo(provider)?.label ?? provider;
   const list = collections[provider];
@@ -216,9 +260,6 @@ export default function SyncBrowse({ provider, onProviderChange, picked, onPick,
       {/* First, so it's in view however long the list of the user's own is. */}
       <Box>
         <SectionLabel>{t("models:collections.sync.browse.pasteLabel")}</SectionLabel>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          {t("models:collections.sync.browse.pasteHint")}
-        </Typography>
         <TextField
           size="small"
           fullWidth
@@ -226,7 +267,9 @@ export default function SyncBrowse({ provider, onProviderChange, picked, onPick,
           onChange={(e) => setPasted(e.target.value)}
           placeholder={PASTE_EXAMPLES[provider]}
         />
-        {pastedResult === "loading" && <CircularProgress size={20} sx={{ mt: 1.5 }} />}
+        {pastedResult === "loading" && (
+          <Box sx={{ mt: 1.5, maxWidth: 220 }}>{skeletons(providerOfUrl(pasted.trim()) ?? provider, 1)}</Box>
+        )}
         {pastedResult && pastedResult !== "loading" && "error" in pastedResult && (
           <Alert severity="warning" sx={{ mt: 1.5 }}>
             {pastedResult.error}
@@ -295,23 +338,28 @@ export default function SyncBrowse({ provider, onProviderChange, picked, onPick,
           <SectionLabel>{t("models:collections.sync.browse.yoursLabel", { provider: name })}</SectionLabel>
           {provider !== "makerworld" && account?.account && (
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-              {t("models:collections.sync.browse.showing", { user: account.account })}{" "}
+              {t(`models:collections.sync.browse.showing.${provider}`, { user: account.account })}
+              {provider === "printables" && (
+                <HelpTip text={t("models:collections.sync.browse.printablesPrivateHelp")} />
+              )}{" "}
               <Link component="button" variant="body2" onClick={() => setEditingAccount(true)}>
                 {t("models:collections.sync.browse.change")}
               </Link>
+              {" · "}
+              <Link component="button" variant="body2" onClick={() => void forgetAccount()}>
+                {t("models:collections.sync.browse.forget")}
+              </Link>
             </Typography>
           )}
-          {loading && !list ? (
-            <CircularProgress size={24} />
-          ) : list && list.length ? (
-            tiles(provider, list)
-          ) : (
-            list && (
-              <Typography variant="body2" color="text.secondary">
-                {t("models:collections.sync.browse.empty", { provider: name })}
-              </Typography>
-            )
-          )}
+          {loading && !list
+            ? skeletons(provider, LOADING_TILES)
+            : list && list.length
+              ? tiles(provider, list)
+              : list && (
+                  <Typography variant="body2" color="text.secondary">
+                    {t("models:collections.sync.browse.empty", { provider: name })}
+                  </Typography>
+                )}
         </Box>
       )}
     </Stack>

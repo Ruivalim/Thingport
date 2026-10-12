@@ -342,7 +342,8 @@ export type CollectionSyncOut = {
   profile_scope: SyncProfileScope;
   last_checked_at: string | null;
   last_error: string | null;
-  /** Set when the sync follows a Thingiverse user's Likes rather than a collection: their username. */
+  /** Set when the sync follows a user's likes (on Thingiverse, or the user's own on Printables)
+   *  rather than a collection: their username. */
   likes_of: string | null;
   /** How often the provider's collection is checked: 1, 6 or 24. */
   interval_hours: number;
@@ -355,11 +356,12 @@ export type CollectionSyncOut = {
 // A Likes sync's externalId; collection ids are numeric, so the two never collide.
 export const LIKES_ID_PREFIX = "likes:";
 
-/** The Thingiverse user whose Likes a sync follows, as written in its page address, or null for a
- *  collection sync. */
+/** The user whose likes a sync follows (on Thingiverse or Printables), as written in its page
+ *  address, or null for a collection sync. */
 export function syncLikesUsername(sync: { externalId: string; sourceUrl: string }): string | null {
   if (!sync.externalId.startsWith(LIKES_ID_PREFIX)) return null;
-  const fromUrl = new URL(sync.sourceUrl).pathname.split("/").find(Boolean);
+  // Printables writes its profile paths as "/@handle".
+  const fromUrl = new URL(sync.sourceUrl).pathname.split("/").find(Boolean)?.replace(/^@/, "");
   return fromUrl ? decodeURIComponent(fromUrl) : sync.externalId.slice(LIKES_ID_PREFIX.length);
 }
 

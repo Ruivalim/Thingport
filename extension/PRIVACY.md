@@ -1,6 +1,6 @@
 # Thingport Grab privacy policy
 
-_Effective 6 October 2026._
+_Effective 12 October 2026._
 
 Thingport Grab is a browser extension that imports 3D-printing models from MakerWorld, Printables
 and Thingiverse into **your own self-hosted Thingport instance**, and converts MakerWorld files for
@@ -26,7 +26,7 @@ the list of recent imports, which is synced between your browsers as described b
   and email. Each model's thumbnail is fetched from your Thingport instance and kept in local
   storage on each device; it isn't synced.
 - **Your Printables and Thingiverse usernames,** as last sent to your Thingport instance, so they're
-  only sent again when they change.
+  only sent again when they change, and when it last read your Printables collections and likes.
 - **Collection import progress:** while a MakerWorld collection import is running, the list of
   model pages still to visit, so it can carry on across page loads. It's deleted when the import
   ends.
@@ -55,6 +55,10 @@ the **provider site you're on**.
 - If you're logged into Printables or Thingiverse in this browser: your username there, when it
   first sees it or it changes, so Thingport's web app can list your collections on that site when
   you pick one to sync with.
+- If you're logged into Printables in this browser, at most once an hour while you're on its pages:
+  your Printables collections (names, model counts and a few model pictures, private collections
+  included), the models you liked there, and the models in the private collections you sync. Only
+  you can see these on Printables, so this is how Thingport can sync them.
 
 **To MakerWorld, Printables and Thingiverse:**
 
@@ -69,7 +73,9 @@ the **provider site you're on**.
 - On a MakerWorld collection import, the extension moves your tab from one model page to the next,
   just as if you were clicking through them.
 - On Printables, once per open tab, the extension asks Printables' own API which account you're
-  logged in as, the same way the page does, using your existing Printables session.
+  logged in as, the same way the page does, using your existing Printables session. At most once an
+  hour it also asks it, the same way, for your collections, your liked models and the models in
+  the private collections you sync.
 
 **The extension reads, on supported pages only:** the model's title, MakerWorld's page data for the
 model, the model links listed on collection pages, and, on Thingiverse, your username from the

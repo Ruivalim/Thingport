@@ -20,23 +20,23 @@ enum CategorySource {
 }
 
 model User {
-  id                       String           @id @default(cuid())
-  email                    String           @unique
+  id                       String            @id @default(cuid())
+  email                    String            @unique
   passwordHash             String
   displayName              String
-  role                     Role             @default(MEMBER)
+  role                     Role              @default(MEMBER)
   // Defaults true so existing accounts aren't locked out; registration sets false when SMTP is on.
-  emailVerified            Boolean          @default(true)
-  emailVerificationToken   String?          @unique
+  emailVerified            Boolean           @default(true)
+  emailVerificationToken   String?           @unique
   emailVerificationExpires DateTime?
   // Awaiting confirmation of an email change.
   pendingEmail             String?
   // SHA-256 of the emailed token, so a database leak can't be used to take over accounts.
-  passwordResetTokenHash   String?          @unique
+  passwordResetTokenHash   String?           @unique
   passwordResetExpires     DateTime?
   // A read-only token other apps use to call the API as this user. Only its SHA-256
   // is stored; the token itself is shown once, when generated. One per user: generating replaces it.
-  apiTokenHash             String?          @unique
+  apiTokenHash             String?           @unique
   // The token's last four characters, so the profile can show which one is in use.
   apiTokenHint             String?
   apiTokenCreatedAt        DateTime?
@@ -47,6 +47,9 @@ model User {
   // syncing. Printables keeps its numeric id (the API's key) with the handle to show.
   printablesUserId         String?
   printablesHandle         String?
+  // Set when the user forgot their Printables account in the app: Thingport Grab's pushes of their
+  // private collections and likes are refused until they give one again.
+  printablesPushOff        Boolean           @default(false)
   thingiverseUsername      String?
   slicer                   String?
   // "light" | "dark" | "system"; null means never set.
@@ -62,7 +65,7 @@ model User {
   dashboardThumbnails      String?
   // Where the dashboard's weather is for: { lat, lon, name, source }. Null until the user sets one.
   weatherLocation          Json?
-  authorPreviewEnabled     Boolean          @default(true)
+  authorPreviewEnabled     Boolean           @default(true)
   // Filled from the first linked Author with this data; later links never overwrite it.
   bio                      String?
   backgroundUrl            String?
@@ -70,6 +73,7 @@ model User {
   prints                   Print[]
   collections              Collection[]
   collectionSyncs          CollectionSync[]
+  providerListings         ProviderListing[]
   importJobs               ImportJob[]
   notifications            Notification[]
   systemReceipts           SystemReceipt[]
@@ -78,8 +82,8 @@ model User {
   bookmarks                Bookmark[]
   activities               Activity[]
   invitationsSent          Invitation[]
-  createdAt                DateTime         @default(now())
-  updatedAt                DateTime         @updatedAt
+  createdAt                DateTime          @default(now())
+  updatedAt                DateTime          @updatedAt
 }
 
 // Lets one email register while registrations are closed. Re-inviting replaces the token.
@@ -228,6 +232,23 @@ model CollectionSync {
   importJobs    ImportJob[]
 
   @@unique([userId, provider, externalId])
+}
+
+/// Lists Thingport Grab reads from a provider with the user's own login, for what the instance
+/// can't read itself: Printables shows private collections and likes to their owner only. Pushed
+/// on the user's visits to the site, so they're as fresh as the last one.
+model ProviderListing {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider  String
+  /// "collections": the user's collections, as the Browse tab shows them. "likes": their liked
+  /// models. Anything else: a collection's id, for its model ids.
+  key       String
+  data      Json
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, provider, key])
 }
 
 enum BookmarkType {

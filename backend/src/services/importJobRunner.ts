@@ -40,7 +40,11 @@ type CollectionImportJobBody = ImportRequestBody & { design_ids: string[] };
 type ZipImportJobBody = ImportRequestBody & { entries: string[] };
 type ThingiverseLikesImportJobBody = ImportRequestBody & { thing_ids: string[]; username: string };
 type ThingiverseCollectionImportJobBody = ImportRequestBody & { thing_ids: string[]; collectionId: string };
-type PrintablesCollectionImportJobBody = ImportRequestBody & { model_ids: string[]; collectionId: string };
+type PrintablesCollectionImportJobBody = ImportRequestBody & {
+  model_ids: string[];
+  collectionId: string;
+  collection_title?: string | null;
+};
 type MakerworldProfilesImportJobBody = ImportRequestBody & { scope: Exclude<MakerworldProfileScope, "url"> };
 
 // Why a design failed, so a batch reads as one clear cause instead of "N failed". Once a CAPTCHA
@@ -514,7 +518,9 @@ export async function runPrintablesCollectionImportJob(
 
     let resultCollectionId: string | null = null;
     const collectionTitle =
-      (await fetchPrintablesCollectionTitle(body.collectionId)) ?? `Printables Collection ${body.collectionId}`;
+      body.collection_title?.trim() ||
+      (await fetchPrintablesCollectionTitle(body.collectionId)) ||
+      `Printables Collection ${body.collectionId}`;
     if (successPrintIds.length) {
       const collection =
         (await syncedCollectionFor(userId, body.url)) ?? (await findOrCreateCollectionByName(userId, collectionTitle));

@@ -17,7 +17,7 @@ export default function CollectionSyncIndicator({ sync, onClick }: { sync: Colle
   const { t } = useTranslation("models");
   const provider = importProviderInfo(sync.provider)?.label ?? sync.provider;
   const label = sync.likes_of
-    ? t("collections.sync.badgeLikes", { user: sync.likes_of })
+    ? t("collections.sync.badgeLikes", { user: sync.likes_of, provider })
     : t("collections.sync.badge", { provider });
   return (
     <Tooltip title={label}>

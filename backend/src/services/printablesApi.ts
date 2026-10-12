@@ -218,6 +218,20 @@ export async function resolvePrintablesDownloadLinks(modelId: string, fileIds: s
   return links;
 }
 
+/** A user's liked models, which Printables shows to that user only. */
+export function parsePrintablesLikesUrl(url: string): { handle: string } | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  const host = parsed.hostname.toLowerCase();
+  if (host !== "printables.com" && host !== "www.printables.com") return null;
+  const m = parsed.pathname.match(/^\/(?:[a-z]{2}\/)?@([^/]+)\/collections\/liked\/?$/i);
+  return m ? { handle: decodeURIComponent(m[1]) } : null;
+}
+
 /** The `@handle` segment is cosmetic; only the id is used. */
 export function parsePrintablesCollectionUrl(url: string): { collectionId: string } | null {
   let parsed: URL;
@@ -382,7 +396,7 @@ function collectionCard(value: unknown): ProviderCollectionCard | null {
     id,
     name: typeof value.name === "string" && value.name.trim() ? value.name.trim() : `Collection ${id}`,
     url: owner
-      ? `https://www.printables.com/@${owner}/collections/${id}`
+      ? `https://www.printables.com/@${encodeURIComponent(owner)}/collections/${id}`
       : `https://www.printables.com/collections/${id}`,
     modelCount: typeof value.printsCount === "number" ? value.printsCount : 0,
     thumbnails,

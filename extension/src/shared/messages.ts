@@ -20,6 +20,19 @@ export type Connection =
  *  needs none: the instance has its session cookie. */
 export type AccountProvider = "printables" | "thingiverse";
 
+/** `wanted`: the private collections whose models the instance asked for. `likes`: whether to read
+ *  every page of the user's likes this time. */
+export type PrintablesPushPlan = { wanted: string[]; likes: boolean };
+
+/** What Grab read on Printables with the user's own login: their collections, private ones
+ *  included, their likes, and the models of the private collections the instance asked for. */
+export type PrintablesPush = {
+  user: { id: string; handle: string };
+  collections?: { id: string; name: string; model_count: number; thumbnails: string[]; private: boolean }[];
+  likes?: { model_count: number; thumbnails: string[]; ids: string[] };
+  listings: Record<string, string[]>;
+};
+
 /** The signed-in account's recent imports, as the popup shows them. */
 export type RecentImport = {
   printId: string;
@@ -84,6 +97,10 @@ export type BackgroundMessages = {
   GET_PRINTABLES_TOKEN: { payload: void; result: string | null };
   /** Who the user is signed in as on a provider, read from its pages. */
   REPORT_PROVIDER_ACCOUNT: { payload: { provider: AccountProvider; value: string }; result: null };
+  /** What to read on Printables now, or null when it isn't time to read anything. */
+  /** `now`: skip the hourly wait, e.g. right after a private collection's sync was turned on. */
+  PRINTABLES_PUSH_DUE: { payload: { now?: boolean }; result: PrintablesPushPlan | null };
+  PUSH_PRINTABLES: { payload: PrintablesPush; result: null };
   OPEN_SETUP: { payload: void; result: "popup" | "tab" };
   SET_TAB_ICON_STATE: { payload: { active: boolean }; result: null };
   API_CALL: { payload: ApiCallPayload; result: unknown };

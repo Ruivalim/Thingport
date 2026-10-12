@@ -8,6 +8,8 @@ import { isPanelMounted, onPanelAction, panelQueryAll, renderPanel } from "../sh
 import { errorHtml, statusHtml, successHtml } from "./results";
 import { loadingModelsPhrases, renderFunStatus } from "./funStatus";
 import { applySyncToggle, loadSyncState, readSyncToggle, syncChangeNote, syncToggleHtml } from "./syncToggle";
+import { printablesToken, readCollectionForPanel } from "../printables";
+import { pushPrintablesNow } from "../providerAccount";
 
 type BatchKey = "thingiverse:likes" | "thingiverse:collection" | "printables:collection";
 
@@ -36,15 +38,72 @@ function endpoints() {
   return config;
 }
 
+function isPrintablesCollection(): boolean {
+  const { provider, type } = ctx().classification;
+  return provider === "printables" && type === "collection";
+}
+
+function printablesCollectionId(): string | null {
+  return ctx().url.match(/\/collections\/(\d+)/)?.[1] ?? null;
+}
+
+/** A Printables collection as its signed-in owner sees it: the instance can only read public ones,
+ *  and would find a private one empty. Null without a login, for the instance's own read; a failed
+ *  read with one says so, rather than falling back to that read and looking empty. */
+async function signedInPrintablesEntries(): Promise<BatchEntriesResult | null> {
+  const collectionId = printablesCollectionId();
+  const token = collectionId ? await printablesToken() : null;
+  if (!collectionId || !token) return null;
+  try {
+    const { title, entries, truncated } = await readCollectionForPanel(token, collectionId);
+    const { print_ids: inLibrary } = await api<{ print_ids: Record<string, string> }>("POST", "/import/status/batch", {
+      provider: "printables",
+      external_ids: entries.map((entry) => entry.id),
+    });
+    return {
+      title,
+      truncated,
+      entries: entries.map((entry) => ({
+        design_id: entry.id,
+        title: entry.title,
+        already_imported: entry.id in inLibrary,
+      })),
+    };
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    throw new Error(`Couldn't read this collection from Printables as you: ${reason}. Reload the page to try again.`, {
+      cause: err,
+    });
+  }
+}
+
+/** `readAsUser`: read with the user's Printables login, as only a private collection needs. */
+type PanelEntries = BatchEntriesResult & { readAsUser?: boolean };
+
+/** The instance's own read first; for a Printables collection it finds nothing in (a private one),
+ *  the user's own. */
+async function loadEntries(): Promise<PanelEntries> {
+  let instanceError: unknown = null;
+  try {
+    const found = await api<BatchEntriesResult>("POST", endpoints().entries, { url: ctx().url });
+    if (found.entries.length || !isPrintablesCollection()) return found;
+  } catch (err) {
+    if (!isPrintablesCollection()) throw err;
+    instanceError = err;
+  }
+  // Null without a login; a read with one, even an empty one, is the answer.
+  const signedIn = await signedInPrintablesEntries();
+  if (signedIn) return { ...signedIn, readAsUser: true };
+  if (instanceError) throw instanceError;
+  return { entries: [] };
+}
+
 export async function loadBatchEntries(): Promise<void> {
   renderFunStatus(loadingModelsPhrases(ctx().classification.provider));
-  let result: BatchEntriesResult;
+  let result: PanelEntries;
   let sync: SyncLookup | null;
   try {
-    [result, sync] = await Promise.all([
-      api<BatchEntriesResult>("POST", endpoints().entries, { url: ctx().url }),
-      loadSyncState(),
-    ]);
+    [result, sync] = await Promise.all([loadEntries(), loadSyncState()]);
   } catch (err) {
     renderPanel(errorHtml(err));
     return;
@@ -72,7 +131,7 @@ export async function loadBatchEntries(): Promise<void> {
   onPanelAction("import", () => void runBatchImport(result, sync));
 }
 
-async function runBatchImport(result: BatchEntriesResult, sync: SyncLookup | null): Promise<void> {
+async function runBatchImport(result: PanelEntries, sync: SyncLookup | null): Promise<void> {
   const ids = panelQueryAll<HTMLInputElement>(".tg-entry__checkbox:checked").map((el) => el.value);
   const wantSync = readSyncToggle();
   if (!ids.length && !sync) return;
@@ -86,6 +145,14 @@ async function runBatchImport(result: BatchEntriesResult, sync: SyncLookup | nul
       knownIds: result.entries.map((entry) => entry.design_id),
     });
     const note = syncChangeNote(change, link);
+    // A private one: the instance can't read it, so it gets its models now rather than waiting.
+    const collectionId = result.readAsUser ? printablesCollectionId() : null;
+    if (change === "enabled" && collectionId) {
+      void pushPrintablesNow(
+        collectionId,
+        result.entries.map((entry) => entry.design_id),
+      );
+    }
     if (!ids.length) {
       const target = link ?? sync?.sync;
       const collectionLink = target
@@ -94,7 +161,12 @@ async function runBatchImport(result: BatchEntriesResult, sync: SyncLookup | nul
       renderPanel(successHtml(collectionLink, note ?? "Nothing new to import.", note ? "Saved" : "Nothing to import"));
       return;
     }
-    const { job_id } = await api<{ job_id: string }>("POST", start, { url, [idField]: ids });
+    const { job_id } = await api<{ job_id: string }>("POST", start, {
+      url,
+      [idField]: ids,
+      // A private Printables collection's name, which the instance can't read itself.
+      ...(result.readAsUser ? { collection_title: result.title ?? null } : {}),
+    });
     await pollJobWithProgress(job_id, instanceUrl, note);
   } catch (err) {
     renderPanel(errorHtml(err));

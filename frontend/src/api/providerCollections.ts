@@ -20,6 +20,8 @@ export type ProviderCollection = {
   owner: string | null;
   /** The Thingport collection already synced with it; a provider collection syncs with one only. */
   synced: { collection_id: string; collection_name: string } | null;
+  /** The user's liked models, rather than a collection. */
+  likes: boolean;
 };
 
 async function call<T>(path: string, fallback: string, init?: RequestInit): Promise<T> {

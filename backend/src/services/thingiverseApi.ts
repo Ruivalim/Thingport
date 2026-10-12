@@ -334,10 +334,7 @@ export async function checkThingiverseCollection(
 /** For a Likes sync: null when Thingiverse answers 404 for the user. Throws on any other failure,
  * so an outage is never taken for a deleted account. */
 export async function checkThingiverseUser(username: string, accessToken: string): Promise<boolean> {
-  const { ok, status } = await fetchThingiverseApi(`/users/${encodeURIComponent(username)}`, accessToken);
-  if (status === 404) return false;
-  if (!ok) throw new Error(`Couldn't read the Thingiverse user (HTTP ${status})`);
-  return true;
+  return (await fetchThingiverseUser(username, accessToken)) !== null;
 }
 
 /** The username in the URL is cosmetic; only the collection id is needed. */
@@ -354,6 +351,33 @@ export function parseThingiverseCollectionUrl(url: string): { collectionId: stri
   return m ? { collectionId: m[1] } : null;
 }
 
+/** A user's profile as the API gives it; null when there's no such user. */
+export async function fetchThingiverseUser(
+  username: string,
+  accessToken: string,
+): Promise<Record<string, unknown> | null> {
+  const { ok, status, data } = await fetchThingiverseApi(`/users/${encodeURIComponent(username)}`, accessToken);
+  if (status === 404) return null;
+  if (!ok || !isRecord(data)) throw new Error(`Couldn't read the Thingiverse user (HTTP ${status})`);
+  return data;
+}
+
+const LIKES_SAMPLE = 3;
+
+/** How many models a user likes, and a few of them, for showing their likes as a collection. Null
+ *  when there's no such user. */
+export async function fetchThingiverseLikesSummary(
+  username: string,
+  accessToken: string,
+): Promise<{ username: string; count: number; thumbnails: string[] } | null> {
+  const user = await fetchThingiverseUser(username, accessToken);
+  if (!user) return null;
+  const name = typeof user.name === "string" && user.name ? user.name : username;
+  const count = Number(user.like_count) || 0;
+  const { entries } = count ? await fetchThingiverseUserLikes(name, accessToken, LIKES_SAMPLE) : { entries: [] };
+  return { username: name, count, thumbnails: entries.flatMap((entry) => (entry.cover ? [entry.cover] : [])) };
+}
+
 /** A profile link or a username. Null when Thingiverse knows no such user. */
 export async function resolveThingiverseUser(input: string, accessToken: string): Promise<{ username: string } | null> {
   let value = input.trim();
@@ -367,10 +391,9 @@ export async function resolveThingiverseUser(input: string, accessToken: string)
   }
   value = value.replace(/^@/, "");
   if (!value || !/^[\w.-]+$/.test(value)) return null;
-  const { ok, status, data } = await fetchThingiverseApi(`/users/${encodeURIComponent(value)}`, accessToken);
-  if (status === 404) return null;
-  if (!ok || !isRecord(data)) throw new Error(`Couldn't read the Thingiverse user (HTTP ${status})`);
-  return { username: typeof data.name === "string" && data.name.trim() ? data.name.trim() : value };
+  const user = await fetchThingiverseUser(value, accessToken);
+  if (!user) return null;
+  return { username: typeof user.name === "string" && user.name.trim() ? user.name.trim() : value };
 }
 
 function thingiverseCollectionCard(value: unknown): ProviderCollectionCard | null {

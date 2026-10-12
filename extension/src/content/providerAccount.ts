@@ -3,11 +3,14 @@
 // plenty of other people's profiles too.
 
 import { request, send } from "../shared/messages";
+import { printablesToken, readMe, readPrintables } from "./printables";
 import { sleep } from "./runtime";
 
 // The header is drawn after load; give up quietly if it never shows (e.g. signed out).
 const HEADER_WAIT_MS = 15_000;
 const HEADER_POLL_MS = 500;
+const TOKEN_WAIT_MS = 30_000;
+const TOKEN_POLL_MS = 2_000;
 
 let captured = false;
 
@@ -22,21 +25,38 @@ async function readThingiverseUsername(): Promise<string | null> {
   return null;
 }
 
-/** Asked of Printables' API as the site itself does; from this page, so its CORS rules allow it. */
-async function readPrintablesHandle(): Promise<string | null> {
-  const token = await request("GET_PRINTABLES_TOKEN").catch(() => null);
-  if (!token) return null;
+/** Reads and sends what only the user sees on Printables, when it's time (or `now`). */
+async function pushPrintables(
+  token: string,
+  me: { id: string; handle: string },
+  { now = false, listings = {} }: { now?: boolean; listings?: Record<string, string[]> } = {},
+): Promise<void> {
   try {
-    const res = await fetch("https://api.printables.com/graphql/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ query: "query { me { handle } }" }),
-    });
-    const body = (await res.json()) as { data?: { me?: { handle?: unknown } | null } };
-    const handle = body.data?.me?.handle;
-    return typeof handle === "string" && handle ? handle : null;
-  } catch {
-    return null;
+    const plan = await request("PRINTABLES_PUSH_DUE", { now });
+    if (!plan) return;
+    const push = await readPrintables(token, me, plan);
+    await request("PUSH_PRINTABLES", { ...push, listings: { ...push.listings, ...listings } });
+  } catch {}
+}
+
+/** Right away, with the models of a collection whose sync was just turned on on its page: the
+ *  instance can't have asked for them yet, and would otherwise wait for the next visit to read it. */
+export async function pushPrintablesNow(collectionId: string, modelIds: string[]): Promise<void> {
+  const token = await printablesToken();
+  const me = token ? await readMe(token).catch(() => null) : null;
+  if (token && me) await pushPrintables(token, me, { now: true, listings: { [collectionId]: modelIds } });
+}
+
+/** At most hourly, what only the signed-in user sees on Printables: private collections and likes,
+ *  for syncing them (see printables.ts). The push names the account too: reported on its own, it
+ *  would link an account the user forgot in the app again. */
+async function syncPrintables(): Promise<void> {
+  // The token lasts minutes; the site renews an expired one only after it loads, so keep asking.
+  for (let waited = 0; waited < TOKEN_WAIT_MS; waited += TOKEN_POLL_MS) {
+    const token = await printablesToken();
+    const me = token ? await readMe(token).catch(() => null) : null;
+    if (token && me) return pushPrintables(token, me);
+    await sleep(TOKEN_POLL_MS);
   }
 }
 
@@ -49,7 +69,11 @@ export function captureProviderAccount(hostname: string): void {
       : null;
   if (!provider) return;
   captured = true;
-  void (provider === "printables" ? readPrintablesHandle() : readThingiverseUsername()).then((value) => {
+  if (provider === "printables") {
+    void syncPrintables();
+    return;
+  }
+  void readThingiverseUsername().then((value) => {
     if (value) void send("REPORT_PROVIDER_ACCOUNT", { provider, value });
   });
 }

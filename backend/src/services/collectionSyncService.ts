@@ -7,9 +7,10 @@ import { prisma } from "../db";
 import { HttpError } from "../utils/fileUtils";
 import { addPrintsToCollection, findOrCreateCollectionByName, isSystemCollectionId } from "./collectionService";
 import { parseMakerworldCollectionUrl } from "./makerworldCollections";
-import { parsePrintablesCollectionUrl } from "./printablesApi";
+import { parsePrintablesCollectionUrl, parsePrintablesLikesUrl } from "./printablesApi";
 import { parseThingiverseCollectionUrl, parseThingiverseLikesUrl } from "./thingiverseApi";
 import { createLog } from "./auditLog";
+import { pushedLikes } from "./providerListingsService";
 import { createNotification } from "./notificationService";
 import type { SyncIntervalHours } from "./collectionSyncSchedule";
 import {
@@ -22,7 +23,8 @@ import {
 
 export type SyncProvider = "makerworld" | "printables" | "thingiverse";
 
-/** `likesOf` is set for a Thingiverse user's Likes, which a sync follows like a collection. */
+/** `likesOf` is set for a user's likes (on Thingiverse, or the user's own on Printables), which a
+ *  sync follows like a collection. */
 export type SyncSource = { provider: SyncProvider; externalId: string; url: string; likesOf?: string };
 
 const PROVIDER_NAMES: Record<SyncProvider, string> = {
@@ -35,15 +37,17 @@ export function providerName(provider: string): string {
   return PROVIDER_NAMES[provider as SyncProvider] ?? provider;
 }
 
-/** The collection a Thingiverse user's Likes are filed into, by import and sync alike. */
-export function likesCollectionName(username: string): string {
-  return `Thingiverse likes (@${username})`;
+/** The collection a user's likes are filed into, by import and sync alike. */
+export function likesCollectionName(username: string, provider: string = "thingiverse"): string {
+  return `${providerName(provider)} likes (@${username})`;
 }
 
 /** What a sync follows, for notifications: "its MakerWorld collection", "@alice's Thingiverse likes". */
 export function sourceDescription(sync: { provider: string; externalId: string; sourceUrl: string }): string {
   const likesOf = syncLikesUsername(sync);
-  return likesOf ? `@${likesOf}'s Thingiverse likes` : `its ${providerName(sync.provider)} collection`;
+  return likesOf
+    ? `@${likesOf}'s ${providerName(sync.provider)} likes`
+    : `its ${providerName(sync.provider)} collection`;
 }
 
 /** A provider collection a sync can follow by its id, or a Thingiverse user's Likes by username. */
@@ -62,6 +66,16 @@ export function parseSyncSource(url: string): SyncSource | null {
   if (thingiverse) {
     const id = thingiverse.collectionId;
     return { provider: "thingiverse", externalId: id, url: `https://www.thingiverse.com/collections/${id}` };
+  }
+  const printablesLikes = parsePrintablesLikesUrl(url);
+  if (printablesLikes) {
+    // Only Thingport Grab can read these, as their owner (see providerListingsService.ts).
+    return {
+      provider: "printables",
+      externalId: `${LIKES_ID_PREFIX}${printablesLikes.handle.toLowerCase()}`,
+      url: `https://www.printables.com/@${encodeURIComponent(printablesLikes.handle)}/collections/liked`,
+      likesOf: printablesLikes.handle,
+    };
   }
   const likes = parseThingiverseLikesUrl(url);
   if (likes) {
@@ -149,8 +163,9 @@ export async function enableSync(userId: string, input: EnableSyncInput): Promis
   if (!source)
     throw new HttpError(
       400,
-      "Only MakerWorld, Printables and Thingiverse collections, and Thingiverse Likes, can be synced",
+      "Only MakerWorld, Printables and Thingiverse collections, and Thingiverse or your own Printables likes, can be synced",
     );
+  if (source.provider === "printables" && source.likesOf) await assertOwnPrintablesLikes(userId, source.likesOf);
   const knownIds = [...new Set(input.knownIds.map((id) => id.trim()).filter(Boolean))];
 
   const existing = await findSyncForSource(userId, source);
@@ -185,7 +200,7 @@ export async function enableSync(userId: string, input: EnableSyncInput): Promis
     created = result.created;
   } else {
     const title = source.likesOf
-      ? likesCollectionName(source.likesOf)
+      ? likesCollectionName(source.likesOf, source.provider)
       : input.title?.trim() || `${providerName(source.provider)} Collection ${source.externalId}`;
     let found: (CollectionSync & { collection: Collection }) | null = null;
     for (const name of collectionNamesFor(title, source.provider)) {
@@ -237,6 +252,19 @@ async function notifySyncEnabled(sync: CollectionSync & { collection: Collection
     externalUrl: sync.sourceUrl,
     internalPath: `/models/collections/${sync.collectionId}`,
   });
+}
+
+/** Printables shows likes to their owner only, and Grab reads them as that user: a sync of someone
+ *  else's would be fed the user's own likes under the other's name. The likes Grab pushed prove whose
+ *  they are; the account saved on the user can be typed into the app, so it proves nothing. */
+async function assertOwnPrintablesLikes(userId: string, handle: string): Promise<void> {
+  const likes = await pushedLikes(userId);
+  if (likes?.card.owner?.toLowerCase() !== handle.toLowerCase()) {
+    throw new HttpError(
+      400,
+      "Printables shows likes to their owner only, so only your own can be synced, once Thingport Grab has seen them",
+    );
+  }
 }
 
 // How many "Things (MakerWorld 2)"-style names to try before giving up.

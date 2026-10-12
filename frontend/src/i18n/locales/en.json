@@ -1929,9 +1929,9 @@
         "intervalLabel": "Check for new models, every",
         "intervalOption_one": "Hour",
         "intervalOption_other": "{{count}} Hours",
-        "badgeLikes": "Synced with @{{user}}'s Thingiverse likes",
-        "introLikes_one": "Models @{{user}} likes on Thingiverse are imported here every hour.",
-        "introLikes_other": "Models @{{user}} likes on Thingiverse are imported here every {{count}} hours.",
+        "badgeLikes": "Synced with @{{user}}'s {{provider}} likes",
+        "introLikes_one": "Models @{{user}} likes on {{provider}} are imported here every hour.",
+        "introLikes_other": "Models @{{user}} likes on {{provider}} are imported here every {{count}} hours.",
         "browse": {
           "providerLabel": "Provider",
           "models_one": "{{count}} model",
@@ -1958,19 +1958,32 @@
             "printables": "@handle or profile link",
             "thingiverse": "Username or profile link"
           },
-          "showing": "Showing @{{user}}'s public collections.",
+          "showing": {
+            "printables": "Showing @{{user}}'s collections.",
+            "thingiverse": "Showing @{{user}}'s public collections."
+          },
           "change": "Change",
           "empty": "No collections on {{provider}} yet.",
           "pasteLabel": "Someone else's collection",
           "pastedTaken": "This collection is already synced with \"{{name}}\". A provider collection syncs with one Thingport collection only.",
-          "confirmMakerworld": "Models added to \"{{source}}\" from now on come into \"{{name}}\". The ones in it now aren't imported, since MakerWorld quickly rate-limits bulk imports; any already in your library are added to \"{{name}}\".",
-          "confirmImport_one": "The {{count}} model in \"{{source}}\" is imported into \"{{name}}\" now, and models added later come in on their own.",
-          "confirmImport_other": "The {{count}} models in \"{{source}}\" are imported into \"{{name}}\" now, and models added later come in on their own.",
-          "start": "Sync with \"{{name}}\"",
+          "confirmMakerworld": "Will import only models added from now on.",
+          "confirmImport_one": "Will import its {{count}} model now, and new ones as they're added.",
+          "confirmImport_other": "Will import its {{count}} models now, and new ones as they're added.",
           "started": "\"{{name}}\" now follows its {{provider}} collection.",
           "startedImporting": "\"{{name}}\" now follows its {{provider}} collection. Its models are being imported; you'll get a notification.",
-          "pasteHint": "Paste its link, from MakerWorld, Printables or Thingiverse.",
-          "yoursLabel": "Your collections on {{provider}}"
+          "yoursLabel": "Your collections on {{provider}}",
+          "likes": "Liked models",
+          "startedWaiting": "\"{{name}}\" now syncs with \"{{source}}\". Its models come in the next time you open {{provider}} with Thingport Grab.",
+          "pickPrompt": "Pick a collection above, or paste a link.",
+          "startNothing": "Sync",
+          "printablesPrivateHelp": "Private collections and likes are added once Thingport Grab sees you signed in on Printables, since Printables shows them to you alone.",
+          "makerworldHelp": "MakerWorld quickly rate-limits bulk imports, so the models in it now aren't imported. Any already in your library are added to \"{{name}}\".",
+          "forget": "Forget",
+          "forgetTitle": "Forget your {{provider}} account?",
+          "forgetMessage": {
+            "printables": "Thingport stops listing your Printables collections, and Thingport Grab stops sending your private collections and likes, until you give your username again. Syncs already set up keep their models; those of private collections and likes pause until then.",
+            "thingiverse": "Thingport stops listing your Thingiverse collections until you give your username again. Syncs already set up keep their models."
+          }
         }
       }
     },

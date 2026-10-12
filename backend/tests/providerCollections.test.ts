@@ -4,11 +4,19 @@ import request from "supertest";
 // No pacing here. config.ts reads the delays on load, so it's hoisted.
 vi.hoisted(() => {
   process.env.IMPORT_MAKERWORLD_CALL_DELAY_MS = "0";
+  process.env.COLLECTION_SYNC_ITEM_DELAY_MS = "0";
 });
 
 import { createApp } from "../src/app";
 import { prisma } from "../src/db";
 import { setUserMakerworldCookie } from "../src/services/makerworldCookieService";
+import {
+  PRINTABLES_FORGOTTEN,
+  pushedPrintablesModels,
+  WAITING_FOR_GRAB,
+} from "../src/services/providerListingsService";
+import { syncCollection } from "../src/services/collectionSyncRunner";
+import { getThingiverseAccessToken, setThingiverseAccessToken } from "../src/services/settingsService";
 
 const app = createApp();
 const stamp = Date.now();
@@ -21,6 +29,10 @@ const originalFetch = global.fetch;
 let nextId = (stamp % 1_000_000_000) * 10;
 const newId = () => String(nextId++);
 
+const THINGIVERSE_USER = `Liker${stamp}`;
+let previousThingiverseToken: string | null = null;
+// A real Printables user, but not this Thingport user's: only typed into the app.
+const OTHER_PRINTABLES_USER = { id: "777", handle: `Other_${stamp}`, publicUsername: "Other" };
 const PRINTABLES_USER = { id: "3560603", handle: `Tester_${stamp}`, publicUsername: "Tester" };
 const printablesCollections = [
   { id: newId(), name: "Practical finds", printsCount: 23 },
@@ -49,6 +61,7 @@ function printablesCard(c: { id: string; name: string; printsCount: number }) {
 
 function printablesGraphql(query: string, variables: Record<string, unknown>): Response {
   if (query.includes("user(id:")) {
+    if (variables.id === `@${OTHER_PRINTABLES_USER.handle}`) return json({ data: { user: OTHER_PRINTABLES_USER } });
     const ok = variables.id === `@${PRINTABLES_USER.handle}` || variables.id === PRINTABLES_USER.id;
     return json({ data: { user: ok ? PRINTABLES_USER : null } });
   }
@@ -80,6 +93,22 @@ beforeAll(async () => {
       const body = JSON.parse(String(init?.body ?? "{}")) as { query: string; variables: Record<string, unknown> };
       return printablesGraphql(body.query, body.variables);
     }
+    // Thingiverse's API as it answers for a user with two likes and one collection.
+    const thingiverse = url.match(/^https:\/\/api\.thingiverse\.com(\/[^?]*)/);
+    if (thingiverse) {
+      const path = thingiverse[1];
+      if (path === `/users/${THINGIVERSE_USER}`) return json({ name: THINGIVERSE_USER, like_count: 2 });
+      if (path === `/users/${THINGIVERSE_USER}/likes`) {
+        return json([
+          { id: 11, name: "Hook", thumbnail: "https://cdn.thingiverse.com/hook.jpg" },
+          { id: 12, name: "Clip", thumbnail: "https://cdn.thingiverse.com/clip.jpg" },
+        ]);
+      }
+      if (path === `/users/${THINGIVERSE_USER}/collections`) {
+        return json([{ id: 77, name: "Bits", count: 3, creator: { name: THINGIVERSE_USER } }]);
+      }
+      return json({ error: "not found" }, 404);
+    }
     if (url.startsWith("https://api.bambulab.com/v1/design-service/my/favorites/listlite")) {
       return json({ total: makerworldCollections.length, hits: makerworldCollections.map(makerworldCard) });
     }
@@ -99,8 +128,9 @@ beforeAll(async () => {
   }) as unknown as typeof fetch;
 });
 
-afterAll(() => {
+afterAll(async () => {
   global.fetch = originalFetch;
+  await setThingiverseAccessToken(previousThingiverseToken);
 });
 
 async function newCollection(name: string): Promise<string> {
@@ -176,6 +206,31 @@ describe("browsing a provider's collections to sync with", () => {
   });
 });
 
+describe("Thingiverse likes in the Browse tab", () => {
+  it("lists a user's likes first, counted from their profile, with a few of their models", async () => {
+    previousThingiverseToken = await getThingiverseAccessToken();
+    await setThingiverseAccessToken("test-token");
+    const saved = await request(app)
+      .put("/api/provider-collections/accounts/thingiverse")
+      .set(auth())
+      .send({ value: `https://www.thingiverse.com/${THINGIVERSE_USER}/designs` });
+    expect(saved.body.thingiverse.account).toBe(THINGIVERSE_USER);
+
+    const list = await request(app).get("/api/provider-collections").query({ provider: "thingiverse" }).set(auth());
+    expect(list.status).toBe(200);
+    expect(list.body.map((c: { name: string; likes: boolean }) => [c.name, c.likes])).toEqual([
+      ["Liked models", true],
+      ["Bits", false],
+    ]);
+    expect(list.body[0]).toMatchObject({
+      id: `likes:${THINGIVERSE_USER.toLowerCase()}`,
+      url: `https://www.thingiverse.com/${THINGIVERSE_USER}/likes`,
+      model_count: 2,
+      thumbnails: ["https://cdn.thingiverse.com/hook.jpg", "https://cdn.thingiverse.com/clip.jpg"],
+    });
+  });
+});
+
 describe("turning sync on from the app", () => {
   it("only follows new MakerWorld models: everything there now counts as seen", async () => {
     const collectionId = await newCollection("MakerWorld");
@@ -230,5 +285,210 @@ describe("turning sync on from the app", () => {
       .set(auth())
       .send({ url: `https://www.printables.com/collections/${printablesCollections[0].id}`, profile_scope: "all" });
     expect(res.status).toBe(400);
+  });
+});
+
+async function queuedUrls(collectionId: string): Promise<string[]> {
+  const sync = await prisma.collectionSync.findUniqueOrThrow({ where: { collectionId } });
+  const items = await prisma.importJobItem.findMany({ where: { job: { collectionSyncId: sync.id } } });
+  return items.map((item) => item.url).toSorted();
+}
+
+describe("private Printables collections and likes, through Thingport Grab", () => {
+  const privateId = newId();
+  const likedIds = [newId(), newId()];
+  const push = (body: Record<string, unknown>) =>
+    request(app)
+      .put("/api/provider-collections/printables/push")
+      .set(auth())
+      .send({ user: { id: PRINTABLES_USER.id, handle: PRINTABLES_USER.handle }, ...body });
+  const likesUrl = `https://www.printables.com/@${PRINTABLES_USER.handle}/collections/liked`;
+
+  it("lists the private collections and likes Grab read, after the public ones", async () => {
+    const res = await push({
+      collections: [
+        { id: privateId, name: "Secret stash", model_count: 2, thumbnails: [], private: true },
+        { id: printablesCollections[0].id, name: "Practical finds", model_count: 23, thumbnails: [], private: false },
+      ],
+      likes: { model_count: 2, thumbnails: [] },
+    });
+    expect(res.status).toBe(200);
+
+    const list = await request(app).get("/api/provider-collections").query({ provider: "printables" }).set(auth());
+    expect(list.body.map((c: { name: string; private: boolean }) => [c.name, c.private])).toEqual([
+      ["Liked models", true],
+      ["Practical finds", false],
+      ["Cool toys", false],
+      ["Secret stash", true],
+    ]);
+    expect(list.body[0]).toMatchObject({
+      id: `likes:${PRINTABLES_USER.handle.toLowerCase()}`,
+      url: likesUrl,
+      likes: true,
+    });
+    expect(list.body[1].likes).toBe(false);
+  });
+
+  it("finds the user's own likes by link, and nobody else's", async () => {
+    const own = await request(app).get("/api/provider-collections/lookup").query({ url: likesUrl }).set(auth());
+    expect(own.status).toBe(200);
+    expect(own.body.name).toBe("Liked models");
+
+    const other = await request(app)
+      .get("/api/provider-collections/lookup")
+      .query({ url: "https://www.printables.com/@someone_1/collections/liked" })
+      .set(auth());
+    expect(other.status).toBe(404);
+  });
+
+  it("waits for Grab to read a private collection, then imports it on the next visit", async () => {
+    const collectionId = await newCollection("Private");
+    const res = await request(app)
+      .post(`/api/collection/${collectionId}/sync`)
+      .set(auth())
+      .send({ url: `https://www.printables.com/@${PRINTABLES_USER.handle}/collections/${privateId}` });
+    expect(res.body).toMatchObject({ importing: true, waiting: true });
+    await vi.waitFor(
+      async () =>
+        expect((await prisma.collectionSync.findUniqueOrThrow({ where: { collectionId } })).lastError).toBe(
+          WAITING_FOR_GRAB,
+        ),
+      { timeout: 5000 },
+    );
+
+    const wanted = await request(app).get("/api/provider-collections/printables/wanted").set(auth());
+    expect(wanted.body.keys).toContain(privateId);
+
+    const models = [newId(), newId()];
+    await push({ listings: { [privateId]: models } });
+    await vi.waitFor(
+      async () =>
+        expect(await queuedUrls(collectionId)).toEqual(
+          models.map((m) => `https://www.printables.com/model/${m}`).toSorted(),
+        ),
+      { timeout: 5000 },
+    );
+  });
+
+  it("reads a collection made public live again, not from what Grab read while it was private", async () => {
+    const id = newId();
+    await push({
+      collections: [{ id, name: "Was private", model_count: 1, thumbnails: [], private: true }],
+      listings: { [id]: [newId()] },
+    });
+    expect(Array.isArray(await pushedPrintablesModels(userId, id))).toBe(true);
+
+    await push({ collections: [{ id, name: "Was private", model_count: 1, thumbnails: [], private: false }] });
+    expect(await pushedPrintablesModels(userId, id)).toBeNull();
+  });
+
+  it("forgets the models Grab read of a collection that's no longer private", async () => {
+    const id = newId();
+    await push({
+      collections: [{ id, name: "Soon public", model_count: 1, thumbnails: [], private: true }],
+      listings: { [id]: [newId()] },
+    });
+    await push({ collections: [{ id, name: "Soon public", model_count: 1, thumbnails: [], private: false }] });
+    expect(await prisma.providerListing.count({ where: { userId, key: id } })).toBe(0);
+  });
+
+  it("refuses a push for a Printables account Printables doesn't know", async () => {
+    const res = await request(app)
+      .put("/api/provider-collections/printables/push")
+      .set(auth())
+      .send({ user: { id: PRINTABLES_USER.id, handle: "someone_else" }, collections: [] });
+    expect(res.status).toBe(400);
+  });
+
+  it("asks Grab for only a few private collections per visit", async () => {
+    const ids = [newId(), newId(), newId(), newId()];
+    await push({
+      collections: ids.map((id) => ({ id, name: `Private ${id}`, model_count: 1, thumbnails: [], private: true })),
+    });
+    for (const id of ids) {
+      const collectionId = await newCollection(`Capped ${id}`);
+      await request(app)
+        .post(`/api/collection/${collectionId}/sync`)
+        .set(auth())
+        .send({ url: `https://www.printables.com/@${PRINTABLES_USER.handle}/collections/${id}` });
+    }
+    const wanted = await request(app).get("/api/provider-collections/printables/wanted").set(auth());
+    expect(wanted.body.keys.filter((key: string) => ids.includes(key))).toHaveLength(3);
+  });
+
+  it("takes only a few private collections' models per push", async () => {
+    const listings = Object.fromEntries(Array.from({ length: 11 }, () => [newId(), [newId()]]));
+    expect((await push({ listings })).status).toBe(400);
+  });
+
+  it("refuses to sync someone else's Printables likes", async () => {
+    const collectionId = await newCollection("Their likes");
+    const res = await request(app)
+      .post(`/api/collection/${collectionId}/sync`)
+      .set(auth())
+      .send({ url: "https://www.printables.com/@someone_1/collections/liked" });
+    expect(res.status).toBe(400);
+    const viaGrab = await request(app)
+      .post("/api/collection-sync")
+      .set(auth())
+      .send({ url: "https://www.printables.com/@someone_1/collections/liked", known_ids: [] });
+    expect(viaGrab.status).toBe(400);
+    expect(await prisma.collectionSync.count({ where: { userId, externalId: "likes:someone_1" } })).toBe(0);
+  });
+
+  it("doesn't take a typed-in Printables username as proof whose likes they are", async () => {
+    await request(app)
+      .put("/api/provider-collections/accounts/printables")
+      .set(auth())
+      .send({ value: `@${OTHER_PRINTABLES_USER.handle}` });
+    const collectionId = await newCollection("Typed likes");
+    const res = await request(app)
+      .post(`/api/collection/${collectionId}/sync`)
+      .set(auth())
+      .send({ url: `https://www.printables.com/@${OTHER_PRINTABLES_USER.handle}/collections/liked` });
+    expect(res.status).toBe(400);
+    // Back to the account Grab pushed, for the tests after this one.
+    await push({});
+  });
+
+  it("turns Grab's Printables pushes off when the user forgets their account, until they give one again", async () => {
+    const forget = await request(app)
+      .put("/api/provider-collections/accounts/printables")
+      .set(auth())
+      .send({ value: null });
+    expect(forget.body.printables.account).toBeNull();
+    expect(await prisma.providerListing.count({ where: { userId, provider: "printables" } })).toBe(0);
+    expect((await request(app).get("/api/provider-collections/printables/wanted").set(auth())).status).toBe(409);
+    expect((await push({ collections: [] })).status).toBe(409);
+    // The private collection synced earlier can't be told from a deleted one now: it pauses.
+    const synced = await prisma.collectionSync.findFirstOrThrow({ where: { userId, externalId: privateId } });
+    expect(await syncCollection(synced.id)).toBe("error");
+    expect((await prisma.collectionSync.findUniqueOrThrow({ where: { id: synced.id } })).lastError).toBe(
+      PRINTABLES_FORGOTTEN,
+    );
+
+    await request(app)
+      .put("/api/provider-collections/accounts/printables")
+      .set(auth())
+      .send({ value: `@${PRINTABLES_USER.handle}` });
+    expect((await push({ likes: { model_count: 0, thumbnails: [] } })).status).toBe(200);
+  });
+
+  it("syncs the user's likes from the ids Grab read", async () => {
+    const collectionId = await newCollection("Likes");
+    const res = await request(app).post(`/api/collection/${collectionId}/sync`).set(auth()).send({ url: likesUrl });
+    expect(res.body).toMatchObject({ importing: true, waiting: true });
+
+    const wanted = await request(app).get("/api/provider-collections/printables/wanted").set(auth());
+    expect(wanted.body.keys).toContain("likes");
+
+    await push({ likes: { model_count: 2, thumbnails: [], ids: likedIds } });
+    await vi.waitFor(
+      async () =>
+        expect(await queuedUrls(collectionId)).toEqual(
+          likedIds.map((m) => `https://www.printables.com/model/${m}`).toSorted(),
+        ),
+      { timeout: 5000 },
+    );
   });
 });

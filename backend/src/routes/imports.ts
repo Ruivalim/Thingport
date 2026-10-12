@@ -464,7 +464,11 @@ router.post(
   }),
 );
 
-const printablesCollectionImportRequestSchema = importRequestSchema.extend({ model_ids: z.array(z.string()).min(1) });
+const printablesCollectionImportRequestSchema = importRequestSchema.extend({
+  model_ids: z.array(z.string()).min(1),
+  // As Thingport Grab read it: the instance can't read a private collection's name itself.
+  collection_title: z.string().max(300).nullable().optional(),
+});
 
 router.post(
   "/import/printables-collection",

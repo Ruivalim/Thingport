@@ -18,7 +18,8 @@ export type CollectionSync = {
   profile_scope: SyncProfileScope;
   last_checked_at: string | null;
   last_error: string | null;
-  /** Set when it follows a Thingiverse user's Likes rather than a collection: their username. */
+  /** Set when it follows a user's likes (Thingiverse, or the user's own on Printables) rather than a
+   *  collection: their username. */
   likes_of: string | null;
   /** How often the provider's collection is checked. */
   interval_hours: SyncIntervalHours;
@@ -141,11 +142,12 @@ export const collectionsApi = {
 
   /** Links this collection to a provider's, from the sync dialog's Browse tab. `importing`: the
    *  provider collection's current models are being imported (not on MakerWorld, which only
-   *  follows new ones). */
+   *  follows new ones). `waiting`: a private Printables collection or likes, whose models come in
+   *  on the user's next visit to Printables with Thingport Grab. */
   enableSync: async (
     id: string,
     input: { url: string; profile_scope?: SyncProfileScope; interval_hours?: SyncIntervalHours },
-  ): Promise<{ sync: CollectionSync; importing: boolean }> => {
+  ): Promise<{ sync: CollectionSync; importing: boolean; waiting: boolean }> => {
     const res = await fetch(`${apiBase()}/collection/${id}/sync`, {
       method: "POST",
       headers: authHeaders({ "Content-Type": "application/json" }),

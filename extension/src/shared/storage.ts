@@ -15,6 +15,12 @@ export const STORAGE_KEYS = {
   lastSyncedMakerworldCookie: "lastSyncedMakerworldCookie",
   // The Printables and Thingiverse usernames last sent to the instance, so unchanged ones aren't.
   lastSentProviderAccounts: "lastSentProviderAccounts",
+  // When Printables' lists were last read and sent, so a burst of page loads reads them once.
+  lastPrintablesPushAt: "lastPrintablesPushAt",
+  // When every page of the user's Printables likes was last read (see printablesPushDue).
+  lastPrintablesLikesAt: "lastPrintablesLikesAt",
+  // When a tab was last told to read Printables, so others hold off meanwhile.
+  printablesPlanHandedOutAt: "printablesPlanHandedOutAt",
 } as const;
 
 export type StoredConfig = {
@@ -29,6 +35,9 @@ export type StoredConfig = {
   lastSyncedMakerworldCookie?: string;
   /** `account` is the Thingport instance and email they were sent to. */
   lastSentProviderAccounts?: { account: string; values: Record<string, string> };
+  lastPrintablesPushAt?: number;
+  lastPrintablesLikesAt?: number;
+  printablesPlanHandedOutAt?: number;
 };
 
 export const CONFIG_CHANGE_KEYS: readonly string[] = [

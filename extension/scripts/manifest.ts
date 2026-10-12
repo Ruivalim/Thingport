@@ -9,6 +9,7 @@ export function isTarget(value: string): value is Target {
 }
 
 const PROVIDER_MATCHES = ["*://*.thingiverse.com/*", "*://*.makerworld.com/*", "*://*.printables.com/*"];
+const COOKIE_HOSTS = ["*://*.makerworld.com/*", "*://*.printables.com/*"];
 
 function iconSet(variant: "color" | "dark"): Record<string, string> {
   return Object.fromEntries(
@@ -29,6 +30,9 @@ export function buildManifest(target: Target, pkg: { version: string; descriptio
     },
     background: target === "firefox" ? { scripts: ["background.js"] } : { service_worker: "background.js" },
     permissions: ["storage", "cookies", "downloads"],
+    // chrome.cookies needs these as host permissions; content script matches don't count. Their
+    // session cookies are HttpOnly, so only the background can read them.
+    host_permissions: COOKIE_HOSTS,
     // The user's instance origin, requested at setup.
     optional_host_permissions: ["*://*/*"],
     content_scripts: [{ matches: PROVIDER_MATCHES, js: ["content.js"], run_at: "document_idle" }],

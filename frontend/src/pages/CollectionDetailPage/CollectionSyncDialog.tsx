@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
@@ -89,6 +89,11 @@ export default function CollectionSyncDialog({ collection, onClose, onUpdated, o
   const { sync } = collection;
   const [browseProvider, setBrowseProvider] = useState<BrowsableProvider | null>(null);
   const [picked, setPicked] = useState<BrowsePick | null>(null);
+  // A pick from another provider would leave its explanation under this one's list.
+  const changeBrowseProvider = useCallback((next: BrowsableProvider) => {
+    setBrowseProvider(next);
+    setPicked(null);
+  }, []);
   const providerId = sync?.provider ?? picked?.provider ?? browseProvider;
   const provider = importProviderInfo(providerId)?.label ?? providerId ?? "";
   const hasProfiles = providerId === "makerworld";
@@ -190,15 +195,28 @@ export default function CollectionSyncDialog({ collection, onClose, onUpdated, o
       onUpdated({ ...collection, sync: result.sync });
       showToast({
         message: t(
-          result.importing
-            ? "models:collections.sync.browse.startedImporting"
-            : "models:collections.sync.browse.started",
-          { name: collection.name, provider },
+          result.waiting
+            ? "models:collections.sync.browse.startedWaiting"
+            : result.importing
+              ? "models:collections.sync.browse.startedImporting"
+              : "models:collections.sync.browse.started",
+          {
+            name: collection.name,
+            provider,
+            // The instance names a likes card in English; the tile shows it translated.
+            source: picked.collection.likes ? t("models:collections.sync.browse.likes") : picked.collection.name,
+          },
         ),
       });
       setSection("overview");
     });
   };
+
+  const footerText = !picked
+    ? t("models:collections.sync.browse.pickPrompt")
+    : picked.provider === "makerworld"
+      ? t("models:collections.sync.browse.confirmMakerworld")
+      : t("models:collections.sync.browse.confirmImport", { count: picked.collection.model_count });
 
   const checked = sync?.last_checked_at
     ? t("models:collections.sync.lastChecked", { when: relativeTime(sync.last_checked_at, i18n.language) })
@@ -239,34 +257,53 @@ export default function CollectionSyncDialog({ collection, onClose, onUpdated, o
       )}
 
       {section === "browse" && !sync && (
-        <Stack spacing={2.5}>
-          <SyncBrowse
-            provider={browseProvider}
-            onProviderChange={setBrowseProvider}
-            picked={picked}
-            onPick={setPicked}
-            onUnauthorized={onUnauthorized}
-          />
-          {picked && (
-            <Box sx={{ borderTop: 1, borderColor: "divider", pt: 2 }}>
-              <Typography variant="body2" sx={{ mb: 1.5 }}>
-                {picked.provider === "makerworld"
-                  ? t("models:collections.sync.browse.confirmMakerworld", {
-                      source: picked.collection.name,
-                      name: collection.name,
-                    })
-                  : t("models:collections.sync.browse.confirmImport", {
-                      source: picked.collection.name,
-                      name: collection.name,
-                      count: picked.collection.model_count,
-                    })}
-              </Typography>
-              <Button variant="contained" onClick={() => void startSync()} disabled={busy}>
-                {t("models:collections.sync.browse.start", { name: picked.collection.name })}
+        // Reaches through the content area's 20px bottom padding, so the footer sits on the
+        // dialog's bottom edge however short the list is, just where it sticks on a long one.
+        <Box sx={{ display: "flex", flexDirection: "column", minHeight: "calc(100% + 20px)", mb: "-20px" }}>
+          <Box sx={{ mb: 2.5 }}>
+            <SyncBrowse
+              provider={browseProvider}
+              onProviderChange={changeBrowseProvider}
+              picked={picked}
+              onPick={setPicked}
+              onUnauthorized={onUnauthorized}
+            />
+          </Box>
+          {/* Always in view, however far down the list the pick was made. Its bottom offset
+              cancels the content area's bottom padding. */}
+          <Box
+            sx={{
+              position: "sticky",
+              bottom: -20,
+              mt: "auto",
+              mx: { xs: -2, md: -2.5 },
+              px: { xs: 2, md: 2.5 },
+              py: 1,
+              borderTop: 1,
+              borderColor: "divider",
+              bgcolor: "background.paper",
+              zIndex: 1,
+            }}
+          >
+            {/* One short line beside the button, to leave the list as much room as possible. */}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+              <Button
+                variant="contained"
+                onClick={() => void startSync()}
+                disabled={busy || !picked}
+                sx={{ flexShrink: 0 }}
+              >
+                {t("models:collections.sync.browse.startNothing")}
               </Button>
+              <Typography variant="body2" color={picked ? "text.primary" : "text.secondary"} sx={{ minWidth: 0 }}>
+                {footerText}
+                {picked?.provider === "makerworld" && (
+                  <HelpTip text={t("models:collections.sync.browse.makerworldHelp", { name: collection.name })} />
+                )}
+              </Typography>
             </Box>
-          )}
-        </Stack>
+          </Box>
+        </Box>
       )}
 
       {section === "overview" && sync && (
@@ -274,7 +311,7 @@ export default function CollectionSyncDialog({ collection, onClose, onUpdated, o
           <Box>
             <Typography variant="body2">
               {sync.likes_of
-                ? t("models:collections.sync.introLikes", { user: sync.likes_of, count: sync.interval_hours })
+                ? t("models:collections.sync.introLikes", { user: sync.likes_of, provider, count: sync.interval_hours })
                 : t("models:collections.sync.intro", { provider, count: sync.interval_hours })}
             </Typography>
             <Link
