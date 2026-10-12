@@ -1,5 +1,23 @@
 # Thingport Grab changelog
 
+# [thingport-grab-v1.5.0](https://github.com/TautvydasDerzinskas/Thingport/compare/thingport-grab-v1.4.0...thingport-grab-v1.5.0) (2026-10-12)
+
+
+### Bug Fixes
+
+* **extension:** check a MakerWorld collection against the library in one call ([44c687b](https://github.com/TautvydasDerzinskas/Thingport/commit/44c687b3ae7ba96a7246ece73d79212733cfd449))
+
+
+### Features
+
+* browse private collections functionality ([b619084](https://github.com/TautvydasDerzinskas/Thingport/commit/b619084be7ed060d02cd6ba473a196e7ba0859de))
+* **collections:** add many models to a collection in one call ([acfa844](https://github.com/TautvydasDerzinskas/Thingport/commit/acfa844ebe62ee635941a2a6d499083cf4856d47))
+* **collections:** turn sync on from Thingport, picking the provider's collection ([1131700](https://github.com/TautvydasDerzinskas/Thingport/commit/1131700ec5eb53801a85c842143717c66696d8d8))
+* **extension:** show when Thingport Grab can't sign in ([623cf25](https://github.com/TautvydasDerzinskas/Thingport/commit/623cf25f2c43d153b6e89952ab572923558aa6b7))
+* **extension:** tell Thingport who you're signed in as on Printables and Thingiverse ([d3ed673](https://github.com/TautvydasDerzinskas/Thingport/commit/d3ed67342aae85bc170b95b01b7aba9dfcab15e0))
+* **notifications:** reinvent notifications ([1408b09](https://github.com/TautvydasDerzinskas/Thingport/commit/1408b09c5989499b38ee0effd1b7c29661a233a5))
+* **sync:** notify on enable, change defaults to daily and designer profiles ([9334438](https://github.com/TautvydasDerzinskas/Thingport/commit/9334438a521a2a5f9a39f6af4d892ac2465c02ce))
+
 # [thingport-grab-v1.4.0](https://github.com/TautvydasDerzinskas/Thingport/compare/thingport-grab-v1.3.0...thingport-grab-v1.4.0) (2026-10-08)
 
 
