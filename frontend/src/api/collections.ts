@@ -11,7 +11,7 @@ export type SyncIntervalHours = (typeof SYNC_INTERVAL_HOURS)[number];
 /** Which print profiles a synced MakerWorld collection brings for each new model. */
 export type SyncProfileScope = "url" | "designer" | "all";
 
-/** Thingport Grab links a collection to one on a provider; new models there come in hourly. */
+/** A collection linked to one on a provider, by Thingport Grab or the sync dialog's Browse tab. */
 export type CollectionSync = {
   provider: string;
   source_url: string;
@@ -136,6 +136,22 @@ export const collectionsApi = {
       body: JSON.stringify(settings),
     });
     if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to save sync settings"));
+    return res.json();
+  },
+
+  /** Links this collection to a provider's, from the sync dialog's Browse tab. `importing`: the
+   *  provider collection's current models are being imported (not on MakerWorld, which only
+   *  follows new ones). */
+  enableSync: async (
+    id: string,
+    input: { url: string; profile_scope?: SyncProfileScope; interval_hours?: SyncIntervalHours },
+  ): Promise<{ sync: CollectionSync; importing: boolean }> => {
+    const res = await fetch(`${apiBase()}/collection/${id}/sync`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(input),
+    });
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to start syncing"));
     return res.json();
   },
 

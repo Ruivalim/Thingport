@@ -22,13 +22,28 @@ Thingport imports that model into the matching Thingport collection on its own, 
 
 ## Before you start
 
-- Install [Thingport Grab](../../extension/README.md), the browser extension, and connect it to your Thingport. Only
-  Grab can turn sync on, because it has just seen which models the collection holds.
+- Sync can be turned on from Thingport itself, or with [Thingport Grab](../../extension/README.md), the browser
+  extension, on the provider collection's page.
 - Connect the provider under **Configuration → Providers** where it needs it (see
   [provider setup](../PROVIDER_SETUP.md)). Printables needs nothing. MakerWorld needs your session cookie to import
   models, and to read a private collection. Thingiverse needs an access token.
 
-## Turn sync on
+## Turn sync on in Thingport
+
+1. Open the Thingport collection that should follow one on a provider, or create it first.
+2. Choose **⋮ → Sync configuration**. A collection that isn't synced yet opens on **Browse**.
+3. Pick the provider. Your own collections there are listed: on MakerWorld through your cookie, private ones
+   included; on Printables and Thingiverse, the public ones of the username you give the first time. Or paste any
+   collection's link, yours or someone else's.
+4. Pick a collection and click **Sync with "…"**. **Settings** sets how often it's checked, and for MakerWorld which
+   print profiles each new model brings, before you do.
+
+What happens to the models already in the provider's collection depends on the provider. On Printables and Thingiverse
+they're imported now, one at a time. MakerWorld rate-limits bulk imports quickly, so there only models added from now
+on come in; ones already in your library are added to the collection either way. A provider collection syncs with one
+Thingport collection at most, so one that's taken shows which collection follows it.
+
+## Turn sync on with Thingport Grab
 
 1. Open the collection's page on MakerWorld, Printables or Thingiverse. A Thingiverse user's **Likes** page works too.
 2. Click the Thingport Grab button in the bottom-right corner. The panel lists the models in the collection.
@@ -86,7 +101,7 @@ linked:
 ## Turn sync off
 
 Either untick the box in Thingport Grab on the collection's page and save, or use **Stop syncing** in the collection's
-sync configuration. The collection and its models stay in Thingport. You can turn sync on again from Grab at any time.
+sync configuration. The collection and its models stay in Thingport. You can turn sync on again at any time, in Thingport or from Grab.
 
 ## For admins
 

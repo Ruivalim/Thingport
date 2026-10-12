@@ -2,6 +2,7 @@ import { IMPORT_BROWSER_USER_AGENT, IMPORT_HTML_MAX_BYTES, IMPORT_TIMEOUT_SECOND
 import { HttpError } from "../utils/fileUtils";
 import { type ImportedAuthorInfo, type ImportedPageMetadata } from "./importResolvers";
 import { htmlToMarkdown } from "./descriptionMarkdown";
+import type { ProviderCollectionCard } from "./providerCollectionCard";
 
 // Unlike Cloudflare-gated www.printables.com, the GraphQL API answers unauthenticated requests.
 const PRINTABLES_GRAPHQL_URL = "https://api.printables.com/graphql/";
@@ -336,4 +337,72 @@ export async function fetchPrintablesCollectionEntries(
     fetchAllPrintablesCollectionModels(collectionId),
   ]);
   return { title, entries, total: entries.length, truncated: entries.length >= COLLECTION_MAX_ENTRIES };
+}
+
+const COLLECTION_CARD_FIELDS = "id name private printsCount user { handle } thumbnails11 { image { filePath } }";
+const USER_QUERY = `query ($id: ID!) { user(id: $id) { id handle publicUsername } }`;
+const USER_COLLECTIONS_QUERY = `query ($userId: ID!) { collections: userCollections(userId: $userId) { ${COLLECTION_CARD_FIELDS} } }`;
+const COLLECTION_CARD_QUERY = `query ($id: ID!) { collection(id: $id) { ${COLLECTION_CARD_FIELDS} } }`;
+
+export type PrintablesUser = { id: string; handle: string; name: string | null };
+
+/** A profile link, "@handle", a handle or a numeric id. Null when Printables knows no such user. */
+export async function resolvePrintablesUser(input: string): Promise<PrintablesUser | null> {
+  let value = input.trim();
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase();
+    if (host !== "printables.com" && host !== "www.printables.com") return null;
+    value = url.pathname.match(/^\/(?:[a-z]{2}\/)?@([^/]+)/i)?.[1] ?? "";
+  } catch {
+    // Not a link.
+  }
+  value = value.replace(/^@/, "");
+  if (!value) return null;
+  // `user(id:)` takes "@handle" as well as the id; a bare handle is an error.
+  const data = await fetchPrintablesGraphql(USER_QUERY, { id: /^\d+$/.test(value) ? value : `@${value}` });
+  const user = isRecord(data) && isRecord(data.data) && isRecord(data.data.user) ? data.data.user : null;
+  if (!user || user.id == null || typeof user.handle !== "string") return null;
+  const name =
+    typeof user.publicUsername === "string" && user.publicUsername.trim() ? user.publicUsername.trim() : null;
+  return { id: String(user.id), handle: user.handle, name };
+}
+
+function collectionCard(value: unknown): ProviderCollectionCard | null {
+  if (!isRecord(value) || value.id == null) return null;
+  const id = String(value.id);
+  const owner = isRecord(value.user) && typeof value.user.handle === "string" ? value.user.handle : null;
+  const thumbnails = Array.isArray(value.thumbnails11)
+    ? value.thumbnails11.flatMap((t) => {
+        const url = isRecord(t) && isRecord(t.image) ? mediaUrl(t.image.filePath) : null;
+        return url ? [url] : [];
+      })
+    : [];
+  return {
+    id,
+    name: typeof value.name === "string" && value.name.trim() ? value.name.trim() : `Collection ${id}`,
+    url: owner
+      ? `https://www.printables.com/@${owner}/collections/${id}`
+      : `https://www.printables.com/collections/${id}`,
+    modelCount: typeof value.printsCount === "number" ? value.printsCount : 0,
+    thumbnails,
+    private: value.private === true,
+    owner,
+  };
+}
+
+/** Public ones only: Printables shows a user's private collections to them alone. */
+export async function listPrintablesUserCollections(userId: string): Promise<ProviderCollectionCard[]> {
+  const data = await fetchPrintablesGraphql(USER_COLLECTIONS_QUERY, { userId });
+  const list = isRecord(data) && isRecord(data.data) ? data.data.collections : null;
+  if (!Array.isArray(list)) throw new HttpError(502, "Couldn't load your Printables collections");
+  return list.flatMap((item) => {
+    const card = collectionCard(item);
+    return card ? [card] : [];
+  });
+}
+
+export async function fetchPrintablesCollectionCard(collectionId: string): Promise<ProviderCollectionCard | null> {
+  const data = await fetchPrintablesGraphql(COLLECTION_CARD_QUERY, { id: collectionId });
+  return collectionCard(isRecord(data) && isRecord(data.data) ? data.data.collection : null);
 }

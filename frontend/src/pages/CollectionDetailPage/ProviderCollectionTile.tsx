@@ -1,0 +1,274 @@
+import { useTranslation } from "react-i18next";
+import Box from "@mui/material/Box";
+import ButtonBase from "@mui/material/ButtonBase";
+import Typography from "@mui/material/Typography";
+import type { Theme } from "@mui/material/styles";
+import CheckIcon from "@mui/icons-material/Check";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import ViewInArOutlinedIcon from "@mui/icons-material/ViewInArOutlined";
+import type { BrowsableProvider, ProviderCollection } from "../../api/providerCollections";
+
+// Each provider's own accent, so a tile reads as theirs.
+export const PROVIDER_ACCENTS: Record<BrowsableProvider, string> = {
+  makerworld: "#00AE42",
+  printables: "#FA6831",
+  thingiverse: "#5575FE",
+};
+
+type Props = {
+  provider: BrowsableProvider;
+  collection: ProviderCollection;
+  selected: boolean;
+  onSelect: () => void;
+};
+
+const sunken = (theme: Theme) => (theme.palette.mode === "dark" ? "rgba(255, 255, 255, 0.06)" : "#f4f4f4");
+
+/** A model image, or an empty slot when the collection has fewer. */
+function Thumb({ src, sx }: { src: string | undefined; sx?: object }) {
+  const base = { display: "block", width: "100%", bgcolor: sunken, ...sx };
+  return src ? (
+    <Box component="img" src={src} alt="" loading="lazy" sx={{ ...base, objectFit: "cover" }} />
+  ) : (
+    <Box sx={base} />
+  );
+}
+
+function ModelCount({ count, provider }: { count: number; provider: BrowsableProvider }) {
+  const { t } = useTranslation("models");
+  return (
+    <>
+      {t(provider === "thingiverse" ? "collections.sync.browse.things" : "collections.sync.browse.models", { count })}
+    </>
+  );
+}
+
+/** MakerWorld: a 2x2 mosaic, "+N" over the last tile, the deck edges below. */
+function MakerWorldTile({ collection }: { collection: ProviderCollection }) {
+  const more = collection.model_count - 4;
+  return (
+    <Box
+      sx={{
+        borderRadius: "12px",
+        border: 1,
+        borderColor: "divider",
+        bgcolor: "background.paper",
+        overflow: "hidden",
+        boxShadow: (theme) =>
+          `0 6px 0 -2px ${theme.palette.mode === "dark" ? "#3a3a3a" : "#ebebeb"}, 0 11px 0 -5px ${theme.palette.mode === "dark" ? "#2e2e2e" : "#f2f2f2"}`,
+        mb: "11px",
+      }}
+    >
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gridTemplateRows: "1fr 1fr",
+          gap: "2px",
+          aspectRatio: "4 / 3",
+        }}
+      >
+        {[0, 1, 2, 3].map((i) => (
+          <Box key={i} sx={{ position: "relative", minHeight: 0, overflow: "hidden" }}>
+            <Thumb src={collection.thumbnails[i]} sx={{ width: "100%", height: "100%" }} />
+            {i === 3 && more > 0 && (
+              <Box
+                sx={{
+                  position: "absolute",
+                  inset: 0,
+                  display: "grid",
+                  placeItems: "center",
+                  bgcolor: "rgba(0, 0, 0, 0.45)",
+                  color: "#fff",
+                  fontWeight: 700,
+                  fontSize: "1.25rem",
+                }}
+              >
+                +{more}
+              </Box>
+            )}
+          </Box>
+        ))}
+      </Box>
+      <Box sx={{ px: 1.5, py: 1.25 }}>
+        <Typography noWrap sx={{ fontWeight: 700, fontSize: "0.875rem" }}>
+          {collection.name}
+        </Typography>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 0.5,
+            mt: 0.25,
+            color: "text.secondary",
+            fontSize: "0.75rem",
+          }}
+        >
+          <ViewInArOutlinedIcon sx={{ fontSize: 14 }} />
+          <ModelCount count={collection.model_count} provider="makerworld" />
+          {collection.private && <LockOutlinedIcon sx={{ fontSize: 14, ml: "auto" }} />}
+        </Box>
+      </Box>
+    </Box>
+  );
+}
+
+/** Printables: its list row, boxed, with the three square thumbnails along the top. */
+function PrintablesTile({ collection }: { collection: ProviderCollection }) {
+  return (
+    <Box
+      sx={{
+        borderRadius: "4px",
+        border: 1,
+        borderColor: "divider",
+        borderTop: `3px solid ${PROVIDER_ACCENTS.printables}`,
+        bgcolor: "background.paper",
+        p: 1.25,
+      }}
+    >
+      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "4px" }}>
+        {[0, 1, 2].map((i) => (
+          <Thumb key={i} src={collection.thumbnails[i]} sx={{ aspectRatio: "1 / 1" }} />
+        ))}
+      </Box>
+      <Typography noWrap sx={{ fontWeight: 700, fontSize: "0.875rem", mt: 1 }}>
+        {collection.name}
+      </Typography>
+      <Typography sx={{ fontSize: "0.8rem", color: "text.secondary" }}>
+        <ModelCount count={collection.model_count} provider="printables" />
+      </Typography>
+    </Box>
+  );
+}
+
+// Thingiverse's card: rings of lighter blue around the bottom, where the models stack up.
+const RINGS = [
+  { size: 200, color: "#718BFE" },
+  { size: 170, color: "#9DAFFF" },
+  { size: 130, color: "#BDC9FF" },
+  { size: 80, color: "#EAEEFF" },
+];
+
+function ThingiverseTile({ collection }: { collection: ProviderCollection }) {
+  const stack = collection.thumbnails.slice(0, 3);
+  return (
+    <Box
+      sx={{
+        position: "relative",
+        overflow: "hidden",
+        borderRadius: "8px",
+        bgcolor: PROVIDER_ACCENTS.thingiverse,
+        aspectRatio: "4 / 3",
+        color: "#fff",
+        textAlign: "center",
+      }}
+    >
+      {RINGS.map(({ size, color }) => (
+        <Box
+          key={size}
+          sx={{
+            position: "absolute",
+            left: "50%",
+            top: "62%",
+            width: `${size}%`,
+            aspectRatio: "1.4 / 1",
+            transform: "translateX(-50%)",
+            borderRadius: "100%",
+            bgcolor: color,
+          }}
+        />
+      ))}
+      <Box sx={{ position: "relative", px: 1.5, pt: 1.5 }}>
+        <Typography noWrap sx={{ fontWeight: 600, fontSize: "1rem", lineHeight: 1.3, color: "#fff" }}>
+          {collection.name}
+        </Typography>
+        <Typography sx={{ fontSize: "0.8rem", color: "#fff" }}>
+          <ModelCount count={collection.model_count} provider="thingiverse" />
+        </Typography>
+      </Box>
+      {stack.map((src, i) => (
+        // The first model in front, the others peeking out above it.
+        <Box
+          key={src}
+          sx={{
+            position: "absolute",
+            left: "50%",
+            bottom: `${-38 + (stack.length - 1 - i) * 7}%`,
+            width: `${78 - (stack.length - 1 - i) * 8}%`,
+            transform: "translateX(-50%)",
+            zIndex: stack.length - i,
+            borderRadius: "8px",
+            overflow: "hidden",
+            border: "1px solid rgba(255, 255, 255, 0.9)",
+            aspectRatio: "4 / 3",
+          }}
+        >
+          <Thumb src={src} sx={{ width: "100%", height: "100%" }} />
+        </Box>
+      ))}
+    </Box>
+  );
+}
+
+const TILES: Record<BrowsableProvider, (props: { collection: ProviderCollection }) => JSX.Element> = {
+  makerworld: MakerWorldTile,
+  printables: PrintablesTile,
+  thingiverse: ThingiverseTile,
+};
+
+/** A provider's collection to pick, drawn in that provider's colours and manner. One already synced
+ *  with another Thingport collection can't be picked, and says with which. */
+export default function ProviderCollectionTile({ provider, collection, selected, onSelect }: Props) {
+  const { t } = useTranslation("models");
+  const Tile = TILES[provider];
+  const taken = collection.synced !== null;
+  return (
+    <Box>
+      <ButtonBase
+        onClick={onSelect}
+        disabled={taken}
+        aria-pressed={selected}
+        sx={{
+          position: "relative",
+          display: "block",
+          width: "100%",
+          textAlign: "left",
+          borderRadius: "12px",
+          opacity: taken ? 0.5 : 1,
+          outline: selected ? `2px solid ${PROVIDER_ACCENTS[provider]}` : "2px solid transparent",
+          outlineOffset: 3,
+          transition: "outline-color 150ms, transform 150ms",
+          "&:hover": taken ? undefined : { transform: "translateY(-2px)" },
+          "&:focus-visible": { outline: `2px solid ${PROVIDER_ACCENTS[provider]}` },
+        }}
+      >
+        <Tile collection={collection} />
+        {selected && (
+          <Box
+            sx={{
+              position: "absolute",
+              top: -6,
+              right: -6,
+              zIndex: 5,
+              width: 22,
+              height: 22,
+              borderRadius: "50%",
+              display: "grid",
+              placeItems: "center",
+              bgcolor: PROVIDER_ACCENTS[provider],
+              color: "#fff",
+              boxShadow: 1,
+            }}
+          >
+            <CheckIcon sx={{ fontSize: 15 }} />
+          </Box>
+        )}
+      </ButtonBase>
+      {taken && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+          {t("collections.sync.browse.takenBy", { name: collection.synced!.collection_name })}
+        </Typography>
+      )}
+    </Box>
+  );
+}

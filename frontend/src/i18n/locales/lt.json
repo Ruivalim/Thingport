@@ -1939,7 +1939,7 @@
         "profilesHelp": "„Visus profilius“ apima ir bendruomenės profilius. Kiekvienas spausdinimo profilis tampa atskiru modelio failu. Taikoma nuo šiol rastiems modeliams.",
         "stop": "Nebesinchronizuoti",
         "stopTitle": "Nebesinchronizuoti?",
-        "stopMessage": "Nauji modeliai į „{{name}}“ nebebus įtraukiami. Kolekcija ir jos modeliai liks, o sinchronizavimą vėl galėsite įjungti per Thingport Grab.",
+        "stopMessage": "Nauji modeliai į „{{name}}“ nebebus įtraukiami. Kolekcija ir jos modeliai liks, o sinchronizavimą vėl galėsite įjungti čia arba per Thingport Grab.",
         "saveFailed": "Nepavyko išsaugoti sinchronizavimo nustatymų.",
         "syncNow": "Sinchronizuoti dabar",
         "syncNowTitle": "Sinchronizuoti dabar?",
@@ -1951,7 +1951,8 @@
         "saved": "Sinchronizavimo konfigūracija išsaugota.",
         "sections": {
           "overview": "Apžvalga",
-          "settings": "Nustatymai"
+          "settings": "Nustatymai",
+          "browse": "Naršyti"
         },
         "intro_one": "Į {{provider}} kolekciją pridėti modeliai čia importuojami kas valandą.",
         "intro_few": "Į {{provider}} kolekciją pridėti modeliai čia importuojami kas {{count}} valandas.",
@@ -1966,7 +1967,53 @@
         "introLikes_one": "Modeliai, kurie patinka @{{user}} Thingiverse, čia importuojami kas valandą.",
         "introLikes_few": "Modeliai, kurie patinka @{{user}} Thingiverse, čia importuojami kas {{count}} valandas.",
         "introLikes_many": "Modeliai, kurie patinka @{{user}} Thingiverse, čia importuojami kas {{count}} valandos.",
-        "introLikes_other": "Modeliai, kurie patinka @{{user}} Thingiverse, čia importuojami kas {{count}} valandų."
+        "introLikes_other": "Modeliai, kurie patinka @{{user}} Thingiverse, čia importuojami kas {{count}} valandų.",
+        "browse": {
+          "providerLabel": "Tiekėjas",
+          "models_one": "{{count}} modelis",
+          "models_few": "{{count}} modeliai",
+          "models_many": "{{count}} modelio",
+          "models_other": "{{count}} modelių",
+          "things_one": "{{count}} modelis",
+          "things_few": "{{count}} modeliai",
+          "things_many": "{{count}} modelio",
+          "things_other": "{{count}} modelių",
+          "takenBy": "Sinchronizuojama su „{{name}}“",
+          "loadFailed": "Nepavyko įkelti kolekcijų.",
+          "lookupFailed": "Nepavyko rasti šios kolekcijos.",
+          "notALink": "Įklijuokite MakerWorld, Printables arba Thingiverse kolekcijos nuorodą.",
+          "usernameFailed": "Nepavyko išsaugoti vartotojo vardo.",
+          "openProviders": "Atidaryti tiekėjus",
+          "notConnected": {
+            "makerworld": "Prijunkite MakerWorld per Konfigūracija > Tiekėjai, kad čia matytumėte savo kolekcijas. Pagal slapuką Thingport žino, kas jūs ten esate.",
+            "printables": "Printables šiuo metu nepasiekiamas.",
+            "thingiverse": "Thingiverse šiame Thingport dar neprijungtas. Administratorius gali jį prijungti per Konfigūracija > Tiekėjai."
+          },
+          "usernameLabel": "Jūsų {{provider}} vartotojo vardas",
+          "usernameHint": {
+            "printables": "Thingport parodys jūsų viešas Printables kolekcijas. Paklausiama tik kartą.",
+            "thingiverse": "Thingport parodys jūsų viešas Thingiverse kolekcijas. Paklausiama tik kartą."
+          },
+          "usernamePlaceholder": {
+            "printables": "@vardas arba profilio nuoroda",
+            "thingiverse": "Vartotojo vardas arba profilio nuoroda"
+          },
+          "showing": "Rodomos viešos @{{user}} kolekcijos.",
+          "change": "Keisti",
+          "empty": "{{provider}} kolekcijų dar nėra.",
+          "pasteLabel": "Kito žmogaus kolekcija",
+          "pastedTaken": "Ši kolekcija jau sinchronizuojama su „{{name}}“. Tiekėjo kolekcija gali būti sinchronizuojama tik su viena Thingport kolekcija.",
+          "confirmMakerworld": "Nuo šiol į „{{source}}“ įtraukti modeliai pateks į „{{name}}“. Dabar joje esantys modeliai neimportuojami, nes MakerWorld greitai riboja masinius importus; jau jūsų bibliotekoje esantys bus pridėti į „{{name}}“.",
+          "confirmImport_one": "{{count}} modelis iš „{{source}}“ dabar importuojamas į „{{name}}“, o vėliau pridėti modeliai pateks savaime.",
+          "confirmImport_few": "{{count}} modeliai iš „{{source}}“ dabar importuojami į „{{name}}“, o vėliau pridėti modeliai pateks savaime.",
+          "confirmImport_many": "{{count}} modelio iš „{{source}}“ dabar importuojama į „{{name}}“, o vėliau pridėti modeliai pateks savaime.",
+          "confirmImport_other": "{{count}} modelių iš „{{source}}“ dabar importuojama į „{{name}}“, o vėliau pridėti modeliai pateks savaime.",
+          "start": "Sinchronizuoti su „{{name}}“",
+          "started": "„{{name}}“ dabar sinchronizuojama su {{provider}} kolekcija.",
+          "startedImporting": "„{{name}}“ dabar sinchronizuojama su {{provider}} kolekcija. Jos modeliai importuojami; gausite pranešimą.",
+          "pasteHint": "Įklijuokite jos nuorodą iš MakerWorld, Printables arba Thingiverse.",
+          "yoursLabel": "Jūsų {{provider}} kolekcijos"
+        }
       }
     },
     "tags": {

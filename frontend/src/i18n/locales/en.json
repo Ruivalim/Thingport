@@ -1909,7 +1909,7 @@
         "profilesHelp": "\"All profiles\" includes community ones. Each print profile becomes its own file on the model. Applies to models found from now on.",
         "stop": "Stop syncing",
         "stopTitle": "Stop syncing?",
-        "stopMessage": "New models won't come into \"{{name}}\" any more. The collection and its models stay, and you can turn sync on again from Thingport Grab.",
+        "stopMessage": "New models won't come into \"{{name}}\" any more. The collection and its models stay, and you can turn sync on again here or from Thingport Grab.",
         "saveFailed": "Failed to save sync settings.",
         "syncNow": "Sync now",
         "syncNowTitle": "Sync now?",
@@ -1921,7 +1921,8 @@
         "saved": "Sync configuration saved.",
         "sections": {
           "overview": "Overview",
-          "settings": "Settings"
+          "settings": "Settings",
+          "browse": "Browse"
         },
         "intro_one": "Models added to the {{provider}} collection are imported here every hour.",
         "intro_other": "Models added to the {{provider}} collection are imported here every {{count}} hours.",
@@ -1930,7 +1931,47 @@
         "intervalOption_other": "{{count}} Hours",
         "badgeLikes": "Synced with @{{user}}'s Thingiverse likes",
         "introLikes_one": "Models @{{user}} likes on Thingiverse are imported here every hour.",
-        "introLikes_other": "Models @{{user}} likes on Thingiverse are imported here every {{count}} hours."
+        "introLikes_other": "Models @{{user}} likes on Thingiverse are imported here every {{count}} hours.",
+        "browse": {
+          "providerLabel": "Provider",
+          "models_one": "{{count}} model",
+          "models_other": "{{count}} models",
+          "things_one": "{{count}} Thing",
+          "things_other": "{{count}} Things",
+          "takenBy": "Synced with \"{{name}}\"",
+          "loadFailed": "Couldn't load the collections.",
+          "lookupFailed": "Couldn't find that collection.",
+          "notALink": "Paste a MakerWorld, Printables or Thingiverse collection link.",
+          "usernameFailed": "Couldn't save the username.",
+          "openProviders": "Open Providers",
+          "notConnected": {
+            "makerworld": "Connect MakerWorld in Configuration > Providers to see your collections here. Its cookie tells Thingport who you are there.",
+            "printables": "Printables can't be reached right now.",
+            "thingiverse": "Thingiverse isn't connected on this Thingport yet. An admin can connect it in Configuration > Providers."
+          },
+          "usernameLabel": "Your {{provider}} username",
+          "usernameHint": {
+            "printables": "Thingport lists your public Printables collections. It only needs asking once.",
+            "thingiverse": "Thingport lists your public Thingiverse collections. It only needs asking once."
+          },
+          "usernamePlaceholder": {
+            "printables": "@handle or profile link",
+            "thingiverse": "Username or profile link"
+          },
+          "showing": "Showing @{{user}}'s public collections.",
+          "change": "Change",
+          "empty": "No collections on {{provider}} yet.",
+          "pasteLabel": "Someone else's collection",
+          "pastedTaken": "This collection is already synced with \"{{name}}\". A provider collection syncs with one Thingport collection only.",
+          "confirmMakerworld": "Models added to \"{{source}}\" from now on come into \"{{name}}\". The ones in it now aren't imported, since MakerWorld quickly rate-limits bulk imports; any already in your library are added to \"{{name}}\".",
+          "confirmImport_one": "The {{count}} model in \"{{source}}\" is imported into \"{{name}}\" now, and models added later come in on their own.",
+          "confirmImport_other": "The {{count}} models in \"{{source}}\" are imported into \"{{name}}\" now, and models added later come in on their own.",
+          "start": "Sync with \"{{name}}\"",
+          "started": "\"{{name}}\" now follows its {{provider}} collection.",
+          "startedImporting": "\"{{name}}\" now follows its {{provider}} collection. Its models are being imported; you'll get a notification.",
+          "pasteHint": "Paste its link, from MakerWorld, Printables or Thingiverse.",
+          "yoursLabel": "Your collections on {{provider}}"
+        }
       }
     },
     "tags": {

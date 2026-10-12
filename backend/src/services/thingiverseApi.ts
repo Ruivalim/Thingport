@@ -1,6 +1,7 @@
 import { IMPORT_BROWSER_USER_AGENT, IMPORT_TIMEOUT_SECONDS } from "../config";
 import type { ImportedAuthorInfo, ImportedPageMetadata } from "./importResolvers";
 import { cleanThingiverseMarkdown } from "./descriptionMarkdown";
+import type { ProviderCollectionCard } from "./providerCollectionCard";
 import {
   extractJsonFromBrowserBody,
   fetchViaFlaresolverr,
@@ -351,4 +352,71 @@ export function parseThingiverseCollectionUrl(url: string): { collectionId: stri
   if (host !== "thingiverse.com" && host !== "www.thingiverse.com") return null;
   const m = parsed.pathname.match(/\/collections\/(\d+)/i);
   return m ? { collectionId: m[1] } : null;
+}
+
+/** A profile link or a username. Null when Thingiverse knows no such user. */
+export async function resolveThingiverseUser(input: string, accessToken: string): Promise<{ username: string } | null> {
+  let value = input.trim();
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase();
+    if (host !== "thingiverse.com" && host !== "www.thingiverse.com") return null;
+    value = url.pathname.split("/").find(Boolean) ?? "";
+  } catch {
+    // Not a link.
+  }
+  value = value.replace(/^@/, "");
+  if (!value || !/^[\w.-]+$/.test(value)) return null;
+  const { ok, status, data } = await fetchThingiverseApi(`/users/${encodeURIComponent(value)}`, accessToken);
+  if (status === 404) return null;
+  if (!ok || !isRecord(data)) throw new Error(`Couldn't read the Thingiverse user (HTTP ${status})`);
+  return { username: typeof data.name === "string" && data.name.trim() ? data.name.trim() : value };
+}
+
+function thingiverseCollectionCard(value: unknown): ProviderCollectionCard | null {
+  if (!isRecord(value) || value.id == null) return null;
+  const id = String(value.id);
+  const owner = isRecord(value.creator) && typeof value.creator.name === "string" ? value.creator.name : null;
+  // A collection carries up to four model images as thumbnail, thumbnail_1, ...
+  const thumbnails = ["thumbnail", "thumbnail_1", "thumbnail_2", "thumbnail_3"].flatMap((key) => {
+    const url = value[key];
+    return typeof url === "string" && /^https?:\/\//.test(url) ? [url] : [];
+  });
+  return {
+    id,
+    name: typeof value.name === "string" && value.name.trim() ? value.name.trim() : `Collection ${id}`,
+    url: `https://www.thingiverse.com/${owner ? `${encodeURIComponent(owner)}/` : ""}collections/${id}`,
+    modelCount: typeof value.count === "number" ? value.count : Number(value.count) || 0,
+    thumbnails: [...new Set(thumbnails)],
+    private: value.is_private === true || value.is_private === 1,
+    owner,
+  };
+}
+
+export async function listThingiverseUserCollections(
+  username: string,
+  accessToken: string,
+): Promise<ProviderCollectionCard[]> {
+  const { ok, status, data } = await fetchThingiverseApi(
+    `/users/${encodeURIComponent(username)}/collections`,
+    accessToken,
+  );
+  if (!ok || !Array.isArray(data)) throw new Error(`Couldn't load the Thingiverse collections (HTTP ${status})`);
+  return data.flatMap((item) => {
+    const card = thingiverseCollectionCard(item);
+    return card ? [card] : [];
+  });
+}
+
+export async function fetchThingiverseCollectionCard(
+  collectionId: string,
+  accessToken: string,
+): Promise<ProviderCollectionCard | null> {
+  const { ok, status, data } = await fetchThingiverseApi(
+    `/collections/${encodeURIComponent(collectionId)}`,
+    accessToken,
+  );
+  if (status === 404) return null;
+  if (!ok) throw new Error(`Couldn't read the Thingiverse collection (HTTP ${status})`);
+  return thingiverseCollectionCard(data);
 }

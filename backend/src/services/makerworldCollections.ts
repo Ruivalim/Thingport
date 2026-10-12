@@ -6,6 +6,7 @@ import {
   looksLikeCloudflareBlock,
 } from "./flaresolverr";
 import { maybeSleep } from "../utils/concurrency";
+import type { ProviderCollectionCard } from "./providerCollectionCard";
 import {
   isCaptchaChallenge,
   makerworldCaptchaCooloffActive,
@@ -17,6 +18,8 @@ import {
 // Not behind Cloudflare. Private collections return 403 without the bearer token, so it's sent
 // whenever available.
 const COLLECTION_API_BASE = "https://makerworld.com/api/v1/design-service/favorites";
+// The same service without Cloudflare in front, for what the Browse tab of the sync dialog shows.
+const BAMBU_DESIGN_API_BASE = "https://api.bambulab.com/v1/design-service";
 const COLLECTION_PAGE_SIZE = 20;
 const COLLECTION_MAX_ENTRIES = 300;
 
@@ -191,4 +194,47 @@ export async function fetchMakerworldCollectionEntries(
   }
 
   return { total, entries, truncated: total > entries.length };
+}
+
+// How MakerWorld marks a private collection; public ones are 2.
+const PRIVATE_STATUS = 1;
+
+function collectionCard(value: unknown): ProviderCollectionCard | null {
+  if (!isRecord(value) || value.id == null) return null;
+  const id = String(value.id);
+  const covers = Array.isArray(value.designCover) ? value.designCover : [];
+  return {
+    id,
+    name: typeof value.title === "string" && value.title.trim() ? value.title.trim() : `Collection ${id}`,
+    url: `https://makerworld.com/en/collections/${id}`,
+    modelCount: typeof value.designCnt === "number" ? value.designCnt : 0,
+    thumbnails: covers.filter((url): url is string => typeof url === "string" && url.trim() !== "").slice(0, 4),
+    private: value.status === PRIVATE_STATUS,
+    owner: isRecord(value.creator) && typeof value.creator.handle === "string" ? value.creator.handle : null,
+  };
+}
+
+/** The signed-in user's own collections, private ones included. */
+export async function listMakerworldOwnCollections(bearerToken: string): Promise<ProviderCollectionCard[]> {
+  const data = await fetchCollectionJson(`${BAMBU_DESIGN_API_BASE}/my/favorites/listlite?query=`, bearerToken);
+  if (!isRecord(data) || !Array.isArray(data.hits)) throw new MakerworldCollectionFetchError("unexpected answer");
+  return data.hits.flatMap((hit) => {
+    const card = collectionCard(hit);
+    return card ? [card] : [];
+  });
+}
+
+/** Null when MakerWorld says there's no such collection. A private one needs its owner's token. */
+export async function fetchMakerworldCollectionCard(
+  collectionId: string,
+  bearerToken: string | null,
+): Promise<ProviderCollectionCard | null> {
+  const data = await fetchCollectionJson(
+    `${BAMBU_DESIGN_API_BASE}/favorites/${collectionId}`,
+    bearerToken,
+    undefined,
+    true,
+  );
+  if (data === NOT_FOUND) return null;
+  return collectionCard(data);
 }

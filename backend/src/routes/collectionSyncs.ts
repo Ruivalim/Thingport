@@ -15,6 +15,7 @@ import { releaseSync, reserveSync, runManualSync } from "../services/collectionS
 import { getActiveJob } from "../services/importJobService";
 import { SYNC_INTERVAL_HOURS, syncNowAvailableAt, type SyncIntervalHours } from "../services/collectionSyncSchedule";
 import { toCollectionSyncOut } from "../dto";
+import { enableSyncFromApp } from "../services/providerCollectionsService";
 import { prisma } from "../db";
 
 const router = Router();
@@ -75,6 +76,32 @@ router.patch(
     const body = parseBody(settingsSchema, req.body);
     res.json(
       await updateSyncSettings(req.userId!, req.params.id, {
+        profileScope: body.profile_scope,
+        intervalHours: body.interval_hours,
+      }),
+    );
+  }),
+);
+
+const enableFromAppSchema = z.object({
+  url: z.string().min(1),
+  profile_scope: z.enum(["url", "designer", "all"]).optional(),
+  interval_hours: z
+    .number()
+    .int()
+    .refine((hours): hours is SyncIntervalHours => (SYNC_INTERVAL_HOURS as readonly number[]).includes(hours))
+    .optional(),
+});
+
+// The app's Browse tab: links this collection to a provider's. Thingport Grab uses POST
+// /collection-sync instead, with the model ids it saw on the page.
+router.post(
+  "/collection/:id/sync",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(enableFromAppSchema, req.body);
+    res.json(
+      await enableSyncFromApp(req.userId!, req.params.id, {
+        url: body.url,
         profileScope: body.profile_scope,
         intervalHours: body.interval_hours,
       }),

@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
@@ -9,6 +9,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import type { AuthUser } from "../../api/auth";
 import type { ThemeSelection } from "../../constants/settingsOptions";
 import type { MakerWorldSettings } from "../../utils/settings";
+import { notifyConfigurationClosed, onOpenConfiguration } from "../../utils/configurationEvents";
 import AddMenu, { type AddMenuHandle } from "./AddMenu";
 import ConfigurationDialog, { type ConfigurationTab } from "./ConfigurationDialog";
 import NotificationBell from "./NotificationBell";
@@ -54,6 +55,8 @@ export default function TopBar({
   const rootRef = useRef<HTMLDivElement | null>(null);
   const addMenuRef = useRef<AddMenuHandle | null>(null);
   const [configTab, setConfigTab] = useState<ConfigurationTab | null>(null);
+
+  useEffect(() => onOpenConfiguration(setConfigTab), []);
 
   // Publishes the bar's real height (it can wrap) as a CSS var for sticky elements below it.
   useLayoutEffect(() => {
@@ -131,7 +134,10 @@ export default function TopBar({
       </Stack>
       <ConfigurationDialog
         open={configTab}
-        onClose={() => setConfigTab(null)}
+        onClose={() => {
+          setConfigTab(null);
+          notifyConfigurationClosed();
+        }}
         theme={theme}
         onThemeChange={onThemeChange}
         isAdmin={user?.role === "ADMIN"}

@@ -2,12 +2,14 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Link from "@mui/material/Link";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import SyncIcon from "@mui/icons-material/Sync";
 import SyncDisabledIcon from "@mui/icons-material/SyncDisabled";
 import HubOutlinedIcon from "@mui/icons-material/HubOutlined";
+import TravelExploreIcon from "@mui/icons-material/TravelExplore";
 import TuneIcon from "@mui/icons-material/Tune";
 import { UnauthorizedError } from "../../api/client";
 import {
@@ -17,22 +19,29 @@ import {
   SYNC_INTERVAL_HOURS,
   collectionsApi,
 } from "../../api/collections";
+import type { BrowsableProvider } from "../../api/providerCollections";
 import { useConfirm } from "../../components/ConfirmProvider";
 import { useToast } from "../../components/ToastProvider";
 import { importProviderInfo } from "../../constants/importProviders";
 import { relativeTime } from "../../utils/relativeTime";
 import SectionedDialog, { type DialogSection } from "../../components/SectionedDialog";
 import SyncChain from "./SyncChain";
+import SyncBrowse, { type BrowsePick } from "./SyncBrowse";
 import HelpTip from "../../components/HelpTip";
 import Segmented from "../../components/controls/Segmented";
 import { SectionLabel } from "../../components/Layout/ConfigurationDialog/parts";
 
 const SCOPES: SyncProfileScope[] = ["url", "designer", "all"];
 
-type SyncSection = "overview" | "settings";
+type SyncSection = "overview" | "browse" | "settings";
+
+// What a sync turned on here starts with; Settings can change them first.
+const NEW_SYNC_INTERVAL: SyncIntervalHours = 24;
+const NEW_SYNC_SCOPE: SyncProfileScope = "designer";
 
 type Props = {
-  collection: Collection & { sync: NonNullable<Collection["sync"]> };
+  /** Unsynced, it opens on Browse, to pick the provider collection to sync with. */
+  collection: Collection;
   onClose: () => void;
   onUpdated: (collection: Collection) => void;
   onUnauthorized?: () => void;
@@ -69,28 +78,32 @@ function minutesSeconds(ms: number): string {
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
 }
 
-/** A synced collection's sync, in two sections like the app's Configuration: Overview (the link,
- *  its status, Sync now and Stop syncing) and Settings (how often it's checked and, for MakerWorld,
- *  which print profiles each new model brings). */
+/** A collection's sync, in sections like the app's Configuration. Synced: Overview (the link, its
+ *  status, Sync now and Stop syncing). Not yet: Browse (the provider collection to sync with). Both
+ *  have Settings: how often it's checked and, for MakerWorld, which print profiles each new model
+ *  brings. */
 export default function CollectionSyncDialog({ collection, onClose, onUpdated, onUnauthorized }: Props) {
   const { t, i18n } = useTranslation(["models", "common"]);
   const confirm = useConfirm();
   const showToast = useToast();
   const { sync } = collection;
-  const provider = importProviderInfo(sync.provider)?.label ?? sync.provider;
-  const hasProfiles = sync.provider === "makerworld";
-  const [scope, setScope] = useState<SyncProfileScope>(sync.profile_scope);
-  const [intervalHours, setIntervalHours] = useState<SyncIntervalHours>(sync.interval_hours);
+  const [browseProvider, setBrowseProvider] = useState<BrowsableProvider | null>(null);
+  const [picked, setPicked] = useState<BrowsePick | null>(null);
+  const providerId = sync?.provider ?? picked?.provider ?? browseProvider;
+  const provider = importProviderInfo(providerId)?.label ?? providerId ?? "";
+  const hasProfiles = providerId === "makerworld";
+  const [scope, setScope] = useState<SyncProfileScope>(sync?.profile_scope ?? NEW_SYNC_SCOPE);
+  const [intervalHours, setIntervalHours] = useState<SyncIntervalHours>(sync?.interval_hours ?? NEW_SYNC_INTERVAL);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [section, setSection] = useState<SyncSection>("overview");
+  const [section, setSection] = useState<SyncSection>(sync ? "overview" : "browse");
 
-  const readyAt = sync.sync_now_at ? new Date(sync.sync_now_at).getTime() : null;
+  const readyAt = sync?.sync_now_at ? new Date(sync.sync_now_at).getTime() : null;
   const now = useNowUntil(readyAt);
   const coolingMs = readyAt ? readyAt - now : 0;
   const cooling = coolingMs > 0;
   // How far through the cool-down, from the last check to when Sync now is back.
-  const startedAt = sync.last_checked_at ? new Date(sync.last_checked_at).getTime() : null;
+  const startedAt = sync?.last_checked_at ? new Date(sync.last_checked_at).getTime() : null;
   const coolProgress =
     cooling && readyAt && startedAt && readyAt > startedAt ? ((now - startedAt) / (readyAt - startedAt)) * 100 : 0;
 
@@ -153,31 +166,59 @@ export default function CollectionSyncDialog({ collection, onClose, onUpdated, o
     if (!saved) revert();
   };
 
+  // Before sync is on, the choices wait for it.
   const changeScope = (next: SyncProfileScope) => {
     const previous = scope;
     setScope(next);
-    void saveSetting({ profile_scope: next }, () => setScope(previous));
+    if (sync) void saveSetting({ profile_scope: next }, () => setScope(previous));
   };
 
   const changeInterval = (next: SyncIntervalHours) => {
     const previous = intervalHours;
     setIntervalHours(next);
-    void saveSetting({ interval_hours: next }, () => setIntervalHours(previous));
+    if (sync) void saveSetting({ interval_hours: next }, () => setIntervalHours(previous));
   };
 
-  const checked = sync.last_checked_at
+  const startSync = async () => {
+    if (!picked) return;
+    await run(async () => {
+      const result = await collectionsApi.enableSync(collection.id, {
+        url: picked.collection.url,
+        interval_hours: intervalHours,
+        ...(picked.provider === "makerworld" ? { profile_scope: scope } : {}),
+      });
+      onUpdated({ ...collection, sync: result.sync });
+      showToast({
+        message: t(
+          result.importing
+            ? "models:collections.sync.browse.startedImporting"
+            : "models:collections.sync.browse.started",
+          { name: collection.name, provider },
+        ),
+      });
+      setSection("overview");
+    });
+  };
+
+  const checked = sync?.last_checked_at
     ? t("models:collections.sync.lastChecked", { when: relativeTime(sync.last_checked_at, i18n.language) })
     : t("models:collections.sync.notCheckedYet");
-  const next = sync.next_sync_at
+  const next = sync?.next_sync_at
     ? t("models:collections.sync.nextSync", { time: clockTime(sync.next_sync_at, i18n.language) })
     : null;
 
   const sections: DialogSection<SyncSection>[] = [
-    {
-      id: "overview",
-      label: t("models:collections.sync.sections.overview"),
-      icon: <HubOutlinedIcon fontSize="small" />,
-    },
+    sync
+      ? {
+          id: "overview",
+          label: t("models:collections.sync.sections.overview"),
+          icon: <HubOutlinedIcon fontSize="small" />,
+        }
+      : {
+          id: "browse",
+          label: t("models:collections.sync.sections.browse"),
+          icon: <TravelExploreIcon fontSize="small" />,
+        },
     { id: "settings", label: t("models:collections.sync.sections.settings"), icon: <TuneIcon fontSize="small" /> },
   ];
 
@@ -189,6 +230,7 @@ export default function CollectionSyncDialog({ collection, onClose, onUpdated, o
       sections={sections}
       section={section}
       onSectionChange={setSection}
+      size={sync ? "default" : "large"}
     >
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -196,7 +238,38 @@ export default function CollectionSyncDialog({ collection, onClose, onUpdated, o
         </Alert>
       )}
 
-      {section === "overview" && (
+      {section === "browse" && !sync && (
+        <Stack spacing={2.5}>
+          <SyncBrowse
+            provider={browseProvider}
+            onProviderChange={setBrowseProvider}
+            picked={picked}
+            onPick={setPicked}
+            onUnauthorized={onUnauthorized}
+          />
+          {picked && (
+            <Box sx={{ borderTop: 1, borderColor: "divider", pt: 2 }}>
+              <Typography variant="body2" sx={{ mb: 1.5 }}>
+                {picked.provider === "makerworld"
+                  ? t("models:collections.sync.browse.confirmMakerworld", {
+                      source: picked.collection.name,
+                      name: collection.name,
+                    })
+                  : t("models:collections.sync.browse.confirmImport", {
+                      source: picked.collection.name,
+                      name: collection.name,
+                      count: picked.collection.model_count,
+                    })}
+              </Typography>
+              <Button variant="contained" onClick={() => void startSync()} disabled={busy}>
+                {t("models:collections.sync.browse.start", { name: picked.collection.name })}
+              </Button>
+            </Box>
+          )}
+        </Stack>
+      )}
+
+      {section === "overview" && sync && (
         <Stack spacing={2}>
           <Box>
             <Typography variant="body2">
@@ -215,7 +288,7 @@ export default function CollectionSyncDialog({ collection, onClose, onUpdated, o
             </Link>
           </Box>
           <SyncChain
-            collection={collection}
+            collection={{ ...collection, sync }}
             syncNow={{
               label: t("models:collections.sync.syncNow"),
               icon: <SyncIcon fontSize="small" />,

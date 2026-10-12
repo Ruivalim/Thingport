@@ -43,6 +43,11 @@ model User {
   apiTokenLastUsedAt       DateTime?
   // Per-user, unlike the instance-wide Thingiverse token.
   makerworldCookie         String?
+  // Who the user is on providers without a per-user login, so their collections can be listed for
+  // syncing. Printables keeps its numeric id (the API's key) with the handle to show.
+  printablesUserId         String?
+  printablesHandle         String?
+  thingiverseUsername      String?
   slicer                   String?
   // "light" | "dark" | "system"; null means never set.
   themePreference          String?

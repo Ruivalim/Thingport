@@ -17,6 +17,7 @@ import settingsRoutes from "./routes/settings";
 import importsRoutes from "./routes/imports";
 import collectionsRoutes from "./routes/collections";
 import collectionSyncsRoutes from "./routes/collectionSyncs";
+import providerCollectionsRoutes from "./routes/providerCollections";
 import bookmarksRoutes from "./routes/bookmarks";
 import searchRoutes from "./routes/search";
 import notificationsRoutes from "./routes/notifications";
@@ -55,6 +56,7 @@ export function createApp(): Express {
   app.use("/api", importsRoutes);
   app.use("/api", collectionsRoutes);
   app.use("/api", collectionSyncsRoutes);
+  app.use("/api", providerCollectionsRoutes);
   app.use("/api", bookmarksRoutes);
   app.use("/api", searchRoutes);
   app.use("/api", notificationsRoutes);

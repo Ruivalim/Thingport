@@ -44,7 +44,9 @@ const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1
 
 /** The provider collection's model ids, or null when the provider says it no longer exists. Throws
  *  when there's no clear answer, so an outage never unsyncs anything. */
-async function fetchListing(sync: SyncWithCollection): Promise<string[] | null> {
+export async function fetchListing(
+  sync: Pick<CollectionSync, "userId" | "provider" | "externalId" | "sourceUrl">,
+): Promise<string[] | null> {
   const id = sync.externalId;
   if (sync.provider === "makerworld") {
     // A public collection lists without a login; a private one needs the owner's.

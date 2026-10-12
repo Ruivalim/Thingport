@@ -162,7 +162,8 @@ export default function CollectionActionsMenu({
           <ListItemText sx={{ color: "error.main" }}>{t("common:delete")}</ListItemText>
         </MenuItem>
         {/* Menu needs its items as direct children, not wrapped in a fragment. */}
-        {collection.sync && [
+        {/* Every collection can be synced; an unsynced one opens on Browse. */}
+        {[
           <Divider key="sync-divider" />,
           <MenuItem
             key="sync"
@@ -183,9 +184,9 @@ export default function CollectionActionsMenu({
         <CollectionFormModal collection={collection} onClose={() => setEditOpen(false)} onSubmit={handleEdit} />
       )}
 
-      {syncOpen && collection.sync && (
+      {syncOpen && (
         <CollectionSyncDialog
-          collection={{ ...collection, sync: collection.sync }}
+          collection={collection}
           onClose={() => setSyncOpen(false)}
           onUpdated={onUpdated}
           onUnauthorized={onUnauthorized}

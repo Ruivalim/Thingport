@@ -191,8 +191,8 @@ notification saying what came in. Models already on the page when you turn sync 
 you leave unticked, aren't imported by the sync.
 
 It works for collections you imported before, too: open the collection page, click the icon, and
-tick the box -- the panel says everything is already imported, and **Save** turns sync on. Only the
-extension can turn sync on, since it has just seen which models the collection holds.
+tick the box -- the panel says everything is already imported, and **Save** turns sync on. Sync can
+also be turned on in Thingport, from the collection's **Sync configuration**.
 
 - Sync only ever adds. A model removed from the provider's collection stays in the Thingport
   collection and your library, and nothing is deleted on either side.
