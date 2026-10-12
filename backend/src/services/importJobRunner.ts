@@ -758,6 +758,8 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
       await updateJobItem(item.id, { status: "RUNNING" }).catch(() => undefined);
       let attempts = item.attempts;
       let itemError: string | null = null;
+      // Some of the link's print profiles got in, though others failed.
+      let partlyIn = false;
       let settled = false;
       while (!settled) {
         attempts++;
@@ -788,6 +790,7 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
             // Some of the model's profiles got in; the rest are a manual retry's job, since
             // rerunning right away would only re-meet the same CAPTCHA.
             itemError = `${result.failed} of ${result.processed} print profiles failed`;
+            partlyIn = result.failed < result.processed;
             if (result.stopReason) {
               stopReason = result.stopReason;
               itemError += {
@@ -819,9 +822,8 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
       // A sync can't ask anyone to retry, so a rate limit pauses it instead of failing the rest. A
       // link that got nothing in waits with them; one that got some of its profiles in is done.
       if (job.collectionSyncId && stopReason) {
-        const nothingIn = itemError !== null && !/ of \d+ print profiles failed/.test(itemError);
         await updateJobItem(item.id, {
-          status: nothingIn ? "PENDING" : "FAILED",
+          status: itemError !== null && !partlyIn ? "PENDING" : "FAILED",
           attempts,
           errorMessage: itemError,
         }).catch(() => undefined);
