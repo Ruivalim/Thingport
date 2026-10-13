@@ -122,6 +122,26 @@ function readableNetworkError(error: unknown, settings: AiCategorizationSettings
   return error;
 }
 
+/**
+ * Providers that ignore response_format (Xiaomi MiMo) wrap the object in prose or markdown, e.g.
+ * `**{...}**`; the outermost braces are tried when the whole text doesn't parse. undefined when
+ * neither does.
+ */
+function parseAnswerJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}");
+    if (start === -1 || end <= start) return undefined;
+    try {
+      return JSON.parse(text.slice(start, end + 1));
+    } catch {
+      return undefined;
+    }
+  }
+}
+
 async function requestProvider(
   print: Print,
   candidates: Candidate[],
@@ -237,10 +257,8 @@ async function requestProvider(
         .trim()
         .replace(/^```(?:json)?\s*/i, "")
         .replace(/\s*```$/, "");
-      let json: unknown;
-      try {
-        json = JSON.parse(unfenced);
-      } catch {
+      const json = parseAnswerJson(unfenced);
+      if (json === undefined) {
         // JSON.parse only says where it stopped, which tells an admin nothing about the provider.
         if (body.choices?.[0]?.finish_reason === "length")
           throw unusable("AI provider cut the answer off at its token limit");

@@ -474,6 +474,41 @@ describe("AI categorization", () => {
     expect(providerRequests).toBe(3);
   });
 
+  it("reads an answer wrapped in markdown or prose by a provider that ignores response_format", async () => {
+    const target = await category("Wrapped target");
+    const answer = `{"reason":"fits","category_id":"${target.id}","confidence":0.9}`;
+    const replies: ProviderReply[] = [
+      // What Xiaomi MiMo sent back: the object in bold.
+      { status: 200, content: `**${answer}**` },
+      { status: 200, content: `Here is my answer:\n${answer}\nHope this helps.` },
+      // Braces in prose around something that still isn't JSON: a clear failure, not a crash.
+      { status: 200, content: "I think {it is a tool} but {not sure}" },
+    ];
+    const baseUrl = await startProvider(() => replies.shift()!);
+    await enable(baseUrl);
+
+    for (const wrapped of ["bold", "prose"]) {
+      const response = await request(app)
+        .post(`/api/print/${(await print()).id}/recategorize`)
+        .set(auth())
+        .send({});
+      // The label rides along so a failure says which wrapping broke.
+      expect({ wrapped, status: response.status }).toEqual({ wrapped, status: 200 });
+      expect({ wrapped, ...response.body }).toMatchObject({
+        wrapped,
+        outcome: "suggested",
+        print: { ai_suggestion: { category_id: target.id } },
+      });
+    }
+
+    const notJson = await request(app)
+      .post(`/api/print/${(await print()).id}/recategorize`)
+      .set(auth())
+      .send({});
+    expect(notJson.status).toBe(502);
+    expect(notJson.body.error).toBe("AI provider failed: AI provider returned an answer that is not valid JSON");
+  });
+
   it("logs a run's start, each failed model and the totals", async () => {
     const runner = await newUser();
     await categoryFor(runner.id, "Run log target");
