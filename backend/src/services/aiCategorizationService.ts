@@ -179,7 +179,9 @@ async function requestProvider(
         body: JSON.stringify({
           model: settings.model,
           temperature: 0,
-          max_tokens: 300,
+          // A 300-character reason plus the JSON around it needs room; 300 tokens cut answers off before the
+          // closing brace, and reasoning models spend part of the budget before answering.
+          max_tokens: 1024,
           response_format: { type: "json_schema", json_schema: { name: "categorization", strict: true, schema } },
           messages: [{ role: "user", content }],
         }),
@@ -198,13 +200,24 @@ async function requestProvider(
         await retryDelay(delay);
         continue;
       }
-      const body = (await response.json()) as { choices?: { message?: { content?: unknown } }[] };
+      const body = (await response.json()) as {
+        choices?: { message?: { content?: unknown }; finish_reason?: unknown }[];
+      };
       const raw = body.choices?.[0]?.message?.content;
       if (typeof raw !== "string") throw new Error("AI provider returned no classification");
       const unfenced = raw
         .trim()
         .replace(/^```(?:json)?\s*/i, "")
         .replace(/\s*```$/, "");
+      let json: unknown;
+      try {
+        json = JSON.parse(unfenced);
+      } catch {
+        // JSON.parse only says where it stopped, which tells an admin nothing about the provider.
+        if (body.choices?.[0]?.finish_reason === "length")
+          throw new Error("AI provider cut the answer off at its token limit");
+        throw new Error("AI provider returned an answer that is not valid JSON");
+      }
       const parsed = z
         .object({
           // Providers without a grammar sometimes quote the number.
@@ -212,7 +225,7 @@ async function requestProvider(
           confidence: z.number().finite(),
           reason: z.string(),
         })
-        .safeParse(JSON.parse(unfenced));
+        .safeParse(json);
       if (!parsed.success) throw new Error("AI provider returned invalid classification");
       // Providers that ignore the schema's range (Ollama) can answer a whole percentage such as 85.
       const { confidence: stated } = parsed.data;

@@ -25,7 +25,13 @@ let providerMaxInFlight = 0;
 type ProviderAnswer = { category_id: string | null; confidence: number; reason: string };
 type ProviderReply =
   | ProviderAnswer
-  | { status: number; headers?: Record<string, string>; content?: ProviderAnswer | string; never?: boolean };
+  | {
+      status: number;
+      headers?: Record<string, string>;
+      content?: ProviderAnswer | string;
+      finishReason?: string;
+      never?: boolean;
+    };
 type ProviderHandler = (body: Record<string, unknown>) => ProviderReply | Promise<ProviderReply>;
 
 type User = { id: string; token: string };
@@ -91,7 +97,8 @@ async function startProvider(handler: ProviderHandler) {
           typeof content === "string"
             ? await toProviderText(body, content)
             : JSON.stringify(await toProviderJson(body, content));
-        res.end(JSON.stringify({ choices: [{ message: { content: text } }] }));
+        const finishReason = isAnswer(reply) ? "stop" : (reply.finishReason ?? "stop");
+        res.end(JSON.stringify({ choices: [{ message: { content: text }, finish_reason: finishReason }] }));
       } catch (error) {
         res.writeHead(500, { "content-type": "application/json" });
         res.end(JSON.stringify({ error: error instanceof Error ? error.message : "provider failed" }));
@@ -402,6 +409,50 @@ describe("AI categorization", () => {
       expect(invalid.status).toBe(502);
       expect(invalid.body.code).toBe("ai_failed");
     }
+  });
+
+  it("explains an answer cut off by the token limit instead of a JSON parse position", async () => {
+    const target = await category("Cut off target");
+    // A reason filled to its 300-character limit, cut before the closing brace: what a small max_tokens produced.
+    const cut = `{"reason":"${"r".repeat(300)}","category_id":"${target.id}"`;
+    const replies: ProviderReply[] = [
+      { status: 200, content: cut, finishReason: "length" },
+      { status: 200, content: cut },
+      { status: 200, content: '{"category_id":null,"confidence":1,"reason":"fine"}', finishReason: "length" },
+    ];
+    let maxTokens: unknown;
+    const baseUrl = await startProvider((body) => {
+      maxTokens = body.max_tokens;
+      return replies.shift()!;
+    });
+    await enable(baseUrl);
+
+    const limited = await request(app)
+      .post(`/api/print/${(await print()).id}/recategorize`)
+      .set(auth())
+      .send({});
+    expect(limited.status).toBe(502);
+    expect(limited.body.error).toBe("AI provider failed: AI provider cut the answer off at its token limit");
+    // Leaves room for a full-length reason and the JSON around it.
+    expect(maxTokens).toBeGreaterThanOrEqual(1024);
+
+    // A provider that doesn't report finish_reason still gets a readable error.
+    const unreported = await request(app)
+      .post(`/api/print/${(await print()).id}/recategorize`)
+      .set(auth())
+      .send({});
+    expect(unreported.status).toBe(502);
+    expect(unreported.body.error).toBe("AI provider failed: AI provider returned an answer that is not valid JSON");
+    expect(unreported.body.error).not.toContain("position");
+
+    // A complete answer that still reports the limit is used: a cut-off object never parses.
+    const completeAtLimit = await request(app)
+      .post(`/api/print/${(await print()).id}/recategorize`)
+      .set(auth())
+      .send({});
+    expect(completeAtLimit.status).toBe(200);
+    expect(completeAtLimit.body.outcome).toBe("no_match");
+    expect(providerRequests).toBe(3);
   });
 
   it("tells the provider a model's current category", async () => {
