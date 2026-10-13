@@ -36,6 +36,10 @@ import { CLOUDFLARE_BLOCKED_CODE } from "./flaresolverr";
 import { HttpError } from "../utils/fileUtils";
 import { prisma } from "../db";
 import type { ImportJob } from "@prisma/client";
+import { createLogger } from "../logger";
+
+const log = createLogger("import");
+const syncLog = createLogger("sync");
 
 // Sequential on purpose: parallel bursts of api.bambulab.com calls trip MakerWorld's CAPTCHA.
 const COLLECTION_IMPORT_CONCURRENCY = 1;
@@ -80,7 +84,7 @@ function asStopReason(reason: ImportFailureReason): StopReason | null {
 
 async function markJobFailed(jobId: string, err: unknown): Promise<void> {
   const message = err instanceof Error ? err.message : "Import failed";
-  console.error(`Import job ${jobId} failed:`, err);
+  log.error("job failed", { job: jobId, error: err });
   await updateJob(jobId, { status: "ERROR", errorMessage: message }).catch(() => undefined);
 }
 
@@ -125,6 +129,7 @@ async function importProfileUrlsSequentially(
       } catch (err) {
         totals.failed++;
         totals.stopReason = asStopReason(classifyImportFailure(err));
+        log.warn("profile import failed", { url: profileUrl, reason: classifyImportFailure(err), error: err });
       }
     }
     totals.processed++;
@@ -153,6 +158,7 @@ export async function runMakerworldProfilesImportJob(
     const title =
       typeof design.title === "string" && design.title.trim() ? decodeHtmlEntities(design.title.trim()) : null;
     await updateJob(jobId, { total: profileIds.length, sourceLabel: title });
+    log.info("makerworld profiles job started", { job: jobId, url: body.url, profiles: profileIds.length });
 
     const totals = await importProfileUrlsSequentially(
       userId,
@@ -168,6 +174,13 @@ export async function runMakerworldProfilesImportJob(
     );
     const { imported, alreadyInLibrary, failed, stopReason } = totals;
     const printId = totals.printId;
+    log.info("makerworld profiles job done", {
+      job: jobId,
+      imported,
+      already_in_library: alreadyInLibrary,
+      failed,
+      stop_reason: stopReason ?? undefined,
+    });
 
     await updateJob(jobId, {
       status: "DONE",
@@ -230,6 +243,7 @@ export async function runCollectionImportJob(
     let authFailed = 0;
     const failed: string[] = [];
     const successPrintIds: string[] = [];
+    log.info("makerworld collection job started", { job: jobId, url: body.url, models: body.design_ids.length });
 
     await mapWithConcurrency(body.design_ids, COLLECTION_IMPORT_CONCURRENCY, async (designId) => {
       const modelUrl = `https://makerworld.com/en/models/${designId}`;
@@ -253,6 +267,7 @@ export async function runCollectionImportJob(
       } catch (err) {
         failed.push(designId);
         const reason = classifyImportFailure(err);
+        log.warn("model import failed", { job: jobId, url: modelUrl, reason, error: err });
         if (reason === "unavailable") unavailable++;
         else if (reason === "rateLimited") rateLimited++;
         else if (reason === "downloadLimit") downloadLimited++;
@@ -291,6 +306,13 @@ export async function runCollectionImportJob(
       }
     }
 
+    log.info("collection job done", {
+      job: jobId,
+      collection: collectionTitle,
+      imported,
+      already_in_library: alreadyInLibrary,
+      failed: failed.length,
+    });
     await updateJob(jobId, {
       status: "DONE",
       sourceLabel: collectionTitle,
@@ -374,6 +396,7 @@ async function runThingiverseThingsImportJob(
     let authFailed = 0;
     const failed: string[] = [];
     const successPrintIds: string[] = [];
+    log.info("thingiverse job started", { job: jobId, url: body.url, models: body.thing_ids.length });
 
     await mapWithConcurrency(body.thing_ids, COLLECTION_IMPORT_CONCURRENCY, async (thingId, index) => {
       const thingUrl = `https://www.thingiverse.com/thing:${thingId}`;
@@ -391,6 +414,7 @@ async function runThingiverseThingsImportJob(
       } catch (err) {
         failed.push(thingId);
         const reason = classifyImportFailure(err);
+        log.warn("model import failed", { job: jobId, url: thingUrl, reason, error: err });
         if (reason === "unavailable") unavailable++;
         else if (reason === "rateLimited") rateLimited++;
         else if (reason === "auth") authFailed++;
@@ -412,6 +436,13 @@ async function runThingiverseThingsImportJob(
       resultCollectionId = collection.id;
     }
 
+    log.info("collection job done", {
+      job: jobId,
+      collection: collectionTitle,
+      imported,
+      already_in_library: alreadyInLibrary,
+      failed: failed.length,
+    });
     await updateJob(jobId, {
       status: "DONE",
       sourceLabel: collectionTitle,
@@ -502,6 +533,7 @@ export async function runPrintablesCollectionImportJob(
     let rateLimited = 0;
     const failed: string[] = [];
     const successPrintIds: string[] = [];
+    log.info("printables collection job started", { job: jobId, url: body.url, models: body.model_ids.length });
 
     await mapWithConcurrency(body.model_ids, COLLECTION_IMPORT_CONCURRENCY, async (modelId, index) => {
       const modelUrl = `https://www.printables.com/model/${modelId}`;
@@ -519,6 +551,7 @@ export async function runPrintablesCollectionImportJob(
       } catch (err) {
         failed.push(modelId);
         const reason = classifyImportFailure(err);
+        log.warn("model import failed", { job: jobId, url: modelUrl, reason, error: err });
         if (reason === "unavailable") unavailable++;
         else if (reason === "rateLimited") rateLimited++;
       } finally {
@@ -542,6 +575,13 @@ export async function runPrintablesCollectionImportJob(
       resultCollectionId = collection.id;
     }
 
+    log.info("collection job done", {
+      job: jobId,
+      collection: collectionTitle,
+      imported,
+      already_in_library: alreadyInLibrary,
+      failed: failed.length,
+    });
     await updateJob(jobId, {
       status: "DONE",
       sourceLabel: collectionTitle,
@@ -592,6 +632,7 @@ export async function runZipImportJob(jobId: string, userId: string, body: ZipIm
     if (path.extname(filename).toLowerCase() !== ".zip") throw new HttpError(415, "Imported file is not a zip");
 
     await updateJob(jobId, { sourceLabel: filename, total: body.entries.length });
+    log.info("zip job started", { job: jobId, file: filename, entries: body.entries.length });
 
     const author = await upsertAuthorFromImport(meta.author);
     const { prints, failed } = await extractZipEntriesToPrints(
@@ -613,6 +654,7 @@ export async function runZipImportJob(jobId: string, userId: string, body: ZipIm
       },
     );
 
+    log.info("zip job done", { job: jobId, file: filename, imported: prints.length, failed: failed.length });
     await updateJob(jobId, {
       status: "DONE",
       processed: body.entries.length,
@@ -732,7 +774,7 @@ async function importOneLink(
  *  cooloff or a cookie update. */
 export function runLinksImportJob(jobId: string, userId: string, body: LinksImportJobBody): Promise<void> {
   if (liveRunners.has(jobId)) {
-    console.warn(`[import] job ${jobId}: a runner is already working on it, not starting another`);
+    log.warn("a runner is already working on this job, not starting another", { job: jobId });
     return Promise.resolve();
   }
   const run = runLinks(jobId, userId, body).finally(() => {
@@ -748,7 +790,7 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
     if (!job) throw new HttpError(404, "Import job not found");
     const items = (await listJobItems(jobId)).filter((item) => item.status === "PENDING");
     const total = await countJobItems(jobId, { in: ["PENDING", "RUNNING", "DONE", "FAILED"] });
-    console.log(`[import] job ${jobId}: running ${items.length} of ${total} links`);
+    log.info("links job running", { job: jobId, pending: items.length, total });
 
     let imported = 0;
     let alreadyInLibrary = 0;
@@ -769,7 +811,7 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
       if (index > 0 && body.itemDelayMs) await sleep(body.itemDelayMs);
       // Pausing only flips the status; the link that's importing finishes and the rest wait.
       if ((await getJobStatus(jobId)) === "PAUSED") {
-        console.log(`[import] job ${jobId}: paused, ${processed} of ${total} links processed`);
+        log.info("links job paused", { job: jobId, processed, total });
         return;
       }
       const options = parseQueuedLinkOptions(item.payload);
@@ -831,15 +873,19 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
           if (!isTransientImportFailure(err) || attempts >= LINKS_MAX_ATTEMPTS) {
             settled = true;
           } else {
-            console.warn(
-              `[import] job ${jobId}: ${item.url} failed (${itemError}), retrying (attempt ${attempts + 1} of ${LINKS_MAX_ATTEMPTS})`,
-            );
+            log.warn("link failed, retrying", {
+              job: jobId,
+              url: item.url,
+              error: itemError,
+              attempt: attempts + 1,
+              attempts: LINKS_MAX_ATTEMPTS,
+            });
             await sleep(LINKS_RETRY_DELAY_MS * attempts);
           }
         }
       }
-      if (itemError) console.error(`[import] job ${jobId}: ${item.url} failed: ${itemError}`);
-      else console.log(`[import] job ${jobId}: ${item.url} imported`);
+      if (itemError) log.warn("link failed", { job: jobId, url: item.url, error: itemError, attempts });
+      else log.info("link imported", { job: jobId, url: item.url });
       if (stopReason && !stopUrl) stopUrl = item.url;
       // The connection failed, not the models: the rest go back to unseen, for the next sync to find
       // again once it works. A link that got some of its profiles in is done.
@@ -879,9 +925,12 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
 
     const totalImported = job.imported + imported;
     const failedCount = await countJobItems(jobId, "FAILED");
-    console.log(
-      `[import] job ${jobId}: done, ${totalImported} imported, ${job.alreadyInLibrary + alreadyInLibrary} already in library, ${failedCount} failed`,
-    );
+    log.info("links job done", {
+      job: jobId,
+      imported: totalImported,
+      already_in_library: job.alreadyInLibrary + alreadyInLibrary,
+      failed: failedCount,
+    });
     await updateJob(jobId, {
       status: "DONE",
       processed,
@@ -987,7 +1036,7 @@ async function pauseSyncJob(job: ImportJob, reason: StopReason, newPrintIds: str
     processed: (await countJobItems(job.id, "DONE")) + (await countJobItems(job.id, "FAILED")),
     failedCount: await countJobItems(job.id, "FAILED"),
   });
-  console.warn(`[sync] job ${job.id}: paused, ${stopText}; ${waiting} links waiting`);
+  syncLog.warn("job paused", { job: job.id, reason: stopText, waiting });
   const owner = await prisma.user.findUnique({ where: { id: job.userId }, select: { role: true } });
   const isAdmin = owner?.role === "ADMIN";
   const name = sync?.collection.name ?? job.sourceLabel ?? "a synced collection";
@@ -1012,7 +1061,9 @@ async function pauseSyncJob(job: ImportJob, reason: StopReason, newPrintIds: str
 
 /** Scheduled MakerWorld syncs then wait for a new cookie instead of meeting the same refusal. */
 async function noteMakerworldRejected(userId: string): Promise<void> {
-  await markMakerworldCookieRejected(userId).catch((err) => console.error("[import] couldn't mark cookie:", err));
+  await markMakerworldCookieRejected(userId).catch((err) =>
+    log.error("couldn't mark the MakerWorld cookie rejected", { user: userId, error: err }),
+  );
 }
 
 type SyncDeferral = { count: number; reason: "auth" | "blocked" };
@@ -1052,7 +1103,7 @@ async function deferSyncRest(job: ImportJob, currentItemId: string | null, reaso
     }
     return items;
   });
-  console.warn(`[sync] job ${job.id}: ${handedBack.length} links handed back to the sync (${reason})`);
+  syncLog.warn("links handed back to the sync", { job: job.id, links: handedBack.length, reason });
   return handedBack.length;
 }
 
@@ -1111,6 +1162,6 @@ async function fileIntoCollection(userId: string, collectionId: string, printId:
     const collection = await prisma.collection.findFirst({ where: { id: collectionId, userId } });
     if (collection) await addPrintsToCollection(collection.id, [printId]);
   } catch (err) {
-    console.warn(`[import] couldn't add ${printId} to collection ${collectionId}:`, err);
+    log.warn("couldn't add the model to its collection", { print: printId, collection: collectionId, error: err });
   }
 }
