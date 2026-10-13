@@ -4,6 +4,7 @@ import sharp from "sharp";
 import { z } from "zod";
 import { prisma } from "../db";
 import { HttpError } from "../utils/fileUtils";
+import { createLogger } from "../logger";
 import { previewImagePath } from "./previewImageService";
 import { createLog } from "./auditLog";
 import { setPrintCategory } from "./printCategoryService";
@@ -18,6 +19,8 @@ const suggestionSchema = z.object({
 });
 
 type Suggestion = z.infer<typeof suggestionSchema>;
+
+const log = createLogger("ai-categorize");
 type Candidate = { id: string; path: string };
 type ProviderResult = { categoryId: string | null; confidence: number; reason: string };
 export type CategorizationOutcome = "applied" | "suggested" | "no_match" | "unchanged";
@@ -164,8 +167,10 @@ async function requestProvider(
     required: ["reason", "category", "confidence"],
   };
 
+  const requestLog = log.child({ print: print.id, model: settings.model });
   for (let attempt = 0; attempt < attempts; attempt++) {
     const last = attempt === attempts - 1;
+    const started = Date.now();
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), settings.timeoutMs);
     try {
@@ -197,14 +202,37 @@ async function requestProvider(
             : attempt === 0
               ? 1000
               : 3000;
+        requestLog.warn("provider request failed, retrying", {
+          status: response.status,
+          attempt: attempt + 1,
+          attempts,
+          delay_ms: delay,
+        });
         await retryDelay(delay);
         continue;
       }
       const body = (await response.json()) as {
         choices?: { message?: { content?: unknown }; finish_reason?: unknown }[];
+        usage?: { completion_tokens?: unknown; completion_tokens_details?: { reasoning_tokens?: unknown } };
       };
       const raw = body.choices?.[0]?.message?.content;
-      if (typeof raw !== "string") throw new Error("AI provider returned no classification");
+      // What an admin needs to tell a cut-off answer (a reasoning model spending the token budget) from a bad one.
+      const answer = {
+        ms: Date.now() - started,
+        finish_reason: body.choices?.[0]?.finish_reason,
+        completion_tokens: body.usage?.completion_tokens,
+        reasoning_tokens: body.usage?.completion_tokens_details?.reasoning_tokens,
+        answer_chars: typeof raw === "string" ? raw.length : undefined,
+      };
+      const unusable = (message: string) => {
+        requestLog.warn("provider answer unusable", {
+          problem: message,
+          ...answer,
+          answer_end: typeof raw === "string" ? raw.slice(-120) : undefined,
+        });
+        return new Error(message);
+      };
+      if (typeof raw !== "string") throw unusable("AI provider returned no classification");
       const unfenced = raw
         .trim()
         .replace(/^```(?:json)?\s*/i, "")
@@ -215,8 +243,8 @@ async function requestProvider(
       } catch {
         // JSON.parse only says where it stopped, which tells an admin nothing about the provider.
         if (body.choices?.[0]?.finish_reason === "length")
-          throw new Error("AI provider cut the answer off at its token limit");
-        throw new Error("AI provider returned an answer that is not valid JSON");
+          throw unusable("AI provider cut the answer off at its token limit");
+        throw unusable("AI provider returned an answer that is not valid JSON");
       }
       const parsed = z
         .object({
@@ -226,13 +254,14 @@ async function requestProvider(
           reason: z.string(),
         })
         .safeParse(json);
-      if (!parsed.success) throw new Error("AI provider returned invalid classification");
+      if (!parsed.success) throw unusable("AI provider returned invalid classification");
       // Providers that ignore the schema's range (Ollama) can answer a whole percentage such as 85.
       const { confidence: stated } = parsed.data;
       const confidence = Number.isInteger(stated) && stated > 1 && stated <= 100 ? stated / 100 : stated;
-      if (confidence < 0 || confidence > 1) throw new Error("AI provider returned invalid classification");
+      if (confidence < 0 || confidence > 1) throw unusable("AI provider returned invalid classification");
       const chosen = parsed.data.category === null ? null : candidates[parsed.data.category - 1];
-      if (chosen === undefined) throw new Error("AI provider returned a category outside the candidate list");
+      if (chosen === undefined) throw unusable("AI provider returned a category outside the candidate list");
+      requestLog.debug("provider answered", { ...answer, category: parsed.data.category, confidence });
       return {
         categoryId: chosen?.id ?? null,
         confidence,
@@ -241,6 +270,11 @@ async function requestProvider(
     } catch (error) {
       const retryable = error instanceof TypeError || (error instanceof Error && error.name === "AbortError");
       if (!retryable || last) throw noSecretError(readableNetworkError(error, settings));
+      requestLog.warn("provider unreachable, retrying", {
+        error: noSecretError(readableNetworkError(error, settings)),
+        attempt: attempt + 1,
+        attempts,
+      });
       await retryDelay(attempt === 0 ? 1000 : 3000);
     } finally {
       clearTimeout(timeout);
@@ -262,10 +296,37 @@ async function clearSuggestion(
   await prisma.print.updateMany({ where, data: { aiSuggestion: Prisma.DbNull } });
 }
 
+/** Errors a caller expects on some models (a manual category, a folder, a model deleted meanwhile). */
+function isExpectedSkip(error: unknown): boolean {
+  return (
+    error instanceof HttpError &&
+    (error.status === 404 || (error.status === 409 && (error.code === "manual_category" || error.code === "folder")))
+  );
+}
+
+/** `source` only labels the log line: an import, a bulk run, or a request for one model. */
 export async function categorizePrint(
   userId: string,
   printId: string,
-  options: { force?: boolean } = {},
+  options: { force?: boolean; source?: "import" | "run" | "request" } = {},
+): Promise<CategorizationOutcome> {
+  const fields = { print: printId, source: options.source ?? "request" };
+  const started = Date.now();
+  try {
+    const outcome = await categorizeOne(userId, printId, options);
+    log.info("model categorized", { ...fields, outcome, ms: Date.now() - started });
+    return outcome;
+  } catch (error) {
+    if (isExpectedSkip(error)) log.info("model skipped", { ...fields, reason: (error as Error).message });
+    else log.warn("model categorization failed", { ...fields, error: noSecretError(error), ms: Date.now() - started });
+    throw error;
+  }
+}
+
+async function categorizeOne(
+  userId: string,
+  printId: string,
+  options: { force?: boolean },
 ): Promise<CategorizationOutcome> {
   const settings = await getAiCategorizationSettings();
   if (!aiCategorizationEnabled(settings)) throw new HttpError(503, "AI categorization is disabled", "ai_disabled");
@@ -325,12 +386,14 @@ export async function categorizePrint(
 
 /** Import creation deliberately never waits on a provider. */
 export function enqueueAiCategorization(userId: string, printId: string): void {
-  void getAiCategorizationSettings()
-    .then((settings) => {
+  void getAiCategorizationSettings().then(
+    (settings) => {
       if (!aiCategorizationEnabled(settings) || !settings.onImport) return;
-      return categorizePrint(userId, printId);
-    })
-    .catch((error) => console.warn("[ai-categorize]", printId, noSecretError(error).message));
+      // categorizePrint logs its own outcome and failure.
+      return categorizePrint(userId, printId, { source: "import" }).catch(() => undefined);
+    },
+    (error) => log.warn("could not read the AI settings for an imported model", { print: printId, error }),
+  );
 }
 
 export async function acceptAiSuggestion(userId: string, printId: string): Promise<void> {
@@ -443,14 +506,34 @@ export function startAiCategorizationRun(
     lastError: null,
   };
   runs.set(userId, run);
+  log.info("run started", {
+    user: userId,
+    include_ai: scope.includeAi,
+    include_rule: scope.includeRule,
+    include_legacy: scope.includeLegacy,
+  });
   void runAiCategorization(userId, run, scope)
     .catch((error) => {
       run.failed++;
       run.lastError = noSecretError(error).message;
+      log.error("run crashed", { user: userId, error: noSecretError(error) });
     })
     .finally(() => {
       run.running = false;
       run.finishedAt = new Date().toISOString();
+      const summary = {
+        user: userId,
+        total: run.total,
+        done: run.done,
+        applied: run.applied,
+        suggested: run.suggested,
+        no_match: run.noMatch,
+        failed: run.failed,
+        cancelled: run.cancelled,
+        last_error: run.lastError ?? undefined,
+      };
+      if (run.failed) log.warn("run finished with failures", summary);
+      else log.info("run finished", summary);
       void createLog({ userId, action: "ai_categorization_run", details: { ...run } });
     });
   return run;
@@ -476,12 +559,13 @@ async function runAiCategorization(
     );
   });
   run.total = selected.length;
+  log.info("run selected models", { user: userId, total: run.total, library: prints.length });
   let consecutiveProviderFailures = 0;
   for (const print of selected) {
     if (run.cancelled) break;
     let stop = false;
     try {
-      const outcome = await categorizePrint(userId, print.id);
+      const outcome = await categorizePrint(userId, print.id, { source: "run" });
       consecutiveProviderFailures = 0;
       if (outcome === "applied") run.applied++;
       else if (outcome === "suggested") run.suggested++;
@@ -495,12 +579,14 @@ async function runAiCategorization(
         consecutiveProviderFailures = 0;
       } else if (error instanceof HttpError && error.status === 503 && error.code === "ai_disabled") {
         run.lastError = noSecretError(error).message;
+        log.warn("run stopped: AI categorization was turned off", { user: userId, done: run.done });
         stop = true;
       } else {
         run.failed++;
         consecutiveProviderFailures++;
         if (consecutiveProviderFailures >= 5) {
           run.lastError = "AI provider is failing repeatedly; run stopped after 5 consecutive failures";
+          log.warn("run stopped after 5 consecutive failures", { user: userId, done: run.done + 1 });
           stop = true;
         } else {
           run.lastError = noSecretError(error).message;
@@ -515,6 +601,8 @@ async function runAiCategorization(
 export function cancelAiCategorizationRun(userId: string): AiCategorizationRun | null {
   const run = runs.get(userId);
   if (!run) return null;
+  if (run.running && !run.cancelled)
+    log.info("run cancel requested", { user: userId, done: run.done, total: run.total });
   run.cancelled = true;
   return run;
 }

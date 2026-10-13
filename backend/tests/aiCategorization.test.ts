@@ -1,5 +1,5 @@
 import http from "node:http";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { createApp } from "../src/app";
 import { prisma } from "../src/db";
@@ -30,6 +30,7 @@ type ProviderReply =
       headers?: Record<string, string>;
       content?: ProviderAnswer | string;
       finishReason?: string;
+      usage?: Record<string, unknown>;
       never?: boolean;
     };
 type ProviderHandler = (body: Record<string, unknown>) => ProviderReply | Promise<ProviderReply>;
@@ -98,7 +99,8 @@ async function startProvider(handler: ProviderHandler) {
             ? await toProviderText(body, content)
             : JSON.stringify(await toProviderJson(body, content));
         const finishReason = isAnswer(reply) ? "stop" : (reply.finishReason ?? "stop");
-        res.end(JSON.stringify({ choices: [{ message: { content: text }, finish_reason: finishReason }] }));
+        const usage = isAnswer(reply) ? undefined : reply.usage;
+        res.end(JSON.stringify({ choices: [{ message: { content: text }, finish_reason: finishReason }], usage }));
       } catch (error) {
         res.writeHead(500, { "content-type": "application/json" });
         res.end(JSON.stringify({ error: error instanceof Error ? error.message : "provider failed" }));
@@ -416,7 +418,12 @@ describe("AI categorization", () => {
     // A reason filled to its 300-character limit, cut before the closing brace: what a small max_tokens produced.
     const cut = `{"reason":"${"r".repeat(300)}","category_id":"${target.id}"`;
     const replies: ProviderReply[] = [
-      { status: 200, content: cut, finishReason: "length" },
+      {
+        status: 200,
+        content: cut,
+        finishReason: "length",
+        usage: { completion_tokens: 1024, completion_tokens_details: { reasoning_tokens: 900 } },
+      },
       { status: 200, content: cut },
       { status: 200, content: '{"category_id":null,"confidence":1,"reason":"fine"}', finishReason: "length" },
     ];
@@ -426,13 +433,25 @@ describe("AI categorization", () => {
       return replies.shift()!;
     });
     await enable(baseUrl);
+    const warnings: string[] = [];
+    vi.spyOn(console, "warn").mockImplementation((line: unknown) => void warnings.push(String(line)));
 
-    const limited = await request(app)
-      .post(`/api/print/${(await print()).id}/recategorize`)
-      .set(auth())
-      .send({});
+    const cutPrint = await print();
+    const limited = await request(app).post(`/api/print/${cutPrint.id}/recategorize`).set(auth()).send({});
+    vi.restoreAllMocks();
     expect(limited.status).toBe(502);
     expect(limited.body.error).toBe("AI provider failed: AI provider cut the answer off at its token limit");
+    // The log says why, for which model, and how the token budget went: the run status only keeps the last error.
+    const answerLine = warnings.find((line) => line.includes("provider answer unusable"));
+    expect(answerLine).toContain(`print=${cutPrint.id}`);
+    expect(answerLine).toContain("finish_reason=length");
+    expect(answerLine).toContain("completion_tokens=1024");
+    expect(answerLine).toContain("reasoning_tokens=900");
+    expect(answerLine).toContain("answer_chars=");
+    expect(answerLine).toContain(`answer_end=`);
+    const failureLine = warnings.find((line) => line.includes("model categorization failed"));
+    expect(failureLine).toContain(`print=${cutPrint.id}`);
+    expect(failureLine).toContain("source=request");
     // Leaves room for a full-length reason and the JSON around it.
     expect(maxTokens).toBeGreaterThanOrEqual(1024);
 
@@ -453,6 +472,48 @@ describe("AI categorization", () => {
     expect(completeAtLimit.status).toBe(200);
     expect(completeAtLimit.body.outcome).toBe("no_match");
     expect(providerRequests).toBe(3);
+  });
+
+  it("logs a run's start, each failed model and the totals", async () => {
+    const runner = await newUser();
+    await categoryFor(runner.id, "Run log target");
+    const failing = await printFor(runner.id);
+    const fine = await printFor(runner.id);
+    const baseUrl = await startProvider(async (body) =>
+      promptText(body).includes(failing.name)
+        ? { status: 200, content: "not json" }
+        : { category_id: null, confidence: 1, reason: "none" },
+    );
+    await enable(baseUrl);
+    const lines: string[] = [];
+    for (const stream of ["log", "warn", "error"] as const) {
+      vi.spyOn(console, stream).mockImplementation((line: unknown) => void lines.push(String(line)));
+    }
+    try {
+      const started = await request(app)
+        .post("/api/ai-categorization/run")
+        .set(auth(runner.token))
+        .send({ include_ai: false, include_rule: false, include_legacy: false });
+      expect(started.status).toBe(202);
+      await waitForRun(runner.token);
+      await waitFor(() => lines.some((line) => line.includes("run finished")), "run finish was not logged");
+    } finally {
+      vi.restoreAllMocks();
+    }
+    expect(lines.find((line) => line.includes("run started"))).toContain(`user=${runner.id}`);
+    expect(lines.find((line) => line.includes("run selected models"))).toContain("total=2");
+    const failedLine = lines.find((line) => line.includes("model categorization failed"));
+    expect(failedLine).toContain(`print=${failing.id}`);
+    expect(failedLine).toContain("source=run");
+    expect(failedLine).toContain("not valid JSON");
+    expect(lines.find((line) => line.includes(`print=${fine.id}`) && line.includes("model categorized"))).toContain(
+      "outcome=no_match",
+    );
+    const finished = lines.find((line) => line.includes("run finished"))!;
+    expect(finished).toMatch(/WARN .*run finished with failures/);
+    expect(finished).toContain("total=2");
+    expect(finished).toContain("failed=1");
+    expect(finished).toContain("no_match=1");
   });
 
   it("tells the provider a model's current category", async () => {

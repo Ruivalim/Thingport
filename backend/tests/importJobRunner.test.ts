@@ -124,6 +124,50 @@ describe("runCollectionImportJob", () => {
     );
   });
 
+  it("logs the job's start, each failed model with why, and the totals", async () => {
+    vi.mocked(importPrintFromUrl).mockImplementation(async (_userId: string, url: string) => {
+      if (url.endsWith("/41")) throw new HttpError(404, "Not found");
+      if (url.endsWith("/42")) throw new HttpError(429, "MakerWorld is challenging this account with a CAPTCHA");
+      return {
+        print: { id: "print-40" } as never,
+        plates: [],
+        author: null,
+        previewImages: [],
+        alreadyImported: false,
+      };
+    });
+    const job = await createJob(userId, "COLLECTION", {
+      sourceUrl: "https://makerworld.com/en/models/does-not-matter",
+      provider: "makerworld",
+      total: 3,
+    });
+    const lines: string[] = [];
+    for (const stream of ["log", "warn", "error"] as const) {
+      vi.spyOn(console, stream).mockImplementation((line: unknown) => void lines.push(String(line)));
+    }
+    try {
+      await runCollectionImportJob(job.id, userId, {
+        url: "https://makerworld.com/en/models/does-not-matter",
+        design_ids: ["40", "41", "42"],
+        tags: [],
+      });
+    } finally {
+      vi.mocked(console.log).mockRestore();
+      vi.mocked(console.warn).mockRestore();
+      vi.mocked(console.error).mockRestore();
+    }
+
+    const ofJob = lines.filter((line) => line.includes(`job=${job.id}`));
+    expect(ofJob[0]).toMatch(/INFO  \[import\] makerworld collection job started .*models=3/);
+    const failures = ofJob.filter((line) => line.includes("model import failed"));
+    expect(failures).toHaveLength(2);
+    expect(failures[0]).toMatch(
+      /WARN .*url=https:\/\/makerworld\.com\/en\/models\/41 reason=unavailable error="Not found"/,
+    );
+    expect(failures[1]).toContain("reason=rateLimited");
+    expect(ofJob.at(-1)).toMatch(/collection job done .*imported=1 already_in_library=0 failed=2/);
+  });
+
   it("still marks the job DONE even if every model in the batch is unavailable", async () => {
     const mockedImport = vi.mocked(importPrintFromUrl);
     mockedImport.mockImplementation(async () => {
