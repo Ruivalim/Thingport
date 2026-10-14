@@ -406,6 +406,10 @@ describe("AI categorization", () => {
     const remaining = await request(app).get("/api/settings/ai-connections").set(auth());
     expect(remaining.body).toMatchObject([{ id: third.id, is_default: true }]);
 
+    // Deleting the last model switches the features off.
+    await request(app).delete(`/api/settings/ai-connections/${third.id}`).set(auth());
+    expect((await request(app).get("/api/settings/ai-categorization").set(auth())).body.enabled).toBe(false);
+
     const unknown = await request(app)
       .patch("/api/settings/ai-categorization")
       .set(auth())

@@ -659,8 +659,7 @@
         "categorization": "AI Categorization",
         "openSettings": "Settings",
         "settingsAria": "{{feature}} settings",
-        "toggleAria": "Turn {{feature}} on or off",
-        "needsModel": "Add a model first"
+        "toggleAria": "Turn {{feature}} on or off"
       },
       "aiCategorization": {
         "heading": "AI Categorization",

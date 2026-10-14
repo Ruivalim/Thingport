@@ -16,7 +16,8 @@ import AiCategorizationDialog from "./AiCategorizationDialog";
 import CategorizationAnimation from "./CategorizationAnimation";
 import { AiLogo } from "./aiLogos";
 
-type Props = { connections: AiConnection[]; onUnauthorized?: () => void };
+/** `connections` is null while the models are loading. */
+type Props = { connections: AiConnection[] | null; onUnauthorized?: () => void };
 
 const TILE = 112;
 const tileShadow = "inset 0 0 0 1px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04)";
@@ -29,7 +30,10 @@ export default function AiFeaturesSection({ connections, onUnauthorized }: Props
   const [switching, setSwitching] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Read again when models come or go: deleting the last one switches the features off on the server.
+  const modelCount = connections?.length;
   useEffect(() => {
+    if (modelCount === undefined) return;
     let active = true;
     void settingsApi
       .getAiCategorization()
@@ -43,7 +47,7 @@ export default function AiFeaturesSection({ connections, onUnauthorized }: Props
     return () => {
       active = false;
     };
-  }, [onUnauthorized, t]);
+  }, [modelCount, onUnauthorized, t]);
 
   const toggle = async (enabled: boolean) => {
     setSwitching(true);
@@ -60,15 +64,17 @@ export default function AiFeaturesSection({ connections, onUnauthorized }: Props
 
   // The AI it would use: the one it's set to while that exists, otherwise the default, as the backend picks.
   const model =
-    connections.find((connection) => connection.id === settings?.ai_connection_id) ??
-    connections.find((connection) => connection.is_default);
-  const enabled = Boolean(settings?.enabled);
+    connections?.find((connection) => connection.id === settings?.ai_connection_id) ??
+    connections?.find((connection) => connection.is_default);
+  const hasModel = Boolean(connections?.length);
+  // Without a model nothing can run, whatever was saved, and there's nothing to switch on until one is added.
+  const enabled = Boolean(settings?.enabled) && hasModel;
   const label = t("adminSettings.aiFeatures.categorization");
 
   return (
     <Stack spacing={3}>
       <SectionHeader title={t("adminSettings.aiFeatures.heading")} subtitle={t("adminSettings.aiFeatures.subtitle")} />
-      {settings === null && !error ? (
+      {(settings === null || connections === null) && !error ? (
         <CircularProgress size={20} />
       ) : (
         <Box>
@@ -122,19 +128,17 @@ export default function AiFeaturesSection({ connections, onUnauthorized }: Props
                 <Typography variant="body2" fontWeight={600}>
                   {label}
                 </Typography>
-                <Tooltip title={connections.length ? "" : t("adminSettings.aiFeatures.needsModel")}>
-                  <span>
-                    <Switch
-                      size="small"
-                      checked={enabled}
-                      onChange={(event) => void toggle(event.target.checked)}
-                      disabled={!settings || switching || (!connections.length && !enabled)}
-                      slotProps={{
-                        input: { "aria-label": t("adminSettings.aiFeatures.toggleAria", { feature: label }) },
-                      }}
-                    />
-                  </span>
-                </Tooltip>
+                {hasModel && (
+                  <Switch
+                    size="small"
+                    checked={enabled}
+                    onChange={(event) => void toggle(event.target.checked)}
+                    disabled={!settings || switching}
+                    slotProps={{
+                      input: { "aria-label": t("adminSettings.aiFeatures.toggleAria", { feature: label }) },
+                    }}
+                  />
+                )}
               </Stack>
             </Stack>
           </Box>
@@ -151,7 +155,7 @@ export default function AiFeaturesSection({ connections, onUnauthorized }: Props
       {open && settings && (
         <AiCategorizationDialog
           settings={settings}
-          connections={connections}
+          connections={connections ?? []}
           onClose={() => setOpen(false)}
           onSaved={setSettings}
           onUnauthorized={onUnauthorized}

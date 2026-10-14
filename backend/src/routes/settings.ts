@@ -744,8 +744,11 @@ router.delete(
   requireAdmin,
   asyncHandler(async (req, res) => {
     await deleteAiConnection(req.params.id);
-    // A feature set to it goes back to the default.
-    if ((await getAiCategorizationPrefs()).aiConnectionId === req.params.id) {
+    // With no model left every feature switches off, so adding one later doesn't quietly start them again.
+    if (!(await listAiConnections()).length) {
+      await setAiCategorizationPrefs({ enabled: false, aiConnectionId: null });
+    } else if ((await getAiCategorizationPrefs()).aiConnectionId === req.params.id) {
+      // A feature set to it goes back to the default.
       await setAiCategorizationPrefs({ aiConnectionId: null });
     }
     res.status(204).end();

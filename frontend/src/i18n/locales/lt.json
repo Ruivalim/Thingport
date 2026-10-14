@@ -663,8 +663,7 @@
         "categorization": "DI kategorizavimas",
         "openSettings": "Nustatymai",
         "settingsAria": "{{feature}} nustatymai",
-        "toggleAria": "Įjungti arba išjungti: {{feature}}",
-        "needsModel": "Pirmiausia pridėkite modelį"
+        "toggleAria": "Įjungti arba išjungti: {{feature}}"
       },
       "aiCategorization": {
         "heading": "DI kategorizavimas",

@@ -28,7 +28,7 @@ export default function AiPage({ onUnauthorized }: Props) {
   return (
     <Stack spacing={4} divider={<Divider />}>
       <AiConnectionsSection connections={connections} onChanged={load} onUnauthorized={onUnauthorized} />
-      <AiFeaturesSection connections={connections ?? []} onUnauthorized={onUnauthorized} />
+      <AiFeaturesSection connections={connections} onUnauthorized={onUnauthorized} />
     </Stack>
   );
 }
