@@ -16,6 +16,7 @@ import {
   type QueuedLinkOptions,
 } from "./importJobRunner";
 import { getUserMakerworldCookie } from "./makerworldCookieService";
+import { clearCaptchaCooloff } from "./makerworldCaptcha";
 
 /** The shared body a LINKS job reruns with: its stored payload plus the owner's saved MakerWorld
  *  cookie. The cookie is never stored on the job. */
@@ -35,14 +36,19 @@ async function linksJobBody(job: ImportJob): Promise<LinksImportJobBody> {
 
 /** Starts a LINKS job's PENDING links, or with `retryFailed` puts its FAILED links back first.
  *  Resolves once the runner is launched; `run` settles when it stops (finished or paused), which is
- *  what the bulk run waits on. */
+ *  what the bulk run waits on. `manual` is a person clicking start or retry: it lifts the MakerWorld
+ *  CAPTCHA cooloff, which would otherwise fail every link without trying. */
 export async function startLinksJob(
   job: ImportJob,
-  opts: { retryFailed?: boolean } = {},
+  opts: { retryFailed?: boolean; manual?: boolean } = {},
 ): Promise<{ run: Promise<void> }> {
   if (job.type !== "LINKS") throw new HttpError(400, "Only a link-list import can be started or retried");
   if (job.status === "RUNNING" && isRunnerLive(job.id)) throw new HttpError(409, "This import is already running");
-  if (!opts.retryFailed && job.status !== "PAUSED") throw new HttpError(400, "Only a paused import can be started");
+  // An ERROR job was cut off (a restart, or its runner crashed) with links still waiting, and has
+  // no failed links for a retry to pick up, so it starts like a paused one.
+  if (!opts.retryFailed && job.status !== "PAUSED" && job.status !== "ERROR") {
+    throw new HttpError(400, "Only a paused or interrupted import can be started");
+  }
   if (isRunnerLive(job.id)) {
     // A paused job's runner finishes the link it's on before it stops, which can take a while.
     if (job.status === "PAUSED") {
@@ -56,7 +62,11 @@ export async function startLinksJob(
 
   if (opts.retryFailed) {
     const failed = await resetFailedItems(job.id);
-    if (!failed) throw new HttpError(400, "This import has no failed links to retry");
+    // Links an interrupted run never reached are rerun too, so a retry alone can finish it.
+    const waiting = await prisma.importJobItem.count({
+      where: { jobId: job.id, status: { in: ["PENDING", "RUNNING"] } },
+    });
+    if (!failed && !waiting) throw new HttpError(400, "This import has no failed links to retry");
   }
   // No runner is alive, so a RUNNING item was cut off (a restart, or a pause mid-link).
   await prisma.importJobItem.updateMany({ where: { jobId: job.id, status: "RUNNING" }, data: { status: "PENDING" } });
@@ -74,6 +84,7 @@ export async function startLinksJob(
     },
   });
   if (!count) throw new HttpError(409, "This import changed while it was being started, reload and try again");
+  if (opts.manual) clearCaptchaCooloff();
   const body = await linksJobBody(job);
   return { run: runLinksImportJob(job.id, job.userId, body) };
 }
@@ -287,7 +298,10 @@ async function drainBulkQueue(): Promise<void> {
   }
 }
 
+/** Bulk runs are started by hand, so they lift the CAPTCHA cooloff once (see startLinksJob). Not
+ *  per job: after a CAPTCHA, the jobs behind it should fail fast, not each probe MakerWorld again. */
 function enqueueBulk(entries: BulkEntry[]): number {
+  if (entries.length) clearCaptchaCooloff();
   const known = new Set([bulkCurrent, ...bulkQueue.map((e) => e.jobId)]);
   const fresh = entries.filter((e) => !known.has(e.jobId));
   bulkQueue.push(...fresh);

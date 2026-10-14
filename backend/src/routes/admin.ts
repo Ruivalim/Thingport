@@ -180,7 +180,7 @@ router.get(
 router.post(
   "/import-queue/jobs/:id/start",
   asyncHandler(async (req, res) => {
-    await startLinksJob(await getQueueJob(req.params.id));
+    await startLinksJob(await getQueueJob(req.params.id), { manual: true });
     res.status(202).json({ ok: true });
   }),
 );
@@ -188,7 +188,7 @@ router.post(
 router.post(
   "/import-queue/jobs/:id/retry",
   asyncHandler(async (req, res) => {
-    await startLinksJob(await getQueueJob(req.params.id), { retryFailed: true });
+    await startLinksJob(await getQueueJob(req.params.id), { retryFailed: true, manual: true });
     res.status(202).json({ ok: true });
   }),
 );

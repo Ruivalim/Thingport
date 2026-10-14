@@ -30,6 +30,7 @@ vi.mock("../src/services/notificationService", async (importOriginal) => {
 
 import { createApp } from "../src/app";
 import { prisma } from "../src/db";
+import { clearCaptchaCooloff, makerworldCaptchaCooloffActive } from "../src/services/makerworldCaptcha";
 
 const app = createApp();
 const stamp = Date.now();
@@ -80,6 +81,8 @@ function design(designId: string) {
 const designCalls = new Map<string, number>();
 const gates = new Map<string, { held: Promise<void>; release: () => void }>();
 const gone = new Set<string>();
+// Design ids MakerWorld answers with its CAPTCHA challenge.
+const challenged = new Set<string>();
 let inFlight = 0;
 let maxInFlight = 0;
 
@@ -99,6 +102,12 @@ function mockFetch() {
         inFlight--;
       }
       if (gone.has(id)) return new Response("gone", { status: 404 });
+      if (challenged.has(id)) {
+        return new Response(JSON.stringify({ captchaId: "c1", error: "confirm you are not a robot" }), {
+          status: 418,
+          headers: { "content-type": "application/json" },
+        });
+      }
       return json(design(id));
     }
     const profile = url.match(/^https:\/\/api\.bambulab\.com\/v1\/iot-service\/api\/user\/profile\/(\d+)/);
@@ -192,6 +201,8 @@ describe("the import queue", () => {
     mockFetch();
     designCalls.clear();
     gone.clear();
+    challenged.clear();
+    clearCaptchaCooloff();
     inFlight = 0;
     maxInFlight = 0;
     notifyDelay.ms = 0;
@@ -454,6 +465,60 @@ describe("the import queue", () => {
       expect(finished.imported).toBe(1);
     });
 
+    it("starts a job a restart cut off, which has links waiting but none failed", async () => {
+      const res = await queue(member, { url: modelUrl(base + 86) });
+      await queue(member, { url: modelUrl(base + 87) });
+      const jobId = res.body.job_id;
+      // What the boot recovery in server.ts leaves: the link that was importing still RUNNING.
+      const [first] = await items(jobId);
+      await prisma.importJobItem.update({ where: { id: first.id }, data: { status: "RUNNING" } });
+      await prisma.importJob.update({
+        where: { id: jobId },
+        data: { status: "ERROR", errorMessage: "Interrupted by server restart" },
+      });
+
+      const start = await request(app).post(`/api/admin/import-queue/jobs/${jobId}/start`).set(auth(admin));
+      expect(start.status).toBe(202);
+      const finished = await waitStatus(jobId, "DONE");
+      expect(finished.imported).toBe(2);
+      expect(finished.errorMessage).toBeNull();
+      expect((await items(jobId)).map((item) => item.status)).toEqual(["DONE", "DONE"]);
+    });
+
+    it("lets a retry finish a job a restart cut off, too, though none of its links failed", async () => {
+      const res = await queue(member, { url: modelUrl(base + 88) });
+      await queue(member, { url: modelUrl(base + 89) });
+      const jobId = res.body.job_id;
+      const [first] = await items(jobId);
+      await prisma.importJobItem.update({ where: { id: first.id }, data: { status: "RUNNING" } });
+      await prisma.importJob.update({ where: { id: jobId }, data: { status: "ERROR" } });
+
+      const retry = await request(app).post(`/api/admin/import-queue/jobs/${jobId}/retry`).set(auth(admin));
+      expect(retry.status).toBe(202);
+      const finished = await waitFor(
+        () => job(jobId),
+        (j) => j.status === "DONE" && j.imported === 2,
+      );
+      expect(finished.failedCount).toBe(0);
+    });
+
+    it("still won't start or retry a finished job with nothing left", async () => {
+      const res = await queue(member, { url: modelUrl(base + 79) });
+      const jobId = res.body.job_id;
+      await request(app).post(`/api/admin/import-queue/jobs/${jobId}/start`).set(auth(admin));
+      await waitStatus(jobId, "DONE");
+      await waitFor(
+        async () => (await request(app).get("/api/admin/import-queue").set(auth(admin))).body,
+        (body) => !body.jobs.some((j: { runner_live: boolean }) => j.runner_live),
+      );
+      expect((await request(app).post(`/api/admin/import-queue/jobs/${jobId}/start`).set(auth(admin))).status).toBe(
+        400,
+      );
+      expect((await request(app).post(`/api/admin/import-queue/jobs/${jobId}/retry`).set(auth(admin))).status).toBe(
+        400,
+      );
+    });
+
     it("retries just the failed links of a job", async () => {
       gone.add(String(base + 81));
       await queue(member, { url: modelUrl(base + 80) });
@@ -471,6 +536,41 @@ describe("the import queue", () => {
       );
       expect(second.imported).toBe(2);
       expect(designCalls.get(String(base + 80))).toBe(1);
+    });
+
+    it("retries a CAPTCHA'd link for real once someone solved the puzzle, instead of failing it on the cooloff", async () => {
+      challenged.add(String(base + 83));
+      const res = await queue(member, { url: modelUrl(base + 83) });
+      await request(app).post(`/api/admin/import-queue/jobs/${res.body.job_id}/start`).set(auth(admin));
+      const first = await waitStatus(res.body.job_id, "DONE");
+      expect(first.failedCount).toBe(1);
+      expect(makerworldCaptchaCooloffActive()).toBe(true);
+
+      // Solved in the browser: the cooloff is still on, but the retry has to ask MakerWorld again.
+      challenged.clear();
+      const callsBefore = designCalls.get(String(base + 83)) ?? 0;
+      await request(app).post(`/api/admin/import-queue/jobs/${res.body.job_id}/retry`).set(auth(admin));
+      const second = await waitFor(
+        () => job(res.body.job_id),
+        (j) => j.status === "DONE" && j.failedCount === 0,
+      );
+      expect(second.imported).toBe(1);
+      expect(designCalls.get(String(base + 83))).toBeGreaterThan(callsBefore);
+    });
+
+    it("imports a model whose title talks about robots instead of calling it a CAPTCHA", async () => {
+      const res = await queue(member, { url: modelUrl(base + 84) });
+      const realFetch = global.fetch;
+      global.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+        const response = await realFetch(input, init);
+        if (!String(input).includes(`/design-service/design/${base + 84}`)) return response;
+        return json({ ...(await response.json()), title: "Robot vacuum dock", summary: "<p>Not a robot.</p>" });
+      }) as typeof fetch;
+      await request(app).post(`/api/admin/import-queue/jobs/${res.body.job_id}/start`).set(auth(admin));
+      const finished = await waitStatus(res.body.job_id, "DONE");
+      expect(finished.failedCount).toBe(0);
+      expect(finished.imported).toBe(1);
+      expect(makerworldCaptchaCooloffActive()).toBe(false);
     });
 
     it("retries a finished job right away, while its runner is still writing the notification", async () => {

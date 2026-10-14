@@ -6,13 +6,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 // body naming a captchaId, under either HTTP 418 or 200. It can't be solved without a real
 // browser, so it's detected by shape and reported instead of surfacing as "no file found".
 // The cloud API and collection listing share one cooldown so one can't re-trip the other.
+// Only a captcha key or the reply's own error text counts: a design whose title or summary says
+// "robot" would otherwise fail as a CAPTCHA on every retry, and start the cooloff for everyone.
 export function isCaptchaChallenge(data: unknown): boolean {
   if (!isRecord(data)) return false;
-  const haystack = Object.entries(data)
-    .map(([key, value]) => `${key} ${typeof value === "string" ? value : ""}`)
-    .join(" ")
-    .toLowerCase();
-  return haystack.includes("captchaid") || haystack.includes("captcha") || haystack.includes("robot");
+  if (Object.keys(data).some((key) => key.toLowerCase().includes("captcha"))) return true;
+  return ["error", "message", "msg"].some((key) => {
+    const value = data[key];
+    return typeof value === "string" && /captcha|robot/i.test(value);
+  });
 }
 
 export const MAKERWORLD_CAPTCHA_MESSAGE =
@@ -32,6 +34,12 @@ export function makerworldCaptchaCooloffActive(): boolean {
 
 export function noteCaptchaChallenge(): void {
   captchaBlockedUntil = Date.now() + CAPTCHA_COOLOFF_MS;
+}
+
+/** For a run someone starts by hand: they may have just solved the puzzle in the browser, which
+ *  the cooloff can't know. A block that's still there costs one request before it trips again. */
+export function clearCaptchaCooloff(): void {
+  captchaBlockedUntil = 0;
 }
 
 export class MakerworldCaptchaError extends Error {
