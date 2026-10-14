@@ -298,8 +298,22 @@ async function runDirectImport(opts?: { entries?: string[] }): Promise<void> {
       renderPanel(successHtml(link));
     }
   } catch (err) {
-    renderPanel(errorHtml(err));
+    renderBlockedError(err, "url", collectionId);
   }
+}
+
+/** A CAPTCHA or the daily limit won't clear by clicking Import again, so an admin can park the
+ *  link in the queue with the same choices instead, and start it once MakerWorld lets go. The
+ *  backend's errors arrive as plain text, hence the message check. */
+function renderBlockedError(err: unknown, scope: MakerworldProfileScope, collectionId: string | null): void {
+  const blocked =
+    isMakerworldBlockingError(err) || (err instanceof Error && /captcha|download limit/i.test(err.message));
+  if (!blocked || !ctx().canQueue) {
+    renderPanel(errorHtml(err));
+    return;
+  }
+  renderPanel(`${errorHtml(err)}${queueButtonHtml()}`);
+  onPanelAction("queue", () => void runQueueImport(scope, collectionId));
 }
 
 /** Null lets the backend resolve it; a CAPTCHA or the download limit would stop it too. */
@@ -354,7 +368,7 @@ async function runProfilesImport(scope: MakerworldProfileScope, collectionId: st
   }
 
   if (!printId) {
-    renderPanel(errorHtml(lastError ?? new Error("Import failed")));
+    renderBlockedError(lastError ?? new Error("Import failed"), scope, collectionId);
     return;
   }
   const parts = [`${added} print profile${added === 1 ? "" : "s"} imported`];
