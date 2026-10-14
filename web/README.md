@@ -2,7 +2,8 @@
 
 The product site, docs and blog, published to GitHub Pages by
 [`.github/workflows/web-pages.yml`](../.github/workflows/web-pages.yml). Built with [Astro](https://astro.build) as
-plain static HTML. The only JavaScript is the theme toggle.
+plain static HTML. The little JavaScript there is: the theme toggle, copy buttons, and the seasonal logo, which
+the visitor's browser picks by date (the pages are built ahead of time).
 
 ```bash
 cd web

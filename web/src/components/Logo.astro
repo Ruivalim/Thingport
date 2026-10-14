@@ -2,10 +2,98 @@
 import lockupColor from "../../../frontend/src/assets/logos/thingport-lockup-compact-color.svg";
 import lockupOnDark from "../../../frontend/src/assets/logos/thingport-lockup-compact-on-dark.svg";
 
-type Props = { height?: number };
-const { height = 30 } = Astro.props;
+type Props = {
+  height?: number;
+  /** Dresses the logo up for the season it is, as the app's sidebar does. */
+  seasonal?: boolean;
+};
+const { height = 30, seasonal = false } = Astro.props;
 const width = (h: number, img: { width: number; height: number }) => Math.round((img.width / img.height) * h);
+
+// Every season's overlay, by its lower-case name; the page is built ahead of time, so the visitor's browser picks today's.
+const overlays = seasonal
+  ? Object.fromEntries(
+      Object.entries(
+        import.meta.glob<{ default: ImageMetadata }>("../../../frontend/src/assets/logos/seasonal/*.svg", {
+          eager: true,
+        }),
+      ).map(([path, image]) => [path.replace(/^.*\/(.+)\.svg$/, "$1"), image.default.src]),
+    )
+  : null;
 ---
 
-<img class="only-light" src={lockupColor.src} alt="Thingport" height={height} width={width(height, lockupColor)} />
-<img class="only-dark" src={lockupOnDark.src} alt="Thingport" height={height} width={width(height, lockupOnDark)} />
+<span class="logo" style={`--h: ${height}px`} data-overlays={overlays && JSON.stringify(overlays)}>
+  <img class="only-light" src={lockupColor.src} alt="Thingport" height={height} width={width(height, lockupColor)} />
+  <img class="only-dark" src={lockupOnDark.src} alt="Thingport" height={height} width={width(height, lockupOnDark)} />
+</span>
+
+<script>
+  import { seasonFor } from "../../../frontend/src/utils/season";
+
+  const season = seasonFor(new Date());
+  for (const logo of season ? document.querySelectorAll<HTMLElement>(".logo[data-overlays]") : []) {
+    const src = (JSON.parse(logo.dataset.overlays!) as Record<string, string>)[season!.toLowerCase()];
+    if (season === "aprilFools") logo.classList.add("fools");
+    else if (src) {
+      const overlay = document.createElement("img");
+      overlay.className = "overlay";
+      overlay.src = src;
+      overlay.alt = "";
+      overlay.setAttribute("aria-hidden", "true");
+      logo.append(overlay);
+    }
+    logo.classList.add("seasonal");
+  }
+</script>
+
+<style>
+  .logo {
+    position: relative;
+    display: inline-flex;
+    line-height: 0;
+  }
+  /* Room for what spills past the logo's right edge. */
+  .logo:global(.seasonal) {
+    margin-right: 1rem;
+  }
+  /* The overlay's viewBox (-30 -45 530 175) is the logo's (0 0 411 100) with room around it. */
+  .logo :global(.overlay) {
+    position: absolute;
+    left: calc(var(--h) * -0.3);
+    top: calc(var(--h) * -0.45);
+    height: calc(var(--h) * 1.75);
+    width: auto;
+    /* Wider than the logo it sits in, which the site's img rule would otherwise shrink it to. */
+    max-width: none;
+    pointer-events: none;
+  }
+  /* April Fools': upside down all day, with a wobble now and then as if it noticed. */
+  .logo:global(.fools) img {
+    transform: rotate(180deg);
+    animation: upside-down 5s ease-in-out infinite;
+  }
+  @keyframes upside-down {
+    0%,
+    70%,
+    100% {
+      transform: rotate(180deg);
+    }
+    76% {
+      transform: rotate(168deg);
+    }
+    82% {
+      transform: rotate(191deg);
+    }
+    88% {
+      transform: rotate(176deg);
+    }
+    94% {
+      transform: rotate(183deg);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .logo:global(.fools) img {
+      animation: none;
+    }
+  }
+</style>

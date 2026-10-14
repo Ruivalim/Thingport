@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { easterSunday, equinox, seasonFor } from "./season";
+import { easterSunday, equinox, SEASONS, seasonFor } from "./season";
 
 const on = (year: number, month: number, day: number) => seasonFor(new Date(year, month - 1, day, 12));
 const minutesOff = (date: Date, iso: string) => Math.abs(date.getTime() - Date.parse(iso)) / 60_000;
@@ -111,5 +111,15 @@ describe("seasonFor", () => {
 
   it("is an ordinary day otherwise", () => {
     expect(on(2026, 10, 14)).toBeNull();
+  });
+});
+
+describe("seasonal overlays", () => {
+  it("has a drawing for every season but April Fools', which turns the logo itself", () => {
+    const files = Object.keys(import.meta.glob("../assets/logos/seasonal/*.svg")).map((path) =>
+      path.replace(/^.*\/(.+)\.svg$/, "$1"),
+    );
+    const seasons = SEASONS.filter((season) => season !== "aprilFools").map((season) => season.toLowerCase());
+    expect(files.toSorted()).toEqual(seasons.toSorted());
   });
 });

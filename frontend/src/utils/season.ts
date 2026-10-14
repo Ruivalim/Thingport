@@ -1,27 +1,31 @@
-export type Season =
-  | "newYear"
-  | "lunarNewYear"
-  | "valentines"
-  | "holi"
-  | "womensDay"
-  | "stPatricks"
-  | "spring"
-  | "ramadan"
-  | "aprilFools"
-  | "easter"
-  | "saltibarsciai"
-  | "summer"
-  | "jonines"
-  | "birthday"
-  | "programmersDay"
-  | "autumn"
-  | "coffee"
-  | "diwali"
-  | "halloween"
-  | "muertos"
-  | "hanukkah"
-  | "winter"
-  | "christmas";
+/** In calendar order. Each has an overlay of the same name, in lower case, in assets/logos/seasonal, but April Fools' turns the logo. */
+export const SEASONS = [
+  "newYear",
+  "lunarNewYear",
+  "valentines",
+  "holi",
+  "womensDay",
+  "stPatricks",
+  "spring",
+  "ramadan",
+  "aprilFools",
+  "easter",
+  "saltibarsciai",
+  "summer",
+  "jonines",
+  "birthday",
+  "programmersDay",
+  "autumn",
+  "coffee",
+  "diwali",
+  "halloween",
+  "muertos",
+  "hanukkah",
+  "winter",
+  "christmas",
+] as const;
+
+export type Season = (typeof SEASONS)[number];
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 

@@ -1,32 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { keyframes } from "@emotion/react";
 import Box from "@mui/material/Box";
 import { useTheme } from "@mui/material/styles";
 import lockupColor from "../assets/logos/thingport-lockup-compact-color.svg";
 import lockupOnDark from "../assets/logos/thingport-lockup-compact-on-dark.svg";
-import autumn from "../assets/logos/seasonal/autumn.svg";
-import birthday from "../assets/logos/seasonal/birthday.svg";
-import christmas from "../assets/logos/seasonal/christmas.svg";
-import coffee from "../assets/logos/seasonal/coffee.svg";
-import diwali from "../assets/logos/seasonal/diwali.svg";
-import easter from "../assets/logos/seasonal/easter.svg";
-import halloween from "../assets/logos/seasonal/halloween.svg";
-import hanukkah from "../assets/logos/seasonal/hanukkah.svg";
-import holi from "../assets/logos/seasonal/holi.svg";
-import jonines from "../assets/logos/seasonal/jonines.svg";
-import lunarNewYear from "../assets/logos/seasonal/lunarnewyear.svg";
-import muertos from "../assets/logos/seasonal/muertos.svg";
-import newYear from "../assets/logos/seasonal/newyear.svg";
-import programmersDay from "../assets/logos/seasonal/programmersday.svg";
-import ramadan from "../assets/logos/seasonal/ramadan.svg";
-import saltibarsciai from "../assets/logos/seasonal/saltibarsciai.svg";
-import spring from "../assets/logos/seasonal/spring.svg";
-import stPatricks from "../assets/logos/seasonal/stpatricks.svg";
-import summer from "../assets/logos/seasonal/summer.svg";
-import valentines from "../assets/logos/seasonal/valentines.svg";
-import winter from "../assets/logos/seasonal/winter.svg";
-import womensDay from "../assets/logos/seasonal/womensday.svg";
-import { type Season, seasonFor } from "../utils/season";
+import { seasonFor } from "../utils/season";
 
 type Props = {
   size?: "lg" | "md" | "sm";
@@ -40,31 +18,8 @@ const HEIGHTS: Record<NonNullable<Props["size"]>, string> = {
   sm: "1.125rem",
 };
 
-// April Fools' turns the logo itself, so it has none.
-const OVERLAYS: Record<Exclude<Season, "aprilFools">, string> = {
-  newYear,
-  lunarNewYear,
-  valentines,
-  holi,
-  womensDay,
-  stPatricks,
-  spring,
-  ramadan,
-  easter,
-  saltibarsciai,
-  summer,
-  jonines,
-  birthday,
-  programmersDay,
-  autumn,
-  coffee,
-  diwali,
-  halloween,
-  muertos,
-  hanukkah,
-  winter,
-  christmas,
-};
+// Each season's overlay is named after it, in lower case; only today's is loaded.
+export const SEASONAL_OVERLAYS = import.meta.glob<string>("../assets/logos/seasonal/*.svg", { import: "default" });
 
 // Upside down all day, with a wobble now and then as if it noticed.
 const upsideDown = keyframes`
@@ -78,9 +33,20 @@ const upsideDown = keyframes`
 export default function Wordmark({ size = "md", seasonal = false }: Props) {
   const theme = useTheme();
   const [season] = useState(() => (seasonal ? seasonFor(new Date()) : null));
+  const [overlay, setOverlay] = useState<string | null>(null);
   const src = theme.palette.mode === "dark" ? lockupOnDark : lockupColor;
   const height = HEIGHTS[size];
-  const overlay = season && season !== "aprilFools" ? OVERLAYS[season] : undefined;
+
+  useEffect(() => {
+    const load = season && SEASONAL_OVERLAYS[`../assets/logos/seasonal/${season.toLowerCase()}.svg`];
+    if (!load) return;
+    let active = true;
+    void load().then((url) => active && setOverlay(url));
+    return () => {
+      active = false;
+    };
+  }, [season]);
+
   const logo = (
     <Box
       component="img"
