@@ -612,8 +612,8 @@
       "ai": {
         "heading": "DI",
         "connection": {
-          "heading": "DI",
-          "subtitle": "Su OpenAI suderinamos paslaugos, kurias naudoja Thingport DI funkcijos. Funkcija naudoja numatytąjį DI, nebent nustatytas kitas.",
+          "heading": "Modeliai",
+          "subtitle": "Su OpenAI suderinamos paslaugos, kurias naudoja Thingport DI funkcijos.",
           "gridHint": "Spustelėkite DI, kad jis taptų numatytuoju. Dukart spustelėkite, kad redaguotumėte ar patikrintumėte, arba spustelėkite dešiniuoju mygtuku, kad pamatytumėte daugiau.",
           "add": "Pridėti DI",
           "addTitle": "Pridėti DI",
@@ -656,22 +656,29 @@
           "failed": "Nepavyko įkelti arba išsaugoti DI."
         }
       },
+      "aiFeatures": {
+        "heading": "Funkcijos",
+        "subtitle": "Kam Thingport naudoja modelius.",
+        "hint": "Spustelėkite funkciją, kad pamatytumėte jos nustatymus.",
+        "categorization": "DI kategorizavimas",
+        "openSettings": "Nustatymai",
+        "settingsAria": "{{feature}} nustatymai",
+        "toggleAria": "Įjungti arba išjungti: {{feature}}",
+        "needsModel": "Pirmiausia pridėkite modelį"
+      },
       "aiCategorization": {
-        "heading": "DI modelių kategorizavimas",
-        "subtitle": "Rūšiuokite modelius į jų savininko kategorijas naudodami prijungtą DI.",
+        "heading": "DI kategorizavimas",
         "privacy": "Naudojant trečiosios šalies API, modelių pavadinimai, aprašymai ir žymos perduodami už šio serverio ribų. Paveikslėliai siunčiami tik įjungus šią parinktį.",
         "useAi": "Naudoti DI",
         "defaultAi": "Numatytasis DI ({{model}})",
-        "noAi": "Pridėkite DI aukščiau, kad galėtumėte naudoti kategorizavimą.",
+        "noAi": "Pridėkite modelį skiltyje „Modeliai“, kad galėtumėte naudoti kategorizavimą.",
         "mode": "Režimas",
-        "off": "Išjungta",
         "suggest": "Siūlyti peržiūrai",
         "auto": "Taikyti automatiškai",
         "threshold": "Automatinio taikymo patikimumo riba",
         "onImport": "Kategorizuoti naujus importus",
         "sendImage": "Siųsti pirmą peržiūros paveikslėlį",
         "save": "Išsaugoti nustatymus",
-        "saved": "DI kategorizavimo nustatymai išsaugoti.",
         "failed": "Nepavyko įkelti arba išsaugoti DI kategorizavimo nustatymų."
       },
       "session": {

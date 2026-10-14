@@ -196,9 +196,11 @@ export async function setFlaresolverrUrl(value: string | null): Promise<string |
   return url;
 }
 
-export type AiCategorizationMode = "off" | "suggest" | "auto";
+export type AiCategorizationMode = "suggest" | "auto";
 /** How categorization behaves; which AI it talks to is an AiConnection (aiConnectionService.ts). */
 export type AiCategorizationPrefs = {
+  /** Off hides it everywhere: no runs, no categorizing on import, no suggestions shown. */
+  enabled: boolean;
   mode: AiCategorizationMode;
   threshold: number;
   onImport: boolean;
@@ -209,7 +211,8 @@ export type AiCategorizationPrefs = {
 
 const AI_CATEGORIZATION_KEY = "ai_categorization";
 export const DEFAULT_AI_CATEGORIZATION_PREFS: AiCategorizationPrefs = {
-  mode: "off",
+  enabled: false,
+  mode: "suggest",
   threshold: 0.8,
   onImport: true,
   sendImage: false,
@@ -232,7 +235,13 @@ function validAiPrefs(value: unknown): Partial<AiCategorizationPrefs> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   const raw = value as Record<string, unknown>;
   return {
-    ...(raw.mode === "off" || raw.mode === "suggest" || raw.mode === "auto" ? { mode: raw.mode } : {}),
+    // Saved before the switch, "off" was a mode: it reads as switched off, and either other mode as on.
+    ...(typeof raw.enabled === "boolean"
+      ? { enabled: raw.enabled }
+      : raw.mode === "suggest" || raw.mode === "auto"
+        ? { enabled: true }
+        : {}),
+    ...(raw.mode === "suggest" || raw.mode === "auto" ? { mode: raw.mode } : {}),
     ...(typeof raw.threshold === "number" && raw.threshold >= 0 && raw.threshold <= 1
       ? { threshold: raw.threshold }
       : {}),

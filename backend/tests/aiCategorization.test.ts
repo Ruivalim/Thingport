@@ -144,7 +144,7 @@ async function enable(baseUrl: string, patch: Partial<AiCategorizationPrefs & Ai
     thinking: true,
     ...connection,
   });
-  await setAiCategorizationPrefs({ mode, threshold, onImport, sendImage, aiConnectionId: null });
+  await setAiCategorizationPrefs({ enabled: true, mode, threshold, onImport, sendImage, aiConnectionId: null });
   return created;
 }
 
@@ -258,8 +258,12 @@ describe("AI categorization", () => {
     const listed = await request(app).get("/api/settings/ai-connections").set(auth());
     expect(listed.body).toHaveLength(1);
     expect(JSON.stringify(listed.body)).not.toContain("private-key");
-    const prefs = await request(app).patch("/api/settings/ai-categorization").set(auth()).send({ mode: "auto" });
+    const prefs = await request(app)
+      .patch("/api/settings/ai-categorization")
+      .set(auth())
+      .send({ enabled: true, mode: "auto" });
     expect(prefs.body).toEqual({
+      enabled: true,
       mode: "auto",
       threshold: 0.8,
       on_import: true,
@@ -271,6 +275,42 @@ describe("AI categorization", () => {
     const legacy = await print(legacyCategory.id, "LEGACY");
     const detail = await request(app).get(`/api/print/${legacy.id}`).set(auth());
     expect(detail.body.category_source).toBe("legacy");
+  });
+
+  it("hides suggestions and refuses work while switched off, and keeps them for when it's back on", async () => {
+    const target = await category("Switch target");
+    const baseUrl = await startProvider(() => ({ category_id: target.id, confidence: 0.6, reason: "fits" }));
+    await enable(baseUrl);
+    const model = await print();
+    await request(app).post(`/api/print/${model.id}/recategorize`).set(auth()).send({});
+    const shown = await request(app).get(`/api/print/${model.id}`).set(auth());
+    expect(shown.body.ai_suggestion).toMatchObject({ category_id: target.id });
+
+    await request(app).patch("/api/settings/ai-categorization").set(auth()).send({ enabled: false });
+    expect((await request(app).get("/api/ai-categorization/status").set(auth())).body.enabled).toBe(false);
+    expect((await request(app).get(`/api/print/${model.id}`).set(auth())).body.ai_suggestion).toBeNull();
+    const refused = await request(app).post(`/api/print/${model.id}/recategorize`).set(auth()).send({});
+    expect(refused.status).toBe(503);
+
+    await request(app).patch("/api/settings/ai-categorization").set(auth()).send({ enabled: true });
+    expect((await request(app).get(`/api/print/${model.id}`).set(auth())).body.ai_suggestion).toMatchObject({
+      category_id: target.id,
+    });
+  });
+
+  it("reads settings saved when off was a mode", async () => {
+    for (const [mode, enabled] of [
+      ["off", false],
+      ["auto", true],
+    ] as const) {
+      await prisma.setting.upsert({
+        where: { key: "ai_categorization" },
+        create: { key: "ai_categorization", value: { mode, threshold: 0.7 } },
+        update: { value: { mode, threshold: 0.7 } },
+      });
+      const read = await request(app).get("/api/settings/ai-categorization").set(auth());
+      expect(read.body).toMatchObject({ enabled, mode: mode === "off" ? "suggest" : mode, threshold: 0.7 });
+    }
   });
 
   it("adds an AI only after it answers, and tests unsaved values", async () => {
@@ -1170,7 +1210,7 @@ describe("AI categorization", () => {
     await enable(baseUrl);
     await request(app).post("/api/ai-categorization/run").set(auth(runner.token)).send(runScope());
     await arrivedAtProvider;
-    await setAiCategorizationPrefs({ mode: "off" });
+    await setAiCategorizationPrefs({ enabled: false });
     release();
     const stopped = await waitForRun(runner.token);
     expect(stopped.body.run).toMatchObject({ total: 2, done: 2, failed: 0 });

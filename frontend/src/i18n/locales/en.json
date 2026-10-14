@@ -610,8 +610,8 @@
       "ai": {
         "heading": "AI",
         "connection": {
-          "heading": "AIs",
-          "subtitle": "OpenAI-compatible services Thingport's AI features use. A feature uses the default AI unless it's set to another.",
+          "heading": "Models",
+          "subtitle": "OpenAI-compatible services Thingport's AI features use.",
           "gridHint": "Click an AI to make it the default. Double-click to edit or test it, or right-click for more.",
           "add": "Add AI",
           "addTitle": "Add AI",
@@ -652,22 +652,29 @@
           "failed": "Failed to load or save the AI."
         }
       },
+      "aiFeatures": {
+        "heading": "Features",
+        "subtitle": "What Thingport uses the models for.",
+        "hint": "Click a feature for its settings.",
+        "categorization": "AI Categorization",
+        "openSettings": "Settings",
+        "settingsAria": "{{feature}} settings",
+        "toggleAria": "Turn {{feature}} on or off",
+        "needsModel": "Add a model first"
+      },
       "aiCategorization": {
-        "heading": "AI model categorization",
-        "subtitle": "Sort models into their owner's categories with the connected AI.",
+        "heading": "AI Categorization",
         "privacy": "With a third-party API, model titles, descriptions and tags leave this server. Images are sent only when enabled.",
         "useAi": "Use AI",
         "defaultAi": "Default AI ({{model}})",
-        "noAi": "Add an AI above to use categorization.",
+        "noAi": "Add a model under Models to use categorization.",
         "mode": "Mode",
-        "off": "Off",
         "suggest": "Suggest for review",
         "auto": "Apply automatically",
         "threshold": "Auto-apply confidence threshold",
         "onImport": "Categorize new imports",
         "sendImage": "Send the first preview image",
         "save": "Save settings",
-        "saved": "AI categorization settings saved.",
         "failed": "Failed to load or save AI categorization settings."
       },
       "session": {

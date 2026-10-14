@@ -2,7 +2,7 @@ import { authHeaders } from "../utils/auth";
 import { apiBase, readErrorMessage, UnauthorizedError } from "./client";
 import type { Print } from "./prints";
 
-export type AiCategorizationMode = "off" | "suggest" | "auto";
+export type AiCategorizationMode = "suggest" | "auto";
 
 export type AiCategorizationStatus = { enabled: boolean; mode: AiCategorizationMode };
 export type AiRunCounts = {

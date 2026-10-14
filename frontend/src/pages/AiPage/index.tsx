@@ -4,14 +4,14 @@ import Stack from "@mui/material/Stack";
 import { UnauthorizedError } from "../../api/client";
 import { aiConnectionsApi, type AiConnection } from "../../api/aiConnections";
 import AiConnectionsSection from "./AiConnectionsSection";
-import AiCategorizationSection from "./AiCategorizationSection";
+import AiFeaturesSection from "./AiFeaturesSection";
 
 type Props = {
   onUnauthorized?: () => void;
 };
 
 export default function AiPage({ onUnauthorized }: Props) {
-  // Shared: categorization picks from the same list the grid shows.
+  // Shared: a feature picks from the same models the grid shows.
   const [connections, setConnections] = useState<AiConnection[] | null>(null);
 
   const load = useCallback(() => {
@@ -28,7 +28,7 @@ export default function AiPage({ onUnauthorized }: Props) {
   return (
     <Stack spacing={4} divider={<Divider />}>
       <AiConnectionsSection connections={connections} onChanged={load} onUnauthorized={onUnauthorized} />
-      <AiCategorizationSection connections={connections ?? []} onUnauthorized={onUnauthorized} />
+      <AiFeaturesSection connections={connections ?? []} onUnauthorized={onUnauthorized} />
     </Stack>
   );
 }

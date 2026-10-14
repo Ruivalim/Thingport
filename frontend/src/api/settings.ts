@@ -60,7 +60,9 @@ export type AuthSettings = {
 
 /** How categorization behaves; the AIs themselves are in api/aiConnections.ts. */
 export type AiCategorizationSettings = {
-  mode: "off" | "suggest" | "auto";
+  /** Off hides categorization everywhere; the mode is kept for when it's back on. */
+  enabled: boolean;
+  mode: "suggest" | "auto";
   threshold: number;
   on_import: boolean;
   send_image: boolean;

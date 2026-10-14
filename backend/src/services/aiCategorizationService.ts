@@ -45,8 +45,13 @@ export async function getAiCategorizationSettings(): Promise<AiCategorizationSet
   };
 }
 
+/** Suggestions are only shown while categorization is on; switched off, they stay stored for when it's back. */
+export async function aiSuggestionsShown(): Promise<boolean> {
+  return aiCategorizationEnabled(await getAiCategorizationSettings());
+}
+
 export function aiCategorizationEnabled(settings: AiCategorizationSettings): boolean {
-  return settings.mode !== "off" && Boolean(settings.baseUrl && settings.model);
+  return settings.enabled && Boolean(settings.baseUrl && settings.model);
 }
 
 const suggestionSchema = z.object({

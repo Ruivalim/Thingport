@@ -585,6 +585,7 @@ router.patch(
 
 function aiCategorizationPrefsOut(prefs: AiCategorizationPrefs) {
   return {
+    enabled: prefs.enabled,
     mode: prefs.mode,
     threshold: prefs.threshold,
     on_import: prefs.onImport,
@@ -603,7 +604,8 @@ router.get(
 
 const aiCategorizationPrefsSchema = z
   .object({
-    mode: z.enum(["off", "suggest", "auto"]).optional(),
+    enabled: z.boolean().optional(),
+    mode: z.enum(["suggest", "auto"]).optional(),
     threshold: z.number().min(0).max(1).optional(),
     on_import: z.boolean().optional(),
     send_image: z.boolean().optional(),
@@ -618,6 +620,7 @@ router.patch(
     const body = parseBody(aiCategorizationPrefsSchema, req.body);
     if (body.ai_connection_id) await getAiConnection(body.ai_connection_id);
     const prefs = await setAiCategorizationPrefs({
+      ...(body.enabled !== undefined ? { enabled: body.enabled } : {}),
       ...(body.mode !== undefined ? { mode: body.mode } : {}),
       ...(body.threshold !== undefined ? { threshold: body.threshold } : {}),
       ...(body.on_import !== undefined ? { onImport: body.on_import } : {}),
