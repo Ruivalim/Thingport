@@ -278,7 +278,7 @@ export default function Sidebar({ isAdmin, onSelectCategory, bookmarksVersion }:
             aria-label={t("sidebar.dashboard")}
             sx={{ display: "flex", alignItems: "center", lineHeight: 0 }}
           >
-            <Wordmark size="lg" />
+            <Wordmark size="lg" seasonal />
           </Link>
         )}
         <Tooltip title={collapsed ? t("sidebar.expandSidebar") : t("sidebar.collapseSidebar")}>
