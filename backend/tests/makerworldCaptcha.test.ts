@@ -1,9 +1,10 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  clearCaptchaCooloff,
   isCaptchaChallenge,
+  liftCaptchaCooloffByHand,
   makerworldCaptchaCooloffActive,
   noteCaptchaChallenge,
+  resetCaptchaCooloffForTest,
 } from "../src/services/makerworldCaptcha";
 
 describe("isCaptchaChallenge", () => {
@@ -20,6 +21,12 @@ describe("isCaptchaChallenge", () => {
     expect(isCaptchaChallenge({ message: "success", url: "https://cdn.example.com/robot-arm.3mf" })).toBe(false);
   });
 
+  it("needs a value on a captcha key, so a flag saying there's none isn't a challenge", () => {
+    expect(isCaptchaChallenge({ id: 3, captchaRequired: false })).toBe(false);
+    expect(isCaptchaChallenge({ captchaId: "" })).toBe(false);
+    expect(isCaptchaChallenge({ captcha: null })).toBe(false);
+  });
+
   it("ignores anything that isn't an object", () => {
     expect(isCaptchaChallenge(null)).toBe(false);
     expect(isCaptchaChallenge("captcha")).toBe(false);
@@ -28,12 +35,39 @@ describe("isCaptchaChallenge", () => {
 });
 
 describe("the CAPTCHA cooloff", () => {
-  afterEach(() => clearCaptchaCooloff());
+  afterEach(() => {
+    vi.useRealTimers();
+    resetCaptchaCooloffForTest();
+  });
 
   it("can be lifted by hand once a person has solved the puzzle", () => {
     noteCaptchaChallenge();
     expect(makerworldCaptchaCooloffActive()).toBe(true);
-    clearCaptchaCooloff();
+    liftCaptchaCooloffByHand();
+    expect(makerworldCaptchaCooloffActive()).toBe(false);
+  });
+
+  it("is lifted by hand at most once every five minutes, so retrying can't keep probing a block", () => {
+    vi.useFakeTimers({ now: new Date("2026-10-14T10:00:00Z") });
+    noteCaptchaChallenge();
+    liftCaptchaCooloffByHand();
+    // The retry met the CAPTCHA again.
+    noteCaptchaChallenge();
+    vi.setSystemTime(new Date("2026-10-14T10:04:00Z"));
+    liftCaptchaCooloffByHand();
+    expect(makerworldCaptchaCooloffActive()).toBe(true);
+
+    vi.setSystemTime(new Date("2026-10-14T10:05:00Z"));
+    liftCaptchaCooloffByHand();
+    expect(makerworldCaptchaCooloffActive()).toBe(false);
+  });
+
+  it("doesn't spend the five minutes when there's nothing to lift", () => {
+    vi.useFakeTimers({ now: new Date("2026-10-14T10:00:00Z") });
+    liftCaptchaCooloffByHand();
+    noteCaptchaChallenge();
+    vi.setSystemTime(new Date("2026-10-14T10:01:00Z"));
+    liftCaptchaCooloffByHand();
     expect(makerworldCaptchaCooloffActive()).toBe(false);
   });
 });

@@ -8,9 +8,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 // The cloud API and collection listing share one cooldown so one can't re-trip the other.
 // Only a captcha key or the reply's own error text counts: a design whose title or summary says
 // "robot" would otherwise fail as a CAPTCHA on every retry, and start the cooloff for everyone.
+// The key needs a value too, so a flag like {"captchaRequired": false} isn't a challenge.
 export function isCaptchaChallenge(data: unknown): boolean {
   if (!isRecord(data)) return false;
-  if (Object.keys(data).some((key) => key.toLowerCase().includes("captcha"))) return true;
+  if (Object.entries(data).some(([key, value]) => key.toLowerCase().includes("captcha") && Boolean(value))) {
+    return true;
+  }
   return ["error", "message", "msg"].some((key) => {
     const value = data[key];
     return typeof value === "string" && /captcha|robot/i.test(value);
@@ -26,7 +29,11 @@ export const MAKERWORLD_CAPTCHA_MESSAGE =
 // The block is IP-scoped and clears on its own after 1-4 hours; retrying into it extends it.
 // The cooloff only needs to stop a batch import hammering a known block, so 2h is enough.
 const CAPTCHA_COOLOFF_MS = 2 * 60 * 60 * 1000;
+// Any member's retry can lift the cooloff, and it's shared: without a gap, clicking Retry over and
+// over would send MakerWorld a request each time and keep extending the block.
+const MANUAL_LIFT_INTERVAL_MS = 5 * 60 * 1000;
 let captchaBlockedUntil = 0;
+let lastManualLift = 0;
 
 export function makerworldCaptchaCooloffActive(): boolean {
   return Date.now() < captchaBlockedUntil;
@@ -37,9 +44,17 @@ export function noteCaptchaChallenge(): void {
 }
 
 /** For a run someone starts by hand: they may have just solved the puzzle in the browser, which
- *  the cooloff can't know. A block that's still there costs one request before it trips again. */
-export function clearCaptchaCooloff(): void {
+ *  the cooloff can't know. A block that's still there costs one request before it trips again, and
+ *  until MANUAL_LIFT_INTERVAL_MS has passed another start or retry fails on the cooloff instead. */
+export function liftCaptchaCooloffByHand(): void {
+  if (!makerworldCaptchaCooloffActive() || Date.now() - lastManualLift < MANUAL_LIFT_INTERVAL_MS) return;
+  lastManualLift = Date.now();
   captchaBlockedUntil = 0;
+}
+
+export function resetCaptchaCooloffForTest(): void {
+  captchaBlockedUntil = 0;
+  lastManualLift = 0;
 }
 
 export class MakerworldCaptchaError extends Error {

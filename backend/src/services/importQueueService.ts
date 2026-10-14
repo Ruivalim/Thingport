@@ -16,7 +16,7 @@ import {
   type QueuedLinkOptions,
 } from "./importJobRunner";
 import { getUserMakerworldCookie } from "./makerworldCookieService";
-import { clearCaptchaCooloff } from "./makerworldCaptcha";
+import { liftCaptchaCooloffByHand } from "./makerworldCaptcha";
 
 /** The shared body a LINKS job reruns with: its stored payload plus the owner's saved MakerWorld
  *  cookie. The cookie is never stored on the job. */
@@ -84,7 +84,7 @@ export async function startLinksJob(
     },
   });
   if (!count) throw new HttpError(409, "This import changed while it was being started, reload and try again");
-  if (opts.manual) clearCaptchaCooloff();
+  if (opts.manual) liftCaptchaCooloffByHand();
   const body = await linksJobBody(job);
   return { run: runLinksImportJob(job.id, job.userId, body) };
 }
@@ -301,7 +301,7 @@ async function drainBulkQueue(): Promise<void> {
 /** Bulk runs are started by hand, so they lift the CAPTCHA cooloff once (see startLinksJob). Not
  *  per job: after a CAPTCHA, the jobs behind it should fail fast, not each probe MakerWorld again. */
 function enqueueBulk(entries: BulkEntry[]): number {
-  if (entries.length) clearCaptchaCooloff();
+  if (entries.length) liftCaptchaCooloffByHand();
   const known = new Set([bulkCurrent, ...bulkQueue.map((e) => e.jobId)]);
   const fresh = entries.filter((e) => !known.has(e.jobId));
   bulkQueue.push(...fresh);

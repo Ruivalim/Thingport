@@ -30,7 +30,7 @@ vi.mock("../src/services/notificationService", async (importOriginal) => {
 
 import { createApp } from "../src/app";
 import { prisma } from "../src/db";
-import { clearCaptchaCooloff, makerworldCaptchaCooloffActive } from "../src/services/makerworldCaptcha";
+import { makerworldCaptchaCooloffActive, resetCaptchaCooloffForTest } from "../src/services/makerworldCaptcha";
 
 const app = createApp();
 const stamp = Date.now();
@@ -202,7 +202,7 @@ describe("the import queue", () => {
     designCalls.clear();
     gone.clear();
     challenged.clear();
-    clearCaptchaCooloff();
+    resetCaptchaCooloffForTest();
     inFlight = 0;
     maxInFlight = 0;
     notifyDelay.ms = 0;
