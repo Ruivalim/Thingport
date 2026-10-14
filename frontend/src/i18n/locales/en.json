@@ -927,10 +927,14 @@
           "collection_sync_enabled": "Collection sync turned on",
           "collection_sync_disabled": "Collection sync turned off",
           "authors_linked": "Linked missing authors",
-          "descriptions_refetched": "Refetched model descriptions"
+          "descriptions_refetched": "Refetched model descriptions",
+          "ai_categorization_run": "AI categorization run",
+          "ai_description_run": "AI description improvement run"
         },
         "authorsLinked": "{{count}} model(s) linked",
-        "descriptionsRefetched": "{{email}} — {{updated}} of {{total}} description(s) changed"
+        "descriptionsRefetched": "{{email}} — {{updated}} of {{total}} description(s) changed",
+        "aiRunSummary": "{{done}} of {{total}} checked — {{suggested}} suggested, {{applied}} applied, {{failed}} failed",
+        "aiRunStopped": "(stopped)"
       },
       "rendering": {
         "heading": "Rendering",

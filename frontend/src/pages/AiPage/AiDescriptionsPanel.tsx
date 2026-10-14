@@ -50,7 +50,7 @@ export default function AiDescriptionsPanel({ onUnauthorized, onRunStarted }: Pr
   const { t } = useTranslation(["app", "common"]);
   const showToast = useToast();
   const confirm = useConfirm();
-  const { running, startRun } = useAiDescriptionRun();
+  const { run, running, startRun } = useAiDescriptionRun();
   const [suggestions, setSuggestions] = useState<{ total: number; items: AiDescriptionSuggestion[] } | null>(null);
   const [applied, setApplied] = useState<{ total: number; items: AiDescriptionApplied[] } | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
@@ -72,14 +72,16 @@ export default function AiDescriptionsPanel({ onUnauthorized, onRunStarted }: Pr
     ]);
     setSuggestions(pending);
     setApplied(done);
-    setSelected([]);
+    // Only what's still listed stays ticked, so a run adding suggestions doesn't undo a selection.
+    setSelected((ids) => ids.filter((id) => pending.items.some((item) => item.id === id)));
   }, []);
 
-  // Again whenever a run stops, since a run adds suggestions.
+  // On opening, as a run adds suggestions or applies rewrites, and again once it stops.
+  const progress = running ? `${run?.suggested ?? 0}/${run?.applied ?? 0}` : "idle";
   useEffect(() => {
-    if (running) return;
     void load().catch(fail);
-  }, [running, load, fail]);
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
+  }, [progress, load, fail]);
 
   const act = async (work: () => Promise<unknown>, done: string) => {
     setBusy(true);

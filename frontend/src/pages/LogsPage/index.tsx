@@ -50,6 +50,8 @@ const ACTION_COLORS: Record<LogAction, ActionColor> = {
   collection_item_removed: "default",
   collection_sync_enabled: "info",
   collection_sync_disabled: "default",
+  ai_categorization_run: "info",
+  ai_description_run: "info",
 };
 
 function isoDateOnly(d: Date): string {
@@ -136,6 +138,18 @@ export default function LogsPage({ onUnauthorized }: Props) {
         const imported = typeof d.imported === "number" ? d.imported : 0;
         const failed = typeof d.failed === "number" ? d.failed : 0;
         return t("adminSettings.logs.importSummary", { label, imported, failed });
+      }
+      case "ai_categorization_run":
+      case "ai_description_run": {
+        const count = (key: string) => (typeof d[key] === "number" ? d[key] : 0);
+        const summary = t("adminSettings.logs.aiRunSummary", {
+          done: count("done"),
+          total: count("total"),
+          suggested: count("suggested"),
+          applied: count("applied"),
+          failed: count("failed"),
+        });
+        return d.cancelled === true ? `${summary} ${t("adminSettings.logs.aiRunStopped")}` : summary;
       }
       default:
         return "";

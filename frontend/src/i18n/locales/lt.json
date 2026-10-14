@@ -935,10 +935,14 @@
           "collection_sync_enabled": "Įjungtas kolekcijos sinchronizavimas",
           "collection_sync_disabled": "Išjungtas kolekcijos sinchronizavimas",
           "authors_linked": "Susieti trūkstami autoriai",
-          "descriptions_refetched": "Iš naujo gauti modelių aprašymai"
+          "descriptions_refetched": "Iš naujo gauti modelių aprašymai",
+          "ai_categorization_run": "AI kategorizavimo paleidimas",
+          "ai_description_run": "AI aprašymų tobulinimo paleidimas"
         },
         "authorsLinked": "Susieta modelių: {{count}}",
-        "descriptionsRefetched": "{{email}} — pakeista aprašymų: {{updated}} iš {{total}}"
+        "descriptionsRefetched": "{{email}} — pakeista aprašymų: {{updated}} iš {{total}}",
+        "aiRunSummary": "Patikrinta {{done}} iš {{total}} — pasiūlyta {{suggested}}, pritaikyta {{applied}}, nepavyko {{failed}}",
+        "aiRunStopped": "(sustabdyta)"
       },
       "rendering": {
         "heading": "Atvaizdavimas",

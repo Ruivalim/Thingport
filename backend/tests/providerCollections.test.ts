@@ -96,6 +96,13 @@ beforeAll(async () => {
     // Thingiverse's API as it answers for a user with two likes and one collection.
     const thingiverse = url.match(/^https:\/\/api\.thingiverse\.com(\/[^?]*)/);
     if (thingiverse) {
+      if (url.includes("access_token=rejected-token")) return json({}, 401);
+      if (url.includes("access_token=challenged-token")) {
+        return new Response("<title>Just a moment...</title>", {
+          status: 403,
+          headers: { "cf-mitigated": "challenge" },
+        });
+      }
       const path = thingiverse[1];
       if (path === `/users/${THINGIVERSE_USER}`) return json({ name: THINGIVERSE_USER, like_count: 2 });
       if (path === `/users/${THINGIVERSE_USER}/likes`) {
@@ -228,6 +235,22 @@ describe("Thingiverse likes in the Browse tab", () => {
       model_count: 2,
       thumbnails: ["https://cdn.thingiverse.com/hook.jpg", "https://cdn.thingiverse.com/clip.jpg"],
     });
+  });
+
+  it("says the instance's token was rejected, rather than failing", async () => {
+    await setThingiverseAccessToken("rejected-token");
+    const list = await request(app).get("/api/provider-collections").query({ provider: "thingiverse" }).set(auth());
+    expect(list.status).toBe(400);
+    expect(list.body.detail).toMatch(/Access Token .* was rejected/);
+    await setThingiverseAccessToken("test-token");
+  });
+
+  it("tells a Cloudflare challenge from a rejected token", async () => {
+    await setThingiverseAccessToken("challenged-token");
+    const list = await request(app).get("/api/provider-collections").query({ provider: "thingiverse" }).set(auth());
+    expect(list.status).toBe(429);
+    expect(list.body.detail).toMatch(/Cloudflare.*Setting up FlareSolverr/);
+    await setThingiverseAccessToken("test-token");
   });
 });
 

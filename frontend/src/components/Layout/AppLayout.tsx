@@ -199,8 +199,9 @@ function AppLayoutShell({
             <PageHeaderContext.Provider value={setPageHeader}>{children}</PageHeaderContext.Provider>
           </Box>
         </Box>
-        {/* Both can run at once, so they stack here rather than each pinning itself to the bottom. */}
-        <Box sx={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: (theme) => theme.zIndex.snackbar }}>
+        {/* Both can run at once, so they stack here rather than each pinning itself to the bottom. Under
+            dialogs and their backdrop, like the top bar. */}
+        <Box sx={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: (theme) => theme.zIndex.appBar }}>
           <AiRunProgressBar kind="categorization" />
           <AiRunProgressBar kind="descriptions" />
           <ImportProgressBar />

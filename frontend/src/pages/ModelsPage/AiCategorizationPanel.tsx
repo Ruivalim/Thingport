@@ -64,7 +64,7 @@ export default function AiCategorizationPanel({
   const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [suggestionsLoading, setSuggestionsLoading] = useState(true);
-  const { running, startRun } = useAiRun();
+  const { run, running, startRun } = useAiRun();
 
   const loadSuggestions = async (offset = 0, append = false) => {
     const result = await aiCategorizationApi.suggestions(50, offset);
@@ -73,9 +73,9 @@ export default function AiCategorizationPanel({
     if (!append) setSelected([]);
   };
 
-  // Reloaded whenever a run stops, since a run adds suggestions.
+  // On opening, as a run adds suggestions, and again once it stops.
+  const progress = running ? (run?.suggested ?? 0) : -1;
   useEffect(() => {
-    if (running) return;
     let active = true;
     setSuggestionsLoading(true);
     void aiCategorizationApi
@@ -84,7 +84,8 @@ export default function AiCategorizationPanel({
         if (!active) return;
         setItems(result.items);
         setTotal(result.total);
-        setSelected([]);
+        // Only what's still listed stays ticked, so a run adding suggestions doesn't undo a selection.
+        setSelected((ids) => ids.filter((id) => result.items.some((item) => item.id === id)));
       })
       .catch((err: unknown) => {
         if (err instanceof UnauthorizedError) onUnauthorized?.();
@@ -96,11 +97,11 @@ export default function AiCategorizationPanel({
     return () => {
       active = false;
     };
-  }, [running, onUnauthorized, showToast]);
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
+  }, [progress, onUnauthorized, showToast]);
 
   // Counts on opening, and again after a run, which moves models between the groups.
   useEffect(() => {
-    if (running) return;
     let active = true;
     void aiCategorizationApi
       .runState()
@@ -116,6 +117,7 @@ export default function AiCategorizationPanel({
     return () => {
       active = false;
     };
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
   }, [running, onUnauthorized, showToast]);
 
   const start = async () => {

@@ -8,6 +8,7 @@ import {
   looksLikeCloudflareBlock,
   shouldProxyHost,
 } from "./flaresolverr";
+import { getFlaresolverrUrl } from "./settingsService";
 
 // The official API needs an app Access Token (not a session cookie). It's still behind Cloudflare
 // and returns a sticky 429 challenge after a few rapid requests, hence ThingiverseRateLimitError
@@ -31,12 +32,19 @@ export class ThingiverseAuthError extends Error {
   }
 }
 
-/** Cloudflare's 429 challenge, distinct from a 404 or rejected token: the fix is to wait. */
+const FLARESOLVERR_HINTS = {
+  missing: " Setting up FlareSolverr in Admin Settings > Connections gets past it.",
+  failed:
+    " FlareSolverr couldn't get past it either: it may be down or unreachable. Check it in Admin Settings > Connections.",
+};
+
+/** Cloudflare's 429 challenge, distinct from a 404 or rejected token: the fix is to wait, or a working FlareSolverr. */
 export class ThingiverseRateLimitError extends Error {
-  constructor() {
+  constructor(flaresolverr?: keyof typeof FLARESOLVERR_HINTS) {
     super(
       "Thingiverse blocked this request with a rate-limit challenge (Cloudflare). This usually " +
-        "clears after a while -- wait, then retry the same import.",
+        "clears after a while -- wait, then try again." +
+        (flaresolverr ? FLARESOLVERR_HINTS[flaresolverr] : ""),
     );
     this.name = "ThingiverseRateLimitError";
   }
@@ -125,6 +133,10 @@ async function fetchThingiverseApi(
     } catch {
       data = null;
     }
+  }
+  // An unsolved challenge is a 403 too; it says nothing about the token.
+  if (!viaBrowser && (res.status === 429 || res.headers.get("cf-mitigated") === "challenge")) {
+    throw new ThingiverseRateLimitError((await getFlaresolverrUrl()) ? "failed" : "missing");
   }
   if (res.status === 429) throw new ThingiverseRateLimitError();
   if (res.status === 401 || res.status === 403) throw new ThingiverseAuthError();

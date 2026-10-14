@@ -30,6 +30,8 @@ import {
   fetchThingiverseLikesSummary,
   listThingiverseUserCollections,
   resolveThingiverseUser,
+  ThingiverseAuthError,
+  ThingiverseRateLimitError,
 } from "./thingiverseApi";
 
 export const BROWSABLE_PROVIDERS = ["makerworld", "printables", "thingiverse"] as const;
@@ -93,7 +95,8 @@ export async function setProviderAccount(
     });
     if (!user) await deletePrintablesListings(userId);
   } else if (provider === "thingiverse") {
-    const user = value ? await resolveThingiverseUser(value, await requireThingiverseToken()) : null;
+    const token = value ? await requireThingiverseToken() : null;
+    const user = token ? await providerCall(() => resolveThingiverseUser(value!, token)) : null;
     if (value && !user) throw new HttpError(404, `Thingiverse has no user "${value}"`);
     await prisma.user.update({ where: { id: userId }, data: { thingiverseUsername: user?.username ?? null } });
   } else {
@@ -127,6 +130,8 @@ async function providerCall<T>(call: () => Promise<T>): Promise<T> {
     if (err instanceof MakerworldAuthError) {
       throw new HttpError(400, "MakerWorld didn't accept your cookie. Update it in Configuration > Providers.");
     }
+    if (err instanceof ThingiverseRateLimitError) throw new HttpError(429, err.message);
+    if (err instanceof ThingiverseAuthError) throw new HttpError(400, err.message);
     throw err;
   }
 }
@@ -185,10 +190,12 @@ export async function listProviderCollections(
     if (!user?.thingiverseUsername) throw new HttpError(409, "Tell Thingport your Thingiverse username first");
     const username = user.thingiverseUsername;
     // Thingiverse shows anyone's likes, so they sync like a collection; a failed count costs only them.
-    const [likes, collections] = await Promise.all([
-      thingiverseLikesCard(username, token).catch(() => null),
-      listThingiverseUserCollections(username, token),
-    ]);
+    const [likes, collections] = await providerCall(() =>
+      Promise.all([
+        thingiverseLikesCard(username, token).catch(() => null),
+        listThingiverseUserCollections(username, token),
+      ]),
+    );
     cards = [...(likes ? [likes] : []), ...collections];
   }
   return withSyncs(userId, provider, cards);
@@ -200,7 +207,8 @@ export async function lookupProviderCollection(userId: string, url: string): Pro
   if (!source) throw new HttpError(400, "That isn't a MakerWorld, Printables or Thingiverse collection link");
   let card: ProviderCollectionCard | null;
   if (source.likesOf && source.provider === "thingiverse") {
-    card = await thingiverseLikesCard(source.likesOf, await requireThingiverseToken());
+    const token = await requireThingiverseToken();
+    card = await providerCall(() => thingiverseLikesCard(source.likesOf!, token));
   } else if (source.likesOf) {
     // Printables shows likes to their owner only, so only the user's own, as Grab read them.
     const likes = await pushedLikes(userId);
@@ -220,7 +228,8 @@ export async function lookupProviderCollection(userId: string, url: string): Pro
       (await pushedPrintablesCards(userId)).collections?.find((pushed) => pushed.id === source.externalId) ??
       null;
   } else {
-    card = await fetchThingiverseCollectionCard(source.externalId, await requireThingiverseToken());
+    const token = await requireThingiverseToken();
+    card = await providerCall(() => fetchThingiverseCollectionCard(source.externalId, token));
   }
   if (!card) throw new HttpError(404, "That collection can't be found. It may be private or deleted.");
   return (await withSyncs(userId, source.provider, [card]))[0];
