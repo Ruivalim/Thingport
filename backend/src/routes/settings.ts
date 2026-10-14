@@ -65,7 +65,7 @@ import { getUserAuthorPreviewEnabled, setUserAuthorPreviewEnabled } from "../ser
 import { checkForUpdates } from "../services/versionService";
 import { getWeatherLocation, setWeatherLocation, weatherLocationSchema } from "../services/weatherLocationService";
 import { dropPreviewsAffectedBySimplification } from "../services/modelPreviewCache";
-import { testAiCategorizationProvider } from "../services/aiCategorizationService";
+import { listAiProviderModels, testAiCategorizationProvider } from "../services/aiCategorizationService";
 import { testFlaresolverr } from "../services/flaresolverr";
 
 const router = Router();
@@ -639,6 +639,24 @@ router.patch(
       ...(body.thinking !== undefined ? { thinking: body.thinking } : {}),
     });
     res.json(aiCategorizationSettingsOut(settings));
+  }),
+);
+
+// Omitted fields use the saved value; api_key null lists without a key.
+const aiModelListSchema = z
+  .object({ base_url: z.string().trim().min(1).optional(), api_key: z.string().nullable().optional() })
+  .strict();
+router.post(
+  "/settings/ai-categorization/models",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const body = parseBody(aiModelListSchema, req.body ?? {});
+    res.json(
+      await listAiProviderModels({
+        ...(body.base_url !== undefined ? { baseUrl: normalizeAiBaseUrl(body.base_url) } : {}),
+        ...(body.api_key !== undefined ? { apiKey: body.api_key || null } : {}),
+      }),
+    );
   }),
 );
 

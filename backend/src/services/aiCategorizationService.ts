@@ -775,6 +775,42 @@ export function cancelAiCategorizationRun(userId: string): AiCategorizationRun |
   return run;
 }
 
+// A model list comes back quickly or not at all; this only fills the settings form's suggestions.
+const MODEL_LIST_TIMEOUT_MS = 10_000;
+
+/**
+ * The models the provider serves, from the OpenAI-style `GET /models` that Ollama, LM Studio, vLLM, OpenAI, OpenRouter
+ * and Gemini all answer, so the settings form can suggest them. Given values fall back to the saved ones, like a test.
+ */
+export async function listAiProviderModels(
+  overrides: Partial<Pick<AiCategorizationSettings, "baseUrl" | "apiKey">> = {},
+): Promise<{ ok: true; models: string[] } | { ok: false; error: string }> {
+  const settings = { ...(await getAiCategorizationSettings()), ...overrides };
+  if (!settings.baseUrl) return { ok: false, error: "Set the API base URL first" };
+  try {
+    const response = await fetch(`${settings.baseUrl.replace(/\/+$/, "")}/models`, {
+      headers: settings.apiKey ? { authorization: `Bearer ${settings.apiKey}` } : {},
+      signal: AbortSignal.timeout(MODEL_LIST_TIMEOUT_MS),
+    });
+    if (!response.ok) return { ok: false, error: `AI provider returned HTTP ${response.status}` };
+    const body = (await response.json()) as { data?: unknown };
+    const ids = Array.isArray(body.data)
+      ? body.data.flatMap((item) =>
+          item && typeof item === "object" && typeof (item as { id?: unknown }).id === "string"
+            ? [(item as { id: string }).id]
+            : [],
+        )
+      : [];
+    return { ok: true, models: [...new Set(ids)].toSorted((a, b) => a.localeCompare(b)) };
+  } catch (error) {
+    const message =
+      error instanceof Error && error.name === "TimeoutError"
+        ? `The AI provider did not answer within ${MODEL_LIST_TIMEOUT_MS / 1000} s`
+        : noSecretError(error).message;
+    return { ok: false, error: settings.apiKey ? message.replaceAll(settings.apiKey, "[redacted]") : message };
+  }
+}
+
 /** Tests the given connection values, falling back to the saved ones, so a connection can be checked before saving. */
 export async function testAiCategorizationProvider(
   overrides: Partial<Pick<AiCategorizationSettings, "baseUrl" | "model" | "apiKey" | "timeoutMs">> = {},

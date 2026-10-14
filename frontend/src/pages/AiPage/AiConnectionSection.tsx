@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Alert from "@mui/material/Alert";
+import Autocomplete from "@mui/material/Autocomplete";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import InputAdornment from "@mui/material/InputAdornment";
@@ -38,6 +39,9 @@ export default function AiConnectionSection({ onUnauthorized }: Props) {
   const [clearKey, setClearKey] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [models, setModels] = useState<string[]>([]);
+  const [modelsLoading, setModelsLoading] = useState(false);
+  const [modelsError, setModelsError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -60,6 +64,41 @@ export default function AiConnectionSection({ onUnauthorized }: Props) {
       active = false;
     };
   }, [onUnauthorized, t]);
+
+  // The provider's own list, refetched a moment after the URL or key stops changing; the field still takes any name.
+  useEffect(() => {
+    const baseUrl = draft.base_url.trim();
+    if (loading || !baseUrl) {
+      setModels([]);
+      setModelsError(null);
+      return;
+    }
+    let active = true;
+    const timer = window.setTimeout(() => {
+      setModelsLoading(true);
+      void settingsApi
+        .listAiModels({
+          base_url: baseUrl,
+          ...(clearKey ? { api_key: null } : draft.api_key ? { api_key: draft.api_key } : {}),
+        })
+        .then((result) => {
+          if (!active) return;
+          setModels(result.ok ? result.models : []);
+          setModelsError(result.ok ? null : result.error);
+        })
+        .catch((err: unknown) => {
+          if (err instanceof UnauthorizedError) onUnauthorized?.();
+          else if (active) setModelsError(err instanceof Error ? err.message : String(err));
+        })
+        .finally(() => {
+          if (active) setModelsLoading(false);
+        });
+    }, 600);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [loading, draft.base_url, draft.api_key, clearKey, onUnauthorized]);
 
   const update = <K extends keyof Draft>(key: K, value: Draft[K]) =>
     setDraft((current) => ({ ...current, [key]: value }));
@@ -132,12 +171,27 @@ export default function AiConnectionSection({ onUnauthorized }: Props) {
             disabled={busy}
             fullWidth
           />
-          <TextField
-            label={t("adminSettings.ai.connection.model")}
-            value={draft.model}
-            onChange={(event) => update("model", event.target.value)}
+          <Autocomplete
+            freeSolo
+            options={models}
+            inputValue={draft.model}
+            onInputChange={(_event, value) => update("model", value)}
+            loading={modelsLoading}
             disabled={busy}
             fullWidth
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label={t("adminSettings.ai.connection.model")}
+                helperText={
+                  modelsError
+                    ? t("adminSettings.ai.connection.modelsUnavailable", { error: modelsError })
+                    : models.length
+                      ? t("adminSettings.ai.connection.modelsAvailable", { count: models.length })
+                      : undefined
+                }
+              />
+            )}
           />
           <TextField
             type="password"

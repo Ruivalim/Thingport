@@ -151,6 +151,20 @@ export const settingsApi = {
     return res.json();
   },
 
+  /** The models the provider serves, for the model field's suggestions; omitted values use the saved ones. */
+  listAiModels: async (
+    payload: Pick<AiCategorizationSettingsInput, "base_url" | "api_key"> = {},
+  ): Promise<{ ok: true; models: string[] } | { ok: false; error: string }> => {
+    const res = await fetch(`${apiBase()}/settings/ai-categorization/models`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to list AI models"));
+    return res.json();
+  },
+
   getVersionCheck: async (): Promise<VersionCheck> => {
     const res = await fetch(`${apiBase()}/settings/version-check`, { headers: authHeaders() });
     assertOk(res, "Failed to check for updates");

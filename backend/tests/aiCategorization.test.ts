@@ -302,6 +302,49 @@ describe("AI categorization", () => {
     expect(cleared.body).toMatchObject({ base_url: null, model: null });
   });
 
+  it("lists the provider's models for the settings form, with the saved key when none is typed", async () => {
+    const seen: { path: string; authorization?: string }[] = [];
+    let status = 200;
+    const server = http.createServer((req, res) => {
+      seen.push({ path: req.url ?? "", authorization: req.headers.authorization });
+      res.writeHead(status, { "content-type": "application/json" });
+      res.end(
+        JSON.stringify({ object: "list", data: [{ id: "qwen3:8b" }, { id: "gemma3:4b" }, { id: "qwen3:8b" }, 7] }),
+      );
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const address = server.address();
+    if (!address || typeof address === "string") throw new Error("Server did not bind a TCP port");
+    const baseUrl = `http://127.0.0.1:${address.port}/v1`;
+    try {
+      await setAiCategorizationSettings({ baseUrl, apiKey: "sk-saved" });
+      const listed = await request(app).post("/api/settings/ai-categorization/models").set(auth()).send({});
+      // Sorted, without duplicates or entries that aren't models.
+      expect(listed.body).toEqual({ ok: true, models: ["gemma3:4b", "qwen3:8b"] });
+      expect(seen[0]).toEqual({ path: "/v1/models", authorization: "Bearer sk-saved" });
+
+      // Typed values win, so the list follows the form before it's saved.
+      await request(app)
+        .post("/api/settings/ai-categorization/models")
+        .set(auth())
+        .send({ base_url: baseUrl, api_key: null });
+      expect(seen[1].authorization).toBeUndefined();
+
+      status = 401;
+      const refused = await request(app).post("/api/settings/ai-categorization/models").set(auth()).send({});
+      expect(refused.body).toEqual({ ok: false, error: "AI provider returned HTTP 401" });
+
+      const member = await newUser();
+      const forbidden = await request(app)
+        .post("/api/settings/ai-categorization/models")
+        .set(auth(member.token))
+        .send({});
+      expect(forbidden.status).toBe(403);
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+
   it("waits before retrying 429 responses both without and with Retry-After", async () => {
     const target = await category("Retry target");
     const withoutHeader = await startProvider(() =>
