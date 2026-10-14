@@ -30,6 +30,7 @@ vi.mock("../src/services/notificationService", async (importOriginal) => {
 
 import { createApp } from "../src/app";
 import { prisma } from "../src/db";
+import { clearCaptchaCooloff, makerworldCaptchaCooloffActive } from "../src/services/makerworldCaptcha";
 
 const app = createApp();
 const stamp = Date.now();
@@ -80,6 +81,8 @@ function design(designId: string) {
 const designCalls = new Map<string, number>();
 const gates = new Map<string, { held: Promise<void>; release: () => void }>();
 const gone = new Set<string>();
+// Design ids MakerWorld answers with its CAPTCHA challenge.
+const challenged = new Set<string>();
 let inFlight = 0;
 let maxInFlight = 0;
 
@@ -99,6 +102,12 @@ function mockFetch() {
         inFlight--;
       }
       if (gone.has(id)) return new Response("gone", { status: 404 });
+      if (challenged.has(id)) {
+        return new Response(JSON.stringify({ captchaId: "c1", error: "confirm you are not a robot" }), {
+          status: 418,
+          headers: { "content-type": "application/json" },
+        });
+      }
       return json(design(id));
     }
     const profile = url.match(/^https:\/\/api\.bambulab\.com\/v1\/iot-service\/api\/user\/profile\/(\d+)/);
@@ -192,6 +201,8 @@ describe("the import queue", () => {
     mockFetch();
     designCalls.clear();
     gone.clear();
+    challenged.clear();
+    clearCaptchaCooloff();
     inFlight = 0;
     maxInFlight = 0;
     notifyDelay.ms = 0;
@@ -471,6 +482,41 @@ describe("the import queue", () => {
       );
       expect(second.imported).toBe(2);
       expect(designCalls.get(String(base + 80))).toBe(1);
+    });
+
+    it("retries a CAPTCHA'd link for real once someone solved the puzzle, instead of failing it on the cooloff", async () => {
+      challenged.add(String(base + 83));
+      const res = await queue(member, { url: modelUrl(base + 83) });
+      await request(app).post(`/api/admin/import-queue/jobs/${res.body.job_id}/start`).set(auth(admin));
+      const first = await waitStatus(res.body.job_id, "DONE");
+      expect(first.failedCount).toBe(1);
+      expect(makerworldCaptchaCooloffActive()).toBe(true);
+
+      // Solved in the browser: the cooloff is still on, but the retry has to ask MakerWorld again.
+      challenged.clear();
+      const callsBefore = designCalls.get(String(base + 83)) ?? 0;
+      await request(app).post(`/api/admin/import-queue/jobs/${res.body.job_id}/retry`).set(auth(admin));
+      const second = await waitFor(
+        () => job(res.body.job_id),
+        (j) => j.status === "DONE" && j.failedCount === 0,
+      );
+      expect(second.imported).toBe(1);
+      expect(designCalls.get(String(base + 83))).toBeGreaterThan(callsBefore);
+    });
+
+    it("imports a model whose title talks about robots instead of calling it a CAPTCHA", async () => {
+      const res = await queue(member, { url: modelUrl(base + 84) });
+      const realFetch = global.fetch;
+      global.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+        const response = await realFetch(input, init);
+        if (!String(input).includes(`/design-service/design/${base + 84}`)) return response;
+        return json({ ...(await response.json()), title: "Robot vacuum dock", summary: "<p>Not a robot.</p>" });
+      }) as typeof fetch;
+      await request(app).post(`/api/admin/import-queue/jobs/${res.body.job_id}/start`).set(auth(admin));
+      const finished = await waitStatus(res.body.job_id, "DONE");
+      expect(finished.failedCount).toBe(0);
+      expect(finished.imported).toBe(1);
+      expect(makerworldCaptchaCooloffActive()).toBe(false);
     });
 
     it("retries a finished job right away, while its runner is still writing the notification", async () => {

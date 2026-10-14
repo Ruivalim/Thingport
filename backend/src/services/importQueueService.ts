@@ -16,6 +16,7 @@ import {
   type QueuedLinkOptions,
 } from "./importJobRunner";
 import { getUserMakerworldCookie } from "./makerworldCookieService";
+import { clearCaptchaCooloff } from "./makerworldCaptcha";
 
 /** The shared body a LINKS job reruns with: its stored payload plus the owner's saved MakerWorld
  *  cookie. The cookie is never stored on the job. */
@@ -35,10 +36,11 @@ async function linksJobBody(job: ImportJob): Promise<LinksImportJobBody> {
 
 /** Starts a LINKS job's PENDING links, or with `retryFailed` puts its FAILED links back first.
  *  Resolves once the runner is launched; `run` settles when it stops (finished or paused), which is
- *  what the bulk run waits on. */
+ *  what the bulk run waits on. `manual` is a person clicking start or retry: it lifts the MakerWorld
+ *  CAPTCHA cooloff, which would otherwise fail every link without trying. */
 export async function startLinksJob(
   job: ImportJob,
-  opts: { retryFailed?: boolean } = {},
+  opts: { retryFailed?: boolean; manual?: boolean } = {},
 ): Promise<{ run: Promise<void> }> {
   if (job.type !== "LINKS") throw new HttpError(400, "Only a link-list import can be started or retried");
   if (job.status === "RUNNING" && isRunnerLive(job.id)) throw new HttpError(409, "This import is already running");
@@ -74,6 +76,7 @@ export async function startLinksJob(
     },
   });
   if (!count) throw new HttpError(409, "This import changed while it was being started, reload and try again");
+  if (opts.manual) clearCaptchaCooloff();
   const body = await linksJobBody(job);
   return { run: runLinksImportJob(job.id, job.userId, body) };
 }
@@ -287,7 +290,10 @@ async function drainBulkQueue(): Promise<void> {
   }
 }
 
+/** Bulk runs are started by hand, so they lift the CAPTCHA cooloff once (see startLinksJob). Not
+ *  per job: after a CAPTCHA, the jobs behind it should fail fast, not each probe MakerWorld again. */
 function enqueueBulk(entries: BulkEntry[]): number {
+  if (entries.length) clearCaptchaCooloff();
   const known = new Set([bulkCurrent, ...bulkQueue.map((e) => e.jobId)]);
   const fresh = entries.filter((e) => !known.has(e.jobId));
   bulkQueue.push(...fresh);

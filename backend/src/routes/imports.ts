@@ -563,7 +563,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const job = await getJob(req.params.id, req.userId!);
     if (!job) throw new HttpError(404, "Import job not found");
-    await startLinksJob(job, { retryFailed: true });
+    await startLinksJob(job, { retryFailed: true, manual: true });
     res.status(202).json({ job_id: job.id });
   }),
 );
