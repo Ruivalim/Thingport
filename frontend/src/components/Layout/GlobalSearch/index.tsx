@@ -28,6 +28,7 @@ import SpaceDashboardIcon from "@mui/icons-material/SpaceDashboard";
 import DownloadIcon from "@mui/icons-material/Download";
 import PersonIcon from "@mui/icons-material/Person";
 import WebAssetIcon from "@mui/icons-material/WebAsset";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import { UnauthorizedError } from "../../../api/client";
 import { type SearchResult, searchApi } from "../../../api/search";
 import { printsApi } from "../../../api/prints";
@@ -52,6 +53,8 @@ const MAX_MATCHED_COMMANDS = 3;
 const LIST_ID = "global-search-list";
 const BAR_RADIUS = 18;
 const PANEL_RADIUS = 14;
+/** Where "see all results" leads; it reads `?q=` itself. */
+const RESULTS_PATH = "/search-results";
 
 type Props = {
   onUnauthorized?: () => void;
@@ -162,7 +165,9 @@ export default function GlobalSearch({
 
   // `?q=` on any page opens the search with that query, for links from elsewhere (a dashboard's
   // "More in Thingport"). The parameter is dropped straight away so a reload doesn't reopen it.
+  // The results page keeps it: there it's the page's own query.
   useEffect(() => {
+    if (location.pathname === RESULTS_PATH) return;
     const params = new URLSearchParams(location.search);
     const linked = params.get("q");
     if (linked === null) return;
@@ -464,6 +469,20 @@ export default function GlobalSearch({
           kindLabel("tag"),
         ),
       );
+      // Kept out of recents: it's the query, not a place.
+      if (result.has_more_models) {
+        models.push({
+          key: "more:models",
+          title: t("app:search.seeAllModels", { query: trimmedQuery }),
+          accessory: "",
+          icon: <ArrowForwardIcon />,
+          actionLabel: t("app:search.open"),
+          run: () => {
+            finish();
+            navigate(`${RESULTS_PATH}?${new URLSearchParams({ q: trimmedQuery })}`);
+          },
+        });
+      }
       if (models.length) sections.push({ id: "models", label: t("app:search.sectionModels"), items: models });
       if (collections.length) {
         sections.push({ id: "collections", label: t("app:search.sectionCollections"), items: collections });

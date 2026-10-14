@@ -271,6 +271,9 @@
       "failed": "Search failed. Please try again.",
       "noResults": "No results for “{{query}}”.",
       "sectionModels": "Models",
+      "seeAllModels": "See all models matching “{{query}}”",
+      "resultsTitle": "“{{query}}”",
+      "resultsSubtitle": "Search results",
       "sectionCollections": "Collections",
       "sectionTags": "Tags",
       "modelCount_one": "{{count}} model",
@@ -1767,7 +1770,8 @@
     "sort": {
       "newest": "Newest",
       "popular": "Popular",
-      "downloads": "Downloads"
+      "downloads": "Downloads",
+      "relevance": "Relevance"
     },
     "card": {
       "unknownAuthor": "Unknown",

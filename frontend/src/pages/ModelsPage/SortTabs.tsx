@@ -7,15 +7,17 @@ const SORT_MODES: PrintSortMode[] = ["newest", "popular", "downloads"];
 
 type Props = {
   value: PrintSortMode;
+  /** Defaults to newest, popular, downloads. */
+  modes?: PrintSortMode[];
   onChange: (mode: PrintSortMode) => void;
 };
 
 /** "Popular" sorts by views, "Downloads" by print count. */
-export default function SortTabs({ value, onChange }: Props) {
+export default function SortTabs({ value, modes = SORT_MODES, onChange }: Props) {
   const { t } = useTranslation("models");
   return (
     <Stack direction="row" spacing={3}>
-      {SORT_MODES.map((mode) => (
+      {modes.map((mode) => (
         <Typography
           key={mode}
           variant="body2"

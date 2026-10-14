@@ -11,11 +11,13 @@ const TAG_RESULT_LIMIT = 5;
 
 export type SearchResult = {
   models: PrintOut[];
+  /** More models match than `models` holds, for a "see all results" link. */
+  has_more_models: boolean;
   collections: { id: string; name: string; item_count: number }[];
   tags: { tag: string; count: number }[];
 };
 
-const EMPTY_RESULT: SearchResult = { models: [], collections: [], tags: [] };
+const EMPTY_RESULT: SearchResult = { models: [], has_more_models: false, collections: [], tags: [] };
 
 /** Every token becomes a prefix match ("prin:* & yod:*") so type-ahead works. Tokens are reduced
  *  to letters/digits since to_tsquery throws on stray syntax. Null when nothing usable is left. */
@@ -34,15 +36,23 @@ function escapeLikeTerm(raw: string): string {
   return raw.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
 }
 
-async function searchPrintIds(userId: string, tsQuery: string, limit: number): Promise<string[]> {
+/** Without a limit, every match. */
+async function searchPrintIds(userId: string, tsQuery: string, limit?: number): Promise<string[]> {
   const rows = await prisma.$queryRaw<{ id: string }[]>`
     SELECT "id"
     FROM "Print"
     WHERE "userId" = ${userId} AND "searchVector" @@ to_tsquery('simple'::regconfig, ${tsQuery})
     ORDER BY ts_rank("searchVector", to_tsquery('simple'::regconfig, ${tsQuery})) DESC, "name" ASC
-    LIMIT ${limit}
+    LIMIT ${limit ?? null}
   `;
   return rows.map((r) => r.id);
+}
+
+/** Ids of every model matching `rawQuery` as the search palette matches it, best first; for
+ *  GET /prints?q=, so a "see all results" page lists what the palette found. */
+export async function rankedPrintIds(userId: string, rawQuery: string): Promise<string[]> {
+  const tsQuery = buildPrefixTsQuery(rawQuery);
+  return tsQuery ? searchPrintIds(userId, tsQuery) : [];
 }
 
 async function searchCollections(
@@ -84,15 +94,18 @@ export async function search(userId: string, rawQuery: string, limit?: number): 
   const tsQuery = buildPrefixTsQuery(rawQuery);
   if (!tsQuery) return EMPTY_RESULT;
 
-  const [modelIds, collections, tags] = await Promise.all([
-    searchPrintIds(userId, tsQuery, limit ?? MODEL_RESULT_LIMIT),
+  const modelLimit = limit ?? MODEL_RESULT_LIMIT;
+  const [modelIdsAndOne, collections, tags] = await Promise.all([
+    // One extra says whether there are more.
+    searchPrintIds(userId, tsQuery, modelLimit + 1),
     searchCollections(userId, tsQuery, limit ?? COLLECTION_RESULT_LIMIT),
     searchTags(userId, rawQuery.trim(), TAG_RESULT_LIMIT),
   ]);
 
+  const modelIds = modelIdsAndOne.slice(0, modelLimit);
   const printOuts = await printOutsByIds(userId, modelIds);
   // Re-apply rank order; printOutsByIds returns an unordered Map.
   const models = modelIds.map((id) => printOuts.get(id)).filter((p): p is PrintOut => Boolean(p));
 
-  return { models, collections, tags };
+  return { models, has_more_models: modelIdsAndOne.length > modelLimit, collections, tags };
 }

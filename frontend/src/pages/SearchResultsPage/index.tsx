@@ -1,0 +1,160 @@
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router-dom";
+import Box from "@mui/material/Box";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
+import { UnauthorizedError } from "../../api/client";
+import { type Print, type PrintSortMode, printsApi } from "../../api/prints";
+import { type PreviewMode } from "../../api/settings";
+import type { AuthUser } from "../../api/auth";
+import { type ResolvedTheme } from "../../constants/settingsOptions";
+import { usePageHeader } from "../../components/Layout/PageHeaderContext";
+import { useInfiniteScroll } from "../../hooks/useInfiniteScroll";
+import ModelCard from "../ModelsPage/ModelCard";
+import SortTabs from "../ModelsPage/SortTabs";
+import { CardSkeletons } from "../../components/media/CardSkeleton";
+import { cardGridSx } from "../../components/media/cardGrid";
+
+const PAGE_SIZE = 24;
+const SORT_MODES: PrintSortMode[] = ["relevance", "newest", "popular", "downloads"];
+
+type Props = {
+  theme: ResolvedTheme;
+  previewMode: PreviewMode;
+  onUnauthorized?: () => void;
+  viewer?: AuthUser | null;
+};
+
+/** Every model matching `?q=`, where the search palette's "see all results" leads. GlobalSearch
+ *  leaves `?q=` alone on this page. */
+export default function SearchResultsPage({ theme, previewMode, onUnauthorized, viewer }: Props) {
+  const { t } = useTranslation(["models", "app"]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const query = (searchParams.get("q") ?? "").trim();
+  const [items, setItems] = useState<Print[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const sortModeParam = searchParams.get("orderBy");
+  const sortMode: PrintSortMode =
+    sortModeParam === "newest" || sortModeParam === "popular" || sortModeParam === "downloads"
+      ? sortModeParam
+      : "relevance";
+
+  const setSortMode = (mode: PrintSortMode) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (mode === "relevance") next.delete("orderBy");
+      else next.set("orderBy", mode);
+      return next;
+    });
+  };
+
+  usePageHeader({
+    title: query ? t("app:search.resultsTitle", { query }) : undefined,
+    subtitle: query ? t("app:search.resultsSubtitle") : undefined,
+  });
+
+  const handleError = (err: unknown, message?: string) => {
+    if (err instanceof UnauthorizedError) {
+      onUnauthorized?.();
+      return true;
+    }
+    console.error(err);
+    if (message) alert(message);
+    return false;
+  };
+
+  useEffect(() => {
+    if (!query) {
+      setItems([]);
+      setHasMore(false);
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    (async () => {
+      try {
+        const result = await printsApi.list({ q: query, order_by: sortMode, limit: PAGE_SIZE, offset: 0 });
+        if (cancelled) return;
+        setItems(result.items);
+        setOffset(result.items.length);
+        setHasMore(result.hasMore);
+      } catch (err) {
+        if (cancelled) return;
+        handleError(err, t("models:errors.loadFailed"));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, sortMode]);
+
+  const loadMore = async () => {
+    if (loadingMore || !hasMore || !query) return;
+    setLoadingMore(true);
+    try {
+      const result = await printsApi.list({ q: query, order_by: sortMode, limit: PAGE_SIZE, offset });
+      setItems((prev) => [...prev, ...result.items]);
+      setOffset(offset + result.items.length);
+      setHasMore(result.hasMore);
+    } catch (err) {
+      handleError(err, t("models:errors.loadFailed"));
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  const loadMoreSentinelRef = useInfiniteScroll(loadMore, hasMore, loading || loadingMore);
+
+  if (loading) {
+    return (
+      <Box sx={{ maxWidth: "1920px", mx: "auto", pt: 7 }}>
+        <Box sx={cardGridSx(6)}>
+          <CardSkeletons count={12} />
+        </Box>
+      </Box>
+    );
+  }
+
+  return (
+    <Stack spacing={2} sx={{ maxWidth: "1920px", mx: "auto" }}>
+      <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+        <SortTabs value={sortMode} modes={SORT_MODES} onChange={setSortMode} />
+      </Box>
+      {items.length ? (
+        <Stack spacing={2}>
+          <Box sx={cardGridSx(6)}>
+            {items.map((item) => (
+              <ModelCard
+                key={item.id}
+                item={item}
+                theme={theme}
+                previewMode={previewMode}
+                onDeleted={(deletedId) => setItems((prev) => prev.filter((i) => i.id !== deletedId))}
+                onFavoriteChange={(updated) => setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)))}
+                onUpdated={(updated) => setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)))}
+                onUnauthorized={onUnauthorized}
+                viewer={viewer}
+              />
+            ))}
+            {loadingMore && <CardSkeletons count={6} />}
+          </Box>
+          {hasMore && <Box ref={loadMoreSentinelRef} sx={{ height: 1 }} />}
+        </Stack>
+      ) : (
+        <Stack alignItems="center" spacing={1} sx={{ py: 8, color: "text.secondary" }}>
+          <Typography variant="body2">
+            {query ? t("app:search.noResults", { query }) : t("app:search.keepTyping")}
+          </Typography>
+        </Stack>
+      )}
+    </Stack>
+  );
+}

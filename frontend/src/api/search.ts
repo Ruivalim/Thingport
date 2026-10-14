@@ -16,6 +16,8 @@ export type SearchTagResult = {
 export type SearchResult = {
   /** Pre-ranked by the backend. */
   models: Print[];
+  /** More models match than `models` holds. */
+  has_more_models: boolean;
   collections: SearchCollectionResult[];
   tags: SearchTagResult[];
 };

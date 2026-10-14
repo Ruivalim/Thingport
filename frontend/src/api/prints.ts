@@ -122,7 +122,8 @@ export type FillGapsResult = {
   remaining: SourceGap[];
 };
 
-export type PrintSortMode = "newest" | "popular" | "downloads";
+/** "relevance" ranks by how well a model matches `q`, as the search palette does. */
+export type PrintSortMode = "newest" | "popular" | "downloads" | "relevance";
 
 export class PrintApiError extends Error {
   constructor(

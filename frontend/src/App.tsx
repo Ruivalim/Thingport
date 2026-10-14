@@ -14,6 +14,7 @@ import CollectionsPage from "./pages/CollectionsPage";
 import CollectionDetailPage from "./pages/CollectionDetailPage";
 import TagsPage from "./pages/TagsPage";
 import TagDetailPage from "./pages/TagDetailPage";
+import SearchResultsPage from "./pages/SearchResultsPage";
 import AuthorPage from "./pages/AuthorPage";
 import AuthPage from "./pages/AuthPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
@@ -177,6 +178,17 @@ function AppShell({
               previewMode={previewMode}
               onUnauthorized={onUnauthorized}
               onBookmarksChanged={handleBookmarksChanged}
+              viewer={user}
+            />
+          }
+        />
+        <Route
+          path="/search-results"
+          element={
+            <SearchResultsPage
+              theme={resolvedTheme}
+              previewMode={previewMode}
+              onUnauthorized={onUnauthorized}
               viewer={user}
             />
           }

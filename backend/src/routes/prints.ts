@@ -32,6 +32,7 @@ import { notifyUpload } from "../services/modelNotifications";
 import { fillSourceGaps } from "../services/fillGapsService";
 import { forgetAiDescription } from "../services/aiDescriptionService";
 import { isNormalizable3mf, normalize3mfStatus, normalized3mfFor } from "../services/normalized3mfCache";
+import { rankedPrintIds } from "../services/searchService";
 import type { Prisma } from "@prisma/client";
 
 const router = Router();
@@ -59,7 +60,8 @@ function isRenderableUpload(f: Express.Multer.File): boolean {
   return RENDERABLE_MODEL_EXTS.has(path.extname(f.originalname).toLowerCase());
 }
 
-async function buildPrintWhere(req: Request): Promise<Prisma.PrintWhereInput> {
+/** `rankedIds` is set when `q` is: the matches, best first, for orderBy=relevance. */
+async function buildPrintWhere(req: Request): Promise<{ where: Prisma.PrintWhereInput; rankedIds: string[] | null }> {
   const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
   const categoryIdParam = typeof req.query.category_id === "string" ? req.query.category_id : "";
   const categoryIds = categoryIdParam
@@ -92,18 +94,11 @@ async function buildPrintWhere(req: Request): Promise<Prisma.PrintWhereInput> {
     else if (systemKey === "history") where.lastViewedAt = { not: null };
     else where.collectionItems = { some: { collectionId } };
   }
-  if (q) {
-    andClauses.push({
-      OR: [
-        { name: { contains: q, mode: "insensitive" } },
-        { title: { contains: q, mode: "insensitive" } },
-        { notes: { contains: q, mode: "insensitive" } },
-        { creator: { contains: q, mode: "insensitive" } },
-      ],
-    });
-  }
+  // Matched as the search palette matches, so its "see all results" lists what it found.
+  const rankedIds = q ? await rankedPrintIds(req.userId!, q) : null;
+  if (rankedIds) andClauses.push({ id: { in: rankedIds } });
   if (andClauses.length) where.AND = andClauses;
-  return where;
+  return { where, rankedIds };
 }
 
 router.post(
@@ -228,10 +223,10 @@ router.post(
   }),
 );
 
-type PrintSortMode = "newest" | "popular" | "downloads";
+type PrintSortMode = "newest" | "popular" | "downloads" | "relevance";
 
 function parseSortMode(raw: unknown): PrintSortMode {
-  if (raw === "popular" || raw === "downloads") return raw;
+  if (raw === "popular" || raw === "downloads" || raw === "relevance") return raw;
   return "newest";
 }
 
@@ -251,7 +246,7 @@ router.get(
       if (!Number.isFinite(offset) || offset < 0) throw new HttpError(400, "Invalid offset");
     }
 
-    const where = await buildPrintWhere(req);
+    const { where, rankedIds } = await buildPrintWhere(req);
     const tagList = parseTagList(req);
     const allMatching = await prisma.print.findMany({
       where,
@@ -279,7 +274,10 @@ router.get(
     const recencyField = systemKey === "favorites" ? "favoritedAt" : systemKey === "history" ? "lastViewedAt" : null;
     const sortMode = parseSortMode(req.query.orderBy);
 
+    // Relevance needs a query to rank by; without one it falls back to newest.
+    const rank = sortMode === "relevance" && rankedIds ? new Map(rankedIds.map((id, i) => [id, i])) : null;
     const sortValue = (p: (typeof prints)[number]): number => {
+      if (rank) return -(rank.get(p.id) ?? rank.size);
       if (sortMode === "popular") return p.viewCount;
       if (sortMode === "downloads") return p.printCount;
       if (recencyField) return p[recencyField]?.getTime() ?? 0;
@@ -370,7 +368,7 @@ router.post(
 router.get(
   "/tags",
   asyncHandler(async (req, res) => {
-    const where = await buildPrintWhere(req);
+    const { where } = await buildPrintWhere(req);
     const tagList = parseTagList(req);
     const allRows = await prisma.print.findMany({ where, select: { tags: true } });
     const rows = tagList.length ? allRows.filter((r) => matchesTagList(r.tags, tagList)) : allRows;
