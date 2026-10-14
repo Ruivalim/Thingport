@@ -1,9 +1,16 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
+import PowerSettingsNewIcon from "@mui/icons-material/PowerSettingsNew";
+import TuneIcon from "@mui/icons-material/Tune";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import ButtonBase from "@mui/material/ButtonBase";
 import CircularProgress from "@mui/material/CircularProgress";
+import ListItemIcon from "@mui/material/ListItemIcon";
+import ListItemText from "@mui/material/ListItemText";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
 import Switch from "@mui/material/Switch";
 import Tooltip from "@mui/material/Tooltip";
@@ -12,7 +19,8 @@ import { UnauthorizedError } from "../../api/client";
 import { settingsApi, type AiCategorizationSettings } from "../../api/settings";
 import type { AiConnection } from "../../api/aiConnections";
 import SectionHeader from "../../components/SectionHeader";
-import AiCategorizationDialog from "./AiCategorizationDialog";
+import { menuPosition, TileMenuHeader } from "../../components/Layout/ConfigurationDialog/AppTiles";
+import AiCategorizationDialog, { type AiCategorizationSection } from "./AiCategorizationDialog";
 import CategorizationAnimation from "./CategorizationAnimation";
 import { AiLogo } from "./aiLogos";
 
@@ -26,7 +34,9 @@ const tileShadow = "inset 0 0 0 1px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0,
 export default function AiFeaturesSection({ connections, onUnauthorized }: Props) {
   const { t } = useTranslation("app");
   const [settings, setSettings] = useState<AiCategorizationSettings | null>(null);
-  const [open, setOpen] = useState(false);
+  // The section the dialog is open on, or null when closed.
+  const [open, setOpen] = useState<AiCategorizationSection | null>(null);
+  const [menu, setMenu] = useState<{ top: number; left: number } | null>(null);
   const [switching, setSwitching] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,7 +92,8 @@ export default function AiFeaturesSection({ connections, onUnauthorized }: Props
             <Stack alignItems="center" spacing={0.75}>
               <Tooltip title={t("adminSettings.aiFeatures.openSettings")} placement="top">
                 <ButtonBase
-                  onClick={() => setOpen(true)}
+                  onClick={() => setOpen("settings")}
+                  onContextMenu={(event) => setMenu(menuPosition(event))}
                   disabled={!settings}
                   aria-label={t("adminSettings.aiFeatures.settingsAria", { feature: label })}
                   sx={{
@@ -152,12 +163,64 @@ export default function AiFeaturesSection({ connections, onUnauthorized }: Props
           {error}
         </Alert>
       )}
+      <Menu
+        open={Boolean(menu)}
+        onClose={() => setMenu(null)}
+        anchorReference="anchorPosition"
+        anchorPosition={menu ?? undefined}
+        slotProps={{ paper: { sx: { minWidth: 240, maxWidth: 300 } } }}
+      >
+        <TileMenuHeader
+          logo={<AutoAwesomeOutlinedIcon fontSize="small" sx={{ color: "text.secondary" }} />}
+          name={label}
+          status={t("adminSettings.aiFeatures.categorizationDescription")}
+        />
+        <MenuItem
+          disabled={!hasModel || !settings || switching}
+          onClick={() => {
+            setMenu(null);
+            void toggle(!enabled);
+          }}
+        >
+          <ListItemIcon>
+            <PowerSettingsNewIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>
+            {enabled ? t("adminSettings.aiFeatures.turnOff") : t("adminSettings.aiFeatures.turnOn")}
+          </ListItemText>
+        </MenuItem>
+        <MenuItem
+          disabled={!settings}
+          onClick={() => {
+            setMenu(null);
+            setOpen("settings");
+          }}
+        >
+          <ListItemIcon>
+            <TuneIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>{t("adminSettings.aiCategorization.settings")}</ListItemText>
+        </MenuItem>
+        <MenuItem
+          disabled={!settings || !enabled}
+          onClick={() => {
+            setMenu(null);
+            setOpen("manage");
+          }}
+        >
+          <ListItemIcon>
+            <AutoAwesomeOutlinedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>{t("adminSettings.aiCategorization.manage")}</ListItemText>
+        </MenuItem>
+      </Menu>
       {open && settings && (
         <AiCategorizationDialog
           settings={settings}
           active={enabled}
           connections={connections ?? []}
-          onClose={() => setOpen(false)}
+          initialSection={open}
+          onClose={() => setOpen(null)}
           onSaved={setSettings}
           onUnauthorized={onUnauthorized}
         />

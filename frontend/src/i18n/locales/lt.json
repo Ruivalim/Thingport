@@ -661,6 +661,9 @@
         "subtitle": "Kam Thingport naudoja modelius.",
         "hint": "Spustelėkite funkciją, kad pamatytumėte jos nustatymus.",
         "categorization": "DI kategorizavimas",
+        "categorizationDescription": "Naudodamas DI surūšiuoja modelius į jūsų kategorijas importuojant arba paleidus: pasiūlo kategoriją peržiūrai arba ją pritaiko.",
+        "turnOn": "Įjungti",
+        "turnOff": "Išjungti",
         "openSettings": "Nustatymai",
         "settingsAria": "{{feature}} nustatymai",
         "toggleAria": "Įjungti arba išjungti: {{feature}}"

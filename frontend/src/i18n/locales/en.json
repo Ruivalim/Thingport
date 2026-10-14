@@ -657,6 +657,9 @@
         "subtitle": "What Thingport uses the models for.",
         "hint": "Click a feature for its settings.",
         "categorization": "AI Categorization",
+        "categorizationDescription": "Sorts models into your categories with AI, on import or in a run: it suggests one for you to review, or applies it.",
+        "turnOn": "Turn on",
+        "turnOff": "Turn off",
         "openSettings": "Settings",
         "settingsAria": "{{feature}} settings",
         "toggleAria": "Turn {{feature}} on or off"

@@ -20,7 +20,7 @@ import SectionedDialog from "../../components/SectionedDialog";
 import AiCategorizationPanel from "../ModelsPage/AiCategorizationPanel";
 import { AiLogo, hostOf } from "./aiLogos";
 
-type Section = "settings" | "manage";
+export type AiCategorizationSection = "settings" | "manage";
 
 /** An option in the "Use AI" list: the model's logo and what to call it. */
 function AiOption({ connection, label }: { connection: AiConnection | undefined; label: string }) {
@@ -40,6 +40,8 @@ type Props = {
   settings: AiCategorizationSettings;
   /** Switched on with a model to use; Manage can only be opened then, as nothing can run otherwise. */
   active: boolean;
+  /** Where it opens, e.g. from the tile's menu. */
+  initialSection?: AiCategorizationSection;
   connections: AiConnection[];
   onClose: () => void;
   onSaved: (settings: AiCategorizationSettings) => void;
@@ -53,13 +55,14 @@ type Draft = Pick<AiCategorizationSettings, "mode" | "threshold" | "on_import" |
 export default function AiCategorizationDialog({
   settings,
   active,
+  initialSection = "settings",
   connections,
   onClose,
   onSaved,
   onUnauthorized,
 }: Props) {
   const { t } = useTranslation("app");
-  const [section, setSection] = useState<Section>("settings");
+  const [section, setSection] = useState<AiCategorizationSection>(initialSection);
   const [saved, setSaved] = useState(false);
   const [draft, setDraft] = useState<Draft>({
     mode: settings.mode,
