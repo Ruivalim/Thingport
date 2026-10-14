@@ -516,6 +516,24 @@ model Setting {
   value Json
 }
 
+/// An OpenAI-compatible AI service. Features use the default one unless set to another.
+model AiConnection {
+  id          String   @id @default(cuid())
+  baseUrl     String
+  /// Write-only: the API only ever says whether one is set.
+  apiKey      String?
+  model       String
+  timeoutMs   Int      @default(60000)
+  /// How many requests may wait on this provider at once.
+  concurrency Int      @default(1)
+  /// Off asks a reasoning model to skip thinking, which on a CPU takes minutes.
+  thinking    Boolean  @default(true)
+  isDefault   Boolean  @default(false)
+  position    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 /// Admin audit trail. Written fire-and-forget so logging never breaks the action.
 model Log {
   id        String   @id @default(cuid())

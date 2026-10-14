@@ -3,7 +3,12 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 import request from "supertest";
 import { createApp } from "../src/app";
 import { prisma } from "../src/db";
-import { DEFAULT_AI_CATEGORIZATION_SETTINGS, setAiCategorizationSettings } from "../src/services/settingsService";
+import {
+  DEFAULT_AI_CATEGORIZATION_PREFS,
+  setAiCategorizationPrefs,
+  type AiCategorizationPrefs,
+} from "../src/services/settingsService";
+import { createAiConnection, type AiConnectionInput } from "../src/services/aiConnectionService";
 import { aiCategoryPaths, setAiCategorizationRetryDelayForTest } from "../src/services/aiCategorizationService";
 
 const app = createApp();
@@ -126,19 +131,26 @@ function runScope(include: Partial<Record<"uncategorized" | "folders" | "ai" | "
   return Object.fromEntries(Object.entries(scope).map(([key, value]) => [`include_${key}`, value]));
 }
 
-async function enable(baseUrl: string, patch: Partial<typeof DEFAULT_AI_CATEGORIZATION_SETTINGS> = {}) {
-  await setAiCategorizationSettings({
-    mode: "suggest",
+/** One AI, the default, and categorization turned on with it. */
+async function enable(baseUrl: string, patch: Partial<AiCategorizationPrefs & AiConnectionInput> = {}) {
+  const { mode = "suggest", threshold = 0.8, onImport = false, sendImage = false, ...connection } = patch;
+  await prisma.aiConnection.deleteMany();
+  const created = await createAiConnection({
     baseUrl,
     apiKey: null,
     model: "local",
-    threshold: 0.8,
-    onImport: false,
-    concurrency: 1,
-    sendImage: false,
     timeoutMs: 1000,
-    ...patch,
+    concurrency: 1,
+    thinking: true,
+    ...connection,
   });
+  await setAiCategorizationPrefs({ mode, threshold, onImport, sendImage, aiConnectionId: null });
+  return created;
+}
+
+async function disable() {
+  await prisma.aiConnection.deleteMany();
+  await setAiCategorizationPrefs(DEFAULT_AI_CATEGORIZATION_PREFS);
 }
 
 async function categoryFor(ownerId: string, name: string, kind = "category") {
@@ -217,12 +229,14 @@ beforeAll(async () => {
   userId = registered.body.user.id;
   await prisma.user.update({ where: { id: userId }, data: { role: "ADMIN" } });
   token = (await request(app).post("/api/login").send({ email, password: "password123" })).body.token;
+  // AIs and the categorization settings are instance-wide, so each test starts without any.
+  await disable();
 });
 
 afterEach(async () => {
   setAiCategorizationRetryDelayForTest();
   await stopProvider();
-  await setAiCategorizationSettings(DEFAULT_AI_CATEGORIZATION_SETTINGS);
+  await disable();
 });
 
 afterAll(async () => {
@@ -234,16 +248,24 @@ afterAll(async () => {
 describe("AI categorization", () => {
   it("keeps API keys write-only and exposes legacy category provenance", async () => {
     const baseUrl = await startProvider(() => ({ category_id: null, confidence: 1, reason: "none" }));
-    const patched = await request(app)
-      .patch("/api/settings/ai-categorization")
+    const added = await request(app)
+      .post("/api/settings/ai-connections")
       .set(auth())
-      .send({ mode: "auto", base_url: baseUrl, model: "local-model", api_key: "private-key" });
-    expect(patched.status).toBe(200);
-    expect(patched.body).toMatchObject({ mode: "auto", has_api_key: true });
-    expect(JSON.stringify(patched.body)).not.toContain("private-key");
-    const read = await request(app).get("/api/settings/ai-categorization").set(auth());
-    expect(read.body).toMatchObject({ has_api_key: true, base_url: baseUrl, model: "local-model" });
-    expect(JSON.stringify(read.body)).not.toContain("private-key");
+      .send({ base_url: baseUrl, model: "local-model", api_key: "private-key" });
+    expect(added.status).toBe(201);
+    expect(added.body).toMatchObject({ base_url: baseUrl, model: "local-model", has_api_key: true });
+    expect(JSON.stringify(added.body)).not.toContain("private-key");
+    const listed = await request(app).get("/api/settings/ai-connections").set(auth());
+    expect(listed.body).toHaveLength(1);
+    expect(JSON.stringify(listed.body)).not.toContain("private-key");
+    const prefs = await request(app).patch("/api/settings/ai-categorization").set(auth()).send({ mode: "auto" });
+    expect(prefs.body).toEqual({
+      mode: "auto",
+      threshold: 0.8,
+      on_import: true,
+      send_image: false,
+      ai_connection_id: null,
+    });
 
     const legacyCategory = await category("Legacy");
     const legacy = await print(legacyCategory.id, "LEGACY");
@@ -251,28 +273,26 @@ describe("AI categorization", () => {
     expect(detail.body.category_source).toBe("legacy");
   });
 
-  it("saves a connection only after it answers, and tests unsaved values", async () => {
-    await setAiCategorizationSettings(DEFAULT_AI_CATEGORIZATION_SETTINGS);
+  it("adds an AI only after it answers, and tests unsaved values", async () => {
     const deadUrl = await startProvider(() => ({ category_id: null, confidence: 1, reason: "none" }));
     await stopProvider();
     const tested = await request(app)
-      .post("/api/settings/ai-categorization/test")
+      .post("/api/settings/ai-connections/test")
       .set(auth())
       .send({ base_url: deadUrl, model: "local-model", timeout_ms: 1000 });
     expect(tested.body).toMatchObject({ ok: false, error: expect.stringContaining("Could not reach the AI provider") });
     const refused = await request(app)
-      .patch("/api/settings/ai-categorization")
+      .post("/api/settings/ai-connections")
       .set(auth())
       .send({ base_url: deadUrl, model: "local-model", timeout_ms: 1000 });
     expect(refused.status).toBe(422);
     expect(refused.body.code).toBe("ai_connection_failed");
-    const unchanged = await request(app).get("/api/settings/ai-categorization").set(auth());
-    expect(unchanged.body.base_url).toBeNull();
+    expect((await request(app).get("/api/settings/ai-connections").set(auth())).body).toEqual([]);
 
     // A test makes one attempt rather than retrying a failing provider.
     const failingUrl = await startProvider(() => ({ status: 500 }));
     const failing = await request(app)
-      .post("/api/settings/ai-categorization/test")
+      .post("/api/settings/ai-connections/test")
       .set(auth())
       .send({ base_url: failingUrl, model: "local-model" });
     expect(failing.body).toMatchObject({ ok: false, error: "AI provider returned HTTP 500" });
@@ -281,25 +301,76 @@ describe("AI categorization", () => {
 
     const liveUrl = await startProvider(() => ({ category_id: null, confidence: 1, reason: "none" }));
     const draft = await request(app)
-      .post("/api/settings/ai-categorization/test")
+      .post("/api/settings/ai-connections/test")
       .set(auth())
       .send({ base_url: liveUrl, model: "local-model" });
     expect(draft.body).toMatchObject({ ok: true, model: "local-model" });
     // A bare origin gets /v1 added, as Ollama and most local servers need.
     const saved = await request(app)
-      .patch("/api/settings/ai-categorization")
+      .post("/api/settings/ai-connections")
       .set(auth())
       .send({ base_url: liveUrl.replace(/\/v1$/, "/"), model: "local-model" });
-    expect(saved.status).toBe(200);
-    expect(saved.body.base_url).toBe(liveUrl);
+    expect(saved.status).toBe(201);
+    expect(saved.body).toMatchObject({ base_url: liveUrl, is_default: true });
 
+    // An edit that changes where it connects is tested too; one that doesn't isn't.
     await stopProvider();
-    const cleared = await request(app)
+    const moved = await request(app)
+      .patch(`/api/settings/ai-connections/${saved.body.id}`)
+      .set(auth())
+      .send({ base_url: deadUrl });
+    expect(moved.status).toBe(422);
+    const tuned = await request(app)
+      .patch(`/api/settings/ai-connections/${saved.body.id}`)
+      .set(auth())
+      .send({ concurrency: 2, thinking: false });
+    expect(tuned.body).toMatchObject({ base_url: liveUrl, concurrency: 2, thinking: false });
+  });
+
+  it("makes exactly one of two AIs added at the same moment the default", async () => {
+    const fields = { apiKey: null, timeoutMs: 1000, concurrency: 1, thinking: true, baseUrl: "http://127.0.0.1:9/v1" };
+    const added = await Promise.all([
+      createAiConnection({ ...fields, model: "first" }),
+      createAiConnection({ ...fields, model: "second" }),
+    ]);
+    expect(added.filter((ai) => ai.isDefault)).toHaveLength(1);
+    expect(new Set(added.map((ai) => ai.position)).size).toBe(2);
+  });
+
+  it("makes the first AI the default, moves the role on delete, and lets categorization pick one", async () => {
+    const defaultUrl = await startProvider(() => ({ category_id: null, confidence: 1, reason: "default" }));
+    const first = await enable(defaultUrl);
+    const fields = { apiKey: null, timeoutMs: 1000, concurrency: 1, thinking: true };
+    const second = await createAiConnection({ ...fields, baseUrl: "http://127.0.0.1:9/v1", model: "other" });
+    expect([first.isDefault, second.isDefault]).toEqual([true, false]);
+
+    const made = await request(app).post(`/api/settings/ai-connections/${second.id}/default`).set(auth());
+    expect(made.body.is_default).toBe(true);
+    const listed = await request(app).get("/api/settings/ai-connections").set(auth());
+    expect(listed.body.map((ai: { is_default: boolean }) => ai.is_default)).toEqual([false, true]);
+
+    // Categorization set to the first one uses it, not the default.
+    await request(app).patch("/api/settings/ai-categorization").set(auth()).send({ ai_connection_id: first.id });
+    const used = await request(app)
+      .post(`/api/print/${(await print()).id}/recategorize`)
+      .set(auth())
+      .send({});
+    expect(used.status).toBe(200);
+    expect(providerRequests).toBe(1);
+
+    // Deleting the AI it was set to sends it back to the default; deleting the default hands the role on.
+    expect((await request(app).delete(`/api/settings/ai-connections/${first.id}`).set(auth())).status).toBe(204);
+    expect((await request(app).get("/api/settings/ai-categorization").set(auth())).body.ai_connection_id).toBeNull();
+    const third = await createAiConnection({ ...fields, baseUrl: defaultUrl, model: "third" });
+    await request(app).delete(`/api/settings/ai-connections/${second.id}`).set(auth());
+    const remaining = await request(app).get("/api/settings/ai-connections").set(auth());
+    expect(remaining.body).toMatchObject([{ id: third.id, is_default: true }]);
+
+    const unknown = await request(app)
       .patch("/api/settings/ai-categorization")
       .set(auth())
-      .send({ base_url: null, model: null });
-    expect(cleared.status).toBe(200);
-    expect(cleared.body).toMatchObject({ base_url: null, model: null });
+      .send({ ai_connection_id: "nope" });
+    expect(unknown.status).toBe(404);
   });
 
   it("lists the provider's models for the settings form, with the saved key when none is typed", async () => {
@@ -317,28 +388,32 @@ describe("AI categorization", () => {
     if (!address || typeof address === "string") throw new Error("Server did not bind a TCP port");
     const baseUrl = `http://127.0.0.1:${address.port}/v1`;
     try {
-      await setAiCategorizationSettings({ baseUrl, apiKey: "sk-saved" });
-      const listed = await request(app).post("/api/settings/ai-categorization/models").set(auth()).send({});
+      const saved = await createAiConnection({
+        baseUrl,
+        apiKey: "sk-saved",
+        model: "qwen3:8b",
+        timeoutMs: 1000,
+        concurrency: 1,
+        thinking: true,
+      });
+      const listed = await request(app).post("/api/settings/ai-connections/models").set(auth()).send({ id: saved.id });
       // Sorted, without duplicates or entries that aren't models.
       expect(listed.body).toEqual({ ok: true, models: ["gemma3:4b", "qwen3:8b"] });
       expect(seen[0]).toEqual({ path: "/v1/models", authorization: "Bearer sk-saved" });
 
       // Typed values win, so the list follows the form before it's saved.
       await request(app)
-        .post("/api/settings/ai-categorization/models")
+        .post("/api/settings/ai-connections/models")
         .set(auth())
         .send({ base_url: baseUrl, api_key: null });
       expect(seen[1].authorization).toBeUndefined();
 
       status = 401;
-      const refused = await request(app).post("/api/settings/ai-categorization/models").set(auth()).send({});
+      const refused = await request(app).post("/api/settings/ai-connections/models").set(auth()).send({ id: saved.id });
       expect(refused.body).toEqual({ ok: false, error: "AI provider returned HTTP 401" });
 
       const member = await newUser();
-      const forbidden = await request(app)
-        .post("/api/settings/ai-categorization/models")
-        .set(auth(member.token))
-        .send({});
+      const forbidden = await request(app).post("/api/settings/ai-connections/models").set(auth(member.token)).send({});
       expect(forbidden.status).toBe(403);
     } finally {
       await new Promise<void>((resolve) => server.close(() => resolve()));
@@ -684,7 +759,7 @@ describe("AI categorization", () => {
       bodies.push(body);
       return { category_id: null, confidence: 1, reason: "none" };
     });
-    await enable(baseUrl);
+    const connection = await enable(baseUrl);
     const recategorize = async () =>
       (
         await request(app)
@@ -696,7 +771,10 @@ describe("AI categorization", () => {
     expect(await recategorize()).toBe(200);
     expect(bodies[0]).not.toHaveProperty("reasoning_effort");
 
-    const off = await request(app).patch("/api/settings/ai-categorization").set(auth()).send({ thinking: false });
+    const off = await request(app)
+      .patch(`/api/settings/ai-connections/${connection.id}`)
+      .set(auth())
+      .send({ thinking: false });
     expect(off.status).toBe(200);
     expect(off.body.thinking).toBe(false);
     expect(await recategorize()).toBe(200);
@@ -1092,7 +1170,7 @@ describe("AI categorization", () => {
     await enable(baseUrl);
     await request(app).post("/api/ai-categorization/run").set(auth(runner.token)).send(runScope());
     await arrivedAtProvider;
-    await setAiCategorizationSettings(DEFAULT_AI_CATEGORIZATION_SETTINGS);
+    await setAiCategorizationPrefs({ mode: "off" });
     release();
     const stopped = await waitForRun(runner.token);
     expect(stopped.body.run).toMatchObject({ total: 2, done: 2, failed: 0 });

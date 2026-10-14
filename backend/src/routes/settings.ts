@@ -1,3 +1,4 @@
+import type { AiConnection } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
 import { requireAdmin, requireAuth } from "../auth";
@@ -22,8 +23,9 @@ import {
   setSmtpSettings,
   setThingiverseAccessToken,
   type SmtpSettings,
-  getAiCategorizationSettings,
-  setAiCategorizationSettings,
+  getAiCategorizationPrefs,
+  setAiCategorizationPrefs,
+  type AiCategorizationPrefs,
 } from "../services/settingsService";
 import { getDatabaseInfo, testAndSwitchDatabase } from "../services/databaseSettingsService";
 import {
@@ -65,7 +67,16 @@ import { getUserAuthorPreviewEnabled, setUserAuthorPreviewEnabled } from "../ser
 import { checkForUpdates } from "../services/versionService";
 import { getWeatherLocation, setWeatherLocation, weatherLocationSchema } from "../services/weatherLocationService";
 import { dropPreviewsAffectedBySimplification } from "../services/modelPreviewCache";
-import { listAiProviderModels, testAiCategorizationProvider } from "../services/aiCategorizationService";
+import { listAiProviderModels, testAiProvider } from "../services/aiCategorizationService";
+import {
+  createAiConnection,
+  DEFAULT_AI_PROVIDER,
+  deleteAiConnection,
+  getAiConnection,
+  listAiConnections,
+  setDefaultAiConnection,
+  updateAiConnection,
+} from "../services/aiConnectionService";
 import { testFlaresolverr } from "../services/flaresolverr";
 
 const router = Router();
@@ -572,18 +583,13 @@ router.patch(
   }),
 );
 
-function aiCategorizationSettingsOut(settings: Awaited<ReturnType<typeof getAiCategorizationSettings>>) {
+function aiCategorizationPrefsOut(prefs: AiCategorizationPrefs) {
   return {
-    mode: settings.mode,
-    base_url: settings.baseUrl,
-    model: settings.model,
-    has_api_key: Boolean(settings.apiKey),
-    threshold: settings.threshold,
-    on_import: settings.onImport,
-    concurrency: settings.concurrency,
-    send_image: settings.sendImage,
-    thinking: settings.thinking,
-    timeout_ms: settings.timeoutMs,
+    mode: prefs.mode,
+    threshold: prefs.threshold,
+    on_import: prefs.onImport,
+    send_image: prefs.sendImage,
+    ai_connection_id: prefs.aiConnectionId,
   };
 }
 
@@ -591,95 +597,193 @@ router.get(
   "/settings/ai-categorization",
   requireAdmin,
   asyncHandler(async (_req, res) => {
-    res.json(aiCategorizationSettingsOut(await getAiCategorizationSettings()));
+    res.json(aiCategorizationPrefsOut(await getAiCategorizationPrefs()));
   }),
 );
 
-const aiCategorizationSettingsSchema = z
+const aiCategorizationPrefsSchema = z
   .object({
     mode: z.enum(["off", "suggest", "auto"]).optional(),
-    base_url: z.string().trim().nullable().optional(),
-    api_key: z.string().nullable().optional(),
-    model: z.string().trim().nullable().optional(),
     threshold: z.number().min(0).max(1).optional(),
     on_import: z.boolean().optional(),
-    concurrency: z.number().int().min(1).max(4).optional(),
     send_image: z.boolean().optional(),
-    thinking: z.boolean().optional(),
-    timeout_ms: z.number().int().min(1).max(300000).optional(),
+    // Null uses the default AI.
+    ai_connection_id: z.string().nullable().optional(),
   })
   .strict();
 router.patch(
   "/settings/ai-categorization",
   requireAdmin,
   asyncHandler(async (req, res) => {
-    const body = parseBody(aiCategorizationSettingsSchema, req.body);
-    const connection = {
-      ...(body.base_url !== undefined ? { baseUrl: normalizeAiBaseUrl(body.base_url) } : {}),
-      ...(body.api_key !== undefined ? { apiKey: body.api_key } : {}),
-      ...(body.model !== undefined ? { model: body.model || null } : {}),
-      ...(body.timeout_ms !== undefined ? { timeoutMs: body.timeout_ms } : {}),
-    };
-    // A changed connection is only saved once it answers; clearing the URL or model disconnects without a test.
-    if (Object.keys(connection).length) {
-      const next = { ...(await getAiCategorizationSettings()), ...connection };
-      if (next.baseUrl && next.model) {
-        const result = await testAiCategorizationProvider(connection);
-        if (!result.ok)
-          throw new HttpError(422, `Could not connect to the AI provider: ${result.error}`, "ai_connection_failed");
-      }
-    }
-    const settings = await setAiCategorizationSettings({
-      ...connection,
+    const body = parseBody(aiCategorizationPrefsSchema, req.body);
+    if (body.ai_connection_id) await getAiConnection(body.ai_connection_id);
+    const prefs = await setAiCategorizationPrefs({
       ...(body.mode !== undefined ? { mode: body.mode } : {}),
       ...(body.threshold !== undefined ? { threshold: body.threshold } : {}),
       ...(body.on_import !== undefined ? { onImport: body.on_import } : {}),
-      ...(body.concurrency !== undefined ? { concurrency: body.concurrency } : {}),
       ...(body.send_image !== undefined ? { sendImage: body.send_image } : {}),
-      ...(body.thinking !== undefined ? { thinking: body.thinking } : {}),
+      ...(body.ai_connection_id !== undefined ? { aiConnectionId: body.ai_connection_id } : {}),
     });
-    res.json(aiCategorizationSettingsOut(settings));
+    res.json(aiCategorizationPrefsOut(prefs));
   }),
 );
 
-// Omitted fields use the saved value; api_key null lists without a key.
-const aiModelListSchema = z
-  .object({ base_url: z.string().trim().min(1).optional(), api_key: z.string().nullable().optional() })
-  .strict();
-router.post(
-  "/settings/ai-categorization/models",
+function aiConnectionOut(connection: AiConnection) {
+  return {
+    id: connection.id,
+    base_url: connection.baseUrl,
+    model: connection.model,
+    has_api_key: Boolean(connection.apiKey),
+    timeout_ms: connection.timeoutMs,
+    concurrency: connection.concurrency,
+    thinking: connection.thinking,
+    is_default: connection.isDefault,
+  };
+}
+
+router.get(
+  "/settings/ai-connections",
   requireAdmin,
-  asyncHandler(async (req, res) => {
-    const body = parseBody(aiModelListSchema, req.body ?? {});
-    res.json(
-      await listAiProviderModels({
-        ...(body.base_url !== undefined ? { baseUrl: normalizeAiBaseUrl(body.base_url) } : {}),
-        ...(body.api_key !== undefined ? { apiKey: body.api_key || null } : {}),
-      }),
-    );
+  asyncHandler(async (_req, res) => {
+    res.json((await listAiConnections()).map(aiConnectionOut));
   }),
 );
 
-// Omitted fields use the saved value; api_key null tests without a key.
-const aiCategorizationTestSchema = z
+// api_key: omitted keeps the saved one, null or "" means none.
+const aiConnectionFields = {
+  base_url: z.string().trim().min(1),
+  model: z.string().trim().min(1),
+  api_key: z.string().nullable().optional(),
+  timeout_ms: z.number().int().min(1000).max(300000),
+  concurrency: z.number().int().min(1).max(4),
+  thinking: z.boolean(),
+};
+
+/** A saved AI (or the defaults, for a new one) with the form's values on top. */
+async function providerFrom(
+  id: string | undefined,
+  body: Partial<{ base_url: string; model: string; api_key: string | null; timeout_ms: number; thinking: boolean }>,
+) {
+  const saved = id ? await getAiConnection(id) : null;
+  return {
+    baseUrl: body.base_url !== undefined ? normalizeAiBaseUrl(body.base_url) : (saved?.baseUrl ?? null),
+    model: body.model ?? saved?.model ?? null,
+    apiKey: body.api_key !== undefined ? body.api_key || null : (saved?.apiKey ?? DEFAULT_AI_PROVIDER.apiKey),
+    timeoutMs: body.timeout_ms ?? saved?.timeoutMs ?? DEFAULT_AI_PROVIDER.timeoutMs,
+    thinking: body.thinking ?? saved?.thinking ?? DEFAULT_AI_PROVIDER.thinking,
+  };
+}
+
+/** An AI is only saved once it answers, so a feature never switches to one that can't. */
+async function requireAnswer(provider: Awaited<ReturnType<typeof providerFrom>>): Promise<void> {
+  const result = await testAiProvider(provider);
+  if (!result.ok)
+    throw new HttpError(422, `Could not connect to the AI provider: ${result.error}`, "ai_connection_failed");
+}
+
+const aiConnectionCreateSchema = z
   .object({
-    base_url: z.string().trim().min(1).optional(),
-    model: z.string().trim().min(1).optional(),
-    api_key: z.string().nullable().optional(),
-    timeout_ms: z.number().int().min(1).max(300000).optional(),
+    ...aiConnectionFields,
+    timeout_ms: aiConnectionFields.timeout_ms.optional(),
+    concurrency: aiConnectionFields.concurrency.optional(),
+    thinking: aiConnectionFields.thinking.optional(),
   })
   .strict();
 router.post(
-  "/settings/ai-categorization/test",
+  "/settings/ai-connections",
   requireAdmin,
   asyncHandler(async (req, res) => {
-    const body = parseBody(aiCategorizationTestSchema, req.body ?? {});
-    const result = await testAiCategorizationProvider({
-      ...(body.base_url !== undefined ? { baseUrl: normalizeAiBaseUrl(body.base_url) } : {}),
-      ...(body.model !== undefined ? { model: body.model } : {}),
-      ...(body.api_key !== undefined ? { apiKey: body.api_key || null } : {}),
-      ...(body.timeout_ms !== undefined ? { timeoutMs: body.timeout_ms } : {}),
+    const body = parseBody(aiConnectionCreateSchema, req.body);
+    const provider = await providerFrom(undefined, body);
+    await requireAnswer(provider);
+    const connection = await createAiConnection({
+      baseUrl: provider.baseUrl!,
+      model: provider.model!,
+      apiKey: provider.apiKey,
+      timeoutMs: provider.timeoutMs,
+      thinking: provider.thinking,
+      concurrency: body.concurrency ?? DEFAULT_AI_PROVIDER.concurrency,
     });
+    res.status(201).json(aiConnectionOut(connection));
+  }),
+);
+
+const aiConnectionUpdateSchema = z.object(aiConnectionFields).partial().strict();
+router.patch(
+  "/settings/ai-connections/:id",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const body = parseBody(aiConnectionUpdateSchema, req.body);
+    const provider = await providerFrom(req.params.id, body);
+    // Concurrency and thinking don't change whether it answers.
+    if (
+      body.base_url !== undefined ||
+      body.model !== undefined ||
+      body.api_key !== undefined ||
+      body.timeout_ms !== undefined
+    ) {
+      await requireAnswer(provider);
+    }
+    const connection = await updateAiConnection(req.params.id, {
+      ...(body.base_url !== undefined ? { baseUrl: provider.baseUrl! } : {}),
+      ...(body.model !== undefined ? { model: provider.model! } : {}),
+      ...(body.api_key !== undefined ? { apiKey: provider.apiKey } : {}),
+      ...(body.timeout_ms !== undefined ? { timeoutMs: body.timeout_ms } : {}),
+      ...(body.concurrency !== undefined ? { concurrency: body.concurrency } : {}),
+      ...(body.thinking !== undefined ? { thinking: body.thinking } : {}),
+    });
+    res.json(aiConnectionOut(connection));
+  }),
+);
+
+router.delete(
+  "/settings/ai-connections/:id",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    await deleteAiConnection(req.params.id);
+    // A feature set to it goes back to the default.
+    if ((await getAiCategorizationPrefs()).aiConnectionId === req.params.id) {
+      await setAiCategorizationPrefs({ aiConnectionId: null });
+    }
+    res.status(204).end();
+  }),
+);
+
+router.post(
+  "/settings/ai-connections/:id/default",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    res.json(aiConnectionOut(await setDefaultAiConnection(req.params.id)));
+  }),
+);
+
+// `id` is a saved AI whose values the form's fill in; without it, only the form's values count.
+const aiModelListSchema = z
+  .object({
+    id: z.string().optional(),
+    base_url: z.string().trim().min(1).optional(),
+    api_key: z.string().nullable().optional(),
+  })
+  .strict();
+router.post(
+  "/settings/ai-connections/models",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const body = parseBody(aiModelListSchema, req.body ?? {});
+    res.json(await listAiProviderModels(await providerFrom(body.id, body)));
+  }),
+);
+
+const aiConnectionTestSchema = z
+  .object({ id: z.string().optional(), ...aiConnectionFields })
+  .partial()
+  .strict();
+router.post(
+  "/settings/ai-connections/test",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const body = parseBody(aiConnectionTestSchema, req.body ?? {});
+    const result = await testAiProvider(await providerFrom(body.id, body));
     res.json(result.ok ? { ok: true, latency_ms: result.latencyMs, model: result.model } : result);
   }),
 );

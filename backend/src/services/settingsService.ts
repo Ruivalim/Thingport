@@ -197,31 +197,23 @@ export async function setFlaresolverrUrl(value: string | null): Promise<string |
 }
 
 export type AiCategorizationMode = "off" | "suggest" | "auto";
-export type AiCategorizationSettings = {
+/** How categorization behaves; which AI it talks to is an AiConnection (aiConnectionService.ts). */
+export type AiCategorizationPrefs = {
   mode: AiCategorizationMode;
-  baseUrl: string | null;
-  apiKey: string | null;
-  model: string | null;
   threshold: number;
   onImport: boolean;
-  concurrency: number;
   sendImage: boolean;
-  thinking: boolean;
-  timeoutMs: number;
+  /** Null uses the default AI. */
+  aiConnectionId: string | null;
 };
 
 const AI_CATEGORIZATION_KEY = "ai_categorization";
-export const DEFAULT_AI_CATEGORIZATION_SETTINGS: AiCategorizationSettings = {
+export const DEFAULT_AI_CATEGORIZATION_PREFS: AiCategorizationPrefs = {
   mode: "off",
-  baseUrl: null,
-  apiKey: null,
-  model: null,
   threshold: 0.8,
   onImport: true,
-  concurrency: 1,
   sendImage: false,
-  thinking: true,
-  timeoutMs: 60000,
+  aiConnectionId: null,
 };
 
 /** Ollama, LM Studio, vLLM and OpenAI serve the API under /v1, so a bare origin gets it added. Any other path is
@@ -236,51 +228,35 @@ export function normalizeAiBaseUrl(value: string | null | undefined): string | n
   return trimmed;
 }
 
-function validAiSettings(value: unknown): Partial<AiCategorizationSettings> {
+function validAiPrefs(value: unknown): Partial<AiCategorizationPrefs> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   const raw = value as Record<string, unknown>;
   return {
     ...(raw.mode === "off" || raw.mode === "suggest" || raw.mode === "auto" ? { mode: raw.mode } : {}),
-    ...(typeof raw.baseUrl === "string" || raw.baseUrl === null ? { baseUrl: normalizeAiBaseUrl(raw.baseUrl) } : {}),
-    ...(typeof raw.apiKey === "string" || raw.apiKey === null ? { apiKey: raw.apiKey?.trim() || null } : {}),
-    ...(typeof raw.model === "string" || raw.model === null ? { model: raw.model?.trim() || null } : {}),
     ...(typeof raw.threshold === "number" && raw.threshold >= 0 && raw.threshold <= 1
       ? { threshold: raw.threshold }
       : {}),
     ...(typeof raw.onImport === "boolean" ? { onImport: raw.onImport } : {}),
-    ...(typeof raw.concurrency === "number" &&
-    Number.isInteger(raw.concurrency) &&
-    raw.concurrency >= 1 &&
-    raw.concurrency <= 4
-      ? { concurrency: raw.concurrency }
-      : {}),
     ...(typeof raw.sendImage === "boolean" ? { sendImage: raw.sendImage } : {}),
-    ...(typeof raw.thinking === "boolean" ? { thinking: raw.thinking } : {}),
-    ...(typeof raw.timeoutMs === "number" && Number.isInteger(raw.timeoutMs) && raw.timeoutMs > 0
-      ? { timeoutMs: raw.timeoutMs }
+    ...(typeof raw.aiConnectionId === "string" || raw.aiConnectionId === null
+      ? { aiConnectionId: raw.aiConnectionId || null }
       : {}),
   };
 }
 
-export async function getAiCategorizationSettings(): Promise<AiCategorizationSettings> {
+export async function getAiCategorizationPrefs(): Promise<AiCategorizationPrefs> {
   const row = await prisma.setting.findUnique({ where: { key: AI_CATEGORIZATION_KEY } });
-  return { ...DEFAULT_AI_CATEGORIZATION_SETTINGS, ...validAiSettings(row?.value) };
+  return { ...DEFAULT_AI_CATEGORIZATION_PREFS, ...validAiPrefs(row?.value) };
 }
 
-export async function setAiCategorizationSettings(
-  patch: Partial<AiCategorizationSettings>,
-): Promise<AiCategorizationSettings> {
-  const next = { ...(await getAiCategorizationSettings()), ...patch };
+export async function setAiCategorizationPrefs(patch: Partial<AiCategorizationPrefs>): Promise<AiCategorizationPrefs> {
+  const next = { ...(await getAiCategorizationPrefs()), ...patch };
   await prisma.setting.upsert({
     where: { key: AI_CATEGORIZATION_KEY },
     create: { key: AI_CATEGORIZATION_KEY, value: next as unknown as Prisma.InputJsonValue },
     update: { value: next as unknown as Prisma.InputJsonValue },
   });
   return next;
-}
-
-export function aiCategorizationEnabled(settings: AiCategorizationSettings): boolean {
-  return settings.mode !== "off" && Boolean(settings.baseUrl && settings.model);
 }
 
 const AUTH_TOKEN_TTL_KEY = "auth_token_ttl_seconds";

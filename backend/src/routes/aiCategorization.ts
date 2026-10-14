@@ -12,13 +12,14 @@ import {
   aiCategorizationCounts,
   cancelAiCategorizationRun,
   categorizePrint,
+  aiCategorizationEnabled,
   currentAiCategorizationRun,
+  getAiCategorizationSettings,
   queueAiCategorization,
   rejectAiSuggestion,
   startAiCategorizationRun,
   type AiCategorizationRun,
 } from "../services/aiCategorizationService";
-import { aiCategorizationEnabled, getAiCategorizationSettings } from "../services/settingsService";
 
 const router = Router();
 router.use(requireAuth);

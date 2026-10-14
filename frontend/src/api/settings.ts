@@ -58,22 +58,17 @@ export type AuthSettings = {
   token_ttl_seconds: number;
 };
 
+/** How categorization behaves; the AIs themselves are in api/aiConnections.ts. */
 export type AiCategorizationSettings = {
   mode: "off" | "suggest" | "auto";
-  base_url: string | null;
-  model: string | null;
-  has_api_key: boolean;
   threshold: number;
   on_import: boolean;
-  concurrency: number;
   send_image: boolean;
-  thinking: boolean;
-  timeout_ms: number;
+  /** Null uses the default AI. */
+  ai_connection_id: string | null;
 };
 
-export type AiCategorizationSettingsInput = Partial<Omit<AiCategorizationSettings, "has_api_key">> & {
-  api_key?: string | null;
-};
+export type AiCategorizationSettingsInput = Partial<AiCategorizationSettings>;
 
 export type SmtpSettings = {
   host: string | null;
@@ -134,34 +129,6 @@ export const settingsApi = {
     if (res.status === 401) throw new UnauthorizedError();
     if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to update AI categorization settings"));
     invalidateAiCategorizationStatus();
-    return res.json();
-  },
-
-  // Omitted fields use the saved value, so a connection can be tested before saving.
-  testAiCategorization: async (
-    payload: Pick<AiCategorizationSettingsInput, "base_url" | "model" | "api_key" | "timeout_ms"> = {},
-  ): Promise<{ ok: boolean; latency_ms?: number; model?: string; error?: string }> => {
-    const res = await fetch(`${apiBase()}/settings/ai-categorization/test`, {
-      method: "POST",
-      headers: authHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify(payload),
-    });
-    if (res.status === 401) throw new UnauthorizedError();
-    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to test AI connection"));
-    return res.json();
-  },
-
-  /** The models the provider serves, for the model field's suggestions; omitted values use the saved ones. */
-  listAiModels: async (
-    payload: Pick<AiCategorizationSettingsInput, "base_url" | "api_key"> = {},
-  ): Promise<{ ok: true; models: string[] } | { ok: false; error: string }> => {
-    const res = await fetch(`${apiBase()}/settings/ai-categorization/models`, {
-      method: "POST",
-      headers: authHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify(payload),
-    });
-    if (res.status === 401) throw new UnauthorizedError();
-    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to list AI models"));
     return res.json();
   },
 

@@ -9,7 +9,45 @@ import { previewImagePath } from "./previewImageService";
 import { createLog } from "./auditLog";
 import { createNotification } from "./notificationService";
 import { setPrintCategory } from "./printCategoryService";
-import { aiCategorizationEnabled, getAiCategorizationSettings, type AiCategorizationSettings } from "./settingsService";
+import { DEFAULT_AI_PROVIDER, resolveAiConnection, type AiProvider } from "./aiConnectionService";
+import { getAiCategorizationPrefs, type AiCategorizationPrefs } from "./settingsService";
+
+/** Categorization's own preferences with the AI it uses; base URL and model are null while there's no AI. */
+export type AiCategorizationSettings = AiCategorizationPrefs &
+  Omit<AiProvider, "baseUrl" | "model"> & { baseUrl: string | null; model: string | null; connectionId: string | null };
+
+/** What one request to a provider needs, saved or only typed into the settings form. */
+type RequestSettings = Omit<AiProvider, "baseUrl" | "model" | "concurrency"> & {
+  baseUrl: string | null;
+  model: string | null;
+  sendImage: boolean;
+};
+
+export async function getAiCategorizationSettings(): Promise<AiCategorizationSettings> {
+  const prefs = await getAiCategorizationPrefs();
+  const connection = await resolveAiConnection(prefs.aiConnectionId);
+  return {
+    ...prefs,
+    ...DEFAULT_AI_PROVIDER,
+    baseUrl: null,
+    model: null,
+    ...(connection
+      ? {
+          baseUrl: connection.baseUrl,
+          apiKey: connection.apiKey,
+          model: connection.model,
+          timeoutMs: connection.timeoutMs,
+          concurrency: connection.concurrency,
+          thinking: connection.thinking,
+        }
+      : {}),
+    connectionId: connection?.id ?? null,
+  };
+}
+
+export function aiCategorizationEnabled(settings: AiCategorizationSettings): boolean {
+  return settings.mode !== "off" && Boolean(settings.baseUrl && settings.model);
+}
 
 const suggestionSchema = z.object({
   categoryId: z.string(),
@@ -26,8 +64,8 @@ type Candidate = { id: string; path: string };
 type ProviderResult = { categoryId: string | null; confidence: number; reason: string };
 export type CategorizationOutcome = "applied" | "suggested" | "no_match" | "unchanged";
 
-let active = 0;
-const waiters: (() => void)[] = [];
+// Per AI: each provider has its own limit, and a slow one shouldn't hold up another.
+const slots = new Map<string, { active: number; waiters: (() => void)[] }>();
 let retryDelay = (milliseconds: number) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
 
 /** Keeps timeout and retry tests fast without changing production backoff behavior. */
@@ -35,18 +73,23 @@ export function setAiCategorizationRetryDelayForTest(delay?: (milliseconds: numb
   retryDelay = delay ?? ((milliseconds) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
 }
 
-async function limited<T>(limit: number, task: () => Promise<T>): Promise<T> {
-  // A waiter can be woken while another request takes the slot first, so it retries acquisition.
-  if (active >= limit) {
-    await new Promise<void>((resolve) => waiters.push(resolve));
-    return limited(limit, task);
+async function limited<T>(key: string, limit: number, task: () => Promise<T>): Promise<T> {
+  let slot = slots.get(key);
+  if (!slot) {
+    slot = { active: 0, waiters: [] };
+    slots.set(key, slot);
   }
-  active++;
+  // A waiter can be woken while another request takes the slot first, so it retries acquisition.
+  if (slot.active >= limit) {
+    await new Promise<void>((resolve) => slot.waiters.push(resolve));
+    return limited(key, limit, task);
+  }
+  slot.active++;
   try {
     return await task();
   } finally {
-    active--;
-    waiters.shift()?.();
+    slot.active--;
+    slot.waiters.shift()?.();
   }
 }
 
@@ -116,7 +159,7 @@ function chatUrl(baseUrl: string): string {
 }
 
 /** What a failed fetch means to an admin; fetch itself only says "fetch failed" or "aborted". */
-function readableNetworkError(error: unknown, settings: AiCategorizationSettings): unknown {
+function readableNetworkError(error: unknown, settings: { timeoutMs: number }): unknown {
   if (error instanceof Error && error.name === "AbortError")
     return new Error(`The AI provider did not answer within ${Math.round(settings.timeoutMs / 1000)} s`);
   if (error instanceof TypeError) return new Error("Could not reach the AI provider. Check the API base URL.");
@@ -176,7 +219,7 @@ const reasoningEffortRejected = new Set<string>();
 async function requestProvider(
   print: Print,
   categories: Candidate[],
-  settings: AiCategorizationSettings,
+  settings: RequestSettings,
   attempts = 3,
 ): Promise<ProviderResult> {
   const candidates = withLabels(categories);
@@ -421,7 +464,9 @@ async function categorizeOne(
     return "no_match";
   }
 
-  const answer = await limited(settings.concurrency, () => requestProvider(print, candidates, settings));
+  const answer = await limited(settings.connectionId ?? "", settings.concurrency, () =>
+    requestProvider(print, candidates, settings),
+  );
   const expected = { categoryId: print.categoryId, categorySource: print.categorySource };
   if (answer.categoryId === null) {
     await clearSuggestion(print.id, expected);
@@ -779,17 +824,17 @@ export function cancelAiCategorizationRun(userId: string): AiCategorizationRun |
 const MODEL_LIST_TIMEOUT_MS = 10_000;
 
 /**
- * The models the provider serves, from the OpenAI-style `GET /models` that Ollama, LM Studio, vLLM, OpenAI, OpenRouter
- * and Gemini all answer, so the settings form can suggest them. Given values fall back to the saved ones, like a test.
+ * The models a provider serves, from the OpenAI-style `GET /models` that Ollama, LM Studio, vLLM, OpenAI, OpenRouter
+ * and Gemini all answer, so the settings form can suggest them.
  */
-export async function listAiProviderModels(
-  overrides: Partial<Pick<AiCategorizationSettings, "baseUrl" | "apiKey">> = {},
-): Promise<{ ok: true; models: string[] } | { ok: false; error: string }> {
-  const settings = { ...(await getAiCategorizationSettings()), ...overrides };
-  if (!settings.baseUrl) return { ok: false, error: "Set the API base URL first" };
+export async function listAiProviderModels(provider: {
+  baseUrl: string | null;
+  apiKey: string | null;
+}): Promise<{ ok: true; models: string[] } | { ok: false; error: string }> {
+  if (!provider.baseUrl) return { ok: false, error: "Set the API base URL first" };
   try {
-    const response = await fetch(`${settings.baseUrl.replace(/\/+$/, "")}/models`, {
-      headers: settings.apiKey ? { authorization: `Bearer ${settings.apiKey}` } : {},
+    const response = await fetch(`${provider.baseUrl.replace(/\/+$/, "")}/models`, {
+      headers: provider.apiKey ? { authorization: `Bearer ${provider.apiKey}` } : {},
       signal: AbortSignal.timeout(MODEL_LIST_TIMEOUT_MS),
     });
     if (!response.ok) return { ok: false, error: `AI provider returned HTTP ${response.status}` };
@@ -807,17 +852,15 @@ export async function listAiProviderModels(
       error instanceof Error && error.name === "TimeoutError"
         ? `The AI provider did not answer within ${MODEL_LIST_TIMEOUT_MS / 1000} s`
         : noSecretError(error).message;
-    return { ok: false, error: settings.apiKey ? message.replaceAll(settings.apiKey, "[redacted]") : message };
+    return { ok: false, error: provider.apiKey ? message.replaceAll(provider.apiKey, "[redacted]") : message };
   }
 }
 
-/** Tests the given connection values, falling back to the saved ones, so a connection can be checked before saving. */
-export async function testAiCategorizationProvider(
-  overrides: Partial<Pick<AiCategorizationSettings, "baseUrl" | "model" | "apiKey" | "timeoutMs">> = {},
+/** Asks a provider to categorize a calibration cube, so a connection can be checked before it's saved. */
+export async function testAiProvider(
+  provider: Omit<AiProvider, "baseUrl" | "model" | "concurrency"> & { baseUrl: string | null; model: string | null },
 ): Promise<{ ok: true; latencyMs: number; model: string } | { ok: false; error: string }> {
-  const settings = { ...(await getAiCategorizationSettings()), ...overrides };
-  // The connection is tested on its own, so categorization may still be off.
-  if (!settings.baseUrl || !settings.model) return { ok: false, error: "Set the API base URL and model name first" };
+  if (!provider.baseUrl || !provider.model) return { ok: false, error: "Set the API base URL and model name first" };
   const start = Date.now();
   try {
     const fake = {
@@ -840,13 +883,13 @@ export async function testAiCategorizationProvider(
         { id: "a", path: "Calibration" },
         { id: "b", path: "Other" },
       ],
-      settings,
+      { ...provider, sendImage: false },
       // A test answers the admin who is waiting on it; one attempt says whether the connection works.
       1,
     );
-    return { ok: true, latencyMs: Date.now() - start, model: settings.model! };
+    return { ok: true, latencyMs: Date.now() - start, model: provider.model };
   } catch (error) {
     const message = noSecretError(error).message;
-    return { ok: false, error: settings.apiKey ? message.replaceAll(settings.apiKey, "[redacted]") : message };
+    return { ok: false, error: provider.apiKey ? message.replaceAll(provider.apiKey, "[redacted]") : message };
   }
 }

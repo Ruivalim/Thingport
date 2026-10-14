@@ -1,0 +1,65 @@
+import { authHeaders } from "../utils/auth";
+import { apiBase, readErrorMessage, UnauthorizedError } from "./client";
+import { invalidateAiCategorizationStatus } from "./aiCategorization";
+
+export type AiConnection = {
+  id: string;
+  base_url: string;
+  model: string;
+  has_api_key: boolean;
+  timeout_ms: number;
+  concurrency: number;
+  thinking: boolean;
+  is_default: boolean;
+};
+
+/** api_key: omitted keeps the saved one, null or "" removes it. */
+export type AiConnectionInput = {
+  base_url: string;
+  model: string;
+  api_key?: string | null;
+  timeout_ms: number;
+  concurrency: number;
+  thinking: boolean;
+};
+
+export type AiConnectionTest = { ok: boolean; latency_ms?: number; model?: string; error?: string };
+export type AiModelList = { ok: true; models: string[] } | { ok: false; error: string };
+
+async function request<T>(path: string, method = "GET", payload?: unknown): Promise<T> {
+  const res = await fetch(`${apiBase()}${path}`, {
+    method,
+    headers: authHeaders(payload === undefined ? undefined : { "Content-Type": "application/json" }),
+    ...(payload === undefined ? {} : { body: JSON.stringify(payload) }),
+  });
+  if (res.status === 401) throw new UnauthorizedError();
+  if (!res.ok) throw new Error(await readErrorMessage(res, `Request failed (${res.status})`));
+  return (res.status === 204 ? undefined : await res.json()) as T;
+}
+
+/** The instance's AIs. Adding, deleting or changing the default can turn AI features on or off, so the cached
+ *  status is dropped after each. */
+export const aiConnectionsApi = {
+  list: (): Promise<AiConnection[]> => request("/settings/ai-connections"),
+  create: async (input: AiConnectionInput): Promise<AiConnection> => {
+    const created = await request<AiConnection>("/settings/ai-connections", "POST", input);
+    invalidateAiCategorizationStatus();
+    return created;
+  },
+  update: (id: string, input: Partial<AiConnectionInput>): Promise<AiConnection> =>
+    request(`/settings/ai-connections/${encodeURIComponent(id)}`, "PATCH", input),
+  remove: async (id: string): Promise<void> => {
+    await request<void>(`/settings/ai-connections/${encodeURIComponent(id)}`, "DELETE");
+    invalidateAiCategorizationStatus();
+  },
+  makeDefault: async (id: string): Promise<AiConnection> => {
+    const made = await request<AiConnection>(`/settings/ai-connections/${encodeURIComponent(id)}/default`, "POST");
+    invalidateAiCategorizationStatus();
+    return made;
+  },
+  /** `id` fills in what the form leaves out from that saved AI, such as its key. */
+  test: (payload: Partial<AiConnectionInput> & { id?: string }): Promise<AiConnectionTest> =>
+    request("/settings/ai-connections/test", "POST", payload),
+  models: (payload: { id?: string; base_url?: string; api_key?: string | null }): Promise<AiModelList> =>
+    request("/settings/ai-connections/models", "POST", payload),
+};

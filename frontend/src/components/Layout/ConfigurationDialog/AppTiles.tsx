@@ -17,6 +17,8 @@ export function AppGrid({ children }: { children: React.ReactNode }) {
 
 type TileProps = {
   name: string;
+  /** A smaller line under the name, e.g. to tell two tiles with the same name apart. */
+  subtitle?: string;
   logo: React.ReactNode;
   /** Coloured when on, grey when off. */
   on: boolean;
@@ -29,11 +31,14 @@ type TileProps = {
   onContextMenu: (event: React.MouseEvent<HTMLElement>) => void;
   /** Double-click or Enter. */
   onActivate: () => void;
+  /** Each click, double-clicks included; `event.detail` says which click it is. */
+  onClick?: (event: React.MouseEvent<HTMLElement>) => void;
 };
 
 /** An app icon with its name under it. */
 export function AppTile({
   name,
+  subtitle,
   logo,
   on,
   badge,
@@ -42,11 +47,13 @@ export function AppTile({
   ariaLabel,
   onContextMenu,
   onActivate,
+  onClick,
 }: TileProps) {
   return (
     <Tooltip title={tooltip ?? ""} placement="bottom">
       <ButtonBase
         onContextMenu={onContextMenu}
+        onClick={onClick}
         onDoubleClick={onActivate}
         onKeyDown={(event) => {
           if (event.key === "Enter") onActivate();
@@ -102,6 +109,23 @@ export function AppTile({
         >
           {name}
         </Typography>
+        {subtitle && (
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{
+              fontSize: "0.62rem",
+              lineHeight: 1.2,
+              mt: -0.5,
+              maxWidth: "100%",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {subtitle}
+          </Typography>
+        )}
       </ButtonBase>
     </Tooltip>
   );
