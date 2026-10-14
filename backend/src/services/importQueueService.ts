@@ -44,7 +44,11 @@ export async function startLinksJob(
 ): Promise<{ run: Promise<void> }> {
   if (job.type !== "LINKS") throw new HttpError(400, "Only a link-list import can be started or retried");
   if (job.status === "RUNNING" && isRunnerLive(job.id)) throw new HttpError(409, "This import is already running");
-  if (!opts.retryFailed && job.status !== "PAUSED") throw new HttpError(400, "Only a paused import can be started");
+  // An ERROR job was cut off (a restart, or its runner crashed) with links still waiting, and has
+  // no failed links for a retry to pick up, so it starts like a paused one.
+  if (!opts.retryFailed && job.status !== "PAUSED" && job.status !== "ERROR") {
+    throw new HttpError(400, "Only a paused or interrupted import can be started");
+  }
   if (isRunnerLive(job.id)) {
     // A paused job's runner finishes the link it's on before it stops, which can take a while.
     if (job.status === "PAUSED") {
@@ -58,7 +62,11 @@ export async function startLinksJob(
 
   if (opts.retryFailed) {
     const failed = await resetFailedItems(job.id);
-    if (!failed) throw new HttpError(400, "This import has no failed links to retry");
+    // Links an interrupted run never reached are rerun too, so a retry alone can finish it.
+    const waiting = await prisma.importJobItem.count({
+      where: { jobId: job.id, status: { in: ["PENDING", "RUNNING"] } },
+    });
+    if (!failed && !waiting) throw new HttpError(400, "This import has no failed links to retry");
   }
   // No runner is alive, so a RUNNING item was cut off (a restart, or a pause mid-link).
   await prisma.importJobItem.updateMany({ where: { jobId: job.id, status: "RUNNING" }, data: { status: "PENDING" } });

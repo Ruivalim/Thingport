@@ -465,6 +465,60 @@ describe("the import queue", () => {
       expect(finished.imported).toBe(1);
     });
 
+    it("starts a job a restart cut off, which has links waiting but none failed", async () => {
+      const res = await queue(member, { url: modelUrl(base + 86) });
+      await queue(member, { url: modelUrl(base + 87) });
+      const jobId = res.body.job_id;
+      // What the boot recovery in server.ts leaves: the link that was importing still RUNNING.
+      const [first] = await items(jobId);
+      await prisma.importJobItem.update({ where: { id: first.id }, data: { status: "RUNNING" } });
+      await prisma.importJob.update({
+        where: { id: jobId },
+        data: { status: "ERROR", errorMessage: "Interrupted by server restart" },
+      });
+
+      const start = await request(app).post(`/api/admin/import-queue/jobs/${jobId}/start`).set(auth(admin));
+      expect(start.status).toBe(202);
+      const finished = await waitStatus(jobId, "DONE");
+      expect(finished.imported).toBe(2);
+      expect(finished.errorMessage).toBeNull();
+      expect((await items(jobId)).map((item) => item.status)).toEqual(["DONE", "DONE"]);
+    });
+
+    it("lets a retry finish a job a restart cut off, too, though none of its links failed", async () => {
+      const res = await queue(member, { url: modelUrl(base + 88) });
+      await queue(member, { url: modelUrl(base + 89) });
+      const jobId = res.body.job_id;
+      const [first] = await items(jobId);
+      await prisma.importJobItem.update({ where: { id: first.id }, data: { status: "RUNNING" } });
+      await prisma.importJob.update({ where: { id: jobId }, data: { status: "ERROR" } });
+
+      const retry = await request(app).post(`/api/admin/import-queue/jobs/${jobId}/retry`).set(auth(admin));
+      expect(retry.status).toBe(202);
+      const finished = await waitFor(
+        () => job(jobId),
+        (j) => j.status === "DONE" && j.imported === 2,
+      );
+      expect(finished.failedCount).toBe(0);
+    });
+
+    it("still won't start or retry a finished job with nothing left", async () => {
+      const res = await queue(member, { url: modelUrl(base + 79) });
+      const jobId = res.body.job_id;
+      await request(app).post(`/api/admin/import-queue/jobs/${jobId}/start`).set(auth(admin));
+      await waitStatus(jobId, "DONE");
+      await waitFor(
+        async () => (await request(app).get("/api/admin/import-queue").set(auth(admin))).body,
+        (body) => !body.jobs.some((j: { runner_live: boolean }) => j.runner_live),
+      );
+      expect((await request(app).post(`/api/admin/import-queue/jobs/${jobId}/start`).set(auth(admin))).status).toBe(
+        400,
+      );
+      expect((await request(app).post(`/api/admin/import-queue/jobs/${jobId}/retry`).set(auth(admin))).status).toBe(
+        400,
+      );
+    });
+
     it("retries just the failed links of a job", async () => {
       gone.add(String(base + 81));
       await queue(member, { url: modelUrl(base + 80) });

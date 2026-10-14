@@ -324,7 +324,12 @@ function JobRow({
   const isLinks = job.type === "LINKS";
   const status = jobStatus(job);
   const idle = job.status !== "RUNNING" && !job.runner_live;
-  const canStart = isLinks && job.status === "PAUSED" && !job.runner_live && job.pending_count + job.running_count > 0;
+  // An ERROR job was cut off with links still waiting (a restart, say), and starts like a paused one.
+  const canStart =
+    isLinks &&
+    (job.status === "PAUSED" || job.status === "ERROR") &&
+    !job.runner_live &&
+    job.pending_count + job.running_count > 0;
   const canPause = isLinks && job.status === "RUNNING";
   const canRetry = isLinks && idle && job.failed_items_count > 0;
   const progress = job.total > 0 ? Math.min(100, (job.processed / job.total) * 100) : 0;
