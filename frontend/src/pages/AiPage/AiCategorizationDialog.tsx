@@ -3,10 +3,8 @@ import { useTranslation } from "react-i18next";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogTitle from "@mui/material/DialogTitle";
+import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
+import TuneIcon from "@mui/icons-material/Tune";
 import FormControl from "@mui/material/FormControl";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import InputLabel from "@mui/material/InputLabel";
@@ -18,10 +16,30 @@ import TextField from "@mui/material/TextField";
 import { UnauthorizedError } from "../../api/client";
 import { settingsApi, type AiCategorizationSettings } from "../../api/settings";
 import type { AiConnection } from "../../api/aiConnections";
-import { hostOf } from "./aiLogos";
+import SectionedDialog from "../../components/SectionedDialog";
+import AiCategorizationPanel from "../ModelsPage/AiCategorizationPanel";
+import { AiLogo, hostOf } from "./aiLogos";
+
+type Section = "settings" | "manage";
+
+/** An option in the "Use AI" list: the model's logo and what to call it. */
+function AiOption({ connection, label }: { connection: AiConnection | undefined; label: string }) {
+  return (
+    <Stack direction="row" spacing={1.25} alignItems="center">
+      {connection ? (
+        <AiLogo model={connection.model} baseUrl={connection.base_url} size={18} />
+      ) : (
+        <span style={{ width: 18 }} />
+      )}
+      <span>{label}</span>
+    </Stack>
+  );
+}
 
 type Props = {
   settings: AiCategorizationSettings;
+  /** Switched on with a model to use; Manage can only be opened then, as nothing can run otherwise. */
+  active: boolean;
   connections: AiConnection[];
   onClose: () => void;
   onSaved: (settings: AiCategorizationSettings) => void;
@@ -30,9 +48,19 @@ type Props = {
 
 type Draft = Pick<AiCategorizationSettings, "mode" | "threshold" | "on_import" | "send_image" | "ai_connection_id">;
 
-/** How AI categorization behaves. Turning it on and off is the switch on its tile. */
-export default function AiCategorizationDialog({ settings, connections, onClose, onSaved, onUnauthorized }: Props) {
-  const { t } = useTranslation(["app", "common"]);
+/** AI categorization's settings, and the library run with its suggestions, as in the categories manager. Turning
+ *  it on and off is the switch on its tile. */
+export default function AiCategorizationDialog({
+  settings,
+  active,
+  connections,
+  onClose,
+  onSaved,
+  onUnauthorized,
+}: Props) {
+  const { t } = useTranslation("app");
+  const [section, setSection] = useState<Section>("settings");
+  const [saved, setSaved] = useState(false);
   const [draft, setDraft] = useState<Draft>({
     mode: settings.mode,
     threshold: settings.threshold,
@@ -43,15 +71,18 @@ export default function AiCategorizationDialog({ settings, connections, onClose,
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const update = <K extends keyof Draft>(key: K, value: Draft[K]) =>
+  const update = <K extends keyof Draft>(key: K, value: Draft[K]) => {
+    setSaved(false);
     setDraft((current) => ({ ...current, [key]: value }));
+  };
 
   const save = async () => {
     setSaving(true);
     setError(null);
+    setSaved(false);
     try {
       onSaved(await settingsApi.updateAiCategorization({ ...draft, threshold: Number(draft.threshold) }));
-      onClose();
+      setSaved(true);
     } catch (err) {
       if (err instanceof UnauthorizedError) onUnauthorized?.();
       else setError(err instanceof Error ? err.message : t("adminSettings.aiCategorization.failed"));
@@ -60,11 +91,40 @@ export default function AiCategorizationDialog({ settings, connections, onClose,
     }
   };
 
+  const defaultConnection = connections.find((connection) => connection.is_default);
+  const defaultOption = (
+    <AiOption
+      connection={defaultConnection}
+      label={t("adminSettings.aiCategorization.defaultAi", { model: defaultConnection?.model ?? "—" })}
+    />
+  );
+
   return (
-    <Dialog open onClose={saving ? undefined : onClose} fullWidth maxWidth="sm">
-      <DialogTitle>{t("adminSettings.aiCategorization.heading")}</DialogTitle>
-      <DialogContent>
-        <Stack spacing={2} sx={{ pt: 1 }}>
+    <SectionedDialog
+      open
+      onClose={saving ? () => undefined : onClose}
+      title={t("adminSettings.aiCategorization.heading")}
+      sections={[
+        {
+          id: "settings" as const,
+          label: t("adminSettings.aiCategorization.settings"),
+          icon: <TuneIcon fontSize="small" />,
+        },
+        {
+          id: "manage" as const,
+          label: t("adminSettings.aiCategorization.manage"),
+          icon: <AutoAwesomeOutlinedIcon fontSize="small" />,
+          disabled: !active,
+        },
+      ]}
+      section={active ? section : "settings"}
+      onSectionChange={setSection}
+      size="large"
+    >
+      {section === "manage" && active ? (
+        <AiCategorizationPanel onUnauthorized={onUnauthorized} onRunStarted={onClose} />
+      ) : (
+        <Stack spacing={2}>
           <Alert severity="info">{t("adminSettings.aiCategorization.privacy")}</Alert>
           {!connections.length && <Alert severity="warning">{t("adminSettings.aiCategorization.noAi")}</Alert>}
           <FormControl fullWidth>
@@ -83,17 +143,22 @@ export default function AiCategorizationDialog({ settings, connections, onClose,
               }
               displayEmpty
               notched
+              // The chosen option as it looks in the list, logo included; empty is the default AI.
+              renderValue={(value) => {
+                const chosen = connections.find((connection) => connection.id === value);
+                return chosen ? (
+                  <AiOption connection={chosen} label={`${chosen.model} · ${hostOf(chosen.base_url)}`} />
+                ) : (
+                  defaultOption
+                );
+              }}
               onChange={(event) => update("ai_connection_id", event.target.value || null)}
               disabled={saving || !connections.length}
             >
-              <MenuItem value="">
-                {t("adminSettings.aiCategorization.defaultAi", {
-                  model: connections.find((connection) => connection.is_default)?.model ?? "—",
-                })}
-              </MenuItem>
+              <MenuItem value="">{defaultOption}</MenuItem>
               {connections.map((connection) => (
                 <MenuItem key={connection.id} value={connection.id}>
-                  {connection.model} · {hostOf(connection.base_url)}
+                  <AiOption connection={connection} label={`${connection.model} · ${hostOf(connection.base_url)}`} />
                 </MenuItem>
               ))}
             </Select>
@@ -141,22 +206,20 @@ export default function AiCategorizationDialog({ settings, connections, onClose,
             }
             label={t("adminSettings.aiCategorization.sendImage")}
           />
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <Button
+              variant="contained"
+              onClick={() => void save()}
+              disabled={saving}
+              startIcon={saving ? <CircularProgress size={14} color="inherit" /> : undefined}
+            >
+              {t("adminSettings.aiCategorization.save")}
+            </Button>
+          </Stack>
+          {saved && <Alert severity="success">{t("adminSettings.aiCategorization.saved")}</Alert>}
           {error && <Alert severity="error">{error}</Alert>}
         </Stack>
-      </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onClose} disabled={saving}>
-          {t("common:cancel")}
-        </Button>
-        <Button
-          variant="contained"
-          onClick={() => void save()}
-          disabled={saving}
-          startIcon={saving ? <CircularProgress size={14} color="inherit" /> : undefined}
-        >
-          {t("adminSettings.aiCategorization.save")}
-        </Button>
-      </DialogActions>
-    </Dialog>
+      )}
+    </SectionedDialog>
   );
 }

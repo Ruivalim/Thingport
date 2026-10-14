@@ -613,9 +613,9 @@
           "heading": "Models",
           "subtitle": "OpenAI-compatible services Thingport's AI features use.",
           "gridHint": "Click an AI to make it the default. Double-click to edit or test it, or right-click for more.",
-          "add": "Add AI",
-          "addTitle": "Add AI",
-          "editTitle": "Edit AI",
+          "add": "Add AI model",
+          "addTitle": "Add AI model",
+          "editTitle": "Edit AI model",
           "edit": "Edit",
           "makeDefault": "Make default",
           "delete": "Delete",
@@ -673,7 +673,10 @@
         "threshold": "Auto-apply confidence threshold",
         "onImport": "Categorize new imports",
         "sendImage": "Send the first preview image",
+        "settings": "Settings",
+        "manage": "Manage",
         "save": "Save settings",
+        "saved": "AI categorization settings saved.",
         "failed": "Failed to load or save AI categorization settings."
       },
       "session": {

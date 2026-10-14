@@ -155,6 +155,7 @@ export default function AiFeaturesSection({ connections, onUnauthorized }: Props
       {open && settings && (
         <AiCategorizationDialog
           settings={settings}
+          active={enabled}
           connections={connections ?? []}
           onClose={() => setOpen(false)}
           onSaved={setSettings}

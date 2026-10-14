@@ -8,7 +8,8 @@ import Typography from "@mui/material/Typography";
 import type { Theme } from "@mui/material/styles";
 import CloseIcon from "@mui/icons-material/Close";
 
-export type DialogSection<T extends string> = { id: T; label: string; icon: React.ReactNode };
+/** `disabled` shows a section that can't be opened right now, rather than leaving it out. */
+export type DialogSection<T extends string> = { id: T; label: string; icon: React.ReactNode; disabled?: boolean };
 
 const selectedBg = (theme: Theme) =>
   theme.palette.mode === "dark" ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.06)";
@@ -46,12 +47,13 @@ export default function SectionedDialog<T extends string>({
   const { t } = useTranslation("common");
   const { width, height, navWidth } = SIZES[size];
 
-  const sectionButton = ({ id, label, icon }: DialogSection<T>, compact: boolean) => {
+  const sectionButton = ({ id, label, icon, disabled }: DialogSection<T>, compact: boolean) => {
     const chosen = id === section;
     return (
       <ButtonBase
         key={id}
         aria-pressed={chosen}
+        disabled={disabled}
         onClick={() => onSectionChange(id)}
         sx={{
           display: "flex",
@@ -70,6 +72,7 @@ export default function SectionedDialog<T extends string>({
           color: chosen ? (muiTheme) => muiTheme.thingport.headingText : "text.secondary",
           bgcolor: chosen ? selectedBg : "transparent",
           transition: "background-color 150ms",
+          "&.Mui-disabled": { opacity: 0.45 },
           "&:hover": { bgcolor: chosen ? selectedBg : hoverBg },
         }}
       >
