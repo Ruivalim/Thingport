@@ -22,6 +22,7 @@ import { getPreviewMode } from "./settingsService";
 import { Prisma } from "@prisma/client";
 import type { CategorySource, Plate, Print } from "@prisma/client";
 import { enqueueAiCategorization } from "./aiCategorizationService";
+import { enqueueAiDescription } from "./aiDescriptionService";
 
 const IMAGE_EXTS = new Set([".png", ".jpg", ".jpeg", ".webp", ".bmp"]);
 
@@ -219,6 +220,7 @@ export async function createPrint(
     // Background classification is intentionally detached: importing a model must not wait for,
     // or fail because of, a third-party AI provider.
     if (!print.categoryId) void enqueueAiCategorization(userId, print.id);
+    enqueueAiDescription(userId, print.id);
     return { print, plates };
   } catch (err) {
     await discardPrint(print.id);

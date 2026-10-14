@@ -64,6 +64,14 @@ export type Print = {
   category_name?: string | null;
   category_source?: "manual" | "rule" | "ai" | "legacy" | null;
   category_kind?: "category" | "folder" | null;
+  /** Improved descriptions, on the detail page while the feature is on: a rewrite to review, and the description
+   *  from before one was applied. */
+  ai_description_suggestion?: { notes: string; created_at: string } | null;
+  ai_description_original?: string | null;
+  /** The description is an AI rewrite, not since edited or reverted; sent whether or not the feature is on. */
+  description_by_ai?: boolean;
+  /** A suggested description awaits review; on every model, unlike the suggestion itself. */
+  ai_description_pending?: boolean;
   ai_suggestion?: {
     category_id: string;
     category_path: string;

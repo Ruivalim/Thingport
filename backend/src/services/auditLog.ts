@@ -24,7 +24,8 @@ export type LogAction =
   | "collection_item_removed"
   | "collection_sync_enabled"
   | "collection_sync_disabled"
-  | "ai_categorization_run";
+  | "ai_categorization_run"
+  | "ai_description_run";
 
 /** Fire-and-forget: a logging failure must never break the action it records. */
 export async function createLog(params: {

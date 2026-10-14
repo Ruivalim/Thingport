@@ -4,7 +4,8 @@ import { type Print, printsApi } from "../../api/prints";
 import { useNotifications } from "../../components/Layout/NotificationsContext";
 
 const POLL_INTERVAL_MS = 3000;
-// Past the longest a provider can take: three attempts at the 300 s timeout settings allow.
+// Past the longest a category can take: three attempts at the 300 s timeout settings allow. A description streams
+// for as long as the model keeps writing, so its caller waits longer.
 const GIVE_UP_MS = 16 * 60_000;
 const RECENT = 10;
 
@@ -13,7 +14,7 @@ const RECENT = 10;
  * model, so the page that asked shows the outcome. The bell's own poll is slow and only counts. Notifications from
  * before the request are noted first, so no clock comparison decides which one is new.
  */
-export function useAiOutcomeWatch(printId: string, onUpdated?: (print: Print) => void) {
+export function useAiOutcomeWatch(printId: string, onUpdated?: (print: Print) => void, giveUpMs = GIVE_UP_MS) {
   const { refresh } = useNotifications();
   const stopRef = useRef<(() => void) | null>(null);
   useEffect(() => () => stopRef.current?.(), []);
@@ -34,7 +35,7 @@ export function useAiOutcomeWatch(printId: string, onUpdated?: (print: Print) =>
       };
       stopRef.current = stop;
       const path = `/models/${printId}`;
-      const giveUpAt = Date.now() + GIVE_UP_MS;
+      const giveUpAt = Date.now() + giveUpMs;
       const check = async () => {
         try {
           const { items } = await notificationsApi.list({ limit: RECENT });
@@ -52,6 +53,6 @@ export function useAiOutcomeWatch(printId: string, onUpdated?: (print: Print) =>
       };
       timer = window.setTimeout(() => void check(), POLL_INTERVAL_MS);
     },
-    [printId, onUpdated, refresh],
+    [printId, onUpdated, refresh, giveUpMs],
   );
 }

@@ -49,6 +49,27 @@ export async function resolveAiConnection(id: string | null | undefined): Promis
   return prisma.aiConnection.findFirst({ where: { isDefault: true } });
 }
 
+/** What a feature set to `id` talks to; base URL and model are null while there's no AI at all. */
+export type ResolvedAiProvider = Omit<AiProvider, "baseUrl" | "model"> & {
+  baseUrl: string | null;
+  model: string | null;
+  connectionId: string | null;
+};
+
+export async function resolveAiProvider(id: string | null | undefined): Promise<ResolvedAiProvider> {
+  const connection = await resolveAiConnection(id);
+  if (!connection) return { ...DEFAULT_AI_PROVIDER, baseUrl: null, model: null, connectionId: null };
+  return {
+    baseUrl: connection.baseUrl,
+    apiKey: connection.apiKey,
+    model: connection.model,
+    timeoutMs: connection.timeoutMs,
+    concurrency: connection.concurrency,
+    thinking: connection.thinking,
+    connectionId: connection.id,
+  };
+}
+
 /** The first AI becomes the default, so a feature always has one to use. */
 export async function createAiConnection(input: AiConnectionInput): Promise<AiConnection> {
   return prisma.$transaction(async (tx) => {

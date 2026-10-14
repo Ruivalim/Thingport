@@ -1,48 +1,31 @@
-import fs from "node:fs/promises";
 import { Prisma, type CategorySource, type Print } from "@prisma/client";
-import sharp from "sharp";
 import { z } from "zod";
 import { prisma } from "../db";
 import { HttpError } from "../utils/fileUtils";
 import { createLogger } from "../logger";
-import { previewImagePath } from "./previewImageService";
 import { createLog } from "./auditLog";
 import { createNotification } from "./notificationService";
 import { setPrintCategory } from "./printCategoryService";
-import { DEFAULT_AI_PROVIDER, resolveAiConnection, type AiProvider } from "./aiConnectionService";
+import { resolveAiProvider, type ResolvedAiProvider } from "./aiConnectionService";
+import {
+  askProvider,
+  limited,
+  noSecretError,
+  previewPart,
+  setAiRetryDelayForTest,
+  type ProviderContent,
+  type ProviderSettings,
+} from "./aiProviderClient";
 import { getAiCategorizationPrefs, type AiCategorizationPrefs } from "./settingsService";
 
 /** Categorization's own preferences with the AI it uses; base URL and model are null while there's no AI. */
-export type AiCategorizationSettings = AiCategorizationPrefs &
-  Omit<AiProvider, "baseUrl" | "model"> & { baseUrl: string | null; model: string | null; connectionId: string | null };
+export type AiCategorizationSettings = AiCategorizationPrefs & ResolvedAiProvider;
 
-/** What one request to a provider needs, saved or only typed into the settings form. */
-type RequestSettings = Omit<AiProvider, "baseUrl" | "model" | "concurrency"> & {
-  baseUrl: string | null;
-  model: string | null;
-  sendImage: boolean;
-};
+type RequestSettings = ProviderSettings & { sendImage: boolean };
 
 export async function getAiCategorizationSettings(): Promise<AiCategorizationSettings> {
   const prefs = await getAiCategorizationPrefs();
-  const connection = await resolveAiConnection(prefs.aiConnectionId);
-  return {
-    ...prefs,
-    ...DEFAULT_AI_PROVIDER,
-    baseUrl: null,
-    model: null,
-    ...(connection
-      ? {
-          baseUrl: connection.baseUrl,
-          apiKey: connection.apiKey,
-          model: connection.model,
-          timeoutMs: connection.timeoutMs,
-          concurrency: connection.concurrency,
-          thinking: connection.thinking,
-        }
-      : {}),
-    connectionId: connection?.id ?? null,
-  };
+  return { ...prefs, ...(await resolveAiProvider(prefs.aiConnectionId)) };
 }
 
 /** Suggestions are only shown while categorization is on; switched off, they stay stored for when it's back. */
@@ -69,39 +52,8 @@ type Candidate = { id: string; path: string };
 type ProviderResult = { categoryId: string | null; confidence: number; reason: string };
 export type CategorizationOutcome = "applied" | "suggested" | "no_match" | "unchanged";
 
-// Per AI: each provider has its own limit, and a slow one shouldn't hold up another.
-const slots = new Map<string, { active: number; waiters: (() => void)[] }>();
-let retryDelay = (milliseconds: number) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
-
-/** Keeps timeout and retry tests fast without changing production backoff behavior. */
-export function setAiCategorizationRetryDelayForTest(delay?: (milliseconds: number) => Promise<void>): void {
-  retryDelay = delay ?? ((milliseconds) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
-}
-
-async function limited<T>(key: string, limit: number, task: () => Promise<T>): Promise<T> {
-  let slot = slots.get(key);
-  if (!slot) {
-    slot = { active: 0, waiters: [] };
-    slots.set(key, slot);
-  }
-  // A waiter can be woken while another request takes the slot first, so it retries acquisition.
-  if (slot.active >= limit) {
-    await new Promise<void>((resolve) => slot.waiters.push(resolve));
-    return limited(key, limit, task);
-  }
-  slot.active++;
-  try {
-    return await task();
-  } finally {
-    slot.active--;
-    slot.waiters.shift()?.();
-  }
-}
-
-function noSecretError(error: unknown): Error {
-  if (error instanceof Error) return new Error(error.message.replace(/Bearer\s+\S+/gi, "Bearer [redacted]"));
-  return new Error("AI provider request failed");
-}
+/** Kept for the tests that already use it; the delay is shared by every AI feature. */
+export const setAiCategorizationRetryDelayForTest = setAiRetryDelayForTest;
 
 function plainText(value: string | null): string {
   return (value ?? "")
@@ -141,56 +93,6 @@ async function candidateCategories(userId: string, rejected: string[]): Promise<
     .map(([id, path]) => ({ id, path }));
 }
 
-async function previewPart(
-  printId: string,
-  enabled: boolean,
-): Promise<{ type: "image_url"; image_url: { url: string } } | null> {
-  if (!enabled) return null;
-  const image = await prisma.previewImage.findFirst({ where: { printId }, orderBy: { position: "asc" } });
-  if (!image) return null;
-  try {
-    const data = await sharp(await fs.readFile(previewImagePath(image.id)))
-      .resize(512, 512, { fit: "inside" })
-      .jpeg()
-      .toBuffer();
-    return { type: "image_url", image_url: { url: `data:image/jpeg;base64,${data.toString("base64")}` } };
-  } catch {
-    return null;
-  }
-}
-
-function chatUrl(baseUrl: string): string {
-  return `${baseUrl.replace(/\/+$/, "")}/chat/completions`;
-}
-
-/** What a failed fetch means to an admin; fetch itself only says "fetch failed" or "aborted". */
-function readableNetworkError(error: unknown, settings: { timeoutMs: number }): unknown {
-  if (error instanceof Error && error.name === "AbortError")
-    return new Error(`The AI provider did not answer within ${Math.round(settings.timeoutMs / 1000)} s`);
-  if (error instanceof TypeError) return new Error("Could not reach the AI provider. Check the API base URL.");
-  return error;
-}
-
-/**
- * Providers that ignore response_format (Xiaomi MiMo) wrap the object in prose or markdown, e.g.
- * `**{...}**`; the outermost braces are tried when the whole text doesn't parse. undefined when
- * neither does.
- */
-function parseAnswerJson(text: string): unknown {
-  try {
-    return JSON.parse(text);
-  } catch {
-    const start = text.indexOf("{");
-    const end = text.lastIndexOf("}");
-    if (start === -1 || end <= start) return undefined;
-    try {
-      return JSON.parse(text.slice(start, end + 1));
-    } catch {
-      return undefined;
-    }
-  }
-}
-
 function normalizePath(path: string): string {
   return path.toLowerCase().replace(/\s+/g, " ").trim();
 }
@@ -218,9 +120,6 @@ function candidateByLabel(candidates: LabelledCandidate[], answer: string): Labe
   return loose.length === 1 ? loose[0] : undefined;
 }
 
-// Connections (base URL and model) that answered 400 to reasoning_effort, so later requests leave it out.
-const reasoningEffortRejected = new Set<string>();
-
 async function requestProvider(
   print: Print,
   categories: Candidate[],
@@ -231,7 +130,7 @@ async function requestProvider(
   const image = await previewPart(print.id, settings.sendImage);
   // A model that already has a category says so; on its own the model often misses an obvious fit.
   const current = print.categoryId ? candidates.find((candidate) => candidate.id === print.categoryId) : undefined;
-  const content: ({ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } })[] = [
+  const content: ProviderContent = [
     {
       type: "text",
       text: [
@@ -272,97 +171,17 @@ async function requestProvider(
     required: ["reason", "category", "confidence"],
   };
 
-  const requestLog = log.child({ print: print.id, model: settings.model });
-  const connection = `${settings.baseUrl}|${settings.model}`;
-  let skipThinking = !settings.thinking && !reasoningEffortRejected.has(connection);
-  for (let attempt = 0; attempt < attempts; attempt++) {
-    const last = attempt === attempts - 1;
-    const started = Date.now();
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), settings.timeoutMs);
-    try {
-      const response = await fetch(chatUrl(settings.baseUrl!), {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          ...(settings.apiKey ? { authorization: `Bearer ${settings.apiKey}` } : {}),
-        },
-        signal: controller.signal,
-        body: JSON.stringify({
-          model: settings.model,
-          temperature: 0,
-          // A 300-character reason plus the JSON around it needs room; 300 tokens cut answers off before the
-          // closing brace, and reasoning models spend part of the budget before answering.
-          max_tokens: 1024,
-          response_format: { type: "json_schema", json_schema: { name: "categorization", strict: true, schema } },
-          // A reasoning model (qwen3) on a CPU spends minutes thinking; this one choice rarely needs it.
-          ...(skipThinking ? { reasoning_effort: "none" } : {}),
-          messages: [{ role: "user", content }],
-        }),
-      });
-      if (!response.ok) {
-        // Strict providers reject the field outright, e.g. OpenAI for a model that doesn't reason: ask again
-        // without it, which doesn't count as an attempt. Only when the error names it, so another bad request
-        // isn't taken for proof that the connection can't skip thinking.
-        if (response.status === 400 && skipThinking && /reasoning/i.test(await response.clone().text())) {
-          skipThinking = false;
-          reasoningEffortRejected.add(connection);
-          requestLog.warn("provider rejected reasoning_effort, asking again without it");
-          attempt--;
-          continue;
-        }
-        const retryable = response.status === 429 || response.status >= 500;
-        if (!retryable || last) throw new Error(`AI provider returned HTTP ${response.status}`);
-        const retryAfterHeader = response.headers.get("retry-after");
-        const retryAfter = retryAfterHeader === null ? Number.NaN : Number(retryAfterHeader);
-        const delay =
-          Number.isFinite(retryAfter) && retryAfter > 0
-            ? Math.min(30000, retryAfter * 1000)
-            : attempt === 0
-              ? 1000
-              : 3000;
-        requestLog.warn("provider request failed, retrying", {
-          status: response.status,
-          attempt: attempt + 1,
-          attempts,
-          delay_ms: delay,
-        });
-        await retryDelay(delay);
-        continue;
-      }
-      const body = (await response.json()) as {
-        choices?: { message?: { content?: unknown }; finish_reason?: unknown }[];
-        usage?: { completion_tokens?: unknown; completion_tokens_details?: { reasoning_tokens?: unknown } };
-      };
-      const raw = body.choices?.[0]?.message?.content;
-      // What an admin needs to tell a cut-off answer (a reasoning model spending the token budget) from a bad one.
-      const answer = {
-        ms: Date.now() - started,
-        finish_reason: body.choices?.[0]?.finish_reason,
-        completion_tokens: body.usage?.completion_tokens,
-        reasoning_tokens: body.usage?.completion_tokens_details?.reasoning_tokens,
-        answer_chars: typeof raw === "string" ? raw.length : undefined,
-      };
-      const unusable = (message: string) => {
-        requestLog.warn("provider answer unusable", {
-          problem: message,
-          ...answer,
-          answer_end: typeof raw === "string" ? raw.slice(-120) : undefined,
-        });
-        return new Error(message);
-      };
-      if (typeof raw !== "string") throw unusable("AI provider returned no classification");
-      const unfenced = raw
-        .trim()
-        .replace(/^```(?:json)?\s*/i, "")
-        .replace(/\s*```$/, "");
-      const json = parseAnswerJson(unfenced);
-      if (json === undefined) {
-        // JSON.parse only says where it stopped, which tells an admin nothing about the provider.
-        if (body.choices?.[0]?.finish_reason === "length")
-          throw unusable("AI provider cut the answer off at its token limit");
-        throw unusable("AI provider returned an answer that is not valid JSON");
-      }
+  return askProvider({
+    settings,
+    content,
+    schemaName: "categorization",
+    schema,
+    // A 300-character reason plus the JSON around it needs room; 300 tokens cut answers off before the closing brace.
+    maxTokens: 1024,
+    attempts,
+    log: log.child({ print: print.id, model: settings.model }),
+    noAnswer: "no classification",
+    read: (json, unusable, answer) => {
       const parsed = z
         .object({
           category: z.string().nullable(),
@@ -377,26 +196,14 @@ async function requestProvider(
       if (confidence < 0 || confidence > 1) throw unusable("AI provider returned invalid classification");
       const chosen = parsed.data.category === null ? null : candidateByLabel(candidates, parsed.data.category);
       if (chosen === undefined) throw unusable("AI provider returned a category outside the candidate list");
-      requestLog.debug("provider answered", { ...answer, category: parsed.data.category, confidence });
+      log.debug("provider answered", { print: print.id, ...answer, category: parsed.data.category, confidence });
       return {
         categoryId: chosen?.id ?? null,
         confidence,
         reason: parsed.data.reason.slice(0, 300),
       };
-    } catch (error) {
-      const retryable = error instanceof TypeError || (error instanceof Error && error.name === "AbortError");
-      if (!retryable || last) throw noSecretError(readableNetworkError(error, settings));
-      requestLog.warn("provider unreachable, retrying", {
-        error: noSecretError(readableNetworkError(error, settings)),
-        attempt: attempt + 1,
-        attempts,
-      });
-      await retryDelay(attempt === 0 ? 1000 : 3000);
-    } finally {
-      clearTimeout(timeout);
-    }
-  }
-  throw new Error("AI provider request failed");
+    },
+  });
 }
 
 function isFolder(print: Print & { category?: { kind: string } | null }): boolean {
@@ -537,7 +344,11 @@ export async function queueAiCategorization(userId: string, printId: string, opt
   const settings = await getAiCategorizationSettings();
   if (!aiCategorizationEnabled(settings)) throw new HttpError(503, "AI categorization is disabled", "ai_disabled");
   const categorize = { force: options.force, folders: true };
-  await loadCategorizable(userId, printId, categorize);
+  const { print } = await loadCategorizable(userId, printId, categorize);
+  // One at a time: a new suggestion would replace the one awaiting review unseen.
+  if (print.aiSuggestion !== null) {
+    throw new HttpError(409, "Accept or reject the suggested category first", "suggestion_pending");
+  }
   if (queuedPrints.has(printId)) return;
   queuedPrints.add(printId);
   void categorizePrint(userId, printId, { ...categorize, source: "request" })
@@ -651,6 +462,11 @@ export type AiCategorizationRun = {
 };
 
 const runs = new Map<string, AiCategorizationRun>();
+
+/** Anyone's run, so the feature isn't switched off under it. */
+export function aiCategorizationRunActive(): boolean {
+  return [...runs.values()].some((run) => run.running);
+}
 
 export function currentAiCategorizationRun(userId: string): AiCategorizationRun | null {
   return runs.get(userId) ?? null;
@@ -863,7 +679,7 @@ export async function listAiProviderModels(provider: {
 
 /** Asks a provider to categorize a calibration cube, so a connection can be checked before it's saved. */
 export async function testAiProvider(
-  provider: Omit<AiProvider, "baseUrl" | "model" | "concurrency"> & { baseUrl: string | null; model: string | null },
+  provider: ProviderSettings,
 ): Promise<{ ok: true; latencyMs: number; model: string } | { ok: false; error: string }> {
   if (!provider.baseUrl || !provider.model) return { ok: false, error: "Set the API base URL and model name first" };
   const start = Date.now();

@@ -25,7 +25,10 @@ import {
   type SmtpSettings,
   getAiCategorizationPrefs,
   setAiCategorizationPrefs,
+  getAiDescriptionPrefs,
+  setAiDescriptionPrefs,
   type AiCategorizationPrefs,
+  type AiDescriptionPrefs,
 } from "../services/settingsService";
 import { getDatabaseInfo, testAndSwitchDatabase } from "../services/databaseSettingsService";
 import {
@@ -67,7 +70,8 @@ import { getUserAuthorPreviewEnabled, setUserAuthorPreviewEnabled } from "../ser
 import { checkForUpdates } from "../services/versionService";
 import { getWeatherLocation, setWeatherLocation, weatherLocationSchema } from "../services/weatherLocationService";
 import { dropPreviewsAffectedBySimplification } from "../services/modelPreviewCache";
-import { listAiProviderModels, testAiProvider } from "../services/aiCategorizationService";
+import { aiCategorizationRunActive, listAiProviderModels, testAiProvider } from "../services/aiCategorizationService";
+import { aiDescriptionRunActive } from "../services/aiDescriptionService";
 import {
   createAiConnection,
   DEFAULT_AI_PROVIDER,
@@ -618,6 +622,9 @@ router.patch(
   requireAdmin,
   asyncHandler(async (req, res) => {
     const body = parseBody(aiCategorizationPrefsSchema, req.body);
+    if (body.enabled === false && aiCategorizationRunActive()) {
+      throw new HttpError(409, "AI categorization is running. Stop the run before turning it off.", "run_active");
+    }
     if (body.ai_connection_id) await getAiConnection(body.ai_connection_id);
     const prefs = await setAiCategorizationPrefs({
       ...(body.enabled !== undefined ? { enabled: body.enabled } : {}),
@@ -628,6 +635,88 @@ router.patch(
       ...(body.ai_connection_id !== undefined ? { aiConnectionId: body.ai_connection_id } : {}),
     });
     res.json(aiCategorizationPrefsOut(prefs));
+  }),
+);
+
+function aiDescriptionPrefsOut(prefs: AiDescriptionPrefs) {
+  return {
+    enabled: prefs.enabled,
+    mode: prefs.mode,
+    on_import: prefs.onImport,
+    send_image: prefs.sendImage,
+    ai_connection_id: prefs.aiConnectionId,
+    actions: {
+      remove_self_promotion: prefs.actions.removeSelfPromotion,
+      remove_unrelated: prefs.actions.removeUnrelated,
+      translate: prefs.actions.translate,
+      generate_missing: prefs.actions.generateMissing,
+      fix_spelling: prefs.actions.fixSpelling,
+      improve_formatting: prefs.actions.improveFormatting,
+    },
+  };
+}
+
+router.get(
+  "/settings/ai-descriptions",
+  requireAdmin,
+  asyncHandler(async (_req, res) => {
+    res.json(aiDescriptionPrefsOut(await getAiDescriptionPrefs()));
+  }),
+);
+
+const aiDescriptionPrefsSchema = z
+  .object({
+    enabled: z.boolean().optional(),
+    mode: z.enum(["suggest", "auto"]).optional(),
+    on_import: z.boolean().optional(),
+    send_image: z.boolean().optional(),
+    ai_connection_id: z.string().nullable().optional(),
+    actions: z
+      .object({
+        remove_self_promotion: z.boolean(),
+        remove_unrelated: z.boolean(),
+        translate: z.boolean(),
+        generate_missing: z.boolean(),
+        fix_spelling: z.boolean(),
+        improve_formatting: z.boolean(),
+      })
+      .partial()
+      .strict()
+      .optional(),
+  })
+  .strict();
+router.patch(
+  "/settings/ai-descriptions",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const body = parseBody(aiDescriptionPrefsSchema, req.body);
+    if (body.enabled === false && aiDescriptionRunActive()) {
+      throw new HttpError(409, "Improved descriptions is running. Stop the run before turning it off.", "run_active");
+    }
+    if (body.ai_connection_id) await getAiConnection(body.ai_connection_id);
+    const actions = body.actions;
+    const prefs = await setAiDescriptionPrefs({
+      ...(body.enabled !== undefined ? { enabled: body.enabled } : {}),
+      ...(body.mode !== undefined ? { mode: body.mode } : {}),
+      ...(body.on_import !== undefined ? { onImport: body.on_import } : {}),
+      ...(body.send_image !== undefined ? { sendImage: body.send_image } : {}),
+      ...(body.ai_connection_id !== undefined ? { aiConnectionId: body.ai_connection_id } : {}),
+      ...(actions
+        ? {
+            actions: {
+              ...(actions.remove_self_promotion !== undefined
+                ? { removeSelfPromotion: actions.remove_self_promotion }
+                : {}),
+              ...(actions.remove_unrelated !== undefined ? { removeUnrelated: actions.remove_unrelated } : {}),
+              ...(actions.translate !== undefined ? { translate: actions.translate } : {}),
+              ...(actions.generate_missing !== undefined ? { generateMissing: actions.generate_missing } : {}),
+              ...(actions.fix_spelling !== undefined ? { fixSpelling: actions.fix_spelling } : {}),
+              ...(actions.improve_formatting !== undefined ? { improveFormatting: actions.improve_formatting } : {}),
+            },
+          }
+        : {}),
+    });
+    res.json(aiDescriptionPrefsOut(prefs));
   }),
 );
 
@@ -747,9 +836,15 @@ router.delete(
     // With no model left every feature switches off, so adding one later doesn't quietly start them again.
     if (!(await listAiConnections()).length) {
       await setAiCategorizationPrefs({ enabled: false, aiConnectionId: null });
-    } else if ((await getAiCategorizationPrefs()).aiConnectionId === req.params.id) {
+      await setAiDescriptionPrefs({ enabled: false, aiConnectionId: null });
+    } else {
       // A feature set to it goes back to the default.
-      await setAiCategorizationPrefs({ aiConnectionId: null });
+      if ((await getAiCategorizationPrefs()).aiConnectionId === req.params.id) {
+        await setAiCategorizationPrefs({ aiConnectionId: null });
+      }
+      if ((await getAiDescriptionPrefs()).aiConnectionId === req.params.id) {
+        await setAiDescriptionPrefs({ aiConnectionId: null });
+      }
     }
     res.status(204).end();
   }),

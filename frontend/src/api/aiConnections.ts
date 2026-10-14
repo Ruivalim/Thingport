@@ -1,6 +1,7 @@
 import { authHeaders } from "../utils/auth";
 import { apiBase, readErrorMessage, UnauthorizedError } from "./client";
 import { invalidateAiCategorizationStatus } from "./aiCategorization";
+import { invalidateAiDescriptionStatus } from "./aiDescriptions";
 
 export type AiConnection = {
   id: string;
@@ -38,12 +39,13 @@ async function request<T>(path: string, method = "GET", payload?: unknown): Prom
 }
 
 /** The instance's AIs. Adding, deleting or changing the default can turn AI features on or off, so the cached
- *  status is dropped after each. */
+ *  statuses are dropped after each. */
 export const aiConnectionsApi = {
   list: (): Promise<AiConnection[]> => request("/settings/ai-connections"),
   create: async (input: AiConnectionInput): Promise<AiConnection> => {
     const created = await request<AiConnection>("/settings/ai-connections", "POST", input);
     invalidateAiCategorizationStatus();
+    invalidateAiDescriptionStatus();
     return created;
   },
   update: (id: string, input: Partial<AiConnectionInput>): Promise<AiConnection> =>
@@ -51,10 +53,12 @@ export const aiConnectionsApi = {
   remove: async (id: string): Promise<void> => {
     await request<void>(`/settings/ai-connections/${encodeURIComponent(id)}`, "DELETE");
     invalidateAiCategorizationStatus();
+    invalidateAiDescriptionStatus();
   },
   makeDefault: async (id: string): Promise<AiConnection> => {
     const made = await request<AiConnection>(`/settings/ai-connections/${encodeURIComponent(id)}/default`, "POST");
     invalidateAiCategorizationStatus();
+    invalidateAiDescriptionStatus();
     return made;
   },
   /** `id` fills in what the form leaves out from that saved AI, such as its key. */

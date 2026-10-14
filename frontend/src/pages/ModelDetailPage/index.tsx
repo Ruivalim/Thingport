@@ -28,6 +28,7 @@ import ModelActionsMenu from "./ModelActionsMenu";
 import FavoriteButton from "./FavoriteButton";
 import ModelSidePanel from "./ModelSidePanel";
 import MarkdownDescription from "../../components/MarkdownDescription";
+import AiDescriptionReview, { AiDescriptionChip } from "./AiDescriptionReview";
 import Skeleton from "@mui/material/Skeleton";
 
 type Props = {
@@ -324,13 +325,16 @@ export default function ModelDetailPage({ theme, onSelectCategory, onUnauthorize
               borderColor: dividerBorderColor,
             }}
           >
-            <Typography
-              variant="subtitle1"
-              fontWeight={700}
-              sx={{ mb: 1, color: (muiTheme) => muiTheme.thingport.headingText }}
-            >
-              {t("models:detail.description")}
-            </Typography>
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+              <Typography
+                variant="subtitle1"
+                fontWeight={700}
+                sx={{ color: (muiTheme) => muiTheme.thingport.headingText }}
+              >
+                {t("models:detail.description")}
+              </Typography>
+              <AiDescriptionChip print={print} onUpdated={setPrint} onUnauthorized={onUnauthorized} />
+            </Stack>
             {print.notes?.trim() ? (
               <MarkdownDescription markdown={print.notes} />
             ) : (
@@ -338,6 +342,7 @@ export default function ModelDetailPage({ theme, onSelectCategory, onUnauthorize
                 {t("models:detail.noDescription")}
               </Typography>
             )}
+            <AiDescriptionReview print={print} onUpdated={setPrint} onUnauthorized={onUnauthorized} />
 
             <Typography
               variant="subtitle1"

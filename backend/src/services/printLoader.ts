@@ -2,6 +2,7 @@ import { prisma } from "../db";
 import { HttpError } from "../utils/fileUtils";
 import { toPrintOut, type PrintOut } from "../dto";
 import { aiCategoryPaths, aiSuggestionOut, aiSuggestionsShown } from "./aiCategorizationService";
+import { aiDescriptionOut } from "./aiDescriptionService";
 import type { Author, Category, Plate, PreviewImage, Print, PrintFile } from "@prisma/client";
 
 export type FullPrint = {
@@ -44,6 +45,7 @@ export async function printOutById(userId: string, printId: string): Promise<Pri
     full.previewImages,
     full.print.category,
     suggestionsShown ? await aiSuggestionOut(userId, full.print.aiSuggestion, categoryPaths) : null,
+    await aiDescriptionOut(full.print),
   );
 }
 

@@ -268,6 +268,82 @@ export async function setAiCategorizationPrefs(patch: Partial<AiCategorizationPr
   return next;
 }
 
+/** What Improved descriptions may change. Generating needs the image, so it only applies when that's sent. */
+export type AiDescriptionActions = {
+  removeSelfPromotion: boolean;
+  removeUnrelated: boolean;
+  translate: boolean;
+  generateMissing: boolean;
+  fixSpelling: boolean;
+  improveFormatting: boolean;
+};
+
+export type AiDescriptionPrefs = {
+  enabled: boolean;
+  /** Auto applies a rewrite straight away; the original is kept either way, so it can be reverted. */
+  mode: AiCategorizationMode;
+  onImport: boolean;
+  sendImage: boolean;
+  aiConnectionId: string | null;
+  actions: AiDescriptionActions;
+};
+
+const AI_DESCRIPTIONS_KEY = "ai_descriptions";
+export const DEFAULT_AI_DESCRIPTION_PREFS: AiDescriptionPrefs = {
+  enabled: false,
+  mode: "suggest",
+  onImport: true,
+  sendImage: false,
+  aiConnectionId: null,
+  actions: {
+    removeSelfPromotion: true,
+    removeUnrelated: true,
+    translate: true,
+    generateMissing: false,
+    fixSpelling: true,
+    improveFormatting: true,
+  },
+};
+
+function validAiDescriptionPrefs(value: unknown): Partial<AiDescriptionPrefs> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const raw = value as Record<string, unknown>;
+  const actions = raw.actions && typeof raw.actions === "object" ? (raw.actions as Record<string, unknown>) : {};
+  return {
+    ...(typeof raw.enabled === "boolean" ? { enabled: raw.enabled } : {}),
+    ...(raw.mode === "suggest" || raw.mode === "auto" ? { mode: raw.mode } : {}),
+    ...(typeof raw.onImport === "boolean" ? { onImport: raw.onImport } : {}),
+    ...(typeof raw.sendImage === "boolean" ? { sendImage: raw.sendImage } : {}),
+    ...(typeof raw.aiConnectionId === "string" || raw.aiConnectionId === null
+      ? { aiConnectionId: raw.aiConnectionId || null }
+      : {}),
+    actions: Object.fromEntries(
+      Object.entries(DEFAULT_AI_DESCRIPTION_PREFS.actions).map(([key, fallback]) => [
+        key,
+        typeof actions[key] === "boolean" ? actions[key] : fallback,
+      ]),
+    ) as AiDescriptionActions,
+  };
+}
+
+export async function getAiDescriptionPrefs(): Promise<AiDescriptionPrefs> {
+  const row = await prisma.setting.findUnique({ where: { key: AI_DESCRIPTIONS_KEY } });
+  return { ...DEFAULT_AI_DESCRIPTION_PREFS, ...validAiDescriptionPrefs(row?.value) };
+}
+
+export async function setAiDescriptionPrefs(
+  patch: Partial<Omit<AiDescriptionPrefs, "actions">> & { actions?: Partial<AiDescriptionActions> },
+): Promise<AiDescriptionPrefs> {
+  const current = await getAiDescriptionPrefs();
+  const next = { ...current, ...patch, actions: { ...current.actions, ...patch.actions } };
+  await prisma.setting.upsert({
+    where: { key: AI_DESCRIPTIONS_KEY },
+    create: { key: AI_DESCRIPTIONS_KEY, value: next as unknown as Prisma.InputJsonValue },
+    update: { value: next as unknown as Prisma.InputJsonValue },
+  });
+  return next;
+}
+
 const AUTH_TOKEN_TTL_KEY = "auth_token_ttl_seconds";
 const DEFAULT_AUTH_TOKEN_TTL_SECONDS = 43200;
 

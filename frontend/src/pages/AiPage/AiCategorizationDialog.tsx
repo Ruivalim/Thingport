@@ -17,31 +17,17 @@ import { UnauthorizedError } from "../../api/client";
 import { settingsApi, type AiCategorizationSettings } from "../../api/settings";
 import type { AiConnection } from "../../api/aiConnections";
 import SectionedDialog from "../../components/SectionedDialog";
+import HelpTip from "../../components/HelpTip";
+import type { FeatureSection } from "./FeatureTile";
 import AiCategorizationPanel from "../ModelsPage/AiCategorizationPanel";
-import { AiLogo, hostOf } from "./aiLogos";
-
-export type AiCategorizationSection = "settings" | "manage";
-
-/** An option in the "Use AI" list: the model's logo and what to call it. */
-function AiOption({ connection, label }: { connection: AiConnection | undefined; label: string }) {
-  return (
-    <Stack direction="row" spacing={1.25} alignItems="center">
-      {connection ? (
-        <AiLogo model={connection.model} baseUrl={connection.base_url} size={18} />
-      ) : (
-        <span style={{ width: 18 }} />
-      )}
-      <span>{label}</span>
-    </Stack>
-  );
-}
+import UseAiSelect from "./UseAiSelect";
 
 type Props = {
   settings: AiCategorizationSettings;
   /** Switched on with a model to use; Manage can only be opened then, as nothing can run otherwise. */
   active: boolean;
   /** Where it opens, e.g. from the tile's menu. */
-  initialSection?: AiCategorizationSection;
+  initialSection?: FeatureSection;
   connections: AiConnection[];
   onClose: () => void;
   onSaved: (settings: AiCategorizationSettings) => void;
@@ -62,7 +48,7 @@ export default function AiCategorizationDialog({
   onUnauthorized,
 }: Props) {
   const { t } = useTranslation("app");
-  const [section, setSection] = useState<AiCategorizationSection>(initialSection);
+  const [section, setSection] = useState<FeatureSection>(initialSection);
   const [saved, setSaved] = useState(false);
   const [draft, setDraft] = useState<Draft>({
     mode: settings.mode,
@@ -94,14 +80,6 @@ export default function AiCategorizationDialog({
     }
   };
 
-  const defaultConnection = connections.find((connection) => connection.is_default);
-  const defaultOption = (
-    <AiOption
-      connection={defaultConnection}
-      label={t("adminSettings.aiCategorization.defaultAi", { model: defaultConnection?.model ?? "—" })}
-    />
-  );
-
   return (
     <SectionedDialog
       open
@@ -110,12 +88,12 @@ export default function AiCategorizationDialog({
       sections={[
         {
           id: "settings" as const,
-          label: t("adminSettings.aiCategorization.settings"),
+          label: t("adminSettings.aiFeatures.settings"),
           icon: <TuneIcon fontSize="small" />,
         },
         {
           id: "manage" as const,
-          label: t("adminSettings.aiCategorization.manage"),
+          label: t("adminSettings.aiFeatures.manage"),
           icon: <AutoAwesomeOutlinedIcon fontSize="small" />,
           disabled: !active,
         },
@@ -128,44 +106,13 @@ export default function AiCategorizationDialog({
         <AiCategorizationPanel onUnauthorized={onUnauthorized} onRunStarted={onClose} />
       ) : (
         <Stack spacing={2}>
-          <Alert severity="info">{t("adminSettings.aiCategorization.privacy")}</Alert>
           {!connections.length && <Alert severity="warning">{t("adminSettings.aiCategorization.noAi")}</Alert>}
-          <FormControl fullWidth>
-            {/* Empty means the default AI, which still shows text, so the label stays up on the border. */}
-            <InputLabel id="ai-connection-label" shrink>
-              {t("adminSettings.aiCategorization.useAi")}
-            </InputLabel>
-            <Select
-              labelId="ai-connection-label"
-              label={t("adminSettings.aiCategorization.useAi")}
-              // A saved choice that's gone (deleted meanwhile) reads as the default, as the backend treats it.
-              value={
-                draft.ai_connection_id && connections.some((connection) => connection.id === draft.ai_connection_id)
-                  ? draft.ai_connection_id
-                  : ""
-              }
-              displayEmpty
-              notched
-              // The chosen option as it looks in the list, logo included; empty is the default AI.
-              renderValue={(value) => {
-                const chosen = connections.find((connection) => connection.id === value);
-                return chosen ? (
-                  <AiOption connection={chosen} label={`${chosen.model} · ${hostOf(chosen.base_url)}`} />
-                ) : (
-                  defaultOption
-                );
-              }}
-              onChange={(event) => update("ai_connection_id", event.target.value || null)}
-              disabled={saving || !connections.length}
-            >
-              <MenuItem value="">{defaultOption}</MenuItem>
-              {connections.map((connection) => (
-                <MenuItem key={connection.id} value={connection.id}>
-                  <AiOption connection={connection} label={`${connection.model} · ${hostOf(connection.base_url)}`} />
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <UseAiSelect
+            value={draft.ai_connection_id}
+            connections={connections}
+            onChange={(id) => update("ai_connection_id", id)}
+            disabled={saving}
+          />
           <FormControl fullWidth>
             <InputLabel id="ai-mode-label">{t("adminSettings.aiCategorization.mode")}</InputLabel>
             <Select
@@ -207,7 +154,12 @@ export default function AiCategorizationDialog({
                 disabled={saving}
               />
             }
-            label={t("adminSettings.aiCategorization.sendImage")}
+            label={
+              <>
+                {t("adminSettings.aiCategorization.sendImage")}
+                <HelpTip text={t("adminSettings.aiFeatures.privacy")} />
+              </>
+            }
           />
           <Stack direction="row" spacing={1.5} alignItems="center">
             <Button

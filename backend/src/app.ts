@@ -25,6 +25,7 @@ import adminRoutes from "./routes/admin";
 import dashboardRoutes from "./routes/dashboard";
 import activityRoutes from "./routes/activity";
 import aiCategorizationRoutes from "./routes/aiCategorization";
+import aiDescriptionRoutes from "./routes/aiDescriptions";
 
 export function createApp(): Express {
   const app = express();
@@ -47,6 +48,7 @@ export function createApp(): Express {
   app.use("/api", settingsRoutes);
   app.use("/api", printsRoutes);
   app.use("/api", aiCategorizationRoutes);
+  app.use("/api", aiDescriptionRoutes);
   app.use("/api", authorsRoutes);
   app.use("/api", platesRoutes);
   app.use("/api", previewImagesRoutes);

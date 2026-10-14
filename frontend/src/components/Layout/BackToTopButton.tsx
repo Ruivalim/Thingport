@@ -6,7 +6,7 @@ import Tooltip from "@mui/material/Tooltip";
 import Zoom from "@mui/material/Zoom";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import { useImportJob } from "./ImportJobContext";
-import { useAiRun } from "./AiRunContext";
+import { useAiDescriptionRun, useAiRun } from "./AiRunContext";
 
 const SCROLL_SHOW_THRESHOLD = 200;
 
@@ -21,6 +21,7 @@ export default function BackToTopButton() {
   const [visible, setVisible] = useState(false);
   const { activeJob } = useImportJob();
   const { running: aiRunning } = useAiRun();
+  const { running: descriptionsRunning } = useAiDescriptionRun();
 
   useEffect(() => {
     const onScroll = () => setVisible(window.scrollY > SCROLL_SHOW_THRESHOLD);
@@ -38,7 +39,7 @@ export default function BackToTopButton() {
         sx={{
           position: "fixed",
           right: 24,
-          bottom: 24 + (activeJob ? 64 : 0) + (aiRunning ? 64 : 0),
+          bottom: 24 + (activeJob ? 64 : 0) + (aiRunning ? 64 : 0) + (descriptionsRunning ? 64 : 0),
           zIndex: (theme) => theme.zIndex.fab,
           transition: (theme) => theme.transitions.create("bottom"),
         }}

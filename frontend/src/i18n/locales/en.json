@@ -310,9 +310,38 @@
     },
     "aiRunProgress": {
       "starting": "Starting AI categorization…",
-      "label": "Categorizing with AI… {{done}} of {{total}}",
+      "label": "{{phrase}} {{done}} of {{total}}",
+      "phrases": [
+        "Thingporting models…",
+        "Finding every model a home…",
+        "Sorting the shelf…",
+        "Labelling the drawers…",
+        "Asking the AI where this one goes…",
+        "Untangling the filament spool…",
+        "Matching parts to their bins…",
+        "Stacking models in tidy piles…",
+        "Playing Tetris with your library…",
+        "Telling Benchy it belongs with the boats…"
+      ],
       "stopping": "Stopping after the current model…",
-      "stop": "Stop categorizing"
+      "stop": "Stop categorizing",
+      "descriptions": {
+        "starting": "Starting to improve descriptions…",
+        "label": "{{phrase}} {{done}} of {{total}}",
+        "phrases": [
+          "Thingporting descriptions…",
+          "Polishing prose…",
+          "Removing supports from the text…",
+          "Sanding down rough paragraphs…",
+          "Shooing away self-promotion…",
+          "Fixing typos with a tiny hex key…",
+          "Translating the untranslatable…",
+          "Re-slicing run-on sentences…",
+          "Levelling the bed of every paragraph…",
+          "Trimming the stringing between words…"
+        ],
+        "stop": "Stop improving descriptions"
+      }
     },
     "importProgress": {
       "starting": "Starting import…",
@@ -662,25 +691,71 @@
         "turnOff": "Turn off",
         "openSettings": "Settings",
         "settingsAria": "{{feature}} settings",
-        "toggleAria": "Turn {{feature}} on or off"
+        "toggleAria": "Turn {{feature}} on or off",
+        "runningLock": "Running now. Stop the run from the bar at the bottom before turning it off.",
+        "settings": "Settings",
+        "manage": "Manage",
+        "descriptions": "Improved descriptions",
+        "descriptionsDescription": "Cleans up model descriptions with AI, on import or in a run: drops self-promotion, translates and tidies them, for you to review or applied at once.",
+        "privacy": "With a third-party API, model titles, descriptions and tags leave this server. Images are sent only when enabled."
       },
       "aiCategorization": {
         "heading": "AI Categorization",
-        "privacy": "With a third-party API, model titles, descriptions and tags leave this server. Images are sent only when enabled.",
         "useAi": "Use AI",
         "defaultAi": "Default AI ({{model}})",
-        "noAi": "Add a model under Models to use categorization.",
+        "noAi": "Add a model under Models to use this feature.",
         "mode": "Mode",
         "suggest": "Suggest for review",
         "auto": "Apply automatically",
         "threshold": "Auto-apply confidence threshold",
         "onImport": "Categorize new imports",
         "sendImage": "Send the first preview image",
-        "settings": "Settings",
-        "manage": "Manage",
         "save": "Save settings",
         "saved": "AI categorization settings saved.",
         "failed": "Failed to load or save AI categorization settings."
+      },
+      "aiDescriptions": {
+        "failed": "Failed to load or save Improved descriptions settings.",
+        "saved": "Improved descriptions settings saved.",
+        "autoHint": "The original description is kept, so an applied one can be reverted from Manage.",
+        "onImport": "Improve descriptions for every new import",
+        "whatAiDoes": "What AI does",
+        "needsImage": "(needs the preview image to be sent)",
+        "actions": {
+          "remove_self_promotion": "Removes self-promotion (links to author pages or other models)",
+          "remove_unrelated": "Removes other unrelated info (e.g. boost requests)",
+          "translate": "Translates descriptions in other languages to English",
+          "generate_missing": "Tries to write a description for models without one",
+          "fix_spelling": "Fixes obvious spelling mistakes",
+          "improve_formatting": "Improves formatting"
+        },
+        "runTitle": "Improve descriptions",
+        "runHint": "Checks every model's description. Models with nothing new since their last check are skipped.",
+        "start": "Improve descriptions",
+        "runInProgress": "Improving descriptions. Progress shows at the bottom of the page.",
+        "suggestionsTitle": "Suggested descriptions ({{count}})",
+        "noSuggestions": "No suggested descriptions.",
+        "firstPage": "Showing {{shown}} of {{total}}.",
+        "selectAll": "Select all",
+        "deselectAll": "Deselect all",
+        "acceptSelected": "Accept selected",
+        "rejectSelected": "Reject selected",
+        "compare": "Compare",
+        "accept": "Accept",
+        "reject": "Reject",
+        "acceptDone_one": "Description updated.",
+        "acceptDone_other": "{{count}} descriptions updated.",
+        "rejectDone_one": "Suggestion rejected.",
+        "rejectDone_other": "{{count}} suggestions rejected.",
+        "appliedTitle": "Changed by AI ({{count}})",
+        "revert": "Revert",
+        "revertTitle": "Restore the original description?",
+        "revertMessage": "{{name}} gets back the description it had before the AI changed it. Later runs leave it as it is.",
+        "revertDone": "Original description restored.",
+        "original": "Original",
+        "suggested": "Suggested",
+        "current": "Now",
+        "empty": "No description."
       },
       "session": {
         "heading": "Session Length",
@@ -1698,6 +1773,7 @@
       "uploadedDirectly": "Uploaded directly to Thingport"
     },
     "aiCategorization": {
+      "suggestionPending": "Accept or reject the suggestion first",
       "section": "AI Categorization",
       "recategorize": "Recategorize with AI",
       "categorize": "Categorize with AI",
@@ -1736,6 +1812,20 @@
       "rejected": "AI suggestion rejected.",
       "confirmManual": "{{name}} has a category you chose manually. Replace it with an AI result?",
       "failed": "AI recategorization failed."
+    },
+    "aiDescriptions": {
+      "improve": "Improve description with AI",
+      "queued": "Improving the description with AI. This can take a few minutes; you'll get a notification when it's done.",
+      "failed": "Couldn't start improving the description.",
+      "suggestionTitle": "AI suggests a better description",
+      "suggestionHint": "Compare it with the current one, then keep it or not.",
+      "chipAria": "Description by AI: compare with the original or revert",
+      "compareOriginal": "Compare with the original",
+      "revertOriginal": "Revert to the original",
+      "accepted": "Description updated.",
+      "rejected": "Suggestion rejected.",
+      "revertMessage": "This model gets back the description it had before the AI changed it.",
+      "suggestionPending": "Accept or reject the suggestion first"
     },
     "detail": {
       "subtitle": "Model",

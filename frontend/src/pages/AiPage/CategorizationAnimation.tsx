@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Box from "@mui/material/Box";
+import { mix } from "./pseudoRandom";
 
 // A conveyor of rows, one color each. Every row holds a square that belongs in the row below, which keeps a gap
 // for it. Each step that square drops into its gap, then the rows move up one: the top row leaves and a new one
@@ -17,15 +18,6 @@ type Phase = "hold" | "drop" | "scroll";
 
 function move(ms: number): string {
   return `transform ${ms}ms cubic-bezier(0.4, 0, 0.2, 1)`;
-}
-
-function mix(value: number): number {
-  let hash = Math.imul(value + 1, 0x9e3779b1);
-  hash ^= hash >>> 16;
-  hash = Math.imul(hash, 0x85ebca6b);
-  hash ^= hash >>> 13;
-  hash = Math.imul(hash, 0xc2b2ae35);
-  return (hash ^ (hash >>> 16)) >>> 0;
 }
 
 const misfitColumn = (conveyorRow: number) => (mix(conveyorRow) >>> 3) % COLUMNS;

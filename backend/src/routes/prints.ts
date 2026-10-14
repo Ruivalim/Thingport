@@ -30,6 +30,7 @@ import { createLog } from "../services/auditLog";
 import { recordActivity } from "../services/activityService";
 import { notifyUpload } from "../services/modelNotifications";
 import { fillSourceGaps } from "../services/fillGapsService";
+import { forgetAiDescription } from "../services/aiDescriptionService";
 import { isNormalizable3mf, normalize3mfStatus, normalized3mfFor } from "../services/normalized3mfCache";
 import type { Prisma } from "@prisma/client";
 
@@ -583,6 +584,7 @@ router.post(
     const plates = await prisma.plate.findMany({ where: { printId: print.id }, orderBy: { position: "asc" } });
     await relocatePrint(updated, plates);
     if (body.notes !== undefined) {
+      if (body.notes !== (print.notes ?? "")) await forgetAiDescription(print.id);
       await pruneDescriptionImages(print.id);
       // Images pasted in by URL are fetched in the background: slow hosts mustn't hold up the save.
       void localizeDescriptionImages(print.id);

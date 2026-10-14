@@ -126,6 +126,15 @@ export type PrintOut = {
   category_name: string | null;
   category_source: "manual" | "rule" | "ai" | "legacy" | null;
   category_kind: "category" | "folder" | null;
+  /** Improved descriptions on the detail page only, while the feature is on: a rewrite to review, and the
+   *  description from before one was applied, to compare or revert to. */
+  ai_description_suggestion: { notes: string; created_at: string } | null;
+  /** The description is an AI rewrite (accepted, or applied in auto mode) not since edited or reverted. Sent
+   *  whether or not the feature is on, so the model page can always say so. */
+  description_by_ai: boolean;
+  /** A suggested description awaits review; sent on every model, so a card's menu can wait for it too. */
+  ai_description_pending: boolean;
+  ai_description_original: string | null;
   ai_suggestion: {
     category_id: string;
     category_path: string;
@@ -241,6 +250,7 @@ export function toPrintOut(
   previewImages?: PreviewImage[],
   category?: Category | null,
   aiSuggestion?: PrintOut["ai_suggestion"],
+  aiDescription?: Pick<PrintOut, "ai_description_suggestion" | "ai_description_original">,
 ): PrintOut {
   const sortedPlates = plates.toSorted((a, b) => a.position - b.position);
   const plateOuts = sortedPlates.map((p) => toPlateOut(print.id, p));
@@ -299,6 +309,11 @@ export function toPrintOut(
     category_source: print.categorySource ? (print.categorySource.toLowerCase() as PrintOut["category_source"]) : null,
     category_kind: category ? (category.kind as PrintOut["category_kind"]) : null,
     ai_suggestion: aiSuggestion ?? null,
+    ai_description_suggestion: aiDescription?.ai_description_suggestion ?? null,
+    // The original is kept exactly while the description is the AI's.
+    description_by_ai: print.aiDescriptionOriginal !== null,
+    ai_description_pending: print.aiDescriptionSuggestion !== null,
+    ai_description_original: aiDescription?.ai_description_original ?? null,
     created_at: print.createdAt.toISOString(),
     storage_path: storageParentDir(sortedPlates),
     plates: plateOuts,

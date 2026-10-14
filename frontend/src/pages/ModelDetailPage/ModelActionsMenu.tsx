@@ -18,11 +18,13 @@ import PlaylistRemoveIcon from "@mui/icons-material/PlaylistRemove";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import AutoFixNormalIcon from "@mui/icons-material/AutoFixNormal";
 import LaunchIcon from "@mui/icons-material/Launch";
 import type { SxProps, Theme } from "@mui/material/styles";
 import { UnauthorizedError } from "../../api/client";
 import { type Print, PrintApiError, printsApi } from "../../api/prints";
 import { aiCategorizationApi } from "../../api/aiCategorization";
+import { aiDescriptionsApi } from "../../api/aiDescriptions";
 import { useToast } from "../../components/ToastProvider";
 import type { AuthUser } from "../../api/auth";
 import { collectionsApi } from "../../api/collections";
@@ -69,7 +71,9 @@ export default function ModelActionsMenu({
   const confirmDialog = useConfirm();
   const showToast = useToast();
   const [aiEnabled, setAiEnabled] = useState(false);
+  const [descriptionsEnabled, setDescriptionsEnabled] = useState(false);
   const [recategorizing, setRecategorizing] = useState(false);
+  const [improving, setImproving] = useState(false);
   useEffect(() => {
     let active = true;
     void aiCategorizationApi
@@ -80,6 +84,12 @@ export default function ModelActionsMenu({
       .catch((err: unknown) => {
         if (err instanceof UnauthorizedError) onUnauthorized?.();
       });
+    void aiDescriptionsApi
+      .status()
+      .then((status) => {
+        if (active) setDescriptionsEnabled(status.enabled);
+      })
+      .catch(() => undefined);
     return () => {
       active = false;
     };
@@ -200,6 +210,26 @@ export default function ModelActionsMenu({
     }
   };
 
+  // A description streams for as long as the model keeps writing; on a CPU that's minutes.
+  const queueDescription = useAiOutcomeWatch(print.id, onUpdated, 60 * 60_000);
+  const improveDescription = async () => {
+    closeMenu();
+    setImproving(true);
+    try {
+      await queueDescription(() => aiDescriptionsApi.improve(print.id).then(() => undefined));
+      showToast({ message: t("models:aiDescriptions.queued") });
+    } catch (err) {
+      if (err instanceof UnauthorizedError) onUnauthorized?.();
+      else
+        showToast({
+          message: err instanceof Error ? err.message : t("models:aiDescriptions.failed"),
+          severity: "error",
+        });
+    } finally {
+      setImproving(false);
+    }
+  };
+
   const providerInfo = importProviderInfo(print.source_provider);
   const { slicerOption, targets: slicerTargets, normalizedTargets } = useOpenInSlicer(print);
   const openInSlicerHref = slicerTargets.length === 1 ? slicerTargets[0].href : undefined;
@@ -271,12 +301,28 @@ export default function ModelActionsMenu({
           <ListItemText sx={{ color: "error.main" }}>{t("common:delete")}</ListItemText>
         </MenuItem>
         {aiEnabled && (
-          <MenuItem onClick={() => void recategorize()} disabled={recategorizing}>
+          // One suggestion at a time: the next waits until this one is accepted or rejected.
+          <MenuItem onClick={() => void recategorize()} disabled={recategorizing || Boolean(print.ai_suggestion)}>
             <ListItemIcon>
               {recategorizing ? <CircularProgress size={18} /> : <AutoAwesomeIcon fontSize="small" />}
             </ListItemIcon>
-            <ListItemText>
+            <ListItemText secondary={print.ai_suggestion ? t("models:aiCategorization.suggestionPending") : undefined}>
               {t(uncategorized ? "models:aiCategorization.categorize" : "models:aiCategorization.recategorize")}
+            </ListItemText>
+          </MenuItem>
+        )}
+        {descriptionsEnabled && (
+          <MenuItem
+            onClick={() => void improveDescription()}
+            disabled={improving || Boolean(print.ai_description_pending)}
+          >
+            <ListItemIcon>
+              {improving ? <CircularProgress size={18} /> : <AutoFixNormalIcon fontSize="small" />}
+            </ListItemIcon>
+            <ListItemText
+              secondary={print.ai_description_pending ? t("models:aiDescriptions.suggestionPending") : undefined}
+            >
+              {t("models:aiDescriptions.improve")}
             </ListItemText>
           </MenuItem>
         )}

@@ -785,6 +785,10 @@ describe("AI categorization", () => {
       body: "fits the target",
       internalPath: `/models/${inFolder.id}`,
     });
+    // Another one waits until this one is accepted or rejected.
+    const again = await recategorize(inFolder.id);
+    expect(again.status).toBe(409);
+    expect(again.body.code).toBe("suggestion_pending");
     // Accepting takes the model out of its folder.
     const accepted = await request(app).post(`/api/print/${inFolder.id}/ai-suggestion/accept`).set(auth(owner.token));
     expect(accepted.body.print).toMatchObject({ category_id: target.id, category_kind: "category" });
