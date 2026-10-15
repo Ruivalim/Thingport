@@ -265,8 +265,23 @@ describe("looking up authors no known author matches", () => {
 });
 
 describe("Administration > Triggers > Link missing authors", () => {
+  // Files share one database; leave the token as this file found it, even when a test fails.
+  let previousToken: string | null;
+  // Lets a run held open by a test finish, even when the test fails before letting it.
+  let answer: (() => void) | null = null;
+
+  beforeAll(async () => {
+    previousToken = await getThingiverseAccessToken();
+  });
+
   afterEach(() => {
+    answer?.();
+    answer = null;
     global.fetch = originalFetch;
+  });
+
+  afterAll(async () => {
+    await setThingiverseAccessToken(previousToken);
   });
 
   it("is admin-only", async () => {
@@ -275,7 +290,15 @@ describe("Administration > Triggers > Link missing authors", () => {
   });
 
   it("says what it can link -- which decides whether it's shown -- then links it in the background", async () => {
-    mockFetch({});
+    // One author to look up on Thingiverse, whose answer waits until the second start has been tried: the run
+    // otherwise finishes in milliseconds, and whether it's still going when asked again is down to timing.
+    const answered = new Promise<void>((resolve) => (answer = resolve));
+    global.fetch = vi.fn<() => Promise<Response>>(async () => {
+      await answered;
+      return new Response("not found", { status: 404 });
+    }) as unknown as typeof fetch;
+    await setThingiverseAccessToken("test-token");
+    await unattributedPrint("trigger-wait", "thingiverse", `Somebody Else ${stamp}`);
     const author = await prisma.author.create({
       data: {
         id: `thingiverse:trigger-${stamp}`,
@@ -294,6 +317,7 @@ describe("Administration > Triggers > Link missing authors", () => {
     expect(started.status).toBe(200);
     expect(started.body.run.running).toBe(true);
     expect((await request(app).post("/api/admin/triggers/link-authors").set(auth(adminToken))).status).toBe(409);
+    answer?.();
 
     let run = started.body.run;
     for (let i = 0; i < 100 && run.running; i++) {
