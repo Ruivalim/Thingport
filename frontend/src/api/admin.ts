@@ -7,6 +7,12 @@ export type AdminUser = {
   email: string;
   display_name: string;
   role: "ADMIN" | "MEMBER";
+  /** The first admin: may manage other admins, and can't be demoted or deleted. */
+  is_owner: boolean;
+  /** What the viewing admin may do to this user; the server enforces the same. */
+  can_promote: boolean;
+  can_demote: boolean;
+  can_delete: boolean;
   print_count: number;
   collection_count: number;
   makerworld_connected: boolean;
@@ -38,7 +44,9 @@ export type LogAction =
   | "collection_sync_disabled"
   | "ai_categorization_run"
   | "ai_description_run"
-  | "tag_deleted";
+  | "tag_deleted"
+  | "user_role_changed"
+  | "user_deleted";
 
 export type LogEntry = {
   id: string;
@@ -136,6 +144,27 @@ export const adminApi = {
   listUsers: async (): Promise<AdminUser[]> => {
     const res = await fetch(`${apiBase()}/admin/users`, { headers: authHeaders() });
     assertOk(res, "Failed to load users");
+    return res.json();
+  },
+
+  setUserRole: async (userId: string, role: AdminUser["role"]): Promise<void> => {
+    const res = await fetch(`${apiBase()}/admin/users/${encodeURIComponent(userId)}/role`, {
+      method: "PATCH",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ role }),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to change the role"));
+  },
+
+  /** The account, its models and every file of them. */
+  deleteUser: async (userId: string): Promise<{ models: number }> => {
+    const res = await fetch(`${apiBase()}/admin/users/${encodeURIComponent(userId)}`, {
+      method: "DELETE",
+      headers: authHeaders(),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to delete the user"));
     return res.json();
   },
 

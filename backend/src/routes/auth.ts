@@ -17,6 +17,9 @@ import { generateApiToken, getApiToken, revokeApiToken } from "../services/apiTo
 import { toUserOut } from "../dto";
 import type { Prisma, Role } from "@prisma/client";
 
+// Any number, as long as only the first sign-up takes it.
+const BOOTSTRAP_LOCK = 74_210_302;
+
 const router = Router();
 
 const PASSWORD_HASH_COST = 12;
@@ -77,12 +80,26 @@ router.post(
 
     const user = await prisma.$transaction(
       async (tx) => {
+        if (bootstrapping) {
+          // Two first sign-ups at once would both have counted no admin above, and both become the owner,
+          // whom nobody can then demote. Taken in turn, only the first finds no admin here.
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(${BOOTSTRAP_LOCK})`;
+          if ((await tx.user.count({ where: { role: "ADMIN" } })) > 0) {
+            // Not a member instead: this request skipped the registrations-closed check as the first account.
+            throw new HttpError(
+              409,
+              "This instance has just been set up. Sign in, or ask its admin for an invitation.",
+            );
+          }
+        }
         const created = await tx.user.create({
           data: {
             email,
             passwordHash,
             displayName: body.displayName,
             role,
+            // The bootstrap admin owns the instance.
+            isOwner: bootstrapping,
             emailVerified: !smtpConfigured,
             emailVerificationToken: verification?.token ?? null,
             emailVerificationExpires: verification?.expires ?? null,

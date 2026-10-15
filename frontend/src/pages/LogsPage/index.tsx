@@ -53,6 +53,8 @@ const ACTION_COLORS: Record<LogAction, ActionColor> = {
   ai_categorization_run: "info",
   ai_description_run: "info",
   tag_deleted: "error",
+  user_role_changed: "warning",
+  user_deleted: "error",
 };
 
 function isoDateOnly(d: Date): string {
@@ -140,6 +142,15 @@ export default function LogsPage({ onUnauthorized }: Props) {
         const failed = typeof d.failed === "number" ? d.failed : 0;
         return t("adminSettings.logs.importSummary", { label, imported, failed });
       }
+      case "user_role_changed":
+        return t(d.role === "ADMIN" ? "adminSettings.logs.userPromoted" : "adminSettings.logs.userDemoted", {
+          email: typeof d.email === "string" ? d.email : "",
+        });
+      case "user_deleted":
+        return t("adminSettings.logs.userDeleted", {
+          email: typeof d.email === "string" ? d.email : "",
+          count: typeof d.models === "number" ? d.models : 0,
+        });
       case "tag_deleted":
         return t("adminSettings.logs.tagDeleted", {
           name: typeof d.name === "string" ? d.name : "",

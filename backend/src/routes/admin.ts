@@ -7,6 +7,7 @@ import { z } from "zod";
 import { parseBody } from "../utils/validate";
 import { deleteAllPrintsForUser, getStorageUsage, listLogs, listUsersWithPrintCounts } from "../services/adminService";
 import { createLog } from "../services/auditLog";
+import { deleteUser, permissionsOver, setUserRole } from "../services/userAdminService";
 import { INVITATION_TTL_DAYS, inviteUser } from "../services/invitationService";
 import { listJobItems } from "../services/importJobService";
 import {
@@ -37,19 +38,28 @@ router.use(requireAdmin);
 
 router.get(
   "/users",
-  asyncHandler(async (_req, res) => {
+  asyncHandler(async (req, res) => {
     const users = await listUsersWithPrintCounts();
+    const actor = users.find((u) => u.id === req.userId) ?? { id: req.userId!, isOwner: false };
     res.json(
-      users.map((u) => ({
-        id: u.id,
-        email: u.email,
-        display_name: u.displayName,
-        role: u.role,
-        print_count: u.printCount,
-        collection_count: u.collectionCount,
-        makerworld_connected: u.makerworldConnected,
-        created_at: u.createdAt,
-      })),
+      users.map((u) => {
+        // What the viewing admin may do to this user; the endpoints below enforce the same rules.
+        const allowed = permissionsOver(actor, u);
+        return {
+          id: u.id,
+          email: u.email,
+          display_name: u.displayName,
+          role: u.role,
+          is_owner: u.isOwner,
+          can_promote: allowed.canPromote,
+          can_demote: allowed.canDemote,
+          can_delete: allowed.canDelete,
+          print_count: u.printCount,
+          collection_count: u.collectionCount,
+          makerworld_connected: u.makerworldConnected,
+          created_at: u.createdAt,
+        };
+      }),
     );
   }),
 );
@@ -107,6 +117,24 @@ router.post(
     });
     void createLog({ userId: admin.id, action: "user_invited", details: { email: invitation.email } });
     res.json({ email: invitation.email, expires_at: invitation.expiresAt, expires_in_days: INVITATION_TTL_DAYS });
+  }),
+);
+
+const roleSchema = z.object({ role: z.enum(["ADMIN", "MEMBER"]) });
+
+router.patch(
+  "/users/:id/role",
+  asyncHandler(async (req, res) => {
+    await setUserRole(req.userId!, req.params.id, parseBody(roleSchema, req.body).role);
+    res.json({ ok: true });
+  }),
+);
+
+// Irreversible: the account, its models and every file of them. The UI handles the confirmation.
+router.delete(
+  "/users/:id",
+  asyncHandler(async (req, res) => {
+    res.json(await deleteUser(req.userId!, req.params.id));
   }),
 );
 

@@ -25,6 +25,8 @@ model User {
   passwordHash             String
   displayName              String
   role                     Role              @default(MEMBER)
+  // The first admin: may demote and delete other admins, and can be neither demoted nor deleted.
+  isOwner                  Boolean           @default(false)
   // Defaults true so existing accounts aren't locked out; registration sets false when SMTP is on.
   emailVerified            Boolean           @default(true)
   emailVerificationToken   String?           @unique

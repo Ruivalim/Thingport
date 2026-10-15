@@ -30,7 +30,6 @@ beforeAll(async () => {
     );
   }
   await prisma.user.update({ where: { id: adminRegister.body.user.id }, data: { role: "ADMIN" } });
-  // Tokens embed the role at issue time, so a promoted account needs a fresh login to pick it up.
   const adminLogin = await request(app).post("/api/login").send({ email: adminEmail, password: "password123" });
   adminToken = adminLogin.body.token;
 

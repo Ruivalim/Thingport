@@ -5,6 +5,7 @@ import { AUTH_ALGO, AUTH_SECRET } from "./config";
 import { getAuthTokenTtl } from "./services/settingsService";
 import { findApiTokenUser, isApiToken } from "./services/apiTokenService";
 import { asyncHandler } from "./utils/asyncHandler";
+import { prisma } from "./db";
 
 export type TokenPayload = { sub: string; role: Role };
 
@@ -71,8 +72,15 @@ export const requireAuth = asyncHandler(async (req, res, next) => {
     res.status(401).json({ detail: "Unauthorized" });
     return;
   }
+  // Read afresh rather than trusted from the token, so a demotion or a deleted account takes effect at once
+  // instead of when the token expires.
+  const user = await prisma.user.findUnique({ where: { id: payload.sub }, select: { role: true } });
+  if (!user) {
+    res.status(401).json({ detail: "Unauthorized" });
+    return;
+  }
   req.userId = payload.sub;
-  req.userRole = payload.role;
+  req.userRole = user.role;
   next();
 });
 

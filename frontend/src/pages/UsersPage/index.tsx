@@ -13,23 +13,28 @@ import TableRow from "@mui/material/TableRow";
 import { UnauthorizedError } from "../../api/client";
 import { adminApi, type AdminUser } from "../../api/admin";
 import RegistrationsPanel from "./RegistrationsPanel";
+import UserActionsMenu from "./UserActionsMenu";
 import { TableRowSkeletons } from "../../components/ListSkeleton";
 
 type Props = {
   onUnauthorized?: () => void;
 };
 
-/** Read-only roster of every account, under the registration switch and invitations. */
+/** Every account, under the registration switch and invitations; admins promote, demote and delete from each row's menu. */
 export default function UsersPage({ onUnauthorized }: Props) {
   const { t, i18n } = useTranslation(["app", "common"]);
   const [users, setUsers] = React.useState<AdminUser[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
+  const [reloads, setReloads] = React.useState(0);
+  const reload = React.useCallback(() => setReloads((count) => count + 1), []);
+
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
-      setLoading(true);
+      // Only the first load shows skeletons; a reload after a change keeps the table in place.
+      if (reloads === 0) setLoading(true);
       try {
         const result = await adminApi.listUsers();
         if (!cancelled) setUsers(result);
@@ -44,7 +49,7 @@ export default function UsersPage({ onUnauthorized }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [onUnauthorized, t]);
+  }, [onUnauthorized, t, reloads]);
 
   const formatDate = (iso: string) => new Date(iso).toLocaleDateString(i18n.language);
 
@@ -70,11 +75,12 @@ export default function UsersPage({ onUnauthorized }: Props) {
                 <TableCell align="right">{t("adminSettings.users.columnModels")}</TableCell>
                 <TableCell align="right">{t("adminSettings.users.columnCollections")}</TableCell>
                 <TableCell>{t("adminSettings.users.columnMakerworld")}</TableCell>
+                <TableCell padding="checkbox" aria-label={t("adminSettings.users.columnActions")} />
               </TableRow>
             </TableHead>
             <TableBody>
               {loading ? (
-                <TableRowSkeletons rows={5} columns={7} />
+                <TableRowSkeletons rows={5} columns={8} />
               ) : (
                 users.map((u) => (
                   <TableRow key={u.id} hover>
@@ -90,6 +96,15 @@ export default function UsersPage({ onUnauthorized }: Props) {
                         color={u.role === "ADMIN" ? "primary" : "default"}
                         variant={u.role === "ADMIN" ? "filled" : "outlined"}
                       />
+                      {u.is_owner && (
+                        <Chip
+                          label={t("adminSettings.users.owner")}
+                          size="small"
+                          color="primary"
+                          variant="outlined"
+                          sx={{ ml: 0.75 }}
+                        />
+                      )}
                     </TableCell>
                     <TableCell align="right">{u.print_count}</TableCell>
                     <TableCell align="right">{u.collection_count}</TableCell>
@@ -104,6 +119,9 @@ export default function UsersPage({ onUnauthorized }: Props) {
                         color={u.makerworld_connected ? "success" : "default"}
                         variant={u.makerworld_connected ? "filled" : "outlined"}
                       />
+                    </TableCell>
+                    <TableCell padding="checkbox">
+                      <UserActionsMenu user={u} onChanged={reload} onUnauthorized={onUnauthorized} />
                     </TableCell>
                   </TableRow>
                 ))

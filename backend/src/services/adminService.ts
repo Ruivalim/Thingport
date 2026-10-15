@@ -14,6 +14,7 @@ export type UserWithPrintCount = {
   email: string;
   displayName: string;
   role: "ADMIN" | "MEMBER";
+  isOwner: boolean;
   printCount: number;
   collectionCount: number;
   makerworldConnected: boolean;
@@ -28,6 +29,7 @@ export async function listUsersWithPrintCounts(): Promise<UserWithPrintCount[]> 
       email: true,
       displayName: true,
       role: true,
+      isOwner: true,
       createdAt: true,
       makerworldCookie: true,
       _count: { select: { prints: true, collections: true } },
@@ -38,6 +40,7 @@ export async function listUsersWithPrintCounts(): Promise<UserWithPrintCount[]> 
     email: u.email,
     displayName: u.displayName,
     role: u.role,
+    isOwner: u.isOwner,
     createdAt: u.createdAt,
     printCount: u._count.prints,
     collectionCount: u._count.collections,
