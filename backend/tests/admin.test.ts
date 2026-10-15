@@ -5,6 +5,7 @@ import path from "node:path";
 import os from "node:os";
 import { createApp } from "../src/app";
 import { prisma } from "../src/db";
+import { TAG_MOSAICS } from "../src/config";
 
 const app = createApp();
 let adminToken: string;
@@ -107,6 +108,11 @@ describe("admin user management", () => {
   });
 
   it("deletes every print belonging to the target user, leaving other users untouched", async () => {
+    // A tag picture made while the member still had models.
+    const mosaics = path.join(TAG_MOSAICS, `u-${memberUserId}`);
+    fs.mkdirSync(mosaics, { recursive: true });
+    fs.writeFileSync(path.join(mosaics, "tag-version.webp"), "x");
+
     const deleteRes = await request(app)
       .post(`/api/admin/users/${memberUserId}/delete-all-prints`)
       .set(auth(adminToken));
@@ -119,6 +125,7 @@ describe("admin user management", () => {
     const usersRes = await request(app).get("/api/admin/users").set(auth(adminToken));
     const member = usersRes.body.find((u: { id: string }) => u.id === memberUserId);
     expect(member.print_count).toBe(0);
+    expect(fs.existsSync(mosaics)).toBe(false);
   });
 });
 

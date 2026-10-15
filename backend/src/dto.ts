@@ -209,9 +209,17 @@ export function toPlateOut(printId: string, plate: Plate): PlateOut {
   };
 }
 
-/** A model's picture for a mosaic: its first image, else its first plate's render; null with neither on disk. */
-export function printCoverUrl(previewImageId: string | null, plateId: string | null): string | null {
-  return (previewImageId && previewImageUrl(previewImageId)) || (plateId && plateThumbUrl(plateId)) || null;
+/** A model's picture for a mosaic: its first image, else its first plate's render; null with neither on disk.
+ *  `url` carries the file's mtime, so it changes whenever the picture does. */
+export function printCover(
+  previewImageId: string | null,
+  plateId: string | null,
+): { url: string; file: string } | null {
+  const image = previewImageId && previewImageUrl(previewImageId);
+  if (image) return { url: image, file: previewImagePath(previewImageId) };
+  const plate = plateId && plateThumbUrl(plateId);
+  if (plate) return { url: plate, file: plateThumbPath(plateId) };
+  return null;
 }
 
 function previewImageUrl(id: string): string | null {

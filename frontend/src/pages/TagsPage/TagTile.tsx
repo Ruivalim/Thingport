@@ -14,20 +14,6 @@ import type { TagSummary } from "../../api/tags";
 import { colorForTag } from "../../utils/tagColors";
 import TagActionsMenu from "../TagDetailPage/TagActionsMenu";
 
-// A 4 x 4 grid split into as many pictures as the tag has, big and small together. Each letter is one picture.
-export const MOSAICS: string[][] = [
-  ["aaaa", "aaaa", "aaaa", "aaaa"],
-  ["aabb", "aabb", "aabb", "aabb"],
-  ["aabb", "aabb", "aacc", "aacc"],
-  ["aabc", "aabc", "aadd", "aadd"],
-  ["aabb", "aabb", "cdee", "cdee"],
-  ["aabc", "aabc", "ddee", "ffee"],
-  ["aabc", "aabd", "eeff", "eegg"],
-  ["abcc", "dbcc", "eeff", "ghff"],
-  ["aabc", "aade", "fgii", "hgii"],
-  ["aabc", "aade", "fghh", "fijj"],
-];
-
 /** Grid areas for a mosaic's pictures, from its rows of letters. */
 const areas = (rows: string[]) => rows.map((row) => `"${row.split("").join(" ")}"`).join(" ");
 
@@ -48,8 +34,6 @@ const overlayButtonSx = {
 /** A square for a tag: a mosaic of its models, its name, count and bookmark along the bottom, and its menu on hover. */
 function TagTile({ tag, onToggleBookmark, onDeleted, onUnauthorized }: Props) {
   const { t } = useTranslation(["models", "common"]);
-  const pictures = tag.thumbnails.slice(0, MOSAICS.length);
-  const layout = pictures.length ? MOSAICS[pictures.length - 1] : null;
   const fallback = colorForTag(tag.name);
   const bookmarkLabel = tag.bookmarked ? t("models:tags.unbookmarkTag") : t("models:tags.bookmarkTag");
 
@@ -62,7 +46,7 @@ function TagTile({ tag, onToggleBookmark, onDeleted, onUnauthorized }: Props) {
         overflow: "hidden",
         border: "1px solid",
         borderColor: "divider",
-        bgcolor: layout ? "divider" : fallback.bg,
+        bgcolor: tag.mosaic_url ? "divider" : fallback.bg,
         transition: "transform 150ms, box-shadow 150ms",
         "&:hover": { transform: "translateY(-2px)", boxShadow: "0 6px 16px rgba(0, 0, 0, 0.16)" },
         "&:hover .tag-mosaic img": { transform: "scale(1.04)" },
@@ -82,37 +66,23 @@ function TagTile({ tag, onToggleBookmark, onDeleted, onUnauthorized }: Props) {
           "&:focus-visible": { outline: "2px solid", outlineColor: "primary.main", outlineOffset: -3 },
         }}
       >
-        {layout ? (
-          <Box
-            className="tag-mosaic"
-            aria-hidden
-            sx={{
-              position: "absolute",
-              inset: 0,
-              display: "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
-              gridTemplateRows: "repeat(4, 1fr)",
-              gridTemplateAreas: areas(layout),
-              gap: "2px",
-            }}
-          >
-            {pictures.map((url, index) => (
-              <Box key={url} sx={{ gridArea: String.fromCharCode(97 + index), overflow: "hidden", minHeight: 0 }}>
-                <Box
-                  component="img"
-                  src={printsApi.fileUrl(url)}
-                  alt=""
-                  loading="lazy"
-                  sx={{
-                    display: "block",
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                    transition: "transform 300ms",
-                  }}
-                />
-              </Box>
-            ))}
+        {tag.mosaic_url ? (
+          // Built on the server from the tag's newest models: one picture per tile, however many models.
+          <Box className="tag-mosaic" aria-hidden sx={{ position: "absolute", inset: 0, overflow: "hidden" }}>
+            <Box
+              component="img"
+              src={printsApi.fileUrl(tag.mosaic_url)}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              sx={{
+                display: "block",
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                transition: "transform 300ms",
+              }}
+            />
           </Box>
         ) : (
           <LocalOfferOutlinedIcon
@@ -212,8 +182,15 @@ function TagTile({ tag, onToggleBookmark, onDeleted, onUnauthorized }: Props) {
 // The page passes the same callbacks every time, so only a tile whose tag changed draws again.
 export default memo(TagTile);
 
-// A few different mosaics, so a loading grid doesn't look stamped out.
-const SKELETON_MOSAICS = [4, 6, 2, 9, 5, 7].map((count) => MOSAICS[count]);
+// A few mosaics like the server draws, so a loading grid doesn't look stamped out.
+const SKELETON_MOSAICS = [
+  ["aabb", "aabb", "cdee", "cdee"],
+  ["aabc", "aabd", "eeff", "eegg"],
+  ["aabb", "aabb", "aacc", "aacc"],
+  ["aabc", "aade", "fghh", "fijj"],
+  ["aabc", "aabc", "ddee", "ffee"],
+  ["abcc", "dbcc", "eeff", "ghff"],
+];
 
 /** Stand-ins shaped like tiles: a mosaic of blocks, a pill for the name, a circle for the bookmark. */
 export function TagTileSkeletons({ count }: { count: number }) {

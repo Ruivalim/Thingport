@@ -7,8 +7,8 @@ export type TagSummary = {
   name: string;
   count: number;
   bookmarked: boolean;
-  /** Up to 10 pictures of its newest models, for its tile. */
-  thumbnails: string[];
+  /** One picture of its newest models, built and cached by the server; null while none has a picture. */
+  mosaic_url: string | null;
 };
 
 export type TagSummaryPage = {

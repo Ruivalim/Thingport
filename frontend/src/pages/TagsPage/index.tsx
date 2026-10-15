@@ -17,7 +17,13 @@ type Props = {
   onBookmarksChanged?: () => void;
 };
 
-const PAGE_SIZE = 30;
+/** Enough tags to fill the screen about one and a half times, so a big one is filled by its first request. */
+function pageSizeForScreen(): number {
+  const tile = 172; // a 160px tile and its gap
+  const columns = Math.max(2, Math.floor(window.innerWidth / tile));
+  const rows = Math.ceil(window.innerHeight / tile);
+  return Math.min(100, Math.max(30, Math.ceil(columns * rows * 1.5)));
+}
 
 const TILE_GRID = {
   display: "grid",
@@ -37,6 +43,7 @@ export default function TagsPage({ onUnauthorized, onBookmarksChanged }: Props) 
   const [sortMode, setSortMode] = useState<TagSortMode>("popular");
   const [hideRarelyUsed, setHideRarelyUsed] = useState(true);
   const minCount = hideRarelyUsed ? 2 : 1;
+  const [pageSize] = useState(pageSizeForScreen);
   // Bumped whenever the sort or filter changes, so a page still on its way for the old one is dropped.
   const generation = useRef(0);
 
@@ -56,7 +63,7 @@ export default function TagsPage({ onUnauthorized, onBookmarksChanged }: Props) 
     setTags([]);
     (async () => {
       try {
-        const page = await tagsApi.listSummary({ sort: sortMode, limit: PAGE_SIZE, offset: 0, minCount });
+        const page = await tagsApi.listSummary({ sort: sortMode, limit: pageSize, offset: 0, minCount });
         if (current !== generation.current) return;
         setTags(page.items);
         setHasMore(page.has_more);
@@ -68,13 +75,13 @@ export default function TagsPage({ onUnauthorized, onBookmarksChanged }: Props) 
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortMode, minCount]);
+  }, [sortMode, minCount, pageSize]);
 
   const loadMore = useCallback(async () => {
     const current = generation.current;
     setLoadingMore(true);
     try {
-      const page = await tagsApi.listSummary({ sort: sortMode, limit: PAGE_SIZE, offset: tags.length, minCount });
+      const page = await tagsApi.listSummary({ sort: sortMode, limit: pageSize, offset: tags.length, minCount });
       if (current !== generation.current) return;
       setTags((prev) => [...prev, ...page.items]);
       setHasMore(page.has_more);
@@ -85,7 +92,7 @@ export default function TagsPage({ onUnauthorized, onBookmarksChanged }: Props) 
       setLoadingMore(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortMode, minCount, tags.length]);
+  }, [sortMode, minCount, pageSize, tags.length]);
 
   const sentinelRef = useInfiniteScroll(() => void loadMore(), hasMore, loading || loadingMore);
 

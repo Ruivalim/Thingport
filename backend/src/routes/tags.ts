@@ -4,11 +4,17 @@ import { prisma } from "../db";
 import { requireAuth } from "../auth";
 import { asyncHandler } from "../utils/asyncHandler";
 import { normalizeTag } from "../utils/tagNormalization";
-import { printCoverUrl } from "../dto";
 import { addTagBookmark, listBookmarkedTagSet, removeTagBookmark } from "../services/bookmarkService";
 import { createLog } from "../services/auditLog";
 import { relocatePrintsForToken } from "../services/printService";
 import { HttpError } from "../utils/fileUtils";
+import {
+  ensureTagMosaic,
+  listTaggedPrints,
+  removeTagMosaics,
+  tagMosaicUrl,
+  tagPictures,
+} from "../services/tagMosaicService";
 
 const router = Router();
 router.use(requireAuth);
@@ -18,11 +24,6 @@ function sortedBookmarks(tags: Iterable<string>): string[] {
 }
 
 // Every tag in the library (unlike GET /tags, which follows the grid filter).
-
-/** Pictures behind each tag's tile, from its newest models. */
-const TAG_THUMBNAILS = 10;
-/** Models looked at per tag for those pictures; more than ten, as some models have none yet. */
-const TAG_THUMBNAIL_CANDIDATES = 30;
 
 const summaryQuery = z.object({
   sort: z.enum(["popular", "name"]).catch("popular"),
@@ -36,15 +37,7 @@ router.get(
   "/tags/summary",
   asyncHandler(async (req, res) => {
     const { sort, limit, offset, min_count: minCount } = summaryQuery.parse(req.query);
-    const [prints, bookmarked] = await Promise.all([
-      // Counting needs only the tags; pictures are joined below for this page's tags alone.
-      prisma.print.findMany({
-        where: { userId: req.userId },
-        orderBy: { createdAt: "desc" },
-        select: { id: true, tags: true },
-      }),
-      listBookmarkedTagSet(req.userId!),
-    ]);
+    const [prints, bookmarked] = await Promise.all([listTaggedPrints(req.userId!), listBookmarkedTagSet(req.userId!)]);
     const counts = new Map<string, number>();
     for (const print of prints) {
       for (const tag of new Set(print.tags.map(normalizeTag))) {
@@ -60,56 +53,36 @@ router.get(
       );
     const page = matching.slice(offset, offset + limit);
 
-    // Each of this page's tags' newest models, then their first image and plate in one query.
-    const candidates = new Map(page.map(([name]) => [name, [] as string[]]));
-    for (const print of prints) {
-      for (const tag of new Set(print.tags.map(normalizeTag))) {
-        const ids = candidates.get(tag);
-        if (ids && ids.length < TAG_THUMBNAIL_CANDIDATES) ids.push(print.id);
-      }
-    }
-    const pictureRows = await prisma.print.findMany({
-      where: { id: { in: [...new Set([...candidates.values()].flat())] } },
-      select: {
-        id: true,
-        previewImages: { orderBy: { position: "asc" }, take: 1, select: { id: true } },
-        plates: { orderBy: { position: "asc" }, take: 1, select: { id: true } },
-      },
-    });
-    const pictureIds = new Map(pictureRows.map((row) => [row.id, row]));
-    // A model under several of the page's tags is looked up on disk once.
-    const covers = new Map<string, string | null>();
-    const coverOf = (id: string) => {
-      if (!covers.has(id)) {
-        const row = pictureIds.get(id);
-        covers.set(id, row ? printCoverUrl(row.previewImages[0]?.id ?? null, row.plates[0]?.id ?? null) : null);
-      }
-      return covers.get(id);
-    };
-    const thumbnails = new Map<string, string[]>();
-    for (const [tag, ids] of candidates) {
-      const pictures: string[] = [];
-      // Stops at ten, so the rest of the candidates aren't looked up on disk.
-      for (const id of ids) {
-        if (pictures.length >= TAG_THUMBNAILS) break;
-        const cover = coverOf(id);
-        if (cover) pictures.push(cover);
-      }
-      thumbnails.set(tag, pictures);
-    }
+    // Pictures for this page's tags alone, joined in one query.
+    const pictures = await tagPictures(
+      prints,
+      page.map(([name]) => name),
+    );
 
     res.json({
       items: page.map(([name, count]) => ({
         name,
         count,
         bookmarked: bookmarked.has(name),
-        thumbnails: thumbnails.get(name) ?? [],
+        mosaic_url: tagMosaicUrl(name, pictures.get(name) ?? []),
       })),
       total: matching.length,
       // Every tag, whatever its count: tells "none match the filter" from "no tags at all".
       total_all: counts.size,
       has_more: offset + page.length < matching.length,
     });
+  }),
+);
+
+// The tag's tile picture; its URL carries a version, so it's cached for good and asked for anew when it changes.
+router.get(
+  "/tags/:tag/mosaic.webp",
+  asyncHandler(async (req, res) => {
+    const file = await ensureTagMosaic(req.userId!, req.params.tag);
+    if (!file) throw new HttpError(404, "Not found");
+    res.setHeader("Content-Type", "image/webp");
+    res.setHeader("Cache-Control", "private, max-age=31536000, immutable");
+    res.sendFile(file);
   }),
 );
 
@@ -155,6 +128,7 @@ router.delete(
       ),
     );
     await removeTagBookmark(req.userId!, tag);
+    await removeTagMosaics(req.userId!, tag);
     // Files only move when the storage template is laid out by tags.
     await relocatePrintsForToken(
       "tags",

@@ -7,6 +7,7 @@ import { deleteAllDescriptionImages } from "./descriptionImageService";
 import { deletePlateFiles } from "./printCreation";
 import { plateThumbPath } from "./printService";
 import { loadFullPrint } from "./printLoader";
+import { removeUserTagMosaics } from "./tagMosaicService";
 
 export type UserWithPrintCount = {
   id: string;
@@ -97,6 +98,8 @@ export async function deleteAllPrintsForUser(userId: string): Promise<number> {
       await fs.rm(plateThumbPath(plate.id), { force: true }).catch(() => undefined);
     }
   }
+  // With no models left the user has no tags, so none of their tag pictures is needed.
+  await removeUserTagMosaics(userId);
   return prints.length;
 }
 
