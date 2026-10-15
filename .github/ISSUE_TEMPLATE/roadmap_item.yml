@@ -1,0 +1,11 @@
+name: Roadmap item
+description: Feature to be implemented
+labels: [roadmap]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What's the item?
+      description: Describe the feature/item meant to be implemented in the future.
+    validations:
+      required: true

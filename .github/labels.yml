@@ -42,3 +42,6 @@
 - name: help wanted
   color: 333a54
   description: Extra attention is needed
+- name: roadmap
+  color: d64a00
+  description: Planned to implement task/feature
