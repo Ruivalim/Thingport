@@ -570,6 +570,7 @@
       "previews": {
         "heading": "Modelių peržiūros",
         "subtitle": "Valdykite fono peržiūrų generavimą visai sistemai.",
+        "modeLabel": "Trūkstamos kortelių miniatiūros",
         "infoTitle": "Ką tai valdo",
         "infoScope": "Tai veikia tik mažą 3D miniatiūrą, rodomą modelio kortelėje (Modeliai, Kolekcijos) — niekada pilną modelio peržiūros langą. Taip pat tai galioja tik failams, kurie dar neturi miniatiūros: įtaisytoji suskaidyto .3mf failo miniatiūra arba anksčiau jau sugeneruota miniatiūra visada naudojama automatiškai, nepriklausomai nuo šio nustatymo. Šis pasirinkimas nulemia tik likusius atvejus — dažniausiai .stl/.obj failus arba .3mf be įtaisytos miniatiūros:",
         "infoAutomatic": "Automatinis — lankytojo naršyklė sugeneruoja ir išsaugo trūkstamą miniatiūrą, vos tik kortelė atsiranda ekrane.",
@@ -962,7 +963,9 @@
           "helpOn": "Įjungta: modelių, turinčių daugiau nei 1 milijoną trikampių, peržiūros supaprastinamos.",
           "helpOff": "Išjungta: peržiūros visada rodo visas modelio detales.",
           "loadFailed": "Nepavyko įkelti atvaizdavimo nustatymų.",
-          "saveFailed": "Nepavyko išsaugoti atvaizdavimo nustatymų."
+          "saveFailed": "Nepavyko išsaugoti atvaizdavimo nustatymų.",
+          "illustrationBefore": "Detalus",
+          "illustrationAfter": "Supaprastintas"
         }
       },
       "importQueue": {

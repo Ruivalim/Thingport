@@ -4,14 +4,12 @@ import Stack from "@mui/material/Stack";
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
-import Radio from "@mui/material/Radio";
-import RadioGroup from "@mui/material/RadioGroup";
-import FormControlLabel from "@mui/material/FormControlLabel";
 import CircularProgress from "@mui/material/CircularProgress";
-import Alert from "@mui/material/Alert";
-import AlertTitle from "@mui/material/AlertTitle";
 import { UnauthorizedError } from "../../api/client";
 import { settingsApi, type PreviewMode } from "../../api/settings";
+import Segmented from "../../components/controls/Segmented";
+import HelpTip from "../../components/HelpTip";
+import PreviewModeIllustration from "./PreviewModeIllustration";
 import SectionHeader from "../../components/SectionHeader";
 
 type Props = {
@@ -83,60 +81,51 @@ export default function PreviewsSection({ onUnauthorized, onSaved }: Props) {
     },
   ];
 
+  const points = (["infoAutomatic", "infoOnDemand", "infoDisabled"] as const).map((key) =>
+    t(`adminSettings.previews.${key}`),
+  );
+  const infoText = [t("adminSettings.previews.infoTitle"), t("adminSettings.previews.infoScope"), ...points].join(" ");
+  const info = (
+    <>
+      <Typography variant="subtitle2" component="div" sx={{ mb: 0.5 }}>
+        {t("adminSettings.previews.infoTitle")}
+      </Typography>
+      {t("adminSettings.previews.infoScope")}
+      <Box component="ul" sx={{ mt: 1, mb: 0, pl: 2.5 }}>
+        {points.map((point) => (
+          <li key={point}>{point}</li>
+        ))}
+      </Box>
+    </>
+  );
+
   return (
     <Stack spacing={3}>
       <SectionHeader title={t("adminSettings.previews.heading")} subtitle={t("adminSettings.previews.subtitle")} />
       <Paper variant="outlined" sx={{ p: 2.5 }}>
         <Stack spacing={2}>
-          <Alert severity="info">
-            <AlertTitle>{t("adminSettings.previews.infoTitle")}</AlertTitle>
-            {t("adminSettings.previews.infoScope")}
-            <Box component="ul" sx={{ mt: 1, mb: 0, pl: 2.5 }}>
-              <li>
-                <Typography variant="body2">{t("adminSettings.previews.infoAutomatic")}</Typography>
-              </li>
-              <li>
-                <Typography variant="body2">{t("adminSettings.previews.infoOnDemand")}</Typography>
-              </li>
-              <li>
-                <Typography variant="body2">{t("adminSettings.previews.infoDisabled")}</Typography>
-              </li>
-            </Box>
-          </Alert>
-          <RadioGroup value={mode} onChange={(e) => selectMode(e.target.value as PreviewMode)}>
-            <Stack spacing={1.5}>
-              {options.map((option) => {
-                const selected = mode === option.id;
-                return (
-                  <FormControlLabel
-                    key={option.id}
-                    value={option.id}
-                    control={<Radio />}
-                    disabled={loading || saving}
-                    sx={{
-                      alignItems: "flex-start",
-                      m: 0,
-                      borderRadius: 2,
-                      border: "1px solid",
-                      borderColor: selected ? "primary.main" : "divider",
-                      bgcolor: selected ? "action.selected" : "transparent",
-                      p: 2,
-                    }}
-                    label={
-                      <Box>
-                        <Typography variant="body2" fontWeight={600}>
-                          {option.label}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {option.description}
-                        </Typography>
-                      </Box>
-                    }
-                  />
-                );
-              })}
-            </Stack>
-          </RadioGroup>
+          <PreviewModeIllustration
+            value={mode}
+            onChange={(next) => void selectMode(next)}
+            disabled={loading || saving}
+            options={options.map((option) => ({ value: option.id, label: option.label }))}
+          />
+          <Stack spacing={0.75} alignItems="flex-start">
+            <Typography variant="body2" fontWeight={600}>
+              {t("adminSettings.previews.modeLabel")}
+              <HelpTip text={infoText} content={info} />
+            </Typography>
+            <Segmented
+              label={t("adminSettings.previews.heading")}
+              value={mode}
+              onChange={(next) => void selectMode(next)}
+              disabled={loading || saving}
+              options={options.map((option) => ({ value: option.id, label: option.label }))}
+            />
+            <Typography variant="caption" color="text.secondary">
+              {options.find((option) => option.id === mode)?.description}
+            </Typography>
+          </Stack>
           {(saving || status) && (
             <Stack direction="row" alignItems="center" spacing={1}>
               {saving && <CircularProgress size={14} />}

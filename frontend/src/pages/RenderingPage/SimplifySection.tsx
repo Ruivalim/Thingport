@@ -1,7 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import Alert from "@mui/material/Alert";
-import AlertTitle from "@mui/material/AlertTitle";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import FormControlLabel from "@mui/material/FormControlLabel";
@@ -11,7 +10,9 @@ import Switch from "@mui/material/Switch";
 import Typography from "@mui/material/Typography";
 import { UnauthorizedError } from "../../api/client";
 import { settingsApi } from "../../api/settings";
+import HelpTip from "../../components/HelpTip";
 import SectionHeader from "../../components/SectionHeader";
+import SimplifyIllustration from "./SimplifyIllustration";
 
 type Props = {
   onUnauthorized?: () => void;
@@ -57,6 +58,28 @@ export default function SimplifySection({ onUnauthorized }: Props) {
     }
   };
 
+  const points = (["infoFiles", "infoBenefit", "infoCost", "infoChange"] as const).map((key) =>
+    t(`adminSettings.rendering.simplify.${key}`),
+  );
+  const infoText = [
+    t("adminSettings.rendering.simplify.infoTitle"),
+    t("adminSettings.rendering.simplify.infoWhat"),
+    ...points,
+  ].join(" ");
+  const info = (
+    <>
+      <Typography variant="subtitle2" component="div" sx={{ mb: 0.5 }}>
+        {t("adminSettings.rendering.simplify.infoTitle")}
+      </Typography>
+      {t("adminSettings.rendering.simplify.infoWhat")}
+      <Box component="ul" sx={{ mt: 1, mb: 0, pl: 2.5 }}>
+        {points.map((point) => (
+          <li key={point}>{point}</li>
+        ))}
+      </Box>
+    </>
+  );
+
   return (
     <Stack spacing={3}>
       <SectionHeader
@@ -65,48 +88,36 @@ export default function SimplifySection({ onUnauthorized }: Props) {
       />
       <Paper variant="outlined" sx={{ p: 2.5 }}>
         <Stack spacing={2}>
-          <Alert severity="info">
-            <AlertTitle>{t("adminSettings.rendering.simplify.infoTitle")}</AlertTitle>
-            {t("adminSettings.rendering.simplify.infoWhat")}
-            <Box component="ul" sx={{ mt: 1, mb: 0, pl: 2.5 }}>
-              <li>
-                <Typography variant="body2">{t("adminSettings.rendering.simplify.infoFiles")}</Typography>
-              </li>
-              <li>
-                <Typography variant="body2">{t("adminSettings.rendering.simplify.infoBenefit")}</Typography>
-              </li>
-              <li>
-                <Typography variant="body2">{t("adminSettings.rendering.simplify.infoCost")}</Typography>
-              </li>
-              <li>
-                <Typography variant="body2">{t("adminSettings.rendering.simplify.infoChange")}</Typography>
-              </li>
-            </Box>
-          </Alert>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={enabled ?? false}
-                  disabled={enabled === null || saving}
-                  onChange={(e) => void toggle(e.target.checked)}
-                />
-              }
-              label={
-                <Box>
-                  <Typography variant="body2" fontWeight={600}>
-                    {t("adminSettings.rendering.simplify.label")}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {t(
-                      enabled ? "adminSettings.rendering.simplify.helpOn" : "adminSettings.rendering.simplify.helpOff",
-                    )}
-                  </Typography>
-                </Box>
-              }
-              sx={{ alignItems: "flex-start", m: 0, "& .MuiSwitch-root": { mt: -0.5 } }}
-            />
-            {saving && <CircularProgress size={16} />}
+          <Stack spacing={2.5} alignItems="flex-start">
+            <SimplifyIllustration />
+            <Stack direction="row" spacing={1} alignItems="center">
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={enabled ?? false}
+                    disabled={enabled === null || saving}
+                    onChange={(e) => void toggle(e.target.checked)}
+                  />
+                }
+                label={
+                  <Box>
+                    <Typography variant="body2" fontWeight={600}>
+                      {t("adminSettings.rendering.simplify.label")}
+                      <HelpTip text={infoText} content={info} />
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {t(
+                        enabled
+                          ? "adminSettings.rendering.simplify.helpOn"
+                          : "adminSettings.rendering.simplify.helpOff",
+                      )}
+                    </Typography>
+                  </Box>
+                }
+                sx={{ alignItems: "flex-start", m: 0, "& .MuiSwitch-root": { mt: -0.5 } }}
+              />
+              {saving && <CircularProgress size={16} />}
+            </Stack>
           </Stack>
           {error && (
             <Alert severity="error" onClose={() => setError(null)}>

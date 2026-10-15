@@ -568,6 +568,7 @@
       "previews": {
         "heading": "Model Previews",
         "subtitle": "Control background preview generation for the whole instance.",
+        "modeLabel": "Missing card thumbnails",
         "infoTitle": "What this controls",
         "infoScope": "This only affects the small 3D thumbnail shown on model cards (Models, Collections) — never the full model viewer. It also only applies to files with no thumbnail yet: an embedded thumbnail from a sliced .3mf file, or one already generated before, is always reused automatically regardless of this setting. This choice only decides what happens for the rest — typically .stl/.obj files, or a .3mf with no embedded thumbnail:",
         "infoAutomatic": "Automatic — a visitor's browser renders and saves the missing thumbnail as soon as its card scrolls into view.",
@@ -954,7 +955,9 @@
           "helpOn": "On: previews of models over 1 million triangles are simplified.",
           "helpOff": "Off: previews always show a model's full detail.",
           "loadFailed": "Failed to load rendering settings.",
-          "saveFailed": "Failed to save rendering settings."
+          "saveFailed": "Failed to save rendering settings.",
+          "illustrationBefore": "Detailed",
+          "illustrationAfter": "Simplified"
         }
       },
       "importQueue": {
