@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
@@ -57,6 +57,7 @@ export default function TagDetailPage({ theme, previewMode, onUnauthorized, onBo
     });
   };
 
+  const navigate = useNavigate();
   usePageHeader({
     title: tag ? t("models:tags.detail.title", { name: tag }) : undefined,
     subtitle: tag ? t("models:tags.detail.subtitle") : undefined,
@@ -68,7 +69,14 @@ export default function TagDetailPage({ theme, previewMode, onUnauthorized, onBo
           onUnauthorized={onUnauthorized}
           onBookmarksChanged={onBookmarksChanged}
         />
-        <TagActionsMenu tag={tag} onUnauthorized={onUnauthorized} />
+        <TagActionsMenu
+          tag={tag}
+          onUnauthorized={onUnauthorized}
+          onDeleted={() => {
+            onBookmarksChanged?.();
+            navigate("/models/tags");
+          }}
+        />
       </Stack>
     ) : undefined,
   });

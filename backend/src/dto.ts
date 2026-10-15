@@ -209,6 +209,11 @@ export function toPlateOut(printId: string, plate: Plate): PlateOut {
   };
 }
 
+/** A model's picture for a mosaic: its first image, else its first plate's render; null with neither on disk. */
+export function printCoverUrl(previewImageId: string | null, plateId: string | null): string | null {
+  return (previewImageId && previewImageUrl(previewImageId)) || (plateId && plateThumbUrl(plateId)) || null;
+}
+
 function previewImageUrl(id: string): string | null {
   if (!previewImageExists(id)) return null;
   const mtime = fs.statSync(previewImagePath(id)).mtimeMs;

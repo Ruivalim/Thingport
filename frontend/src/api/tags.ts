@@ -7,12 +7,44 @@ export type TagSummary = {
   name: string;
   count: number;
   bookmarked: boolean;
+  /** Up to 10 pictures of its newest models, for its tile. */
+  thumbnails: string[];
+};
+
+export type TagSummaryPage = {
+  items: TagSummary[];
+  /** Tags matching `min_count`. */
+  total: number;
+  /** Every tag, whatever its count. */
+  total_all: number;
+  has_more: boolean;
 };
 
 export const tagsApi = {
-  listSummary: async (sort: TagSortMode = "popular"): Promise<TagSummary[]> => {
-    const res = await fetch(`${apiBase()}/tags/summary?sort=${sort}`, { headers: authHeaders() });
+  listSummary: async (params: {
+    sort: TagSortMode;
+    limit: number;
+    offset: number;
+    minCount: number;
+  }): Promise<TagSummaryPage> => {
+    const query = new URLSearchParams({
+      sort: params.sort,
+      limit: String(params.limit),
+      offset: String(params.offset),
+      min_count: String(params.minCount),
+    });
+    const res = await fetch(`${apiBase()}/tags/summary?${query}`, { headers: authHeaders() });
     assertOk(res, "Failed to list tags");
+    return res.json();
+  },
+
+  /** Takes the tag off every model that has it. */
+  remove: async (tag: string): Promise<{ models: number }> => {
+    const res = await fetch(`${apiBase()}/tags/${encodeURIComponent(tag)}`, {
+      method: "DELETE",
+      headers: authHeaders(),
+    });
+    assertOk(res, "Failed to delete tag");
     return res.json();
   },
 

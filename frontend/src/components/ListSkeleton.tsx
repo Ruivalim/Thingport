@@ -55,14 +55,3 @@ export function TableRowSkeletons({ rows, columns }: { rows: number; columns: nu
     </TableRow>
   ));
 }
-
-/** Pill-shaped placeholders for a wrap of chips, such as the tag list. */
-export function ChipSkeletons({ count }: { count: number }) {
-  return (
-    <Stack direction="row" flexWrap="wrap" useFlexGap spacing={1} aria-hidden>
-      {Array.from({ length: count }, (_, index) => (
-        <Skeleton key={index} variant="rounded" height={24} width={56 + ((index * 37) % 70)} sx={{ borderRadius: 4 }} />
-      ))}
-    </Stack>
-  );
-}

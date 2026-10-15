@@ -1,35 +1,44 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import Chip from "@mui/material/Chip";
 import Switch from "@mui/material/Switch";
 import FormControlLabel from "@mui/material/FormControlLabel";
-import BookmarkIcon from "@mui/icons-material/Bookmark";
-import BookmarkBorderIcon from "@mui/icons-material/BookmarkBorder";
 import { UnauthorizedError } from "../../api/client";
 import { type TagSortMode, type TagSummary, tagsApi } from "../../api/tags";
-import { dividerBorderColor } from "../../theme";
 import TagSortTabs from "./TagSortTabs";
-import { ChipSkeletons } from "../../components/ListSkeleton";
+import TagTile, { TagTileSkeletons } from "./TagTile";
+import VirtualTagGrid from "./VirtualTagGrid";
+import { useInfiniteScroll } from "../../hooks/useInfiniteScroll";
 
 type Props = {
   onUnauthorized?: () => void;
   onBookmarksChanged?: () => void;
 };
 
-/** Every tag as a chip with a bookmark toggle (the chip's deleteIcon slot). Rarely-used tags
+const PAGE_SIZE = 30;
+
+const TILE_GRID = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fill, minmax(min(160px, calc(50% - 6px)), 1fr))",
+  gap: 1.5,
+} as const;
+
+/** Every tag as a square of its models' pictures, with its count and a bookmark toggle. Rarely-used tags
  *  (under 2 models) are hidden by default. */
 export default function TagsPage({ onUnauthorized, onBookmarksChanged }: Props) {
   const { t } = useTranslation(["models", "common"]);
-  const navigate = useNavigate();
   const [tags, setTags] = useState<TagSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [anyTags, setAnyTags] = useState(false);
   const [sortMode, setSortMode] = useState<TagSortMode>("popular");
-  const [pendingTag, setPendingTag] = useState<string | null>(null);
   const [hideRarelyUsed, setHideRarelyUsed] = useState(true);
-  const visibleTags = hideRarelyUsed ? tags.filter((tag) => tag.count >= 2) : tags;
+  const minCount = hideRarelyUsed ? 2 : 1;
+  // Bumped whenever the sort or filter changes, so a page still on its way for the old one is dropped.
+  const generation = useRef(0);
 
   const handleError = (err: unknown, message?: string) => {
     if (err instanceof UnauthorizedError) {
@@ -42,27 +51,49 @@ export default function TagsPage({ onUnauthorized, onBookmarksChanged }: Props) 
   };
 
   useEffect(() => {
-    let cancelled = false;
+    const current = ++generation.current;
     setLoading(true);
+    setTags([]);
     (async () => {
       try {
-        const result = await tagsApi.listSummary(sortMode);
-        if (!cancelled) setTags(result);
+        const page = await tagsApi.listSummary({ sort: sortMode, limit: PAGE_SIZE, offset: 0, minCount });
+        if (current !== generation.current) return;
+        setTags(page.items);
+        setHasMore(page.has_more);
+        setAnyTags(page.total_all > 0);
       } catch (err) {
-        if (!cancelled) handleError(err, t("models:errors.loadFailed"));
+        if (current === generation.current) handleError(err, t("models:errors.loadFailed"));
       } finally {
-        if (!cancelled) setLoading(false);
+        if (current === generation.current) setLoading(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortMode]);
+  }, [sortMode, minCount]);
 
-  const toggleBookmark = async (tag: TagSummary) => {
-    if (pendingTag) return;
-    setPendingTag(tag.name);
+  const loadMore = useCallback(async () => {
+    const current = generation.current;
+    setLoadingMore(true);
+    try {
+      const page = await tagsApi.listSummary({ sort: sortMode, limit: PAGE_SIZE, offset: tags.length, minCount });
+      if (current !== generation.current) return;
+      setTags((prev) => [...prev, ...page.items]);
+      setHasMore(page.has_more);
+    } catch (err) {
+      if (current === generation.current) handleError(err, t("models:errors.loadFailed"));
+      setHasMore(false);
+    } finally {
+      setLoadingMore(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortMode, minCount, tags.length]);
+
+  const sentinelRef = useInfiniteScroll(() => void loadMore(), hasMore, loading || loadingMore);
+
+  // A ref, not state: the callbacks below stay the same between renders, so the memoized tiles don't redraw.
+  const pendingTag = useRef<string | null>(null);
+  const toggleBookmark = useCallback(async (tag: TagSummary) => {
+    if (pendingTag.current) return;
+    pendingTag.current = tag.name;
     const nextBookmarked = !tag.bookmarked;
     setTags((prev) => prev.map((t2) => (t2.name === tag.name ? { ...t2, bookmarked: nextBookmarked } : t2)));
     try {
@@ -77,9 +108,19 @@ export default function TagsPage({ onUnauthorized, onBookmarksChanged }: Props) 
       console.error(err);
       alert(t("models:tags.bookmarkFailed"));
     } finally {
-      setPendingTag(null);
+      pendingTag.current = null;
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const removeTag = useCallback(
+    (tag: TagSummary) => {
+      setTags((prev) => prev.filter((other) => other.name !== tag.name));
+      if (tag.bookmarked) onBookmarksChanged?.();
+    },
+    [onBookmarksChanged],
+  );
+  const onToggleBookmark = useCallback((tag: TagSummary) => void toggleBookmark(tag), [toggleBookmark]);
 
   return (
     <Stack spacing={2}>
@@ -98,42 +139,29 @@ export default function TagsPage({ onUnauthorized, onBookmarksChanged }: Props) 
       </Stack>
 
       {loading ? (
-        <ChipSkeletons count={28} />
-      ) : visibleTags.length ? (
-        <Stack direction="row" flexWrap="wrap" useFlexGap spacing={1}>
-          {visibleTags.map((tag) => (
-            <Chip
-              key={tag.name}
-              size="small"
-              clickable
-              variant="outlined"
-              onClick={() => navigate(`/models/tags/${encodeURIComponent(tag.name)}`)}
-              label={`${tag.name} (${tag.count})`}
-              deleteIcon={
-                tag.bookmarked ? <BookmarkIcon fontSize="inherit" /> : <BookmarkBorderIcon fontSize="inherit" />
-              }
-              onDelete={() => void toggleBookmark(tag)}
-              aria-label={
-                tag.bookmarked
-                  ? (t("models:tags.unbookmarkTag") ?? undefined)
-                  : (t("models:tags.bookmarkTag") ?? undefined)
-              }
-              sx={{
-                p: 1,
-                color: (theme) => theme.thingport.navInactiveText,
-                bgcolor: "background.paper",
-                borderColor: dividerBorderColor,
-                "& .MuiChip-deleteIcon": {
-                  color: tag.bookmarked ? "primary.main" : "inherit",
-                  "&:hover": { color: tag.bookmarked ? "primary.main" : "inherit" },
-                },
-              }}
-            />
-          ))}
-        </Stack>
+        <Box sx={TILE_GRID}>
+          <TagTileSkeletons count={12} />
+        </Box>
+      ) : tags.length ? (
+        <>
+          <VirtualTagGrid
+            tags={tags}
+            skeletons={loadingMore ? 6 : 0}
+            renderTile={(tag) => (
+              <TagTile
+                key={tag.name}
+                tag={tag}
+                onToggleBookmark={onToggleBookmark}
+                onUnauthorized={onUnauthorized}
+                onDeleted={removeTag}
+              />
+            )}
+          />
+          {hasMore && <Box ref={sentinelRef} sx={{ height: 1 }} />}
+        </>
       ) : (
         <Stack alignItems="center" spacing={1} sx={{ py: 8, color: "text.secondary" }}>
-          <Typography variant="body2">{tags.length ? t("models:tags.allHidden") : t("models:tags.empty")}</Typography>
+          <Typography variant="body2">{anyTags ? t("models:tags.allHidden") : t("models:tags.empty")}</Typography>
         </Stack>
       )}
     </Stack>

@@ -37,7 +37,8 @@ export type LogAction =
   | "collection_sync_enabled"
   | "collection_sync_disabled"
   | "ai_categorization_run"
-  | "ai_description_run";
+  | "ai_description_run"
+  | "tag_deleted";
 
 export type LogEntry = {
   id: string;
