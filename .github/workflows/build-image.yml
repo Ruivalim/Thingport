@@ -34,6 +34,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # A build takes about 10 minutes; a step hung under QEMU otherwise runs until GitHub's 6-hour limit.
+    timeout-minutes: 30
     permissions:
       contents: read
       packages: write
@@ -92,7 +94,8 @@ jobs:
         with:
           context: ${{ inputs.context }}
           file: ${{ inputs.dockerfile }}
-          # arm64 covers Apple Silicon and most ARM NAS units, built via QEMU on amd64 runners.
+          # arm64 covers Apple Silicon and most ARM NAS units, built via QEMU on amd64 runners (the frontend's
+          # Node stages run natively; see frontend/Dockerfile).
           platforms: linux/amd64,linux/arm64
           push: ${{ inputs.push }}
           tags: ${{ steps.meta.outputs.tags }}
