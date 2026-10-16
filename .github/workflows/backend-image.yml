@@ -10,7 +10,7 @@ on:
       - ".github/workflows/backend-image.yml"
       - ".github/workflows/build-image.yml"
   pull_request:
-    branches: [main]
+    branches: [main, develop]
     paths:
       - "backend/**"
       - ".github/workflows/backend-image.yml"

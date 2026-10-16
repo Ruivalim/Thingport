@@ -21,7 +21,7 @@ on:
       - "frontend/public/**"
       - ".github/workflows/web-pages.yml"
   pull_request:
-    branches: [main]
+    branches: [main, develop]
     paths:
       - "web/**"
       - "docs/**"

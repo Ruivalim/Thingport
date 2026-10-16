@@ -14,7 +14,7 @@ Getting the project running locally is covered in [docs/DEVELOPMENT.md](docs/DEV
 ## Workflow
 
 1. **Fork** the repository and clone your fork.
-2. **Branch** from `main`. Name it after what it does: `fix/firefox-background-importscripts`,
+2. **Branch** from `develop`. Name it after what it does: `fix/firefox-background-importscripts`,
    `feat/printables-collections`.
 3. **Commit** using [Conventional Commits](https://www.conventionalcommits.org/) -- this repo's
    history uses `feat:`, `fix:`, `docs:`, `refactor:` and `ci:`, with an optional scope:
@@ -27,7 +27,10 @@ Getting the project running locally is covered in [docs/DEVELOPMENT.md](docs/DEV
    For the browser extension the type also decides its next version (`feat:` minor, `fix:` patch,
    `!` major) -- see [extension/CONTRIBUTING.md](extension/CONTRIBUTING.md#versioning-how-the-next-version-is-picked).
 
-4. **Push** to your fork and open a pull request against `main`.
+4. **Push** to your fork and open a pull request against `develop`.
+
+`develop` is where work comes together; `main` is what's released. Neither takes direct pushes: changes reach
+`develop` by pull request, and a release is a pull request from `develop` into `main`.
 
 A husky pre-commit hook formats your staged files and runs oxlint over whichever project you touched.
 If it blocks your commit, fix the lint error rather than passing `--no-verify`.
@@ -60,8 +63,8 @@ path-filtered, so only the parts you touched run:
 The [regression pack](docs/DEVELOPMENT.md#regression-pack), which runs end-to-end browser scenarios
 against the full stack, isn't run on pull requests. It runs weekly on `main`.
 
-Nothing is published from a pull request -- images are built to prove they build, but only pushes
-to `main` publish anything.
+Nothing is published from a pull request or from `develop` -- images are built to prove they build, but
+only a release, merged into `main`, publishes anything.
 
 If you're a brand-new GitHub account, your first PR's workflows wait for a maintainer to approve
 them before running. That's a GitHub setting, not something wrong with your PR.
