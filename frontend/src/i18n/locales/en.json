@@ -836,11 +836,11 @@
         "linkAuthorsDone": "Linked {{linked}} model(s) to their author.",
         "linkAuthorsNotFound": "The author couldn't be found for {{count}} creator(s) — the model may have been removed from its site, or the site couldn't be reached.",
         "linkAuthorsProblems": {
-          "thingiverse_no_token": "Thingiverse models were skipped: add a Thingiverse App Token in Administration > Settings.",
-          "thingiverse_token_rejected": "Thingiverse models were skipped: Thingiverse rejected the App Token in Administration > Settings.",
+          "thingiverse_no_token": "Thingiverse models were skipped: add a Thingiverse App Token in Administration > Providers.",
+          "thingiverse_token_rejected": "Thingiverse models were skipped: Thingiverse rejected the App Token in Administration > Providers.",
           "thingiverse_rate_limited": "Thingiverse models were skipped: Thingiverse started blocking requests with a rate limit. It usually clears after a while — try again later.",
           "makerworld_captcha": "MakerWorld models were skipped: MakerWorld asked for a CAPTCHA, and blocks further requests for about 2 hours. Try again later.",
-          "makerworld_login_rejected": "MakerWorld models were skipped: MakerWorld rejected the saved MakerWorld login. Update it in Settings > Imports."
+          "makerworld_login_rejected": "MakerWorld models were skipped: MakerWorld rejected the saved MakerWorld login. Update it in Configuration > Providers."
         },
         "refetchTitle": "Refetch model descriptions",
         "refetchDesc": "Replaces the description of every model a user imported from MakerWorld, Printables or Thingiverse with the current one from that site, with its formatting and images. Use it to bring models imported before formatted descriptions were supported up to date. Changes the user made to those descriptions are lost. Models whose source is gone keep their description. It runs in the background — MakerWorld requests are spaced out to avoid its CAPTCHA, so a large library can take a while.",

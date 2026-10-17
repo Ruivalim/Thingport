@@ -9,14 +9,12 @@ each other by container name -- the frontend's nginx config, for example, proxie
 straight to `http://backend:8000`. Unraid's Community Applications store only installs one
 container per template with no built-in way to wire multiple templates together on a shared
 network, so Thingport is **not searchable in the CA app store**. Instead, install it as a
-Docker Compose stack, which Unraid supports natively (7.2+) or via a Community Applications
-plugin.
+Docker Compose stack. Unraid has no Compose support of its own, so this needs a plugin.
 
-## 1. Get a Compose stack manager
+## 1. Install the Compose Manager plugin
 
-- **Unraid 7.2+**: the Docker tab has a built-in **Compose** section -- skip to step 2.
-- **Older Unraid**: install **Compose Manager Plus** (or **Compose Manager**) from
-  Community Applications (Apps tab -> search "Compose Manager").
+Apps tab -> search **Compose Manager** -> install **Compose Manager** (or **Compose Manager
+Plus**). It adds a **Compose** section to the Docker tab.
 
 ## 2. Create the stack
 

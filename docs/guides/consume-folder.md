@@ -39,9 +39,9 @@ Open **Administration → Storage → Consume Folder**. If the volume is mounted
 - **Import into the library of** chooses whose library the models go to. It starts as the first admin account. On a
   shared server, switch it to the person whose library you're importing, then switch it back.
 - **Import mode** works like the choice you get when [uploading a folder](upload-folders.md):
-  - **Each model file is a separate model** (the default): every STL, 3MF, STEP or OBJ becomes a model, and images
+  - **Each file is a model** (the default): every STL, 3MF, STEP or OBJ becomes a model, and images
     become models too.
-  - **Each folder is one model**: a folder of model files becomes one model named after the folder, with its images as
+  - **Each folder is a model**: a folder of model files becomes one model named after the folder, with its images as
     photos and its other files attached.
 
 Click **Save consume settings**. You only need to do this again when you want to change something.

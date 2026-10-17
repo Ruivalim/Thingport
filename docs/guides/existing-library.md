@@ -13,7 +13,7 @@ all of them recreate your folders inside Thingport, so the structure you built s
 | [Consume folder](consume-folder.md)      | Large libraries, NAS shares, or anything you add on a schedule | Copy files into a folder on the server |
 
 The browser uploads ask you how to import things as you go. The consume folder asks nothing: you choose its rules once
-in the admin settings, and it imports whatever lands in it, without a browser tab open.
+under **Administration → Storage → Consume Folder**, and it imports whatever lands in it, without a browser tab open.
 
 ## The one decision: what counts as a model?
 
