@@ -1,6 +1,8 @@
 name: Backend image
 
 # Runs when backend/ or the build workflow changes. Use "Manual image publish" to force a build.
+# Pull requests into develop only run the checks; the image build (~6 min, arm64 under QEMU) waits for the
+# develop -> main pull request, which still builds it before anything is released.
 on:
   push:
     branches: [main]
@@ -25,6 +27,8 @@ jobs:
   # The full backend suite against real Postgres, including end-to-end provider imports. The image
   # is only built and published if this passes.
   test:
+    # A main -> develop back-merge only brings release commits main already tested.
+    if: github.head_ref != 'main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -57,6 +61,9 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - run: npm ci --no-audit --no-fund
       - run: npx prisma generate
+      - run: npm run lint
+      # tsc: the typecheck the image build would otherwise be the only one to run.
+      - run: npm run build
       - run: npx prisma migrate deploy
       - run: npm test
 
@@ -75,7 +82,9 @@ jobs:
   build:
     needs: [test, release]
     # Also when the release was skipped, as on pull requests; never after a failed one.
-    if: ${{ !cancelled() && needs.test.result == 'success' && needs.release.result != 'failure' }}
+    if: >-
+      ${{ !cancelled() && needs.test.result == 'success' && needs.release.result != 'failure'
+      && !(github.event_name == 'pull_request' && github.base_ref == 'develop') }}
     permissions:
       contents: read
       packages: write

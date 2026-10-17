@@ -23,6 +23,8 @@ concurrency:
 
 jobs:
   build-chrome:
+    # A main -> develop back-merge only brings release commits main already tested.
+    if: github.head_ref != 'main'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -53,6 +55,8 @@ jobs:
           if-no-files-found: error
 
   build-firefox:
+    # A main -> develop back-merge only brings release commits main already tested.
+    if: github.head_ref != 'main'
     runs-on: ubuntu-latest
     defaults:
       run:

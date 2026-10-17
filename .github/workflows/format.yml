@@ -11,6 +11,8 @@ permissions:
 
 jobs:
   check:
+    # A main -> develop back-merge only brings release commits main already tested.
+    if: github.head_ref != 'main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
