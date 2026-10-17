@@ -1,7 +1,7 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { createApp } from "../src/app";
-import { importPrintFromUrl } from "../src/services/importService";
+import { downloadPlainFileToTemp, importPrintFromUrl } from "../src/services/importService";
 import { setThingiverseAccessToken } from "../src/services/settingsService";
 import { prisma } from "../src/db";
 
@@ -65,9 +65,17 @@ function pdfResponse(): Response {
   return new Response("%PDF-1.4 fake", { status: 200, headers: { "content-type": "application/pdf" } });
 }
 
-function mockThingiverseFetch(overrides?: { detailStatus?: number; detailBody?: unknown }) {
+function challengeResponse(): Response {
+  return new Response("<html>Just a moment...</html>", {
+    status: 403,
+    headers: { "content-type": "text/html", "cf-mitigated": "challenge", server: "cloudflare" },
+  });
+}
+
+function mockThingiverseFetch(overrides?: { detailStatus?: number; detailBody?: unknown; cdnChallenge?: boolean }) {
   return vi.fn<(input: RequestInfo | URL) => Promise<Response>>(async (input) => {
     const url = String(input);
+    if (overrides?.cdnChallenge && url.startsWith("https://cdn.thingiverse.com/assets/")) return challengeResponse();
     if (url.startsWith(`https://api.thingiverse.com/things/${THING_ID}/categories`)) {
       return jsonResponse(200, THING_CATEGORIES);
     }
@@ -116,6 +124,29 @@ describe("importPrintFromUrl -- Thingiverse", () => {
     global.fetch = mockThingiverseFetch({ detailStatus: 401, detailBody: { error: "invalid" } });
 
     await expect(importPrintFromUrl(userId, THING_URL, { url: THING_URL, tags: [] })).rejects.toThrow(/app token/i);
+  });
+
+  it("reports a Cloudflare-challenged file download as a block, not a generic failure", async () => {
+    await setThingiverseAccessToken(ACCESS_TOKEN);
+    global.fetch = mockThingiverseFetch({ cdnChallenge: true });
+
+    await expect(importPrintFromUrl(userId, THING_URL, { url: THING_URL, tags: [] })).rejects.toThrow(
+      /blocked a file download/i,
+    );
+  });
+
+  it("retries a challenged file download once", async () => {
+    const url = "https://cdn.thingiverse.com/assets/test/body.stl";
+    const fetchMock = vi
+      .fn<(input: RequestInfo | URL) => Promise<Response>>()
+      .mockResolvedValueOnce(challengeResponse())
+      .mockResolvedValueOnce(stlResponse("body"));
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const result = await downloadPlainFileToTemp(url, "body.stl");
+
+    expect(result && "input" in result ? result.input.filename : null).toBe("body.stl");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("imports a Thing's model files as plates, matches category, and attaches metadata + images", async () => {

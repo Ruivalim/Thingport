@@ -39,12 +39,17 @@ export async function testFlaresolverr(
 // Cloudflare still said no after FlareSolverr, or with none set up: nothing to do with the link.
 export const CLOUDFLARE_BLOCKED_CODE = "CLOUDFLARE_BLOCKED";
 
+/** Cloudflare challenged this request. Narrower than looksLikeCloudflareBlock: a site behind
+ * Cloudflare sends `server: cloudflare` on its own 403s and 404s too. */
+export function isCloudflareChallenge(headers: Headers): boolean {
+  return headers.has("cf-mitigated");
+}
+
 /** A Cloudflare edge block rather than an application-level 403. */
 export function looksLikeCloudflareBlock(headers: Headers): boolean {
   const server = (headers.get("server") || "").toLowerCase();
   if (server.includes("cloudflare")) return true;
-  if (headers.has("cf-mitigated")) return true;
-  return false;
+  return isCloudflareChallenge(headers);
 }
 
 function parseCookieHeader(raw: string | null | undefined): Record<string, string> {

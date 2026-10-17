@@ -5,6 +5,7 @@ import type { ProviderCollectionCard } from "./providerCollectionCard";
 import {
   extractJsonFromBrowserBody,
   fetchViaFlaresolverr,
+  isCloudflareChallenge,
   looksLikeCloudflareBlock,
   shouldProxyHost,
 } from "./flaresolverr";
@@ -135,7 +136,7 @@ async function fetchThingiverseApi(
     }
   }
   // An unsolved challenge is a 403 too; it says nothing about the token.
-  if (!viaBrowser && (res.status === 429 || res.headers.get("cf-mitigated") === "challenge")) {
+  if (!viaBrowser && (res.status === 429 || isCloudflareChallenge(res.headers))) {
     throw new ThingiverseRateLimitError((await getFlaresolverrUrl()) ? "failed" : "missing");
   }
   if (res.status === 429) throw new ThingiverseRateLimitError();
