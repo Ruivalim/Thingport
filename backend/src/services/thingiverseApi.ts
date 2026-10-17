@@ -27,16 +27,16 @@ export class ThingiverseAuthError extends Error {
   constructor() {
     super(
       "The Thingiverse App Token configured for this instance was rejected. Ask an admin to " +
-        "update it in Admin Settings (a new one can be generated at thingiverse.com/apps/create).",
+        "update it in Administration > Providers (a new one can be generated at thingiverse.com/apps/create).",
     );
     this.name = "ThingiverseAuthError";
   }
 }
 
 const FLARESOLVERR_HINTS = {
-  missing: " Setting up FlareSolverr in Admin Settings > Connections gets past it.",
+  missing: " Setting up FlareSolverr in Administration > Connections gets past it.",
   failed:
-    " FlareSolverr couldn't get past it either: it may be down or unreachable. Check it in Admin Settings > Connections.",
+    " FlareSolverr couldn't get past it either: it may be down or unreachable. Check it in Administration > Connections.",
 };
 
 /** Cloudflare's 429 challenge, distinct from a 404 or rejected token: the fix is to wait, or a working FlareSolverr. */
