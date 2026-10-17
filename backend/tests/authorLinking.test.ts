@@ -253,7 +253,7 @@ describe("looking up authors no known author matches", () => {
     await prisma.user.update({ where: { id: userId }, data: { makerworldCookie: null } });
   });
 
-  it("skips Thingiverse without an access token, and says so", async () => {
+  it("skips Thingiverse without an App Token, and says so", async () => {
     await setThingiverseAccessToken(null);
     const print = await unattributedPrint("lookup-tv", "thingiverse", `TvPerson${stamp}`);
     mockFetch({});

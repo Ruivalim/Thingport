@@ -5,6 +5,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import {
   IMPORT_ALLOWED_EXTS,
+  IMPORT_DOWNLOAD_RETRY_DELAY_MS,
   IMPORT_HTML_MAX_BYTES,
   IMPORT_MAX_BYTES,
   IMPORT_PREVIEW_IMAGE_DELAY_MS,
@@ -21,10 +22,11 @@ import {
 } from "../utils/fileUtils";
 import { validateRemoteUrl } from "../utils/urlUtils";
 import { readCapped } from "../utils/readCapped";
-import { maybeSleep, sleep } from "../utils/concurrency";
+import { mapWithConcurrency, maybeSleep, sleep } from "../utils/concurrency";
 import {
   CLOUDFLARE_BLOCKED_CODE,
   fetchViaFlaresolverr,
+  isCloudflareChallenge,
   looksLikeCloudflareBlock,
   shouldProxyHost,
 } from "./flaresolverr";
@@ -737,12 +739,26 @@ export const MULTI_FILE_PLATE_EXTS = new Set([...IMPORT_ALLOWED_EXTS].filter((ex
 
 export type PlainDownloadResult = { input: NewPlateInput } | { rateLimited: true } | null;
 
-/** Best-effort: null on failure so one bad file doesn't fail the whole import, except a 429,
- * which is reported so the caller can say why. */
+// Thingiverse's CDN challenges request bursts; parallel downloads trip it more often.
+const THINGIVERSE_DOWNLOAD_CONCURRENCY = 2;
+
+/** A 429, or a 403 Cloudflare challenge (which FlareSolverr can't solve for a binary download). */
+function isDownloadBlocked(res: Response): boolean {
+  return res.status === 429 || (res.status === 403 && isCloudflareChallenge(res.headers));
+}
+
+/** Best-effort: null on failure so one bad file doesn't fail the whole import, except a block,
+ * which is retried once and then reported so the caller can say why. */
 export async function downloadPlainFileToTemp(url: string, suggestedName: string): Promise<PlainDownloadResult> {
   try {
-    const res = await rawFetch(url, { "User-Agent": IMPORT_USER_AGENT, Accept: "*/*" });
-    if (res.status === 429) {
+    const headers = { "User-Agent": IMPORT_USER_AGENT, Accept: "*/*" };
+    let res = await rawFetch(url, headers);
+    if (isDownloadBlocked(res)) {
+      await res.body?.cancel().catch(() => undefined);
+      await maybeSleep(IMPORT_DOWNLOAD_RETRY_DELAY_MS);
+      res = await rawFetch(url, headers);
+    }
+    if (isDownloadBlocked(res)) {
       await res.body?.cancel().catch(() => undefined);
       return { rateLimited: true };
     }
@@ -778,7 +794,7 @@ async function importThingiverseThing(
   if (!accessToken) {
     throw new HttpError(
       503,
-      "Thingiverse import isn't configured for this instance yet -- ask an admin to add an Access Token in Admin Settings.",
+      "Thingiverse import isn't configured for this instance yet -- ask an admin to add an App Token in Admin Settings.",
     );
   }
 
@@ -794,7 +810,7 @@ async function importThingiverseThing(
   if (!resolved) {
     throw new HttpError(
       404,
-      "This Thingiverse Thing could not be found, or isn't accessible with the configured Access Token.",
+      "This Thingiverse Thing could not be found, or isn't accessible with the configured App Token.",
     );
   }
   const { meta, plateFiles, galleryImages } = resolved;
@@ -818,8 +834,10 @@ async function importThingiverseThing(
   const modelFiles = plateFiles.filter((f: ThingiversePlateFile) =>
     MULTI_FILE_PLATE_EXTS.has(path.extname(f.name).toLowerCase()),
   );
-  const downloadResults = await Promise.all(
-    modelFiles.map((f: ThingiversePlateFile) => downloadPlainFileToTemp(f.url, f.name)),
+  const downloadResults = await mapWithConcurrency(
+    modelFiles,
+    THINGIVERSE_DOWNLOAD_CONCURRENCY,
+    (f: ThingiversePlateFile) => downloadPlainFileToTemp(f.url, f.name),
   );
   const downloaded = downloadResults
     .filter((result): result is { input: NewPlateInput } => result !== null && "input" in result)
@@ -904,6 +922,12 @@ async function importPrintablesModel(
     .filter((result): result is { input: NewPlateInput } => result !== null && "input" in result)
     .map((result) => result.input);
   if (!downloaded.length) {
+    if (downloadResults.some((result) => result !== null && "rateLimited" in result)) {
+      throw new HttpError(
+        429,
+        "Printables blocked a file download (rate limit or Cloudflare challenge). This usually clears after a while -- wait, then retry the same import.",
+      );
+    }
     throw new HttpError(400, "None of this model's files could be downloaded.");
   }
 

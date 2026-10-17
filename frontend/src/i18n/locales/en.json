@@ -380,7 +380,19 @@
     },
     "importProgress": {
       "starting": "Starting import…",
-      "label": "Importing… {{processed}} of {{total}}",
+      "label": "{{phrase}} {{processed}} of {{total}}",
+      "phrases": [
+        "Thingporting models…",
+        "Opening a portal to the model…",
+        "Beaming files into your library…",
+        "Unpacking the 3MF…",
+        "Counting the plates…",
+        "Checking for a Benchy…",
+        "Rescuing models from the internet…",
+        "Teleporting filament-free…",
+        "Grabbing the STLs before they wander off…",
+        "Dusting off the thumbnails…"
+      ],
       "tooltip": "{{imported}} imported, {{alreadyInLibrary}} already in your library, {{failedCount}} failed. Click to see the queue.",
       "done": "Imported {{imported}}, {{alreadyInLibrary}} already in your library. Click to see the queue.",
       "doneWithFailures": "Imported {{imported}}, {{alreadyInLibrary}} already in your library, {{failedCount}} failed. Click to see which and why.",
@@ -517,11 +529,11 @@
         "descriptions": {
           "makerworld": "Bambu Lab's model site: imports with print profiles, and collections to sync.",
           "printables": "Prusa's model site: imports, and public and private collections to sync.",
-          "thingiverse": "Imports, collections and liked models, through this Thingport's Access Token."
+          "thingiverse": "Imports, collections and liked models, through this Thingport's App Token."
         },
-        "tokenSet": "Access Token set",
-        "tokenMissing": "No Access Token: Thingiverse imports won't work until one is set",
-        "tokenSettings": "Thingiverse Access Token",
+        "tokenSet": "App Token set",
+        "tokenMissing": "No App Token: Thingiverse imports won't work until one is set",
+        "tokenSettings": "Thingiverse App Token",
         "turnOff": "Turn {{name}} off",
         "turnOn": "Turn {{name}} on",
         "disableTitle": "Turn {{name}} off?",
@@ -624,11 +636,11 @@
           },
           "thingiverse": {
             "name": "Thingiverse",
-            "description": "The instance's Thingiverse Access Token, used to import models, sync collections and liked models, and link authors from Thingiverse.",
+            "description": "The instance's Thingiverse App Token, used to import models, sync collections and liked models, and link authors from Thingiverse.",
             "problems": {
               "disabled": "Turned off under Providers, so nothing is checked. Turn Thingiverse back on there to use it.",
-              "not_configured": "No Access Token set. Thingiverse imports and syncs won't work until one is added in Settings (create one at thingiverse.com/apps/create).",
-              "token_rejected": "Thingiverse rejected the Access Token. Generate a new one at thingiverse.com/apps/create and save it in Settings.",
+              "not_configured": "No App Token set. Thingiverse imports and syncs won't work until one is added in Settings (create one at thingiverse.com/apps/create).",
+              "token_rejected": "Thingiverse rejected the App Token. Generate a new one at thingiverse.com/apps/create and save it in Settings.",
               "blocked": "Thingiverse answered with a Cloudflare challenge, which says nothing about the token. Set up FlareSolverr, or wait: it usually clears after a while.",
               "unreachable": "Thingport couldn't reach Thingiverse. Check the server's internet access, or try again later.",
               "timeout": "Thingiverse didn't answer in time. Try again later."
@@ -824,8 +836,8 @@
         "linkAuthorsDone": "Linked {{linked}} model(s) to their author.",
         "linkAuthorsNotFound": "The author couldn't be found for {{count}} creator(s) — the model may have been removed from its site, or the site couldn't be reached.",
         "linkAuthorsProblems": {
-          "thingiverse_no_token": "Thingiverse models were skipped: add a Thingiverse access token in Administration > Settings.",
-          "thingiverse_token_rejected": "Thingiverse models were skipped: Thingiverse rejected the access token in Administration > Settings.",
+          "thingiverse_no_token": "Thingiverse models were skipped: add a Thingiverse App Token in Administration > Settings.",
+          "thingiverse_token_rejected": "Thingiverse models were skipped: Thingiverse rejected the App Token in Administration > Settings.",
           "thingiverse_rate_limited": "Thingiverse models were skipped: Thingiverse started blocking requests with a rate limit. It usually clears after a while — try again later.",
           "makerworld_captcha": "MakerWorld models were skipped: MakerWorld asked for a CAPTCHA, and blocks further requests for about 2 hours. Try again later.",
           "makerworld_login_rejected": "MakerWorld models were skipped: MakerWorld rejected the saved MakerWorld login. Update it in Settings > Imports."
@@ -842,18 +854,18 @@
         "refetchFailedCount": "{{count}} couldn't be read from their source and were left as they were."
       },
       "thingiverse": {
-        "heading": "Thingiverse Access Token",
-        "helpText": "Create an app at thingiverse.com/apps/create (any type, e.g. \"Desktop\") and paste the Access Token it shows you.",
-        "statusConfigured": "An Access Token is currently configured.",
-        "statusNotConfigured": "No Access Token is configured yet -- Thingiverse imports will fail until one is set.",
-        "tokenLabel": "Access Token",
+        "heading": "Thingiverse App Token",
+        "helpText": "Create an app at thingiverse.com/apps/create (any type, e.g. \"Desktop\") and paste the App Token it shows you.",
+        "statusConfigured": "An App Token is currently configured.",
+        "statusNotConfigured": "No App Token is configured yet -- Thingiverse imports will fail until one is set.",
+        "tokenLabel": "App Token",
         "tokenPlaceholder": "Paste a new token to replace the current one",
         "tokenHelperConfigured": "For security, the current token is never shown again -- leave this blank to keep it, or paste a new one to replace it.",
         "save": "Save",
         "saving": "Saving…",
         "clear": "Remove token",
         "saved": "Saved.",
-        "cleared": "Access Token removed.",
+        "cleared": "App Token removed.",
         "failed": "Failed to save Thingiverse settings."
       },
       "ai": {
@@ -1528,11 +1540,11 @@
         ]
       },
       "thingiverse": {
-        "placeholder": "Paste the App Access Token",
+        "placeholder": "Paste the App Token",
         "steps": [
           "Sign in at thingiverse.com and open thingiverse.com/apps/create.",
           "Create an app of any type, such as \"Desktop app\".",
-          "Copy the App Access Token it shows and paste it below."
+          "Copy the App Token it shows and paste it below."
         ],
         "shared": "This token is shared by everyone on this Thingport.",
         "adminOnly": "Only an admin of this Thingport can set this up."
@@ -1549,7 +1561,19 @@
       "activate": "Activate"
     },
     "storageMoveProgress": {
-      "label": "Moving model files · {{done}} of {{total}} models",
+      "label": "{{phrase}} {{done}} of {{total}} models",
+      "phrases": [
+        "Moving model files…",
+        "Rearranging the shelves…",
+        "Relabelling the folders…",
+        "Carrying STLs down the hall…",
+        "Packing 3MFs into new boxes…",
+        "Finding every file its new desk…",
+        "Tidying the filing cabinet…",
+        "Teaching files their new address…",
+        "Sweeping up the old folders…",
+        "Making sure nothing fell behind the drawer…"
+      ],
       "starting": "Getting ready to move model files…"
     },
     "grab": {

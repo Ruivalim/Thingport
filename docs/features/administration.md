@@ -6,7 +6,7 @@ first account on an instance is its admin, and there's no config file to edit af
 | Page         | What it's for                                                                                                                                                                           |
 | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Overview     | [System Health](../guides/system-health.md) for everything Thingport relies on, disk space used, and the update check, which says when newer Thingport images are out.                  |
-| Providers    | Turn MakerWorld, Printables or Thingiverse off for everyone, and set the Thingiverse Access Token. See [turning a provider off](../PROVIDER_SETUP.md#turning-a-provider-off).           |
+| Providers    | Turn MakerWorld, Printables or Thingiverse off for everyone, and set the Thingiverse App Token. See [turning a provider off](../PROVIDER_SETUP.md#turning-a-provider-off).              |
 | Storage      | The folder layout on disk, reorganizing existing files, browsing the storage folder, and the [consume folder](../guides/consume-folder.md). See [plain files on your disk](storage.md). |
 | Auth         | The public URL, open or invite-only registration, [single sign-on](../guides/single-sign-on.md) providers, and how long a sign-in lasts.                                                |
 | Rendering    | How card thumbnails are made, and simplifying the previews of very detailed models. See [3D previews](3d-previews.md).                                                                  |

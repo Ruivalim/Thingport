@@ -54,14 +54,14 @@ export async function fetchSourceMeta(userId: string, print: Print, sourceUrl: s
     if (!accessToken) {
       throw new HttpError(
         503,
-        "Thingiverse import isn't configured for this instance yet -- ask an admin to add an Access Token in Admin Settings.",
+        "Thingiverse import isn't configured for this instance yet -- ask an admin to add an App Token in Admin Settings.",
       );
     }
     const resolved = await resolveThingiverseThing(externalId, accessToken);
     if (!resolved) {
       throw new HttpError(
         404,
-        "This Thingiverse Thing could not be found, or isn't accessible with the configured Access Token.",
+        "This Thingiverse Thing could not be found, or isn't accessible with the configured App Token.",
       );
     }
     return {

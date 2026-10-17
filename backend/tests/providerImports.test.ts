@@ -302,6 +302,37 @@ describe("importing from Printables", () => {
       filename: "hook.3mf",
     });
   });
+
+  it("reports a Cloudflare-challenged file download as a block, not a generic failure", async () => {
+    const modelId = String((stamp + 1) % 1_000_000_000);
+    mockFetch({
+      "https://api.printables.com/graphql/": (init) => {
+        const body = JSON.parse(String(init?.body ?? "{}")) as { query?: string };
+        if (body.query?.includes("getDownloadLink")) {
+          return json({
+            data: {
+              getDownloadLink: {
+                ok: true,
+                errors: null,
+                output: { files: [{ id: "78", link: "https://files.printables.com/media/prints/blocked.3mf" }] },
+              },
+            },
+          });
+        }
+        return json({
+          data: { print: { id: modelId, name: "Blocked Hook", stls: [{ id: "78", name: "blocked.3mf" }] } },
+        });
+      },
+      "https://files.printables.com/media/prints/blocked.3mf": cloudflareChallenge,
+    });
+
+    const res = await request(app)
+      .post("/api/import")
+      .set(auth())
+      .send({ url: `https://www.printables.com/model/${modelId}-blocked-hook` });
+    expect(res.status).toBe(429);
+    expect(res.body.detail).toMatch(/blocked a file download/i);
+  });
 });
 
 describe("importing from MakerWorld", () => {

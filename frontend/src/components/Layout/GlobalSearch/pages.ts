@@ -83,6 +83,7 @@ export const SEARCH_PAGES: SearchPage[] = [
     "makerworld",
     "printables",
     "thingiverse",
+    "app token",
     "access token",
   ]),
   adminPage("adminStorage", "/admin-storage", "app:adminSettings.storageSettings.heading", [

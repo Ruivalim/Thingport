@@ -6,13 +6,13 @@ Connect them under **Configuration → Providers**: open the user menu (your ava
 
 ![Configuration, Providers section with MakerWorld, Thingiverse and Printables connected](../frontend/src/assets/screenshots/11_configuration_providers.png)
 
-## Thingiverse Access Token
+## Thingiverse App Token
 
-Instance-wide, admin-configured (Configuration > Providers > Thingiverse, or Administration > Providers > Thingiverse Access Token) -- one token is shared by every user's Thingiverse imports. Other users see Thingiverse as connected once an admin has set it up.
+Instance-wide, admin-configured (Configuration > Providers > Thingiverse, or Administration > Providers > Thingiverse App Token) -- one token is shared by every user's Thingiverse imports. Other users see Thingiverse as connected once an admin has set it up.
 
 1. Sign in to your Thingiverse account, then go to [thingiverse.com/apps/create](https://www.thingiverse.com/apps/create).
 2. Register a new app. The name/description don't matter for this; pick whichever Application Type doesn't require a redirect URL (e.g. "Desktop" or "Mobile") -- a "Web App" asks for OAuth details you don't need here.
-3. Once created, Thingiverse shows an **Access Token** for it. This is different from your Thingiverse login password -- it's a permanent credential tied to that registered app.
+3. Once created, Thingiverse shows an **App Token** for it. This is different from your Thingiverse login password -- it's a permanent credential tied to that registered app.
 4. Copy it, right-click **Thingiverse** in Thingport's **Configuration > Providers**, choose **Connect** and paste it. Thingport verifies the token against Thingiverse before storing it, so a mistyped or revoked token is rejected immediately with a clear error instead of only failing on the next import.
 
 Treat this token like a password: anyone who has it can use it to act as your Thingiverse app. If it's ever exposed, revoke it from your Thingiverse account's Apps page and generate a new one.
@@ -43,4 +43,4 @@ Admins choose which providers this Thingport imports from, under **Administratio
 default. Turn one off and nothing new comes from it for anyone: links to it, Thingport Grab and the import queue are
 refused, its synced collections pause, and background jobs skip it. It also disappears from everyone's
 **Configuration → Providers**. Models already imported from it stay as they are, and turning it back on picks up where
-it left off. The Thingiverse Access Token is set on the same page.
+it left off. The Thingiverse App Token is set on the same page.

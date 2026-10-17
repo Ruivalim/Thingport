@@ -5,12 +5,13 @@ import type { ProviderCollectionCard } from "./providerCollectionCard";
 import {
   extractJsonFromBrowserBody,
   fetchViaFlaresolverr,
+  isCloudflareChallenge,
   looksLikeCloudflareBlock,
   shouldProxyHost,
 } from "./flaresolverr";
 import { getFlaresolverrUrl } from "./settingsService";
 
-// The official API needs an app Access Token (not a session cookie). It's still behind Cloudflare
+// The official API needs an App Token (not a session cookie). It's still behind Cloudflare
 // and returns a sticky 429 challenge after a few rapid requests, hence ThingiverseRateLimitError
 // and the FlareSolverr fallback.
 const THINGIVERSE_API_BASE = "https://api.thingiverse.com";
@@ -25,7 +26,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export class ThingiverseAuthError extends Error {
   constructor() {
     super(
-      "The Thingiverse Access Token configured for this instance was rejected. Ask an admin to " +
+      "The Thingiverse App Token configured for this instance was rejected. Ask an admin to " +
         "update it in Admin Settings (a new one can be generated at thingiverse.com/apps/create).",
     );
     this.name = "ThingiverseAuthError";
@@ -135,7 +136,7 @@ async function fetchThingiverseApi(
     }
   }
   // An unsolved challenge is a 403 too; it says nothing about the token.
-  if (!viaBrowser && (res.status === 429 || res.headers.get("cf-mitigated") === "challenge")) {
+  if (!viaBrowser && (res.status === 429 || isCloudflareChallenge(res.headers))) {
     throw new ThingiverseRateLimitError((await getFlaresolverrUrl()) ? "failed" : "missing");
   }
   if (res.status === 429) throw new ThingiverseRateLimitError();

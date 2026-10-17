@@ -392,7 +392,7 @@ async function runThingiverseThingsImportJob(
     if (!accessToken) {
       throw new HttpError(
         503,
-        "Thingiverse import isn't configured for this instance yet -- ask an admin to add an Access Token in Admin Settings.",
+        "Thingiverse import isn't configured for this instance yet -- ask an admin to add an App Token in Admin Settings.",
       );
     }
 
@@ -486,7 +486,7 @@ async function runThingiverseThingsImportJob(
         `${rateLimited} blocked by Thingiverse's rate-limit protection (too many requests at once) — wait a while, then retry`,
       );
     }
-    if (authFailed) bodyParts.push(`${authFailed} failed because the configured Access Token was rejected`);
+    if (authFailed) bodyParts.push(`${authFailed} failed because the configured App Token was rejected`);
     if (otherFailed) bodyParts.push(`${otherFailed} failed`);
     const label = sourceLabel(collectionTitle);
     await createNotification(userId, {
