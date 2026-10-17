@@ -274,7 +274,7 @@ describe("runThingiverseLikesImportJob", () => {
     await setThingiverseAccessToken(null);
   });
 
-  it("fails clearly when no Access Token is configured, without touching the job's other bookkeeping", async () => {
+  it("fails clearly when no App Token is configured, without touching the job's other bookkeeping", async () => {
     const job = await createJob(userId, "COLLECTION", {
       sourceUrl: "https://www.thingiverse.com/someuser/likes",
       provider: "thingiverse",
@@ -458,7 +458,7 @@ describe("runThingiverseCollectionImportJob", () => {
     expect(finished?.sourceLabel).toBe("Thingiverse Collection 40781575");
   });
 
-  it("fails clearly when no Access Token is configured", async () => {
+  it("fails clearly when no App Token is configured", async () => {
     const job = await createJob(userId, "COLLECTION", {
       sourceUrl: "https://www.thingiverse.com/someone/collections/1/things",
       provider: "thingiverse",

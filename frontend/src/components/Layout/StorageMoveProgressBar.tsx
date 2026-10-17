@@ -3,6 +3,7 @@ import Box from "@mui/material/Box";
 import LinearProgress from "@mui/material/LinearProgress";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import { useRotatingPhrase } from "../../hooks/useRotatingPhrase";
 import FileMoveAnimation from "../FileMoveAnimation";
 import { useStorageMove } from "./StorageMoveContext";
 
@@ -13,6 +14,7 @@ const MINI_TILE = 40;
 export default function StorageMoveProgressBar() {
   const { t } = useTranslation("app");
   const { move, running } = useStorageMove();
+  const phrase = useRotatingPhrase("storageMoveProgress.phrases", running);
   if (!move || !running) return null;
   const { done, total } = move;
 
@@ -38,7 +40,7 @@ export default function StorageMoveProgressBar() {
         <Stack spacing={0.5} sx={{ flex: 1, minWidth: 0 }}>
           <Typography variant="caption" noWrap sx={{ display: "block" }}>
             {total > 0
-              ? t("storageMoveProgress.label", { done, total, moved: move.moved })
+              ? t("storageMoveProgress.label", { phrase, done, total, moved: move.moved })
               : t("storageMoveProgress.starting")}
           </Typography>
           <LinearProgress

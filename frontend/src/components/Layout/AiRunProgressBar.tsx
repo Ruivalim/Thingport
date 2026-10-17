@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import CloseIcon from "@mui/icons-material/Close";
 import Box from "@mui/material/Box";
@@ -9,10 +9,9 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import CategorizationAnimation from "../../pages/AiPage/CategorizationAnimation";
 import DescriptionAnimation from "../../pages/AiPage/DescriptionAnimation";
+import { useRotatingPhrase } from "../../hooks/useRotatingPhrase";
 import { useAiDescriptionRun, useAiRun } from "./AiRunContext";
 
-// Long enough to read one, short enough that a run of a few minutes shows several.
-const PHRASE_MS = 3500;
 const MINI_TILE = 40;
 
 /** Shown while an AI feature's library run goes; the outcome arrives as a notification once it's done. */
@@ -24,22 +23,15 @@ export default function AiRunProgressBar({ kind }: { kind: "categorization" | "d
   const strings = kind === "categorization" ? "aiRunProgress" : "aiRunProgress.descriptions";
   const Animation = kind === "categorization" ? CategorizationAnimation : DescriptionAnimation;
   const [stopping, setStopping] = useState(false);
-  const [phrase, setPhrase] = useState(0);
-
   // A light touch on a long wait: the title changes every few seconds while the run goes.
-  useEffect(() => {
-    if (!running) return;
-    const timer = window.setInterval(() => setPhrase((current) => current + 1), PHRASE_MS);
-    return () => window.clearInterval(timer);
-  }, [running]);
+  const phrase = useRotatingPhrase(`${strings}.phrases`, running);
 
   if (!run || !running) return null;
-  const phrases = t(`${strings}.phrases`, { returnObjects: true }) as string[];
   const { done, total } = run;
   const title = run.cancelled
     ? t("aiRunProgress.stopping")
     : total > 0
-      ? t(`${strings}.label`, { phrase: phrases[phrase % phrases.length], done, total })
+      ? t(`${strings}.label`, { phrase, done, total })
       : t(`${strings}.starting`);
 
   return (

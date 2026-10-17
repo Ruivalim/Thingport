@@ -310,7 +310,7 @@ Thingport ships two small companion tools, each downloadable from the in-app Dow
 
 ## Provider Setup
 
-Printables imports work with no setup. MakerWorld and Thingiverse each need a credential from your own account first. Connect them under **Configuration → Providers** (from the user menu): right-click a provider to connect or disconnect it. Admins can turn any provider off for the whole instance under **Administration → Providers**. See **[docs/PROVIDER_SETUP.md](docs/PROVIDER_SETUP.md)** for how to create a Thingiverse Access Token and how to grab a MakerWorld session cookie.
+Printables imports work with no setup. MakerWorld and Thingiverse each need a credential from your own account first. Connect them under **Configuration → Providers** (from the user menu): right-click a provider to connect or disconnect it. Admins can turn any provider off for the whole instance under **Administration → Providers**. See **[docs/PROVIDER_SETUP.md](docs/PROVIDER_SETUP.md)** for how to create a Thingiverse App Token and how to grab a MakerWorld session cookie.
 
 ## Contributing
 

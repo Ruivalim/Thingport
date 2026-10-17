@@ -175,7 +175,7 @@ describe("POST /import/thingiverse-collection/entries", () => {
     expect(res.status).toBe(400);
   });
 
-  it("fails with a clear 503 when no Access Token is configured", async () => {
+  it("fails with a clear 503 when no App Token is configured", async () => {
     const res = await request(app)
       .post("/api/import/thingiverse-collection/entries")
       .set("Authorization", `Bearer ${token}`)
