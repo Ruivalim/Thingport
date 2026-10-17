@@ -21,6 +21,8 @@ concurrency:
 
 jobs:
   build-windows:
+    # A main -> develop back-merge only brings release commits main already tested.
+    if: github.head_ref != 'main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -44,6 +46,8 @@ jobs:
           if-no-files-found: error
 
   build-linux:
+    # A main -> develop back-merge only brings release commits main already tested.
+    if: github.head_ref != 'main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -67,6 +71,8 @@ jobs:
           if-no-files-found: error
 
   build-macos:
+    # A main -> develop back-merge only brings release commits main already tested.
+    if: github.head_ref != 'main'
     # macOS URL-scheme handling needs cgo and Cocoa, so it can't be cross-compiled.
     runs-on: macos-latest
     steps:

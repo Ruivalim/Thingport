@@ -1,6 +1,8 @@
 name: Frontend image
 
 # Runs when frontend/ or the build workflow changes. Use "Manual image publish" to force a build.
+# Pull requests into develop only run the checks; the image build waits for the develop -> main pull request,
+# which still builds it before anything is released.
 on:
   push:
     branches: [main]
@@ -22,8 +24,30 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Typecheck, lint, tests and a production build, natively. The image build skips the Dockerfile's test
+  # stage, so this is the only place the frontend tests run.
+  verify:
+    # A main -> develop back-merge only brings release commits main already tested.
+    if: github.head_ref != 'main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run verify
+
   # A merge into main may give the frontend a new version (release-project.yml); the image is built from it.
   release:
+    needs: verify
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: write
@@ -34,9 +58,11 @@ jobs:
     secrets: inherit
 
   build:
-    needs: release
+    needs: [verify, release]
     # Also when the release was skipped, as on pull requests; never after a failed one.
-    if: ${{ !cancelled() && needs.release.result != 'failure' }}
+    if: >-
+      ${{ !cancelled() && needs.verify.result == 'success' && needs.release.result != 'failure'
+      && !(github.event_name == 'pull_request' && github.base_ref == 'develop') }}
     permissions:
       contents: read
       packages: write
