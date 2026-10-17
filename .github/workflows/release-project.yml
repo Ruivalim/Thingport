@@ -74,7 +74,9 @@ jobs:
                 break
               fi
               echo "main moved during the release; trying again."
-            elif [ "$attempt" = 3 ]; then
+            # Only a push that lost the race to the other project is worth retrying. Anything else may have
+            # failed after tagging, and a retry would then find nothing to release and pass without a version.
+            elif [ "$attempt" = 3 ] || [ "$(git ls-remote origin refs/heads/main | cut -f1)" = "$started" ]; then
               exit 1
             fi
             sleep $((attempt * 10))

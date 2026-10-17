@@ -21,7 +21,7 @@
     [
       "@semantic-release/exec",
       {
-        "publishCmd": "cat > \"${RUNNER_TEMP:-/tmp}/release-notes.md\" <<'SEMANTIC_RELEASE_NOTES'\n${nextRelease.notes}\nSEMANTIC_RELEASE_NOTES\nif [ -n \"$GITHUB_OUTPUT\" ]; then echo \"version=${nextRelease.version}\" >> \"$GITHUB_OUTPUT\"; echo \"tag=${nextRelease.gitTag}\" >> \"$GITHUB_OUTPUT\"; fi"
+        "publishCmd": "cat > \"$RUNNER_TEMP/release-notes.md\" <<'SEMANTIC_RELEASE_NOTES'\n${nextRelease.notes}\nSEMANTIC_RELEASE_NOTES\nif [ -n \"$GITHUB_OUTPUT\" ]; then echo \"version=${nextRelease.version}\" >> \"$GITHUB_OUTPUT\"; echo \"tag=${nextRelease.gitTag}\" >> \"$GITHUB_OUTPUT\"; fi"
       }
     ],
     [
