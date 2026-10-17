@@ -1,5 +1,13 @@
 # Thingport frontend changelog
 
+# [thingport-frontend-v1.0.1](https://github.com/TautvydasDerzinskas/Thingport/compare/thingport-frontend-v1.0.0...thingport-frontend-v1.0.1) (2026-10-17)
+
+
+### Bug Fixes
+
+* make import bar follow same rules as other long wait bars ([8754ab6](https://github.com/TautvydasDerzinskas/Thingport/commit/8754ab6b15ba5f51437f7a5f4713efad8efcf17f))
+* rename Thingiverse Access Token to App Token to match what it provides ([cc41076](https://github.com/TautvydasDerzinskas/Thingport/commit/cc4107694aa0f35a234099a1fabaa840663cd29e))
+
 # thingport-frontend-v1.0.0 (2026-10-17)
 
 
