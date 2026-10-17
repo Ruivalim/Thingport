@@ -380,7 +380,19 @@
     },
     "importProgress": {
       "starting": "Starting import…",
-      "label": "Importing… {{processed}} of {{total}}",
+      "label": "{{phrase}} {{processed}} of {{total}}",
+      "phrases": [
+        "Thingporting models…",
+        "Opening a portal to the model…",
+        "Beaming files into your library…",
+        "Unpacking the 3MF…",
+        "Counting the plates…",
+        "Checking for a Benchy…",
+        "Rescuing models from the internet…",
+        "Teleporting filament-free…",
+        "Grabbing the STLs before they wander off…",
+        "Dusting off the thumbnails…"
+      ],
       "tooltip": "{{imported}} imported, {{alreadyInLibrary}} already in your library, {{failedCount}} failed. Click to see the queue.",
       "done": "Imported {{imported}}, {{alreadyInLibrary}} already in your library. Click to see the queue.",
       "doneWithFailures": "Imported {{imported}}, {{alreadyInLibrary}} already in your library, {{failedCount}} failed. Click to see which and why.",
@@ -1549,7 +1561,19 @@
       "activate": "Activate"
     },
     "storageMoveProgress": {
-      "label": "Moving model files · {{done}} of {{total}} models",
+      "label": "{{phrase}} {{done}} of {{total}} models",
+      "phrases": [
+        "Moving model files…",
+        "Rearranging the shelves…",
+        "Relabelling the folders…",
+        "Carrying STLs down the hall…",
+        "Packing 3MFs into new boxes…",
+        "Finding every file its new desk…",
+        "Tidying the filing cabinet…",
+        "Teaching files their new address…",
+        "Sweeping up the old folders…",
+        "Making sure nothing fell behind the drawer…"
+      ],
       "starting": "Getting ready to move model files…"
     },
     "grab": {

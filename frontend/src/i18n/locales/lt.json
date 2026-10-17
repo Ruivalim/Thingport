@@ -380,7 +380,19 @@
     },
     "importProgress": {
       "starting": "Pradedamas importas…",
-      "label": "Importuojama… {{processed}} iš {{total}}",
+      "label": "{{phrase}} {{processed}} iš {{total}}",
+      "phrases": [
+        "Thingportuojami modeliai…",
+        "Atveriami vartai į modelį…",
+        "Failai perkeliami į jūsų biblioteką…",
+        "Išpakuojamas 3MF…",
+        "Skaičiuojamos plokštės…",
+        "Ieškoma Benchy…",
+        "Modeliai gelbstimi iš interneto…",
+        "Teleportuojama be gijos…",
+        "Gaudomi STL failai, kol nepabėgo…",
+        "Nuvalomos miniatiūros…"
+      ],
       "tooltip": "{{imported}} importuota, {{alreadyInLibrary}} jau bibliotekoje, {{failedCount}} nepavyko. Spustelėkite, kad pamatytumėte eilę.",
       "done": "Importuota {{imported}}, {{alreadyInLibrary}} jau bibliotekoje. Spustelėkite, kad pamatytumėte eilę.",
       "doneWithFailures": "Importuota {{imported}}, {{alreadyInLibrary}} jau bibliotekoje, {{failedCount}} nepavyko. Spustelėkite, kad pamatytumėte, kurios ir kodėl.",
@@ -1604,7 +1616,19 @@
       "activate": "Aktyvuoti"
     },
     "storageMoveProgress": {
-      "label": "Perkeliami modelių failai · {{done}} iš {{total}} modelių",
+      "label": "{{phrase}} {{done}} iš {{total}} modelių",
+      "phrases": [
+        "Perkeliami modelių failai…",
+        "Pertvarkomos lentynos…",
+        "Perženklinami aplankai…",
+        "STL failai nešami koridoriumi…",
+        "3MF failai pakuojami į naujas dėžes…",
+        "Kiekvienam failui ieškomas naujas stalas…",
+        "Tvarkoma failų spinta…",
+        "Failai mokomi naujo adreso…",
+        "Iššluojami seni aplankai…",
+        "Tikrinama, ar niekas neužkrito už stalčiaus…"
+      ],
       "starting": "Ruošiamasi perkelti modelių failus…"
     },
     "grab": {
