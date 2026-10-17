@@ -70,6 +70,13 @@
         "missingToken": "This password reset link is missing its token.",
         "failed": "This password reset link is invalid or has expired. Ask for a new one.",
         "backToSignIn": "Back to sign in"
+      },
+      "sso": {
+        "or": "or",
+        "continueWith": "Continue with {{name}}",
+        "signingIn": "Signing you in…",
+        "failed": "Single sign-on didn't finish. Please try again.",
+        "backToSignIn": "Back to sign in"
       }
     },
     "sidebar": {
@@ -208,6 +215,28 @@
         "heading": "Author preview",
         "help": "Hovering an author's name shows a card with their cover, name and a few of their models in your library.",
         "failed": "Failed to save -- try again."
+      },
+      "signIn": {
+        "noPassword": "No password",
+        "noPasswordHint": "You sign in through single sign-on.",
+        "setPasswordLink": "Set a password",
+        "setPasswordTitle": "Set a password",
+        "setPasswordSubtitle": "Then you can also sign in with your email and password, and use Thingport Grab.",
+        "setPassword": "Set password",
+        "passwordSet": "Password set. You can now sign in with your email and password too.",
+        "confirmBody": "For your security, confirm it's you by signing in again. You'll come straight back here.",
+        "confirmNoProvider": "For your security, sign out and sign in again, then come back here.",
+        "confirmWith": "Confirm with {{name}}",
+        "connect": "Connect",
+        "disconnect": "Disconnect",
+        "connected": "{{name}} connected. You can now sign in with it.",
+        "connectedAs": "Connected as {{email}}",
+        "connectedShort": "Connected",
+        "notConnected": "Not connected. Connect it to sign in with one click.",
+        "lastUsed": "last used {{when}}",
+        "turnedOff": "turned off by your admin",
+        "disconnectTitle": "Disconnect {{name}}?",
+        "disconnectMessage": "You won't be able to sign in with {{name}} until you connect it again."
       }
     },
     "addMenu": {
@@ -482,16 +511,40 @@
       }
     },
     "adminSettings": {
+      "providers": {
+        "heading": "Providers",
+        "subtitle": "The sites Thingport imports from and syncs with. Turn one off and nothing new comes from it for anyone; models already imported stay.",
+        "descriptions": {
+          "makerworld": "Bambu Lab's model site: imports with print profiles, and collections to sync.",
+          "printables": "Prusa's model site: imports, and public and private collections to sync.",
+          "thingiverse": "Imports, collections and liked models, through this Thingport's Access Token."
+        },
+        "tokenSet": "Access Token set",
+        "tokenMissing": "No Access Token: Thingiverse imports won't work until one is set",
+        "tokenSettings": "Thingiverse Access Token",
+        "turnOff": "Turn {{name}} off",
+        "turnOn": "Turn {{name}} on",
+        "disableTitle": "Turn {{name}} off?",
+        "disableMessage": "Nobody can import from {{name}} until it's back on: links, Thingport Grab and the import queue are refused, its collection syncs pause, and background jobs skip it. Models already imported from it stay as they are.",
+        "disableConfirm": "Turn off"
+      },
+      "storageSettings": {
+        "heading": "Storage"
+      },
+      "auth": {
+        "heading": "Auth"
+      },
       "storageUsage": {
-        "summary_one": "{{size}} used by {{count}} model",
-        "summary_other": "{{size}} used by {{count}} models",
-        "hint": "Disk space used by every user's model files (plates, supporting and prepared files). Thumbnails and gallery images aren't included."
+        "heading": "Storage",
+        "subtitle": "Disk space Thingport's files take: models, their pictures and previews.",
+        "summary_one": "{{total}} on disk in total, {{models}} used by {{count}} model, {{pictures}} used by pictures and previews",
+        "summary_other": "{{total}} on disk in total, {{models}} used by {{count}} models, {{pictures}} used by pictures and previews",
+        "totalHint": "Everything in Thingport's storage folder: model files ({{models}}), pictures and previews (thumbnails, gallery and description images, 3D previews, tag pictures: {{pictures}}), and other generated files (slicer-ready copies and download bundles: {{other}}). Measured every few minutes at most."
       },
       "website": {
         "link": "Thingport website & docs",
         "hint": "Install guides, provider setup and news about Thingport"
       },
-      "pageTitle": "Admin Settings",
       "health": {
         "heading": "System Health",
         "subtitle": "Everything Thingport relies on, what each is for, and whether it's working. Nothing is tested until you ask.",
@@ -563,6 +616,7 @@
             "name": "Thingiverse",
             "description": "The instance's Thingiverse Access Token, used to import models, sync collections and liked models, and link authors from Thingiverse.",
             "problems": {
+              "disabled": "Turned off under Providers, so nothing is checked. Turn Thingiverse back on there to use it.",
               "not_configured": "No Access Token set. Thingiverse imports and syncs won't work until one is added in Settings (create one at thingiverse.com/apps/create).",
               "token_rejected": "Thingiverse rejected the Access Token. Generate a new one at thingiverse.com/apps/create and save it in Settings.",
               "blocked": "Thingiverse answered with a Cloudflare challenge, which says nothing about the token. Set up FlareSolverr, or wait: it usually clears after a while.",
@@ -607,19 +661,11 @@
       "storage": {
         "heading": "Storage Structure",
         "subtitle": "Choose how managed model files are organized on disk.",
-        "templateHeading": "Path template",
-        "templateDesc": "The model name is unique inside its Thingport category. Renaming a model also renames its file while preserving the extension.",
+        "templateHeading": "Folder structure",
+        "templateDesc": "The folders each model's files are saved in, and how the files are named. Every user's files sit in a folder of their own first, so a file ends up at e.g. <user>/Props/Workshop/Cable clip/Cable clip.3mf. Two models can have the same name if they're in different categories, so the path must include Model ID, or both Category or folder and Model name; otherwise their files could land in the same folder.",
         "templateLabel": "Template",
-        "templatePlaceholder": "{category-or-folder}/{model}/{filename}",
-        "examplePathsHeading": "Example paths (two plates of one print)",
-        "examplePathsEmpty": "Enter a template to preview its path",
-        "reorganizeLabel": "Reorganize existing managed files now",
-        "reorganizeHint": "Links to models keep working, since they use the model's ID rather than its file path.",
-        "save": "Save storage structure",
+        "save": "Save & move files",
         "saving": "Saving…",
-        "savedApplied": "Saved. Moved {{moved}} file(s){{skippedSuffix}}.",
-        "skippedSuffix": "; skipped {{skipped}}",
-        "savedNoApply": "Storage structure saved for new and updated models.",
         "failed": "Failed to save storage settings.",
         "tokens": {
           "category-or-folder": "The model's category or folder, with parent ones as parent folders",
@@ -627,10 +673,59 @@
           "tags": "The model's tags, joined with \" + \"",
           "creator": "The author shown on the model page; a user's own uploads use their display name",
           "model": "The model's name",
-          "filename": "The file's name (required, in the last folder)",
+          "filename": "The file's name; always last",
           "id": "The model's permanent ID",
           "plate": "The file's position in the model, starting at 1"
-        }
+        },
+        "addFolder": "Add folder",
+        "customFolder": "Folder with your own name",
+        "customFolderHint": "A fixed name like \"Library\". It can also mix in tokens such as {model} ({id}).",
+        "customFolderSlash": "One folder at a time: no \"/\"",
+        "dragToReorder": "Drag to reorder",
+        "fileNameLabel": "File name",
+        "fileNamePlain": "File name (Base.3mf)",
+        "fileNamePlate": "Plate number, then file name (1 - Base.3mf)",
+        "editAsText": "Edit as text",
+        "editAsFolders": "Edit as folders",
+        "useDefault": "Use the default",
+        "savedHasProblems": "The saved structure was set before these rules. It keeps working, and a new file whose path is taken goes in a folder named after its model's ID instead of replacing another. Pick a structure that follows the rules to save a new one.",
+        "tokenNames": {
+          "category-or-folder": "Category or folder",
+          "collection": "Collection",
+          "tags": "Tags",
+          "creator": "Creator",
+          "model": "Model name",
+          "filename": "File name",
+          "id": "Model ID",
+          "plate": "Plate number"
+        },
+        "problems": {
+          "empty": "Add at least the file name.",
+          "unknown_token": "\"{{token}}\" isn't a token Thingport knows.",
+          "stray_brace": "There's a { or } that isn't part of a token.",
+          "empty_folder": "A folder is empty, or named . or ..",
+          "filename_count": "The file name must be in it exactly once.",
+          "filename_not_last": "The file name must come last, so each file keeps its extension.",
+          "duplicate_token": "{{token}} is used more than once.",
+          "plate_in_folder": "The plate number can only be part of the file name; a folder per plate would split a model's files apart.",
+          "category_not_whole_folder": "Category or folder must be a folder of its own, since it can be several folders deep.",
+          "not_unique": "Two models could end up with the same path. Add the model ID, or both the category and the model name.",
+          "unsafe_text": "\"{{segment}}\" can't be a folder name: it can't hold < > : \" | ? * or \\, or start or end with a space or dot.",
+          "too_deep": "Use at most {{max}} folders."
+        },
+        "moveConfirmTitle": "Move model files?",
+        "moveConfirmMessage_one": "Saving moves {{count}} file, of {{models}}, to this structure in the background. Links to models keep working, but backups and shared folders will see the moved file as a new one.",
+        "moveConfirmMessage_other": "Saving moves {{count}} files, of {{models}}, to this structure in the background. Links to models keep working, but backups and shared folders will see the moved files as new ones.",
+        "modelCount_one": "{{count}} model",
+        "modelCount_other": "{{count}} models",
+        "moveConfirm": "Save and move",
+        "savedMoving": "Saved. The files are moving in the background, and a notification says when they're done.",
+        "savedInPlace": "Saved. Every file already follows this structure.",
+        "moving": "Moving model files to this structure: {{done}} of {{total}} models. You can leave this page.",
+        "outOfPlace_one": "{{count}} file, of {{models}}, is still in an earlier structure.",
+        "outOfPlace_other": "{{count}} files, of {{models}}, are still in an earlier structure.",
+        "moveThem": "Move them",
+        "pathLabel": "Path"
       },
       "consume": {
         "heading": "Consume Folder",
@@ -640,16 +735,18 @@
         "activeBody": "Watching {{path}}. Files are imported a few seconds after they stop changing and moved into storage, so the folder empties itself. Folders become folders, and ZIPs are unpacked as if they were folders. Anything that can't be imported is moved to \"{{notImported}}\" in that folder.",
         "userLabel": "Import into the library of",
         "modeLabel": "Import mode",
-        "modeSeparateTitle": "Each model file is a separate model",
         "modeSeparateDesc": "Every STL, 3MF, STEP or OBJ file becomes its own model.",
-        "modeFolderTitle": "Each folder is one model",
         "modeFolderDesc": "A folder containing model files becomes a single model named after the folder. Its model files are added as plates, its images become preview images, and other files are attached.",
         "save": "Save consume settings",
         "saving": "Saving…",
         "saved": "Consume settings saved.",
-        "failed": "Failed to save consume settings."
+        "failed": "Failed to save consume settings.",
+        "modeSeparateShort": "Each file is a model",
+        "modeFolderShort": "Each folder is a model"
       },
       "registrations": {
+        "heading": "Registrations",
+        "subtitle": "Who can create an account on this instance.",
         "allowLabel": "Allow new registrations",
         "openHelp": "Anyone who can reach this instance can create an account from the sign-in page.",
         "closedHelp": "The sign-in page has no Register option, and new accounts can only be created from an invitation.",
@@ -729,7 +826,6 @@
       },
       "thingiverse": {
         "heading": "Thingiverse Access Token",
-        "subtitle": "Instance-wide credential for the official Thingiverse Developer API.",
         "helpText": "Create an app at thingiverse.com/apps/create (any type, e.g. \"Desktop\") and paste the Access Token it shows you.",
         "statusConfigured": "An Access Token is currently configured.",
         "statusNotConfigured": "No Access Token is configured yet -- Thingiverse imports will fail until one is set.",
@@ -1016,7 +1112,12 @@
         "deleted_one": "{{email}} deleted, with {{count}} model",
         "deleted_other": "{{email}} deleted, with {{count}} models",
         "deleteFailed": "Failed to delete the user.",
-        "loadFailed": "Unable to load users."
+        "loadFailed": "Unable to load users.",
+        "columnSignIn": "Sign-in",
+        "signInPassword": "Password",
+        "signInProviderOff": "{{name}} is turned off, so this doesn't work right now.",
+        "signInNone": "No way in",
+        "signInNoneHint": "No password, and no single sign-on provider that's on: they can't sign in."
       },
       "logs": {
         "heading": "Logs",
@@ -1057,9 +1158,14 @@
           "descriptions_refetched": "Refetched model descriptions",
           "user_role_changed": "User role changed",
           "user_deleted": "User deleted",
+          "provider_toggled": "Provider switched",
           "tag_deleted": "Tag deleted",
           "ai_categorization_run": "AI categorization run",
-          "ai_description_run": "AI description improvement run"
+          "ai_description_run": "AI description improvement run",
+          "sign_in_connected": "Sign-in provider connected",
+          "sign_in_disconnected": "Sign-in provider disconnected",
+          "grab_connected": "Thingport Grab connected",
+          "grab_disconnected": "Thingport Grab removed"
         },
         "authorsLinked": "{{count}} model(s) linked",
         "descriptionsRefetched": "{{email}} — {{updated}} of {{total}} description(s) changed",
@@ -1069,8 +1175,11 @@
         "userDemoted": "{{email}} made a member",
         "userDeleted_one": "{{email}} — with {{count}} model",
         "userDeleted_other": "{{email}} — with {{count}} models",
+        "providerOn": "{{provider}} turned on",
+        "providerOff": "{{provider}} turned off",
         "aiRunSummary": "{{done}} of {{total}} checked — {{suggested}} suggested, {{applied}} applied, {{failed}} failed",
-        "aiRunStopped": "(stopped)"
+        "aiRunStopped": "(stopped)",
+        "viaProvider": "via {{provider}}"
       },
       "rendering": {
         "heading": "Rendering",
@@ -1162,6 +1271,109 @@
           "designer": "All designer print profiles",
           "all": "Designer and community print profiles"
         }
+      },
+      "storageBrowser": {
+        "heading": "Browse stored files",
+        "subtitle": "See where model files are on disk now, e.g. after reorganizing them.",
+        "open": "Browse files",
+        "title": "Stored files",
+        "root": "Storage",
+        "empty": "Nothing stored here.",
+        "folderSummary_one": "{{count}} file · {{size}}",
+        "folderSummary_other": "{{count}} files · {{size}}",
+        "ofModel": "model \"{{name}}\"",
+        "location": {
+          "source": "At its source",
+          "missing": "Missing"
+        },
+        "locationHint": {
+          "source": "Kept where it was picked up from, outside the storage folder",
+          "missing": "Neither in storage nor where it was picked up from"
+        }
+      },
+      "signIn": {
+        "heading": "Sign-in Methods",
+        "subtitle": "How people sign in to Thingport. Email and password always works; each single sign-on (OIDC) provider adds a button to the sign-in page.",
+        "password": "Email & password",
+        "passwordDescription": "Sign in and register with an email address and a password.",
+        "alwaysOn": "Always on",
+        "userCount_one": "{{count}} person signed in with it",
+        "userCount_other": "{{count}} people signed in with it",
+        "createsAccounts": "creates accounts",
+        "add": "Add OIDC provider",
+        "test": "Test sign-in",
+        "edit": "Edit",
+        "delete": "Delete",
+        "showOnSignIn": "Show {{name}} on the sign-in page",
+        "publicUrlMissing": "Single sign-on needs the public URL set to the address people open Thingport at (e.g. https://thingport.example.com), so the provider knows where to send them back. Set it under Public URL above.",
+        "otherAddress": "You're using Thingport at a different address than PUBLIC_URL ({{url}}). Single sign-on brings people back to {{url}}, so test and sign in from there.",
+        "addedOff": "{{name}} added. Register the redirect URI with it, run Test sign-in, then switch it on to show it on the sign-in page.",
+        "addedOn": "{{name}} added and shown on the sign-in page. Run Test sign-in to make sure it works.",
+        "disableTitle": "Hide {{name}} from the sign-in page?",
+        "disableMessage_one": "{{count}} person has signed in with {{name}}. Unless they've set a password, they won't be able to sign in until it's back on.",
+        "disableMessage_other": "{{count}} people have signed in with {{name}}. Those who haven't set a password won't be able to sign in until it's back on.",
+        "disableConfirm": "Hide it",
+        "deleteTitle": "Delete {{name}}?",
+        "deleteMessage": "{{name}} will no longer be offered on the sign-in page.",
+        "deleteUsedMessage_one": "{{count}} person has signed in with {{name}}. Their account stays, but unless they've set a password they won't be able to sign in. Adding the provider again won't reconnect them automatically.",
+        "deleteUsedMessage_other": "{{count}} people have signed in with {{name}}. Their accounts stay, but those without a password won't be able to sign in. Adding the provider again won't reconnect them automatically.",
+        "testTitle": "Test sign-in: {{name}}",
+        "testWaiting": "Sign in with {{name}} in the window that opened. Nothing in Thingport changes: this only shows what {{name}} sends.",
+        "testClosed": "The test window was closed before the sign-in finished. If it showed an error, that's what went wrong.",
+        "testFailed": "The sign-in didn't work: {{error}}",
+        "matchSignIn": "It works. This would sign in as {{name}} ({{email}}).",
+        "matchLink": "It works. This would connect to the existing account {{name}} ({{email}}) and sign in.",
+        "matchCreate": "It works. This would create a new account for {{email}}.",
+        "matchRefuse": "It connects, but this person would be turned away with: “{{reason}}”",
+        "claims": "What the provider sent",
+        "dialog": {
+          "addTitle": "Add OIDC provider",
+          "editTitle": "Edit {{name}}",
+          "name": "Name",
+          "nameHelp": "Shown on the sign-in button: “{{label}}”.",
+          "issuer": "Issuer URL",
+          "issuerHelp": "From the provider's application settings, also called the OpenID configuration issuer.",
+          "issuerChecking": "Checking the provider…",
+          "issuerOk": "Found the provider.",
+          "issuerFailed": "Couldn't read the provider's OpenID configuration: {{error}}",
+          "clientId": "Client ID",
+          "clientSecret": "Client secret",
+          "secretSaved": "Saved",
+          "secretKeep": "Leave empty to keep the saved secret.",
+          "redirectHeading": "Redirect URI",
+          "redirectHelp": "Add this as an allowed redirect URI in the provider's application settings.",
+          "copy": "Copy",
+          "copied": "Copied",
+          "slug": "Name in the address",
+          "slugHelp": "Part of the redirect URI. It can't be changed later.",
+          "slugInvalid": "Use lowercase letters, digits and dashes.",
+          "accountsHeading": "Accounts",
+          "createAccounts": "Create accounts for new people",
+          "createAccountsHelp": "Anyone the provider lets in gets a Thingport account on their first sign-in. Off: only people who already have an account here can use it.",
+          "linkByEmail": "Connect to existing accounts by email",
+          "linkByEmailHelp": "A first sign-in joins the Thingport account with the same email, if the provider says the email is verified. Only turn this on for a provider you control.",
+          "enabled": "Show on the sign-in page",
+          "enabledHelp": "Leave off until a test sign-in works.",
+          "scopes": "Scopes",
+          "scopesHelp": "What Thingport asks the provider for. “openid email profile” suits most providers.",
+          "scopesInvalid": "Scopes must include “openid”.",
+          "add": "Add provider",
+          "save": "Save",
+          "saving": "Saving…",
+          "failed": "Couldn't save the provider."
+        }
+      },
+      "publicUrl": {
+        "heading": "Public URL",
+        "subtitle": "The address people open Thingport at. Links in emails and single sign-on use it.",
+        "label": "Public URL",
+        "help": "Include http:// or https://, and the port if there is one. Taken from PUBLIC_URL on the first run; changes here are kept.",
+        "notSet": "Not set: links in emails may not work, and single sign-on can't be set up.",
+        "invalid": "Enter the full address, like https://thingport.example.com",
+        "save": "Save",
+        "saving": "Saving…",
+        "saved": "Saved.",
+        "failed": "Couldn't save the public URL."
       }
     },
     "download": {
@@ -1318,6 +1530,32 @@
       "active": "Active",
       "notActive": "Not active",
       "activate": "Activate"
+    },
+    "storageMoveProgress": {
+      "label": "Moving model files · {{done}} of {{total}} models",
+      "starting": "Getting ready to move model files…"
+    },
+    "grab": {
+      "connect": {
+        "title": "Connect Thingport Grab",
+        "approvedTitle": "Thingport Grab is connected",
+        "unknownBrowser": "this browser",
+        "body": "Thingport Grab in {{browser}} wants to connect to your Thingport account ({{email}}).",
+        "details": "It will import models into your library and add them to collections for you, without your password being saved in the extension. You can remove it any time from your profile.",
+        "approve": "Connect",
+        "cancel": "Cancel",
+        "approvedBody": "You can close this tab and go back to the model you were on.",
+        "cancelledBody": "Nothing was connected. You can close this tab.",
+        "invalid": "This link didn't come from Thingport Grab, or it's incomplete. Start again from the Thingport Grab popup."
+      },
+      "profile": {
+        "heading": "Thingport Grab in {{name}}",
+        "lastUsed": "Connected · last used {{when}}",
+        "connectedWhen": "Connected {{when}}",
+        "remove": "Remove",
+        "removeTitle": "Remove Thingport Grab in {{name}}?",
+        "removeMessage": "Thingport Grab in {{name}} will be signed out and won't be able to import until it's connected again."
+      }
     }
   },
   "common": {
@@ -2169,6 +2407,8 @@
         "notFound": "Collection not found."
       },
       "sync": {
+        "badgeOff": "{{provider}} is turned off on this Thingport, so nothing syncs until an admin turns it back on",
+        "menuProviderOff": "{{provider}} is turned off",
         "badge": "Synced with a {{provider}} collection",
         "menu": "Sync configuration",
         "title": "Sync configuration",

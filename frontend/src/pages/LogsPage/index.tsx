@@ -55,6 +55,11 @@ const ACTION_COLORS: Record<LogAction, ActionColor> = {
   tag_deleted: "error",
   user_role_changed: "warning",
   user_deleted: "error",
+  provider_toggled: "warning",
+  sign_in_connected: "info",
+  sign_in_disconnected: "default",
+  grab_connected: "info",
+  grab_disconnected: "default",
 };
 
 function isoDateOnly(d: Date): string {
@@ -110,6 +115,11 @@ export default function LogsPage({ onUnauthorized }: Props) {
   const formatDetails = (log: LogEntry): string => {
     const d = log.details;
     switch (log.action) {
+      case "user_logged_in":
+        return typeof d.provider === "string" ? t("adminSettings.logs.viaProvider", { provider: d.provider }) : "";
+      case "sign_in_connected":
+      case "sign_in_disconnected":
+        return typeof d.provider === "string" ? d.provider : "";
       case "model_uploaded":
       case "model_imported":
       case "model_deleted":
@@ -146,6 +156,15 @@ export default function LogsPage({ onUnauthorized }: Props) {
         return t(d.role === "ADMIN" ? "adminSettings.logs.userPromoted" : "adminSettings.logs.userDemoted", {
           email: typeof d.email === "string" ? d.email : "",
         });
+      case "provider_toggled": {
+        const names: Record<string, string> = {
+          makerworld: "MakerWorld",
+          printables: "Printables",
+          thingiverse: "Thingiverse",
+        };
+        const provider = typeof d.provider === "string" ? (names[d.provider] ?? d.provider) : "";
+        return t(d.enabled ? "adminSettings.logs.providerOn" : "adminSettings.logs.providerOff", { provider });
+      }
       case "user_deleted":
         return t("adminSettings.logs.userDeleted", {
           email: typeof d.email === "string" ? d.email : "",

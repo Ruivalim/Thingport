@@ -1,16 +1,15 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import Button from "@mui/material/Button";
+import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
-import Skeleton from "@mui/material/Skeleton";
-import Typography from "@mui/material/Typography";
 import Link from "@mui/material/Link";
-import StorageIcon from "@mui/icons-material/Storage";
 import PublicIcon from "@mui/icons-material/Public";
 import UpdateCheckSection from "./UpdateCheckSection";
+import SectionHeader from "../../components/SectionHeader";
 import SystemHealthSection from "./SystemHealthSection";
-import { adminApi, type StorageUsage } from "../../api/admin";
-import { UnauthorizedError } from "../../api/client";
-import { formatFileSize } from "../../utils/fileSize";
+import StorageUsageLine from "./StorageUsageLine";
+import StorageBrowserDialog from "../AdminSettingsPage/StorageBrowserDialog";
 import { THINGPORT_WEBSITE_URL } from "../../constants/website";
 
 type Props = {
@@ -19,52 +18,32 @@ type Props = {
 
 export default function AdminPage({ onUnauthorized }: Props) {
   const { t } = useTranslation(["app", "common"]);
-  // undefined = loading, null = failed (the footer hides).
-  const [storage, setStorage] = useState<StorageUsage | null | undefined>(undefined);
-
-  useEffect(() => {
-    let cancelled = false;
-    adminApi.getStorageUsage().then(
-      (usage) => {
-        if (!cancelled) setStorage(usage);
-      },
-      (err) => {
-        if (cancelled) return;
-        if (err instanceof UnauthorizedError) onUnauthorized?.();
-        setStorage(null);
-      },
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [onUnauthorized]);
+  const [browsing, setBrowsing] = useState(false);
 
   return (
     <Stack spacing={4} sx={{ maxWidth: 960 }}>
       <UpdateCheckSection onUnauthorized={onUnauthorized} />
+      <Stack spacing={3}>
+        <SectionHeader
+          title={t("adminSettings.storageUsage.heading")}
+          subtitle={t("adminSettings.storageUsage.subtitle")}
+        />
+        <Paper variant="outlined" sx={{ p: 2.5 }}>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            alignItems={{ xs: "flex-start", sm: "center" }}
+            justifyContent="space-between"
+            spacing={2}
+          >
+            <StorageUsageLine onUnauthorized={onUnauthorized} />
+            <Button variant="outlined" size="small" onClick={() => setBrowsing(true)} sx={{ flexShrink: 0 }}>
+              {t("adminSettings.storageBrowser.open")}
+            </Button>
+          </Stack>
+        </Paper>
+      </Stack>
+      {browsing && <StorageBrowserDialog onClose={() => setBrowsing(false)} onUnauthorized={onUnauthorized} />}
       <SystemHealthSection onUnauthorized={onUnauthorized} />
-
-      {storage !== null && (
-        <Stack
-          direction="row"
-          alignItems="center"
-          spacing={1}
-          title={t("adminSettings.storageUsage.hint")}
-          sx={{ px: 0.5, color: "text.secondary" }}
-        >
-          <StorageIcon fontSize="small" />
-          {storage === undefined ? (
-            <Skeleton width={220} />
-          ) : (
-            <Typography variant="body2">
-              {t("adminSettings.storageUsage.summary", {
-                size: formatFileSize(storage.model_bytes),
-                count: storage.model_count,
-              })}
-            </Typography>
-          )}
-        </Stack>
-      )}
 
       <Stack
         direction="row"
