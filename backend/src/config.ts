@@ -127,7 +127,6 @@ export const COLLECTION_SYNC_ENABLED = (process.env.COLLECTION_SYNC_ENABLED ?? "
 export const COLLECTION_SYNC_ITEM_DELAY_MS = envInt("COLLECTION_SYNC_ITEM_DELAY_MS", 60_000);
 // Gap between a single import's preview-image fetches (up to ~20 per model).
 export const IMPORT_PREVIEW_IMAGE_DELAY_MS = envInt("IMPORT_PREVIEW_IMAGE_DELAY_MS", 250);
-export const IMPORT_USER_AGENT = "Thingport/1.0";
 export const IMPORT_BROWSER_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36";
 
