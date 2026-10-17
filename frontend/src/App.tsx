@@ -18,13 +18,18 @@ import SearchResultsPage from "./pages/SearchResultsPage";
 import AuthorPage from "./pages/AuthorPage";
 import AuthPage from "./pages/AuthPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
+import OidcCallbackPage from "./pages/OidcCallbackPage";
+import ConnectGrabPage from "./pages/ConnectGrabPage";
+import { rememberReturnPath } from "./utils/returnPath";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import ProfilePage from "./pages/ProfilePage";
 import ChangeEmailPage from "./pages/ProfilePage/ChangeEmailPage";
 import ChangePasswordPage from "./pages/ProfilePage/ChangePasswordPage";
 import DownloadPage from "./pages/DownloadPage";
 import AdminPage from "./pages/AdminPage";
-import AdminSettingsPage from "./pages/AdminSettingsPage";
+import ProvidersPage from "./pages/AdminSettingsPage/ProvidersPage";
+import StorageSettingsPage from "./pages/AdminSettingsPage/StoragePage";
+import AuthSettingsPage from "./pages/AdminSettingsPage/AuthPage";
 import UsersPage from "./pages/UsersPage";
 import LogsPage from "./pages/LogsPage";
 import NotificationsPage from "./pages/NotificationsPage";
@@ -222,6 +227,7 @@ function AppShell({
           element={<ChangeEmailPage user={user} onUserUpdated={onUserUpdated} onUnauthorized={onUnauthorized} />}
         />
         <Route path="/profile/password" element={<ChangePasswordPage onUnauthorized={onUnauthorized} />} />
+        <Route path="/connect-grab" element={<ConnectGrabPage user={user} onUnauthorized={onUnauthorized} />} />
         <Route path="/downloads" element={<DownloadPage />} />
         <Route path="/notifications" element={<NotificationsPage onUnauthorized={onUnauthorized} />} />
         <Route
@@ -229,9 +235,19 @@ function AppShell({
           element={isAdmin ? <AdminPage onUnauthorized={onUnauthorized} /> : <Navigate to="/" replace />}
         />
         <Route
-          path="/admin-settings"
-          element={isAdmin ? <AdminSettingsPage onUnauthorized={onUnauthorized} /> : <Navigate to="/" replace />}
+          path="/admin-providers"
+          element={isAdmin ? <ProvidersPage onUnauthorized={onUnauthorized} /> : <Navigate to="/" replace />}
         />
+        <Route
+          path="/admin-storage"
+          element={isAdmin ? <StorageSettingsPage onUnauthorized={onUnauthorized} /> : <Navigate to="/" replace />}
+        />
+        <Route
+          path="/admin-auth"
+          element={isAdmin ? <AuthSettingsPage onUnauthorized={onUnauthorized} /> : <Navigate to="/" replace />}
+        />
+        {/* Settings was split into the three above; old links and bookmarks land on the first. */}
+        <Route path="/admin-settings" element={<Navigate to="/admin-providers" replace />} />
         <Route
           path="/admin-rendering"
           element={
@@ -395,9 +411,13 @@ export default function App() {
     </Snackbar>
   );
 
-  if (authRequired && !token) {
+  // Finishes a single sign-on even with a session already here, e.g. from another tab.
+  const isOidcCallbackPath = typeof window !== "undefined" && window.location.pathname === "/oidc-callback";
+  if ((authRequired && !token) || isOidcCallbackPath) {
     // Outside the router, so these pre-login links are matched against window.location.
     const isVerifyEmailPath = typeof window !== "undefined" && window.location.pathname === "/verify-email";
+    // Thingport Grab's approval page, reached signed out: single sign-on comes back here once signed in.
+    rememberReturnPath();
     const isResetPasswordPath = typeof window !== "undefined" && window.location.pathname === "/reset-password";
     const inviteParams =
       typeof window !== "undefined" && window.location.pathname === "/register"
@@ -419,7 +439,9 @@ export default function App() {
             p: 2,
           }}
         >
-          {isVerifyEmailPath ? (
+          {isOidcCallbackPath ? (
+            <OidcCallbackPage onSuccess={handleLogin} />
+          ) : isVerifyEmailPath ? (
             <VerifyEmailPage onSuccess={handleLogin} />
           ) : isResetPasswordPath ? (
             <ResetPasswordPage onSuccess={handleLogin} />
@@ -430,6 +452,7 @@ export default function App() {
               allowRegistrations={health?.allow_registrations ?? true}
               passwordResetEnabled={health?.password_reset_enabled ?? false}
               invite={invite}
+              oidcProviders={health?.oidc_providers}
             />
           )}
         </Box>

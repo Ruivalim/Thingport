@@ -28,7 +28,12 @@ export type LogAction =
   | "ai_description_run"
   | "tag_deleted"
   | "user_role_changed"
-  | "user_deleted";
+  | "user_deleted"
+  | "provider_toggled"
+  | "sign_in_connected"
+  | "sign_in_disconnected"
+  | "grab_connected"
+  | "grab_disconnected";
 
 /** Fire-and-forget: a logging failure must never break the action it records. */
 export async function createLog(params: {

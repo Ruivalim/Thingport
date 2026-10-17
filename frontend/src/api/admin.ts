@@ -16,7 +16,31 @@ export type AdminUser = {
   print_count: number;
   collection_count: number;
   makerworld_connected: boolean;
+  /** How they can sign in: a password, and the single sign-on providers they've connected. */
+  sign_in: { password: boolean; providers: Array<{ name: string; enabled: boolean }> };
   created_at: string;
+};
+
+export type HealthComponent =
+  "database" | "storage" | "memory" | "internet" | "flaresolverr" | "thingiverse" | "grab" | "ai" | "smtp";
+export type HealthStatus = "ok" | "warning" | "error" | "not_configured";
+
+export type HealthResult = {
+  component: HealthComponent;
+  status: HealthStatus;
+  /** What was found, e.g. "unreachable" or "low_space", for the page to explain. */
+  code: string;
+  /** The component's own error, as it gave it. */
+  detail: string | null;
+  facts: Record<string, string | number | null>;
+  latency_ms: number | null;
+  checked_at: string;
+};
+
+export type HealthReport = {
+  /** By importance; a result is null until that component is first tested. */
+  components: { component: HealthComponent; result: HealthResult | null }[];
+  full_checked_at: string | null;
 };
 
 export type LogAction =
@@ -46,7 +70,12 @@ export type LogAction =
   | "ai_description_run"
   | "tag_deleted"
   | "user_role_changed"
-  | "user_deleted";
+  | "user_deleted"
+  | "provider_toggled"
+  | "sign_in_connected"
+  | "sign_in_disconnected"
+  | "grab_connected"
+  | "grab_disconnected";
 
 export type LogEntry = {
   id: string;
@@ -62,6 +91,40 @@ export type LogEntry = {
 export type StorageUsage = {
   model_bytes: number; // every plate + supporting/prepared file, across all users
   model_count: number;
+  /** All of storage on disk; measured every few minutes at most. */
+  total_bytes: number;
+  /** Thumbnails, gallery and description images, 3D previews, tag mosaics. */
+  picture_bytes: number;
+  /** Slicer-ready 3MF copies and download bundles. */
+  other_generated_bytes: number;
+};
+
+export type StorageFolder = {
+  name: string;
+  path: string;
+  /** A user's folder (u-<id>) at the top: their display name. */
+  label: string | null;
+  files: number;
+  bytes: number;
+};
+
+export type StorageFile = {
+  name: string;
+  path: string;
+  plate_id: string;
+  print_id: string;
+  print_name: string;
+  owner_id: string;
+  size: number;
+  /** "source": kept where it was picked up from; "missing": in neither place. */
+  location: "managed" | "source" | "missing";
+};
+
+export type StorageListing = {
+  path: string;
+  crumbs: { name: string; path: string; label: string | null }[];
+  folders: StorageFolder[];
+  files: StorageFile[];
 };
 
 export type AuthorLookupProblem =
@@ -125,6 +188,15 @@ async function queueAction<T>(method: "POST" | "DELETE", path: string, fallback:
 }
 
 export const adminApi = {
+  browseStorage: async (folder: string): Promise<StorageListing> => {
+    const res = await fetch(`${apiBase()}/admin/storage/browse?${new URLSearchParams({ path: folder })}`, {
+      headers: authHeaders(),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to list stored files"));
+    return res.json();
+  },
+
   getStorageUsage: async (): Promise<StorageUsage> => {
     const res = await fetch(`${apiBase()}/admin/storage`, { headers: authHeaders() });
     assertOk(res, "Failed to load storage usage");
@@ -138,6 +210,26 @@ export const adminApi = {
       body: JSON.stringify({ email }),
     });
     if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to send the invitation"));
+    return res.json();
+  },
+
+  /** The last results; nothing is tested. */
+  getHealth: async (): Promise<HealthReport> => {
+    const res = await fetch(`${apiBase()}/admin/health`, { headers: authHeaders() });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to load system health"));
+    return res.json();
+  },
+
+  /** One component, or every one when none is given. */
+  testHealth: async (component?: HealthComponent): Promise<HealthReport> => {
+    const res = await fetch(`${apiBase()}/admin/health/test`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(component ? { component } : {}),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to test"));
     return res.json();
   },
 

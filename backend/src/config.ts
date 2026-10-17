@@ -15,7 +15,7 @@ function envInt(name: string, fallback: number): number {
 }
 
 /** cgroup v2, then v1. Unlimited ("max", a near-2^63 sentinel, or >= machine RAM) returns null. */
-function cgroupMemoryLimitBytes(): number | null {
+export function cgroupMemoryLimitBytes(): number | null {
   for (const file of ["/sys/fs/cgroup/memory.max", "/sys/fs/cgroup/memory/memory.limit_in_bytes"]) {
     try {
       const value = Number(fs.readFileSync(file, "utf-8").trim());
@@ -45,12 +45,19 @@ export const TAG_MOSAICS = path.join(STORAGE, "tag-mosaics");
 export const NORMALIZED_3MFS = path.join(STORAGE, "normalized-3mf");
 // Large multi-part projects take minutes on a slow CPU; the page waits for it, not the request.
 export const NORMALIZE_3MF_TIMEOUT_SECONDS = envInt("NORMALIZE_3MF_TIMEOUT_SECONDS", 600);
+
+// A worker can't even start below a few MB, and Node 24 then takes the whole process down with it.
+const MIN_PREVIEW_MEMORY_MB = 8;
+
 // Past either limit the render worker is killed and the plate gets no 3D preview. Memory is a
 // watchdog check, so a fast burst can overshoot it briefly.
-export const MODEL_PREVIEW_MAX_MEMORY_MB = envInt("MODEL_PREVIEW_MAX_MEMORY_MB", defaultPreviewMemoryMb());
+export const MODEL_PREVIEW_MAX_MEMORY_MB = Math.max(
+  MIN_PREVIEW_MEMORY_MB,
+  envInt("MODEL_PREVIEW_MAX_MEMORY_MB", defaultPreviewMemoryMb()),
+);
 export const MODEL_PREVIEW_TIMEOUT_SECONDS = envInt("MODEL_PREVIEW_TIMEOUT_SECONDS", 180);
 
-// For absolute links in emails.
+// Only the first run's value: it's copied into the database, and managed there (Admin > Auth) from then on.
 export const PUBLIC_URL = (process.env.PUBLIC_URL || "").trim().replace(/\/+$/, "");
 
 export const AUTH_SECRET = process.env.AUTH_SECRET || "changeme-secret";
@@ -126,10 +133,11 @@ export const FLARESOLVERR_URL = (process.env.FLARESOLVERR_URL || "").trim();
 export const FLARESOLVERR_TIMEOUT_MS = envInt("FLARESOLVERR_TIMEOUT_MS", 60000);
 export const FLARESOLVERR_SESSION_TTL_MS = envInt("FLARESOLVERR_SESSION_TTL_MS", 15 * 60 * 1000);
 
+export const DEFAULT_SYSTEM_NOTIFICATIONS_URL =
+  "https://raw.githubusercontent.com/TautvydasDerzinskas/Thingport/main/system-notifications.json";
 // Announcements for admins, e.g. known bugs. Set to an empty value to stop fetching them.
 export const SYSTEM_NOTIFICATIONS_URL = (
-  process.env.SYSTEM_NOTIFICATIONS_URL ??
-  "https://raw.githubusercontent.com/TautvydasDerzinskas/Thingport/main/system-notifications.json"
+  process.env.SYSTEM_NOTIFICATIONS_URL ?? DEFAULT_SYSTEM_NOTIFICATIONS_URL
 ).trim();
 
 export const API_PORT = envInt("API_PORT", 8000);

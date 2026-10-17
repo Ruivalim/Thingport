@@ -2,10 +2,13 @@ import express, { type Express, type NextFunction, type Request, type Response }
 import cors from "cors";
 import { resolveCorsOrigins } from "./cors";
 import { HttpError } from "./utils/fileUtils";
+import { trackClients } from "./services/clientActivityService";
 
 import healthRoutes from "./routes/health";
 import captchaRoutes from "./routes/captcha";
 import authRoutes from "./routes/auth";
+import oidcRoutes from "./routes/oidc";
+import grabRoutes from "./routes/grab";
 import printsRoutes from "./routes/prints";
 import authorsRoutes from "./routes/authors";
 import platesRoutes from "./routes/plates";
@@ -40,11 +43,14 @@ export function createApp(): Express {
   );
 
   app.use(express.json());
+  app.use("/api", trackClients);
 
   // The frontend's nginx proxies /api/* here unmodified.
   app.use("/api", healthRoutes);
   app.use("/api", captchaRoutes);
   app.use("/api", authRoutes);
+  app.use("/api", oidcRoutes);
+  app.use("/api", grabRoutes);
   app.use("/api", settingsRoutes);
   app.use("/api", printsRoutes);
   app.use("/api", aiCategorizationRoutes);

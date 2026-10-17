@@ -18,9 +18,11 @@ import { UnauthorizedError } from "../../../api/client";
 import { settingsApi } from "../../../api/settings";
 import type { MakerWorldSettings } from "../../../utils/settings";
 import { useConfirm } from "../../ConfirmProvider";
-import { AppGrid, AppTile, menuPosition, TileMenuHeader } from "./AppTiles";
+import { AppGrid, AppTile, menuPosition, reopenContextMenuBelow, TileMenuHeader } from "./AppTiles";
 import { PanelHeader } from "./parts";
 import { ProviderLogo, type ProviderId } from "./providerLogos";
+import { useDisabledProviders } from "../../../hooks/useDisabledProviders";
+import type { ImportProvider } from "../../../api/settings";
 
 const PROVIDERS: { id: ProviderId; name: string; comingSoon?: boolean }[] = [
   { id: "makerworld", name: "MakerWorld" },
@@ -40,6 +42,8 @@ type Props = {
 /** The import sites as app icons: right-click one to connect or disconnect it, or double-click a
  *  disconnected one to connect it. Stored credentials are never shown, only whether one is set. */
 export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, onUnauthorized }: Props) {
+  // Turned off by an admin: not shown to connect.
+  const disabledProviders = useDisabledProviders();
   const { t } = useTranslation(["app", "common"]);
   const confirm = useConfirm();
   // Thingiverse is unknown until loaded, so a non-admin doesn't briefly see it locked.
@@ -151,7 +155,7 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
     <>
       <PanelHeader title={t("providers.title")} subtitle={t("providers.subtitle")} />
       <AppGrid>
-        {PROVIDERS.map(({ id, name }) => {
+        {PROVIDERS.filter(({ id }) => !disabledProviders.has(id as ImportProvider)).map(({ id, name }) => {
           const isConnected = Boolean(connected[id]);
           const locked = lockedReason(id);
           const expired = id === "makerworld" && isConnected && makerworldExpired;
@@ -185,6 +189,7 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
       <Menu
         open={Boolean(menu)}
         onClose={() => setMenu(null)}
+        onContextMenu={(event) => reopenContextMenuBelow(event, () => setMenu(null))}
         anchorReference="anchorPosition"
         anchorPosition={menu ? { top: menu.top, left: menu.left } : undefined}
         slotProps={{ paper: { sx: { minWidth: 220 } } }}

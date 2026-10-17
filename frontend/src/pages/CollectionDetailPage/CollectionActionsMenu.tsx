@@ -14,13 +14,19 @@ import DownloadIcon from "@mui/icons-material/Download";
 import BookmarkIcon from "@mui/icons-material/Bookmark";
 import BookmarkBorderIcon from "@mui/icons-material/BookmarkBorder";
 import SyncIcon from "@mui/icons-material/Sync";
+import SyncDisabledIcon from "@mui/icons-material/SyncDisabled";
 import type { SxProps, Theme } from "@mui/material/styles";
 import { UnauthorizedError } from "../../api/client";
 import { type Collection, type CollectionInput, collectionsApi } from "../../api/collections";
 import { useConfirm } from "../../components/ConfirmProvider";
+import { useToast } from "../../components/ToastProvider";
 import DownloadZipConfirmDialog from "../../components/DownloadZipConfirmDialog";
 import CollectionFormModal from "../CollectionsPage/CollectionFormModal";
 import CollectionSyncDialog from "./CollectionSyncDialog";
+import { allProvidersOff, useDisabledProviders } from "../../hooks/useDisabledProviders";
+import { importProviderInfo } from "../../constants/importProviders";
+import type { ImportProvider } from "../../api/settings";
+import { reopenContextMenuBelow } from "../../components/Layout/ConfigurationDialog/AppTiles";
 
 type Props = {
   collection: Collection;
@@ -29,6 +35,9 @@ type Props = {
   onDeleted: () => void;
   onBookmarksChanged?: () => void;
   triggerSx?: SxProps<Theme>;
+  /** Opens the menu at this point instead of at the trigger, as on a right-click. */
+  contextMenuAt?: { top: number; left: number } | null;
+  onContextMenuClose?: () => void;
 };
 
 /** Shared by the collection detail header and the Collections grid cards. */
@@ -39,17 +48,27 @@ export default function CollectionActionsMenu({
   onDeleted,
   onBookmarksChanged,
   triggerSx,
+  contextMenuAt,
+  onContextMenuClose,
 }: Props) {
   const { t } = useTranslation(["models", "common"]);
   const confirmDialog = useConfirm();
+  const showToast = useToast();
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [bookmarking, setBookmarking] = useState(false);
   const [downloadOpen, setDownloadOpen] = useState(false);
   const [syncOpen, setSyncOpen] = useState(false);
+  const disabledProviders = useDisabledProviders();
+  const syncedProviderOff = Boolean(
+    collection.sync && disabledProviders.has(collection.sync.provider as ImportProvider),
+  );
 
-  const closeMenu = () => setAnchorEl(null);
+  const closeMenu = () => {
+    setAnchorEl(null);
+    onContextMenuClose?.();
+  };
 
   const handleToggleBookmark = async () => {
     closeMenu();
@@ -81,6 +100,29 @@ export default function CollectionActionsMenu({
         return;
       }
       throw err;
+    }
+  };
+
+  // Synced with a provider an admin turned off: nothing to configure until it's back on, but it can still be unsynced.
+  const handleStopSync = async () => {
+    closeMenu();
+    const ok = await confirmDialog({
+      title: t("models:collections.sync.stopTitle"),
+      message: t("models:collections.sync.stopMessage", { name: collection.name }),
+      confirmLabel: t("models:collections.sync.stop"),
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await collectionsApi.stopSync(collection.id);
+      showToast({ message: t("models:collections.sync.stopped", { name: collection.name }) });
+      onUpdated({ ...collection, sync: null });
+    } catch (err) {
+      if (err instanceof UnauthorizedError) {
+        onUnauthorized?.();
+        return;
+      }
+      showToast({ message: err instanceof Error ? err.message : String(err), severity: "error" });
     }
   };
 
@@ -118,7 +160,14 @@ export default function CollectionActionsMenu({
       >
         {deleting ? <CircularProgress size={18} /> : <MoreVertIcon fontSize="small" />}
       </IconButton>
-      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={closeMenu}>
+      <Menu
+        open={Boolean(anchorEl || contextMenuAt)}
+        onClose={closeMenu}
+        onContextMenu={(event) => reopenContextMenuBelow(event, closeMenu)}
+        {...(contextMenuAt
+          ? { anchorReference: "anchorPosition" as const, anchorPosition: contextMenuAt }
+          : { anchorEl })}
+      >
         <MenuItem onClick={handleToggleBookmark}>
           <ListItemIcon>
             {collection.bookmarked ? (
@@ -162,21 +211,37 @@ export default function CollectionActionsMenu({
           <ListItemText sx={{ color: "error.main" }}>{t("common:delete")}</ListItemText>
         </MenuItem>
         {/* Menu needs its items as direct children, not wrapped in a fragment. */}
-        {/* Every collection can be synced; an unsynced one opens on Browse. */}
-        {[
+        {/* Every collection can be synced; an unsynced one opens on Browse. With every provider turned off there's
+            nothing to sync a new one with, but a synced one can still be looked at or unsynced. */}
+        {(collection.sync || !allProvidersOff(disabledProviders)) && [
           <Divider key="sync-divider" />,
-          <MenuItem
-            key="sync"
-            onClick={() => {
-              closeMenu();
-              setSyncOpen(true);
-            }}
-          >
-            <ListItemIcon>
-              <SyncIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>{t("models:collections.sync.menu")}</ListItemText>
-          </MenuItem>,
+          syncedProviderOff ? (
+            <MenuItem key="sync" onClick={handleStopSync}>
+              <ListItemIcon>
+                <SyncDisabledIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText
+                secondary={t("models:collections.sync.menuProviderOff", {
+                  provider: importProviderInfo(collection.sync!.provider)?.label ?? collection.sync!.provider,
+                })}
+              >
+                {t("models:collections.sync.stop")}
+              </ListItemText>
+            </MenuItem>
+          ) : (
+            <MenuItem
+              key="sync"
+              onClick={() => {
+                closeMenu();
+                setSyncOpen(true);
+              }}
+            >
+              <ListItemIcon>
+                <SyncIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>{t("models:collections.sync.menu")}</ListItemText>
+            </MenuItem>
+          ),
         ]}
       </Menu>
 
