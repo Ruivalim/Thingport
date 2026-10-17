@@ -1,5 +1,19 @@
 # Thingport Grab changelog
 
+# [thingport-grab-v1.6.0](https://github.com/TautvydasDerzinskas/Thingport/compare/thingport-grab-v1.5.0...thingport-grab-v1.6.0) (2026-10-17)
+
+
+### Bug Fixes
+
+* **import:** stop flagging models that mention robots as a MakerWorld CAPTCHA, and let a manual retry try again ([#18](https://github.com/TautvydasDerzinskas/Thingport/issues/18)) ([d70dcfe](https://github.com/TautvydasDerzinskas/Thingport/commit/d70dcfeac2c788686728598c6d3c61b9f4cce369))
+* skip a stale MakerWorld defaultInstanceId when picking the print profile ([#15](https://github.com/TautvydasDerzinskas/Thingport/issues/15)) ([d5ae809](https://github.com/TautvydasDerzinskas/Thingport/commit/d5ae80951cf69a9a4db118eee4f68d332f0af17a)), closes [#14](https://github.com/TautvydasDerzinskas/Thingport/issues/14)
+
+
+### Features
+
+* administration settings remake + OIDC support ([#49](https://github.com/TautvydasDerzinskas/Thingport/issues/49)) ([9a22386](https://github.com/TautvydasDerzinskas/Thingport/commit/9a2238691d8b079adf7bfb4becebc9cf01cb6cad))
+* system notifications updates, Thingport grab in System health check, node 24+ ([#52](https://github.com/TautvydasDerzinskas/Thingport/issues/52)) ([358dfc1](https://github.com/TautvydasDerzinskas/Thingport/commit/358dfc1a03a178115642d41423f40586cd879b90))
+
 # [thingport-grab-v1.5.0](https://github.com/TautvydasDerzinskas/Thingport/compare/thingport-grab-v1.4.0...thingport-grab-v1.5.0) (2026-10-12)
 
 
