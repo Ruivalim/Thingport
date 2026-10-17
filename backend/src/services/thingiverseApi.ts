@@ -10,7 +10,7 @@ import {
 } from "./flaresolverr";
 import { getFlaresolverrUrl } from "./settingsService";
 
-// The official API needs an app Access Token (not a session cookie). It's still behind Cloudflare
+// The official API needs an App Token (not a session cookie). It's still behind Cloudflare
 // and returns a sticky 429 challenge after a few rapid requests, hence ThingiverseRateLimitError
 // and the FlareSolverr fallback.
 const THINGIVERSE_API_BASE = "https://api.thingiverse.com";
@@ -25,7 +25,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export class ThingiverseAuthError extends Error {
   constructor() {
     super(
-      "The Thingiverse Access Token configured for this instance was rejected. Ask an admin to " +
+      "The Thingiverse App Token configured for this instance was rejected. Ask an admin to " +
         "update it in Admin Settings (a new one can be generated at thingiverse.com/apps/create).",
     );
     this.name = "ThingiverseAuthError";

@@ -114,7 +114,7 @@ describe("POST /import/thingiverse-likes/entries", () => {
     await setThingiverseAccessToken(null);
   });
 
-  it("fails with a clear 503 when no Access Token is configured", async () => {
+  it("fails with a clear 503 when no App Token is configured", async () => {
     const res = await request(app)
       .post("/api/import/thingiverse-likes/entries")
       .set("Authorization", `Bearer ${token}`)

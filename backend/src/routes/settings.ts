@@ -338,7 +338,7 @@ router.post(
     if (trimmed && !(await verifyThingiverseAccessToken(trimmed))) {
       throw new HttpError(
         422,
-        "Couldn't verify this Thingiverse Access Token -- it may be invalid, revoked, or Thingiverse is rate-limiting this instance right now. Double-check the token at thingiverse.com/apps/create and try again.",
+        "Couldn't verify this Thingiverse App Token -- it may be invalid, revoked, or Thingiverse is rate-limiting this instance right now. Double-check the token at thingiverse.com/apps/create and try again.",
       );
     }
     await setThingiverseAccessToken(body.access_token);

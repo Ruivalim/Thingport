@@ -36,7 +36,7 @@ from Thingport Grab wait in **Administration → Import queue** until they're st
 
 ## Before you start
 
-Printables works with no setup. MakerWorld needs your session cookie, and Thingiverse an Access Token set by an admin.
+Printables works with no setup. MakerWorld needs your session cookie, and Thingiverse an App Token set by an admin.
 See [provider setup](../PROVIDER_SETUP.md). Admins can also [turn a provider off](../PROVIDER_SETUP.md#turning-a-provider-off)
 for the whole instance, and then nothing is imported from it.
 

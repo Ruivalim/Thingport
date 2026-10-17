@@ -241,7 +241,7 @@ describe("Thingiverse likes in the Browse tab", () => {
     await setThingiverseAccessToken("rejected-token");
     const list = await request(app).get("/api/provider-collections").query({ provider: "thingiverse" }).set(auth());
     expect(list.status).toBe(400);
-    expect(list.body.detail).toMatch(/Access Token .* was rejected/);
+    expect(list.body.detail).toMatch(/App Token .* was rejected/);
     await setThingiverseAccessToken("test-token");
   });
 

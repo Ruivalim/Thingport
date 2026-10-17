@@ -105,7 +105,7 @@ describe("importPrintFromUrl -- Thingiverse", () => {
     await setThingiverseAccessToken(null);
   });
 
-  it("fails clearly when no Access Token is configured", async () => {
+  it("fails clearly when no App Token is configured", async () => {
     await expect(importPrintFromUrl(userId, THING_URL, { url: THING_URL, tags: [] })).rejects.toThrow(
       /isn't configured/i,
     );
@@ -115,7 +115,7 @@ describe("importPrintFromUrl -- Thingiverse", () => {
     await setThingiverseAccessToken(ACCESS_TOKEN);
     global.fetch = mockThingiverseFetch({ detailStatus: 401, detailBody: { error: "invalid" } });
 
-    await expect(importPrintFromUrl(userId, THING_URL, { url: THING_URL, tags: [] })).rejects.toThrow(/access token/i);
+    await expect(importPrintFromUrl(userId, THING_URL, { url: THING_URL, tags: [] })).rejects.toThrow(/app token/i);
   });
 
   it("imports a Thing's model files as plates, matches category, and attaches metadata + images", async () => {

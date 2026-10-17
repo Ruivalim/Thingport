@@ -26,7 +26,7 @@ Thingport imports that model into the matching Thingport collection on its own, 
   extension, on the provider collection's page.
 - Connect the provider under **Configuration → Providers** where it needs it (see
   [provider setup](../PROVIDER_SETUP.md)). Printables needs nothing. MakerWorld needs your session cookie to import
-  models, and to read a private collection. Thingiverse needs an access token.
+  models, and to read a private collection. Thingiverse needs an App Token.
 
 ## Turn sync on in Thingport
 
