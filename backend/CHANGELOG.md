@@ -1,5 +1,13 @@
 # Thingport backend changelog
 
+# [thingport-backend-v1.0.1](https://github.com/TautvydasDerzinskas/Thingport/compare/thingport-backend-v1.0.0...thingport-backend-v1.0.1) (2026-10-17)
+
+
+### Bug Fixes
+
+* rename Thingiverse Access Token to App Token to match what it provides ([cc41076](https://github.com/TautvydasDerzinskas/Thingport/commit/cc4107694aa0f35a234099a1fabaa840663cd29e))
+* retry file downloads blocked by Cloudflare or rate limits ([b7c2f36](https://github.com/TautvydasDerzinskas/Thingport/commit/b7c2f36aced158b74072cb1f3507f4d83c58edf5))
+
 # thingport-backend-v1.0.0 (2026-10-17)
 
 
