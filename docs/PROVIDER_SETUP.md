@@ -34,7 +34,7 @@ Per-user (Configuration > Providers > MyMiniFactory). Thingport downloads your b
 
 ### Easiest: Thingport Grab
 
-With [Thingport Grab](../extension/README.md) allowed on MyMiniFactory, opening any myminifactory.com page while you're signed in connects your account, and keeps it connected as MyMiniFactory renews your session.
+With [Thingport Grab](../extension/README.md) allowed on MyMiniFactory, opening a myminifactory.com page while you're signed in connects your account with your current session. MyMiniFactory renews that session from time to time; the next page you open sends the new one.
 
 ### Manual: copy it from your browser
 

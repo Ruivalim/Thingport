@@ -63,7 +63,7 @@ uses the light one.
 Don't add a new site to `PROVIDER_MATCHES` in `scripts/manifest.ts`: new host access in an update makes Chrome and
 Edge switch the extension off for every user until they approve it. Add it to `OPTIONAL_SITES` in
 `src/shared/optionalSites.ts` instead, with its logo in `LOGOS` in `src/popup/sites.ts`. The popup lists it under
-**Sites** with an **Enable** button that asks for access to that site; once granted, the background registers the
+**Providers** with an **Enable** button that asks for access to that site; once granted, the background registers the
 content script there. Users who had granted all-sites access earlier get it straight away.
 
 ### Before opening a pull request

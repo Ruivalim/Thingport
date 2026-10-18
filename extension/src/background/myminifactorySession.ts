@@ -1,6 +1,6 @@
 // The user's MyMiniFactory session, which downloads the paid and login-only models in their library. The cookie is
-// HttpOnly, so only the background can read it; it's sent to the instance whenever it changes, so imports, the web
-// app's included, keep working as MyMiniFactory renews it.
+// HttpOnly, so only the background can read it; it's sent to the instance from each signed-in MyMiniFactory page, so
+// imports, the web app's included, pick up the renewed one on the next page opened.
 
 import { STORAGE_KEYS } from "../shared/storage";
 import { apiCall, requireConfig } from "./api";
