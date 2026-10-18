@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
-import { DESCRIPTION_IMAGES, IMPORT_TIMEOUT_SECONDS, IMPORT_USER_AGENT } from "../config";
+import { DESCRIPTION_IMAGES, IMPORT_BROWSER_USER_AGENT, IMPORT_TIMEOUT_SECONDS } from "../config";
 import { prisma } from "../db";
 import { mapWithConcurrency } from "../utils/concurrency";
 import { validateRemoteUrl } from "../utils/urlUtils";
@@ -48,7 +48,7 @@ async function fetchImage(url: string, deadline: number): Promise<Buffer | null>
     for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
       await validateRemoteUrl(current);
       const res = await fetch(current, {
-        headers: { "User-Agent": IMPORT_USER_AGENT, Accept: "image/*" },
+        headers: { "User-Agent": IMPORT_BROWSER_USER_AGENT, Accept: "image/*" },
         redirect: "manual",
         signal: controller.signal,
       });

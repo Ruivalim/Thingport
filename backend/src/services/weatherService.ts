@@ -1,5 +1,3 @@
-import { IMPORT_USER_AGENT } from "../config";
-
 // The dashboard's weather, through the server like every other outside service: one place to
 // cache, rate-limit and identify ourselves. Open-Meteo gives the forecast and place search,
 // OpenStreetMap's Nominatim names a detected location.
@@ -23,7 +21,7 @@ const SEARCH_TTL_MS = 24 * 60 * 60 * 1000;
 const CACHE_LIMIT = 500;
 // Nominatim's usage policy: at most one request a second, with an identifying User-Agent.
 const NOMINATIM_INTERVAL_MS = 1100;
-const USER_AGENT = `${IMPORT_USER_AGENT} (self-hosted; +https://github.com/TautvydasDerzinskas/Thingport)`;
+const USER_AGENT = "Thingport/1.0 (self-hosted; +https://github.com/TautvydasDerzinskas/Thingport)";
 
 let fetchImpl: typeof fetch = (...args) => fetch(...args);
 
