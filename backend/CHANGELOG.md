@@ -1,5 +1,13 @@
 # Thingport backend changelog
 
+# [thingport-backend-v1.0.2](https://github.com/TautvydasDerzinskas/Thingport/compare/thingport-backend-v1.0.1...thingport-backend-v1.0.2) (2026-10-18)
+
+
+### Bug Fixes
+
+* download from Thingiverse with a Chrome TLS fingerprint ([8e6e5b2](https://github.com/TautvydasDerzinskas/Thingport/commit/8e6e5b2e0ee63b8d3c09bbbd3a086ad5543d2974))
+* ensure Thingiverse gets browser agent ([40d36a4](https://github.com/TautvydasDerzinskas/Thingport/commit/40d36a4b20fc70133721f0ff60edf1240fa69030))
+
 # [thingport-backend-v1.0.1](https://github.com/TautvydasDerzinskas/Thingport/compare/thingport-backend-v1.0.0...thingport-backend-v1.0.1) (2026-10-17)
 
 
