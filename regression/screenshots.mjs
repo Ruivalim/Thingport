@@ -16,6 +16,8 @@
 //
 // The account's theme and Categories/Folders choice are switched for the shots and restored afterwards.
 //
+// The guide_* shots replace cut-outs in docs/guides/images; guide_consume_settings needs the consume folder mounted.
+//
 // The administration, AI and single sign-on shots (13 onwards) need an admin account, at least one AI model with
 // both AI features on and some suggestions waiting, and an OIDC provider that's switched on and connected to the
 // account. Email addresses on the page are blurred.
@@ -46,6 +48,7 @@ const collectionName = args.collection || process.env.SCREENSHOT_COLLECTION;
 const outDir = path.resolve(
   args.out || process.env.SCREENSHOT_OUT || path.join(here, "../frontend/src/assets/screenshots"),
 );
+const guideImagesDir = path.join(here, "../docs/guides/images");
 const only = (args.only || process.env.SCREENSHOT_ONLY || "")
   .split(",")
   .map((s) => s.trim())
@@ -347,6 +350,56 @@ const SHOTS = [
     run: async (page) => {
       await openAdmin(page, "/admin-triggers");
       await blurEmails(page);
+    },
+  },
+  // The guides' cut-outs, saved next to the guides rather than with the README shots.
+  {
+    name: "guide_consume_settings",
+    run: async (page) => {
+      // Shows "Watching /app/consume" only on an instance with the consume folder mounted.
+      await openAdmin(page, "/admin-storage");
+      await blurEmails(page);
+      const save = page.getByRole("button", { name: "Save consume settings" });
+      await save.scrollIntoViewIfNeeded();
+      const clip = await page.evaluate(() => {
+        const heading = [...document.querySelectorAll("h1, h2, h3, h4, h5, h6")].find(
+          (el) => el.textContent?.trim() === "Consume Folder",
+        );
+        const button = [...document.querySelectorAll("button")].find(
+          (el) => el.textContent?.trim() === "Save consume settings",
+        );
+        const card = button?.closest(".MuiPaper-root") ?? button?.parentElement;
+        if (!heading || !card) return null;
+        const top = heading.getBoundingClientRect();
+        const box = card.getBoundingClientRect();
+        return { x: box.left - 16, y: top.top - 16, width: box.width + 32, height: box.bottom - top.top + 32 };
+      });
+      if (!clip) throw new Error("Consume Folder section not found");
+      // Scrolled down, the floating back-to-top button lands in the cut-out.
+      await page.addStyleTag({ content: '[aria-label="Back to top"] { visibility: hidden !important; }' });
+      await settle(page);
+      await page.screenshot({ path: path.join(guideImagesDir, "consume-settings.png"), clip });
+      return { saved: true };
+    },
+  },
+  {
+    name: "guide_add_menu",
+    run: async (page) => {
+      await page.goto("/");
+      await settle(page, 0);
+      const add = page.getByRole("button", { name: "Add", exact: true });
+      // Measured first: the open menu hides the rest of the page from role queries.
+      const button = await add.boundingBox();
+      await add.click();
+      const menu = page.getByRole("menu");
+      await menu.waitFor();
+      await page.waitForTimeout(400);
+      const list = await menu.boundingBox();
+      const left = Math.min(button.x, list.x) - 16;
+      const right = Math.max(button.x + button.width, list.x + list.width) + 16;
+      const clip = { x: left, y: button.y - 16, width: right - left, height: list.y + list.height - button.y + 32 };
+      await page.screenshot({ path: path.join(guideImagesDir, "add-menu.png"), clip });
+      return { saved: true };
     },
   },
 ];

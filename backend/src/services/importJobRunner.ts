@@ -392,7 +392,7 @@ async function runThingiverseThingsImportJob(
     if (!accessToken) {
       throw new HttpError(
         503,
-        "Thingiverse import isn't configured for this instance yet -- ask an admin to add an App Token in Admin Settings.",
+        "Thingiverse import isn't configured for this instance yet -- ask an admin to add an App Token in Administration > Providers.",
       );
     }
 

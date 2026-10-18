@@ -5,12 +5,12 @@ import path from "node:path";
 import crypto from "node:crypto";
 import {
   IMPORT_ALLOWED_EXTS,
+  IMPORT_BROWSER_USER_AGENT,
   IMPORT_DOWNLOAD_RETRY_DELAY_MS,
   IMPORT_HTML_MAX_BYTES,
   IMPORT_MAX_BYTES,
   IMPORT_PREVIEW_IMAGE_DELAY_MS,
   IMPORT_TIMEOUT_SECONDS,
-  IMPORT_USER_AGENT,
 } from "../config";
 import {
   HttpError,
@@ -22,6 +22,7 @@ import {
 } from "../utils/fileUtils";
 import { validateRemoteUrl } from "../utils/urlUtils";
 import { readCapped } from "../utils/readCapped";
+import { browserFetch, needsBrowserFetch } from "../utils/browserFetch";
 import { mapWithConcurrency, maybeSleep, sleep } from "../utils/concurrency";
 import {
   CLOUDFLARE_BLOCKED_CODE,
@@ -118,6 +119,7 @@ function parseCharset(contentType: string | null): string {
 }
 
 async function rawFetch(url: string, headers: Record<string, string>): Promise<Response> {
+  if (needsBrowserFetch(url)) return browserFetch(url, { headers, timeoutMs: IMPORT_TIMEOUT_SECONDS * 1000 });
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), IMPORT_TIMEOUT_SECONDS * 1000);
   try {
@@ -186,7 +188,7 @@ async function fetchMakerworldPageDesign(
   let res: Response;
   try {
     res = await fetchWithGuard(url, {
-      "User-Agent": IMPORT_USER_AGENT,
+      "User-Agent": IMPORT_BROWSER_USER_AGENT,
       Accept: "*/*",
       ...makerworldHtmlHeaders(url, cookie),
     });
@@ -223,7 +225,7 @@ export async function fetchMakerworldPageAuthor(
   let res: Response;
   try {
     res = await fetchWithGuard(url, {
-      "User-Agent": IMPORT_USER_AGENT,
+      "User-Agent": IMPORT_BROWSER_USER_AGENT,
       Accept: "*/*",
       ...makerworldHtmlHeaders(url, cookie),
     });
@@ -331,7 +333,7 @@ export async function openImportResponse(
     }
   }
 
-  const headers: Record<string, string> = { "User-Agent": IMPORT_USER_AGENT, Accept: "*/*" };
+  const headers: Record<string, string> = { "User-Agent": IMPORT_BROWSER_USER_AGENT, Accept: "*/*" };
   let makerworldCookie: string | null = null;
   if (host.endsWith("makerworld.com")) {
     makerworldCookie = resolveMakerworldCookie(body);
@@ -491,7 +493,7 @@ const PREVIEW_IMAGE_MAX_COUNT = 20;
 
 async function fetchImageBytes(url: string): Promise<Buffer | null> {
   try {
-    const res = await rawFetch(url, { "User-Agent": IMPORT_USER_AGENT, Accept: "image/*" });
+    const res = await rawFetch(url, { "User-Agent": IMPORT_BROWSER_USER_AGENT, Accept: "image/*" });
     if (!res.ok) {
       await res.body?.cancel().catch(() => undefined);
       return null;
@@ -751,7 +753,7 @@ function isDownloadBlocked(res: Response): boolean {
  * which is retried once and then reported so the caller can say why. */
 export async function downloadPlainFileToTemp(url: string, suggestedName: string): Promise<PlainDownloadResult> {
   try {
-    const headers = { "User-Agent": IMPORT_USER_AGENT, Accept: "*/*" };
+    const headers = { "User-Agent": IMPORT_BROWSER_USER_AGENT, Accept: "*/*" };
     let res = await rawFetch(url, headers);
     if (isDownloadBlocked(res)) {
       await res.body?.cancel().catch(() => undefined);
@@ -794,7 +796,7 @@ async function importThingiverseThing(
   if (!accessToken) {
     throw new HttpError(
       503,
-      "Thingiverse import isn't configured for this instance yet -- ask an admin to add an App Token in Admin Settings.",
+      "Thingiverse import isn't configured for this instance yet -- ask an admin to add an App Token in Administration > Providers.",
     );
   }
 

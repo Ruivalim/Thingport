@@ -844,11 +844,11 @@
         "linkAuthorsDone": "Su autoriumi susieta modelių: {{linked}}.",
         "linkAuthorsNotFound": "Nepavyko rasti autoriaus kūrėjams: {{count}} – modelis galėjo būti pašalintas iš svetainės arba svetainė nepasiekiama.",
         "linkAuthorsProblems": {
-          "thingiverse_no_token": "Thingiverse modeliai praleisti: pridėkite Thingiverse programėlės raktą skiltyje Administravimas > Nustatymai.",
-          "thingiverse_token_rejected": "Thingiverse modeliai praleisti: Thingiverse atmetė programėlės raktą, nurodytą skiltyje Administravimas > Nustatymai.",
+          "thingiverse_no_token": "Thingiverse modeliai praleisti: pridėkite Thingiverse programėlės raktą skiltyje Administravimas > Tiekėjai.",
+          "thingiverse_token_rejected": "Thingiverse modeliai praleisti: Thingiverse atmetė programėlės raktą, nurodytą skiltyje Administravimas > Tiekėjai.",
           "thingiverse_rate_limited": "Thingiverse modeliai praleisti: Thingiverse pradėjo riboti užklausas. Paprastai tai praeina po kurio laiko — bandykite vėliau.",
           "makerworld_captcha": "MakerWorld modeliai praleisti: MakerWorld paprašė CAPTCHA ir maždaug 2 valandoms blokuoja tolesnes užklausas. Bandykite vėliau.",
-          "makerworld_login_rejected": "MakerWorld modeliai praleisti: MakerWorld atmetė išsaugotą MakerWorld prisijungimą. Atnaujinkite jį skiltyje Nustatymai > Importavimas."
+          "makerworld_login_rejected": "MakerWorld modeliai praleisti: MakerWorld atmetė išsaugotą MakerWorld prisijungimą. Atnaujinkite jį skiltyje Konfigūracija > Šaltiniai."
         },
         "refetchTitle": "Iš naujo gauti modelių aprašymus",
         "refetchDesc": "Pakeičia kiekvieno naudotojo iš MakerWorld, Printables ar Thingiverse importuoto modelio aprašymą dabartiniu aprašymu iš tos svetainės, su formatavimu ir paveikslėliais. Naudokite tai modeliams, importuotiems prieš atsirandant formatuotų aprašymų palaikymui, atnaujinti. Naudotojo atlikti tų aprašymų pakeitimai bus prarasti. Modeliai, kurių šaltinio nebėra, išlaiko savo aprašymą. Vykdoma fone — MakerWorld užklausos atliekamos su pertraukomis, kad būtų išvengta CAPTCHA, todėl didelė biblioteka gali užtrukti.",
@@ -2569,7 +2569,7 @@
           "usernameFailed": "Nepavyko išsaugoti vartotojo vardo.",
           "openProviders": "Atidaryti tiekėjus",
           "notConnected": {
-            "makerworld": "Prijunkite MakerWorld per Konfigūracija > Tiekėjai, kad čia matytumėte savo kolekcijas. Pagal slapuką Thingport žino, kas jūs ten esate.",
+            "makerworld": "Prijunkite MakerWorld per Konfigūracija > Šaltiniai, kad čia matytumėte savo kolekcijas. Pagal slapuką Thingport žino, kas jūs ten esate.",
             "printables": "Printables šiuo metu nepasiekiamas.",
             "thingiverse": "Thingiverse šiame Thingport dar neprijungtas. Administratorius gali jį prijungti per Konfigūracija > Tiekėjai."
           },

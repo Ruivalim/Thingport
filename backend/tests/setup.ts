@@ -1,5 +1,6 @@
 import type { Server } from "node:http";
 import { Test } from "supertest";
+import { vi } from "vitest";
 
 // supertest's request(app) listens on port 0 on every interface, then connects to 127.0.0.1 on the
 // port it got. On macOS a wildcard bind succeeds even when another program already holds that port
@@ -45,3 +46,16 @@ proto.end = function (fn) {
   });
   return this;
 };
+
+// Tests mock global.fetch; send browserFetch through it too, read at call time so each test's mock applies.
+vi.mock("../src/utils/browserFetch", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/utils/browserFetch")>()),
+  browserFetch: (
+    url: string,
+    {
+      headers,
+      signal,
+      redirect,
+    }: { headers?: Record<string, string>; signal?: AbortSignal; redirect?: RequestRedirect },
+  ) => fetch(url, { headers, signal, redirect }),
+}));

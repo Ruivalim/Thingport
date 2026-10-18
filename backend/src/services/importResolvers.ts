@@ -7,7 +7,6 @@ import {
   IMPORT_EXT_PRIORITY,
   IMPORT_HTML_MAX_BYTES,
   IMPORT_TIMEOUT_SECONDS,
-  IMPORT_USER_AGENT,
 } from "../config";
 import { isJsonContentType } from "../utils/fileUtils";
 import { htmlToMarkdown } from "./descriptionMarkdown";
@@ -171,7 +170,10 @@ async function fetchJsonFromUrl(
   referer?: string | null,
   headers?: Record<string, string>,
 ): Promise<unknown | null> {
-  const requestHeaders: Record<string, string> = { "User-Agent": IMPORT_USER_AGENT, Accept: "application/json" };
+  const requestHeaders: Record<string, string> = {
+    "User-Agent": IMPORT_BROWSER_USER_AGENT,
+    Accept: "application/json",
+  };
   if (referer) requestHeaders.Referer = referer;
   if (headers) Object.assign(requestHeaders, headers);
   const result = await fetchCappedBuffer(url, requestHeaders);

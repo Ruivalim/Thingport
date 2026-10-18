@@ -1,7 +1,7 @@
 # Thingport for Unraid
 #
-# Install with the "Compose Manager" (or "Compose Manager Plus") plugin from Community
-# Applications, or with Unraid's built-in Docker > Compose tab on Unraid 7.2+:
+# Unraid has no Compose support of its own: install the "Compose Manager" (or "Compose
+# Manager Plus") plugin from Community Applications first, then:
 #   1. Docker tab -> Compose -> Add New Stack -> name it "thingport"
 #   2. Paste this file as the stack's docker-compose.yml
 #   3. Copy .env.example (next to this file) to the stack's .env and fill in the

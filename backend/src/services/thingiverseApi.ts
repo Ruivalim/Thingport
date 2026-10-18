@@ -1,4 +1,5 @@
-import { IMPORT_BROWSER_USER_AGENT, IMPORT_TIMEOUT_SECONDS } from "../config";
+import { IMPORT_TIMEOUT_SECONDS } from "../config";
+import { browserFetch } from "../utils/browserFetch";
 import type { ImportedAuthorInfo, ImportedPageMetadata } from "./importResolvers";
 import { cleanThingiverseMarkdown } from "./descriptionMarkdown";
 import type { ProviderCollectionCard } from "./providerCollectionCard";
@@ -27,16 +28,16 @@ export class ThingiverseAuthError extends Error {
   constructor() {
     super(
       "The Thingiverse App Token configured for this instance was rejected. Ask an admin to " +
-        "update it in Admin Settings (a new one can be generated at thingiverse.com/apps/create).",
+        "update it in Administration > Providers (a new one can be generated at thingiverse.com/apps/create).",
     );
     this.name = "ThingiverseAuthError";
   }
 }
 
 const FLARESOLVERR_HINTS = {
-  missing: " Setting up FlareSolverr in Admin Settings > Connections gets past it.",
+  missing: " Setting up FlareSolverr in Administration > Connections gets past it.",
   failed:
-    " FlareSolverr couldn't get past it either: it may be down or unreachable. Check it in Admin Settings > Connections.",
+    " FlareSolverr couldn't get past it either: it may be down or unreachable. Check it in Administration > Connections.",
 };
 
 /** Cloudflare's 429 challenge, distinct from a 404 or rejected token: the fix is to wait, or a working FlareSolverr. */
@@ -80,16 +81,7 @@ export function parseThingiverseLikesUrl(url: string): { username: string } | nu
 }
 
 async function rawApiFetch(url: string): Promise<Response> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
-  try {
-    return await fetch(url, {
-      headers: { "User-Agent": IMPORT_BROWSER_USER_AGENT, Accept: "application/json" },
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timeout);
-  }
+  return browserFetch(url, { headers: { Accept: "application/json" }, timeoutMs: API_TIMEOUT_MS });
 }
 
 /** Once a challenge is seen, calls go straight through FlareSolverr for a while. JSON API calls
