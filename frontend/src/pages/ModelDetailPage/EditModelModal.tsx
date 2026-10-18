@@ -38,6 +38,7 @@ import TagInput from "../../components/TagInput";
 import DescriptionEditor from "./DescriptionEditor";
 import { translateCategoryDisplay } from "../../utils/translateCategoryDisplay";
 import { buildCategoryTree, flattenCategoryTree } from "../../utils/categoryTree";
+import { newLocalId } from "../../utils/localId";
 
 type ImageItem =
   { kind: "existing"; id: string; url: string } | { kind: "new"; localId: string; file: File; previewUrl: string };
@@ -124,7 +125,7 @@ export default function EditModelModal({ print, onClose, onUnauthorized, onUpdat
     const newItems: ImageItem[] = Array.from(fileList).map((file) => {
       const previewUrl = URL.createObjectURL(file);
       createdUrlsRef.current.push(previewUrl);
-      return { kind: "new", localId: crypto.randomUUID(), file, previewUrl };
+      return { kind: "new", localId: newLocalId(), file, previewUrl };
     });
     setImages((prev) => [...prev, ...newItems]);
     markDirty();
@@ -152,7 +153,7 @@ export default function EditModelModal({ print, onClose, onUnauthorized, onUpdat
     if (!fileList?.length) return;
     const newItems: PlateItem[] = Array.from(fileList).map((file) => ({
       kind: "new",
-      localId: crypto.randomUUID(),
+      localId: newLocalId(),
       file,
     }));
     setPlateItems((prev) => [...prev, ...newItems]);
