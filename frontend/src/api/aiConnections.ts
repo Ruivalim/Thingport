@@ -3,6 +3,10 @@ import { apiBase, readErrorMessage, UnauthorizedError } from "./client";
 import { invalidateAiCategorizationStatus } from "./aiCategorization";
 import { invalidateAiDescriptionStatus } from "./aiDescriptions";
 
+/** What a connection may send as reasoning_effort; null sends nothing. */
+export const REASONING_EFFORTS = ["none", "low", "medium", "high"] as const;
+export type ReasoningEffort = (typeof REASONING_EFFORTS)[number];
+
 export type AiConnection = {
   id: string;
   base_url: string;
@@ -10,7 +14,7 @@ export type AiConnection = {
   has_api_key: boolean;
   timeout_ms: number;
   concurrency: number;
-  thinking: boolean;
+  reasoning_effort: ReasoningEffort | null;
   is_default: boolean;
 };
 
@@ -21,7 +25,7 @@ export type AiConnectionInput = {
   api_key?: string | null;
   timeout_ms: number;
   concurrency: number;
-  thinking: boolean;
+  reasoning_effort: ReasoningEffort | null;
 };
 
 export type AiConnectionTest = { ok: boolean; latency_ms?: number; model?: string; error?: string };

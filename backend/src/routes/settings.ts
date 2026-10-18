@@ -1,4 +1,4 @@
-import type { AiConnection } from "@prisma/client";
+import type { AiConnection, ReasoningEffort } from "@prisma/client";
 import { currentStorageMove, startStorageMove, type StorageMoveRun } from "../services/storageMoveService";
 import { assertSavableStorageTemplate, storageTemplateProblems } from "../services/storageTemplateRules";
 import { Router } from "express";
@@ -834,7 +834,7 @@ function aiConnectionOut(connection: AiConnection) {
     has_api_key: Boolean(connection.apiKey),
     timeout_ms: connection.timeoutMs,
     concurrency: connection.concurrency,
-    thinking: connection.thinking,
+    reasoning_effort: connection.reasoningEffort,
     is_default: connection.isDefault,
   };
 }
@@ -854,13 +854,20 @@ const aiConnectionFields = {
   api_key: z.string().nullable().optional(),
   timeout_ms: z.number().int().min(1000).max(300000),
   concurrency: z.number().int().min(1).max(4),
-  thinking: z.boolean(),
+  // Null sends no reasoning_effort at all.
+  reasoning_effort: z.enum(["none", "low", "medium", "high"]).nullable(),
 };
 
 /** A saved AI (or the defaults, for a new one) with the form's values on top. */
 async function providerFrom(
   id: string | undefined,
-  body: Partial<{ base_url: string; model: string; api_key: string | null; timeout_ms: number; thinking: boolean }>,
+  body: Partial<{
+    base_url: string;
+    model: string;
+    api_key: string | null;
+    timeout_ms: number;
+    reasoning_effort: ReasoningEffort | null;
+  }>,
 ) {
   const saved = id ? await getAiConnection(id) : null;
   return {
@@ -868,7 +875,10 @@ async function providerFrom(
     model: body.model ?? saved?.model ?? null,
     apiKey: body.api_key !== undefined ? body.api_key || null : (saved?.apiKey ?? DEFAULT_AI_PROVIDER.apiKey),
     timeoutMs: body.timeout_ms ?? saved?.timeoutMs ?? DEFAULT_AI_PROVIDER.timeoutMs,
-    thinking: body.thinking ?? saved?.thinking ?? DEFAULT_AI_PROVIDER.thinking,
+    reasoningEffort:
+      body.reasoning_effort !== undefined
+        ? body.reasoning_effort
+        : (saved?.reasoningEffort ?? DEFAULT_AI_PROVIDER.reasoningEffort),
   };
 }
 
@@ -884,7 +894,7 @@ const aiConnectionCreateSchema = z
     ...aiConnectionFields,
     timeout_ms: aiConnectionFields.timeout_ms.optional(),
     concurrency: aiConnectionFields.concurrency.optional(),
-    thinking: aiConnectionFields.thinking.optional(),
+    reasoning_effort: aiConnectionFields.reasoning_effort.optional(),
   })
   .strict();
 router.post(
@@ -899,7 +909,7 @@ router.post(
       model: provider.model!,
       apiKey: provider.apiKey,
       timeoutMs: provider.timeoutMs,
-      thinking: provider.thinking,
+      reasoningEffort: provider.reasoningEffort,
       concurrency: body.concurrency ?? DEFAULT_AI_PROVIDER.concurrency,
     });
     res.status(201).json(aiConnectionOut(connection));
@@ -913,7 +923,7 @@ router.patch(
   asyncHandler(async (req, res) => {
     const body = parseBody(aiConnectionUpdateSchema, req.body);
     const provider = await providerFrom(req.params.id, body);
-    // Concurrency and thinking don't change whether it answers.
+    // Concurrency and reasoning effort don't change whether it answers.
     if (
       body.base_url !== undefined ||
       body.model !== undefined ||
@@ -928,7 +938,7 @@ router.patch(
       ...(body.api_key !== undefined ? { apiKey: provider.apiKey } : {}),
       ...(body.timeout_ms !== undefined ? { timeoutMs: body.timeout_ms } : {}),
       ...(body.concurrency !== undefined ? { concurrency: body.concurrency } : {}),
-      ...(body.thinking !== undefined ? { thinking: body.thinking } : {}),
+      ...(body.reasoning_effort !== undefined ? { reasoningEffort: body.reasoning_effort } : {}),
     });
     res.json(aiConnectionOut(connection));
   }),

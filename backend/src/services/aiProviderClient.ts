@@ -178,7 +178,7 @@ export async function askProvider<T>(options: {
   const { settings, content, schemaName, schema, maxTokens, attempts = 3, log: requestLog, noAnswer, read } = options;
   const { stream } = options;
   const connection = `${settings.baseUrl}|${settings.model}`;
-  let skipThinking = !settings.thinking && !reasoningEffortRejected.has(connection);
+  let reasoningEffort = reasoningEffortRejected.has(connection) ? null : settings.reasoningEffort;
   for (let attempt = 0; attempt < attempts; attempt++) {
     const last = attempt === attempts - 1;
     const started = Date.now();
@@ -208,17 +208,18 @@ export async function askProvider<T>(options: {
           max_tokens: maxTokens,
           ...(stream ? { stream: true, stream_options: { include_usage: true } } : {}),
           response_format: { type: "json_schema", json_schema: { name: schemaName, strict: true, schema } },
-          // A reasoning model (qwen3) on a CPU spends minutes thinking; these tasks rarely need it.
-          ...(skipThinking ? { reasoning_effort: "none" } : {}),
+          // These tasks rarely need much thought, and a reasoning model spends max_tokens on it before answering.
+          // Models differ in what they take: "none" stops qwen3 thinking, but gpt-oss ignores it and needs "low".
+          ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
           messages: [{ role: "user", content }],
         }),
       });
       if (!response.ok) {
         // Strict providers reject the field outright, e.g. OpenAI for a model that doesn't reason: ask again
         // without it, which doesn't count as an attempt. Only when the error names it, so another bad request
-        // isn't taken for proof that the connection can't skip thinking.
-        if (response.status === 400 && skipThinking && /reasoning/i.test(await response.clone().text())) {
-          skipThinking = false;
+        // isn't taken for proof that the connection can't take a reasoning effort.
+        if (response.status === 400 && reasoningEffort && /reasoning/i.test(await response.clone().text())) {
+          reasoningEffort = null;
           reasoningEffortRejected.add(connection);
           requestLog.warn("provider rejected reasoning_effort, asking again without it");
           attempt--;

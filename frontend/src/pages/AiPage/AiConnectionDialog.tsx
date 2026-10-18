@@ -2,21 +2,24 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Alert from "@mui/material/Alert";
 import Autocomplete from "@mui/material/Autocomplete";
-import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
-import FormControlLabel from "@mui/material/FormControlLabel";
 import InputAdornment from "@mui/material/InputAdornment";
+import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
-import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
-import Typography from "@mui/material/Typography";
 import { UnauthorizedError } from "../../api/client";
-import { aiConnectionsApi, type AiConnection, type AiConnectionInput } from "../../api/aiConnections";
+import {
+  aiConnectionsApi,
+  REASONING_EFFORTS,
+  type AiConnection,
+  type AiConnectionInput,
+  type ReasoningEffort,
+} from "../../api/aiConnections";
 import { useConfirm } from "../../components/ConfirmProvider";
 import { AiLogo } from "./aiLogos";
 
@@ -37,7 +40,7 @@ const draftOf = (connection: AiConnection | null): Draft => ({
   api_key: "",
   timeout_ms: connection?.timeout_ms ?? 60000,
   concurrency: connection?.concurrency ?? 1,
-  thinking: connection?.thinking ?? true,
+  reasoning_effort: connection?.reasoning_effort ?? null,
 });
 
 /** Adds or edits one AI. Saving tests it first, as the backend only keeps an AI that answers. */
@@ -108,7 +111,7 @@ export default function AiConnectionDialog({ connection, onClose, onChanged, onU
       model: draft.model.trim(),
       timeout_ms: Number(draft.timeout_ms),
       concurrency: Number(draft.concurrency),
-      thinking: draft.thinking,
+      reasoning_effort: draft.reasoning_effort,
     };
     try {
       if (connection) {
@@ -140,7 +143,7 @@ export default function AiConnectionDialog({ connection, onClose, onChanged, onU
         base_url: draft.base_url.trim(),
         model: draft.model.trim(),
         timeout_ms: Number(draft.timeout_ms),
-        thinking: draft.thinking,
+        reasoning_effort: draft.reasoning_effort,
         ...keyPayload,
       });
       if (result.ok)
@@ -286,23 +289,23 @@ export default function AiConnectionDialog({ connection, onClose, onChanged, onU
               fullWidth
             />
           </Stack>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={draft.thinking}
-                onChange={(event) => update("thinking", event.target.checked)}
-                disabled={disabled}
-              />
-            }
-            label={
-              <Box>
-                <Typography variant="body2">{t("adminSettings.ai.connection.thinking")}</Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {t("adminSettings.ai.connection.thinkingHint")}
-                </Typography>
-              </Box>
-            }
-          />
+          {/* A select can't hold null, so "" stands for sending nothing. */}
+          <TextField
+            select
+            label={t("adminSettings.ai.connection.reasoningEffort")}
+            value={draft.reasoning_effort ?? ""}
+            onChange={(event) => update("reasoning_effort", (event.target.value || null) as ReasoningEffort | null)}
+            helperText={t("adminSettings.ai.connection.reasoningEffortHint")}
+            disabled={disabled}
+            fullWidth
+          >
+            <MenuItem value="">{t("adminSettings.ai.connection.reasoningEffortDefault")}</MenuItem>
+            {REASONING_EFFORTS.map((effort) => (
+              <MenuItem key={effort} value={effort}>
+                {t(`adminSettings.ai.connection.reasoningEffortLevels.${effort}`)}
+              </MenuItem>
+            ))}
+          </TextField>
           {status && <Alert severity="success">{status}</Alert>}
           {error && <Alert severity="error">{error}</Alert>}
         </Stack>

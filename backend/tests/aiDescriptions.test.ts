@@ -84,7 +84,14 @@ async function stopProvider() {
 /** One model, the default, and the feature on with it. */
 async function enable(baseUrl: string, patch: Partial<AiDescriptionPrefs> = {}) {
   await prisma.aiConnection.deleteMany();
-  await createAiConnection({ baseUrl, apiKey: null, model: "local", timeoutMs: 2000, concurrency: 1, thinking: true });
+  await createAiConnection({
+    baseUrl,
+    apiKey: null,
+    model: "local",
+    timeoutMs: 2000,
+    concurrency: 1,
+    reasoningEffort: null,
+  });
   await setAiDescriptionPrefs({ ...DEFAULT_AI_DESCRIPTION_PREFS, enabled: true, onImport: false, ...patch });
 }
 
