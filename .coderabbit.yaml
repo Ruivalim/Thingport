@@ -1,0 +1,93 @@
+# CodeRabbit review settings: https://docs.coderabbit.ai/reference/configuration
+# Formatting (Prettier, gofmt, prisma format) and linting (oxlint) are already enforced by the pre-commit
+# hook and CI, so reviews are steered towards correctness, security and design rather than style.
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: en-GB
+
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: true
+
+  # Only PRs into the default branch (develop) are reviewed automatically. Release PRs from develop into
+  # main carry work that was already reviewed on its way into develop; comment `@coderabbitai review` on
+  # one to review it anyway.
+  auto_review:
+    enabled: true
+    drafts: false
+
+  path_filters:
+    # Generated or tool-owned files
+    - "!**/package-lock.json"
+    - "!**/CHANGELOG.md"
+    - "!web/.astro/**"
+    - "!**/dist/**"
+    # Binaries and fixtures
+    - "!bridge/thingport-bridge"
+    - "!regression/fixtures/**"
+
+  path_instructions:
+    - path: "**/*"
+      instructions: |
+        Formatting and lint rules are enforced by Prettier, gofmt and oxlint in CI -- don't comment on
+        style those tools cover. This codebase uses comments that explain *why* something is the way it
+        is, especially around workarounds and non-obvious behaviour: flag comments that have gone stale
+        relative to the code they describe, but don't ask for comments that only restate the code.
+        Commits follow Conventional Commits, and the type decides the next version of each package.
+
+    - path: "backend/**"
+      instructions: |
+        Express + Prisma + TypeScript API. Check routes for missing authentication/authorisation (the app
+        is multi-user, so one user must not be able to read or change another's data), unvalidated
+        input, path traversal in anything that touches files under storage, and unhandled promise
+        rejections. Watch for N+1 queries and unbounded result sets.
+
+    - path: "backend/prisma/**"
+      instructions: |
+        Schema and migrations. Flag destructive or data-losing migrations (dropped columns or tables,
+        type narrowing, NOT NULL without a default on existing tables) and schema changes that don't
+        come with a matching migration.
+
+    - path: "frontend/**"
+      instructions: |
+        React 18 + Vite + TypeScript with `strict: true`. Flag `any`, unsafe casts and non-null
+        assertions used to get past a type error. Check hooks for missing or wrong dependencies, effects
+        that don't clean up, and user-facing strings that bypass i18n.
+
+    - path: "extension/**"
+      instructions: |
+        Browser extension (Chrome, Edge and Firefox) built with esbuild. The background script must run
+        both as a Chrome MV3 service worker and as a Firefox event page: flag APIs or globals only one of
+        them has (e.g. `importScripts`, `window`, DOM access) and state kept in memory that won't survive
+        the service worker being suspended. The content script and popup must not call the Thingport
+        instance directly -- they message the background. Review permission changes in the manifest
+        closely, and flag anything that would conflict with extension/PRIVACY.md or store policy.
+
+    - path: "bridge/**"
+      instructions: |
+        Go helper that registers the `thingport://` protocol, downloads a file and launches a slicer on
+        Windows, Linux and macOS. Treat every URL it receives as untrusted: check for command injection
+        when launching processes, path traversal when saving downloads, and unchecked errors. Flag
+        platform-specific code that isn't guarded by build tags or a runtime OS check.
+
+    - path: "regression/**"
+      instructions: |
+        Playwright end-to-end tests against the full stack. Prefer role/label locators and web-first
+        assertions over fixed timeouts and brittle CSS selectors.
+
+    - path: ".github/workflows/**"
+      instructions: |
+        Check for overly broad `permissions`, secrets exposed to pull requests from forks
+        (`pull_request_target`), untrusted input interpolated straight into `run:` steps, and third-party
+        actions not pinned to a version.
+
+    - path: "**/*.md"
+      instructions: |
+        Docs are also published to the GitHub wiki and the website. Check that commands, paths and
+        behaviour described still match the code, and that relative links resolve.
+
+chat:
+  auto_reply: true
