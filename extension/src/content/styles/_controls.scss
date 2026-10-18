@@ -54,3 +54,39 @@
     color: t.c("text-muted");
   }
 }
+
+// A choice between a few views of the same page, e.g. Snapmaker's likes and bookmarks.
+.tg-segmented {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  margin-bottom: t.$space-2;
+  border-radius: t.$radius-md;
+  background: t.c("surface-sunken");
+
+  &__option {
+    @include m.focus-ring;
+    flex: 1;
+    padding: 5px t.$space-2;
+    border: 0;
+    border-radius: t.$radius-sm;
+    background: transparent;
+    color: t.c("text-muted");
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+      background-color 150ms,
+      color 150ms;
+
+    &[aria-pressed="true"] {
+      background: t.c("surface-raised");
+      color: t.c("text");
+      box-shadow: 0 1px 2px t.c("shadow");
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      transition: none;
+    }
+  }
+}

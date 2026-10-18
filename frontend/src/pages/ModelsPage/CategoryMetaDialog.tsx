@@ -31,6 +31,7 @@ export default function CategoryMetaDialog({ category, showSiteCatIds, onClose, 
   const [thingiverseCatIds, setThingiverseCatIds] = useState(category.thingiverse_cat_ids);
   const [printablesCatIds, setPrintablesCatIds] = useState(category.printables_cat_ids);
   const [myminifactoryCatIds, setMyminifactoryCatIds] = useState(category.myminifactory_cat_ids);
+  const [snapmakerCatIds, setSnapmakerCatIds] = useState(category.snapmaker_cat_ids);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,6 +46,7 @@ export default function CategoryMetaDialog({ category, showSiteCatIds, onClose, 
         thingiverseCatIds,
         printablesCatIds,
         myminifactoryCatIds,
+        snapmakerCatIds,
       });
       onClose();
     } catch (err) {
@@ -80,7 +82,7 @@ export default function CategoryMetaDialog({ category, showSiteCatIds, onClose, 
             disabled={saving}
           />
           {showSiteCatIds && (
-            // Two by two, one column on a phone.
+            // Two to a row, one column on a phone.
             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2 }}>
               <TextField
                 label={t("models:categories.manager.makerworldCatIdLabel")}
@@ -116,6 +118,15 @@ export default function CategoryMetaDialog({ category, showSiteCatIds, onClose, 
                 fullWidth
                 value={myminifactoryCatIds}
                 onChange={(e) => setMyminifactoryCatIds(e.target.value)}
+                disabled={saving}
+              />
+              <TextField
+                label={t("models:categories.manager.snapmakerCatIdLabel")}
+                placeholder={t("models:categories.manager.catIdsPlaceholder") ?? undefined}
+                helperText={t("models:categories.manager.catIdsHelp")}
+                fullWidth
+                value={snapmakerCatIds}
+                onChange={(e) => setSnapmakerCatIds(e.target.value)}
                 disabled={saving}
               />
             </Box>

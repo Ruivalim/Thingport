@@ -29,15 +29,18 @@ const PROVIDERS: { id: ProviderId; name: string }[] = [
   { id: "thingiverse", name: "Thingiverse" },
   { id: "printables", name: "Printables" },
   { id: "myminifactory", name: "MyMiniFactory" },
+  { id: "snapmaker", name: "Snapmaker Space" },
   ...COMING_SOON_PROVIDERS,
 ];
 const isComingSoon = (id: ProviderId) => COMING_SOON_PROVIDERS.some((provider) => provider.id === id);
 // Connected with one key for the whole instance, which only an admin sets.
 const SHARED = new Set<ProviderId>(["thingiverse"]);
 // Connected with the user's own sign-in, which the site can turn down once it expires. MyMiniFactory's also has
-// the instance's API key, set in Administration; the user's sign-in adds paid and login-only models.
-type SessionProvider = "makerworld" | "myminifactory";
-const isSessionProvider = (id: ProviderId): id is SessionProvider => id === "makerworld" || id === "myminifactory";
+// the instance's API key, set in Administration; the user's sign-in adds paid and login-only models. Snapmaker's
+// lasts a day; Thingport Grab keeps renewing it.
+type SessionProvider = "makerworld" | "myminifactory" | "snapmaker";
+const isSessionProvider = (id: ProviderId): id is SessionProvider =>
+  id === "makerworld" || id === "myminifactory" || id === "snapmaker";
 
 type Props = {
   isAdmin: boolean;
@@ -64,12 +67,13 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
     makeronline: false,
     crealitycloud: false,
     nexprint: false,
-    snapmakerspace: false,
+    snapmaker: null,
   });
   const [menu, setMenu] = React.useState<{ id: ProviderId; top: number; left: number } | null>(null);
   const [expired, setExpired] = React.useState<Record<SessionProvider, boolean>>({
     makerworld: false,
     myminifactory: false,
+    snapmaker: false,
   });
   const isExpired = (id: ProviderId) => isSessionProvider(id) && Boolean(connected[id]) && expired[id];
   const [connecting, setConnecting] = React.useState<ProviderId | null>(null);
@@ -96,6 +100,14 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
         if (!active) return;
         setConnected((current) => ({ ...current, myminifactory: res.configured }));
         setExpired((current) => ({ ...current, myminifactory: res.expired }));
+      })
+      .catch(() => undefined);
+    settingsApi
+      .getSnapmakerSession()
+      .then((res) => {
+        if (!active) return;
+        setConnected((current) => ({ ...current, snapmaker: res.configured }));
+        setExpired((current) => ({ ...current, snapmaker: res.expired }));
       })
       .catch(() => undefined);
     return () => {
@@ -126,6 +138,10 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
       const result = await settingsApi.updateMyminifactorySession(value);
       setConnected((current) => ({ ...current, myminifactory: result.configured }));
       setExpired((current) => ({ ...current, myminifactory: false }));
+    } else if (id === "snapmaker") {
+      const result = await settingsApi.updateSnapmakerSession(value);
+      setConnected((current) => ({ ...current, snapmaker: result.configured }));
+      setExpired((current) => ({ ...current, snapmaker: false }));
     }
   };
 
@@ -196,8 +212,8 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
                 ? locked
                 : isConnected
                   ? t("providers.connected")
-                  : id === "myminifactory"
-                    ? t("providers.myminifactory.notConnected")
+                  : id === "myminifactory" || id === "snapmaker"
+                    ? t(`providers.${id}.notConnected`)
                     : t("providers.notConnected");
           return (
             <AppTile

@@ -1,16 +1,17 @@
-// Content script entry point (MakerWorld, Thingiverse, Printables, and MyMiniFactory once turned on). Network calls go through the
-// background (see runtime.ts).
+// Content script entry point (MakerWorld, Thingiverse, Printables, and MyMiniFactory and Snapmaker Space once turned
+// on). Network calls go through the background (see runtime.ts).
 
 import type { ImportStatus } from "../shared/api";
 import { listen, send, type ContentMessages } from "../shared/messages";
 import { CONFIG_CHANGE_KEYS } from "../shared/storage";
-import { classifyUrl } from "../shared/urls";
+import { classifyUrl, parseSnapmakerListUrl, snapmakerListUrl } from "../shared/urls";
 import { setContext, type LibraryState } from "./context";
 import { isMakerworldBlockingError, resolveMakerworldDownloadUrl } from "./makerworld/downloadResolver";
 import { offerNormalizedDownload, unmountNormalizedDownload } from "./makerworld/normalizedDownload";
 import { mountJobOverlay, mountPausedJobOverlay } from "./overlays";
 import { loadPanel } from "./panels";
 import { captureProviderAccount } from "./providerAccount";
+import { snapmakerUserId } from "./snapmaker";
 import { providerEnabled } from "./providerSettings";
 import { errorHtml } from "./panels/results";
 import { api } from "./runtime";
@@ -119,6 +120,19 @@ async function init(): Promise<void> {
     return;
   }
 
+  // Snapmaker shows likes and bookmarks to their owner only, and the instance reads them as the user: offered on
+  // their own page alone, as the address that names the list.
+  let pageUrl = url;
+  if (classification.provider === "snapmaker" && classification.kind === "batch") {
+    const own = await snapmakerUserId();
+    if (isStale()) return;
+    if (!own || own !== parseSnapmakerListUrl(url)?.userId) {
+      reportTabIconState(false);
+      return;
+    }
+    pageUrl = snapmakerListUrl(own, classification.type);
+  }
+
   let library: LibraryState | null = null;
   if (classification.kind === "single") {
     try {
@@ -142,7 +156,7 @@ async function init(): Promise<void> {
   if (isStale()) return;
 
   setContext({
-    url,
+    url: pageUrl,
     instanceUrl: stateRes.data.instanceUrl,
     classification,
     library,

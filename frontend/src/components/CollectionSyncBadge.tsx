@@ -10,7 +10,7 @@ import { ProviderLogo, type ProviderId } from "./Layout/ConfigurationDialog/prov
 import { useDisabledProviders } from "../hooks/useDisabledProviders";
 import type { ImportProvider } from "../api/settings";
 
-const LOGO_PROVIDERS = new Set<string>(["makerworld", "thingiverse", "printables", "myminifactory"]);
+const LOGO_PROVIDERS = new Set<string>(["makerworld", "thingiverse", "printables", "myminifactory", "snapmaker"]);
 
 type Props = {
   sync: CollectionSync;

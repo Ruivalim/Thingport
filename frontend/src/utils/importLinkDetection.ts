@@ -1,6 +1,6 @@
 /** URL-shape detection shared by useUploadImport and AddMenu so they can't drift apart. */
 
-export type ImportProviderKey = "makerworld" | "thingiverse" | "printables" | "myminifactory";
+export type ImportProviderKey = "makerworld" | "thingiverse" | "printables" | "myminifactory" | "snapmaker";
 
 function parseUrl(url: string): URL | null {
   try {
@@ -18,6 +18,7 @@ export function detectImportProvider(url: string): ImportProviderKey | null {
   if (host === "thingiverse.com" || host === "www.thingiverse.com") return "thingiverse";
   if (host === "printables.com" || host === "www.printables.com") return "printables";
   if (host === "myminifactory.com" || host === "www.myminifactory.com") return "myminifactory";
+  if (host === "space.snapmaker.com") return "snapmaker";
   return null;
 }
 
@@ -96,6 +97,23 @@ export function isMyminifactoryCollectionUrl(url: string): boolean {
   return /^\/(?:[a-z]{2}\/)?users\/[^/]+\/collection\/[^/]+\/?$/i.test(parsed.pathname);
 }
 
+/** See isThingiverseThingUrl. `#profileId-<id>` may pick a print profile. */
+export function isSnapmakerModelUrl(url: string): boolean {
+  const parsed = parseUrl(url);
+  if (!parsed || parsed.hostname.toLowerCase() !== "space.snapmaker.com") return false;
+  return /^\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?model\/\d+(?:-[^/]*)?\/?$/i.test(parsed.pathname);
+}
+
+/** The user's own likes or bookmarks: one page, `/creator/<id>?tab=interactions`, with `list` saying which. */
+export function isSnapmakerListUrl(url: string): boolean {
+  const parsed = parseUrl(url);
+  if (!parsed || parsed.hostname.toLowerCase() !== "space.snapmaker.com") return false;
+  return (
+    /^\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?creator\/\d+\/?$/i.test(parsed.pathname) &&
+    parsed.searchParams.get("tab") === "interactions"
+  );
+}
+
 export const IMPORT_LINK_EXAMPLES: Record<ImportProviderKey, { model: string; collection: string }> = {
   makerworld: {
     model: "https://makerworld.com/en/models/123456-example-model",
@@ -112,5 +130,9 @@ export const IMPORT_LINK_EXAMPLES: Record<ImportProviderKey, { model: string; co
   myminifactory: {
     model: "https://www.myminifactory.com/object/3d-print-example-model-123456",
     collection: "https://www.myminifactory.com/users/username/collection/example-collection",
+  },
+  snapmaker: {
+    model: "https://space.snapmaker.com/en/model/12345-example-model",
+    collection: "https://space.snapmaker.com/en/creator/12345?tab=interactions&list=likes",
   },
 };

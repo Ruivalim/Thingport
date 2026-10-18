@@ -18,6 +18,7 @@ import {
 import { getPrintablesToken, printablesPushDue, pushPrintables, reportProviderAccount } from "./providerAccounts";
 import { getRecentImports } from "./recentImports";
 import { syncMyminifactorySession } from "./myminifactorySession";
+import { scheduleSnapmakerRenewal, SNAPMAKER_ALARM, syncSnapmakerSession } from "./snapmakerSession";
 import { onPairingTabClosed, onPairingTabUrl, startPairing } from "./pairing";
 import { openSetup } from "./setup";
 import { setTabIconState } from "./tabIcon";
@@ -38,6 +39,7 @@ listen<BackgroundMessages>({
   GET_PRINTABLES_TOKEN: () => getPrintablesToken(),
   REPORT_PROVIDER_ACCOUNT: ({ provider, value }) => reportProviderAccount(provider, value),
   SYNC_MYMINIFACTORY_SESSION: () => syncMyminifactorySession(),
+  SYNC_SNAPMAKER_SESSION: () => syncSnapmakerSession(),
   PRINTABLES_PUSH_DUE: ({ now }) => printablesPushDue({ now }),
   PUSH_PRINTABLES: (push) => pushPrintables(push),
   OPEN_SETUP: (_payload, sender) => openSetup(sender.tab?.id),
@@ -82,8 +84,18 @@ chrome.permissions.onAdded.addListener(() => {
   void syncSiteScripts().then(async () => {
     for (const site of OPTIONAL_SITES) if (await siteEnabled(site)) await injectIntoOpenTabs(site);
   });
+  void scheduleSnapmakerRenewal();
 });
-chrome.permissions.onRemoved.addListener(() => void syncSiteScripts());
+chrome.permissions.onRemoved.addListener(() => {
+  void syncSiteScripts();
+  void scheduleSnapmakerRenewal();
+});
+
+// Snapmaker's sign-in lasts a day: renewed on a timer too, so syncs keep working on days Snapmaker isn't visited.
+void scheduleSnapmakerRenewal();
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === SNAPMAKER_ALARM) void syncSnapmakerSession();
+});
 
 chrome.tabs.onRemoved.addListener((tabId) => {
   void dropJobIfForTab(tabId);

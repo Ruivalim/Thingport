@@ -1,8 +1,8 @@
 // Glyphs from Simple Icons (CC0). MakerWorld has none of its own there, so it takes Bambu Lab's,
 // whose site it is. MyMiniFactory isn't there either; its glyph is its own favicon, scaled to 24.
-// The coming-soon sites aren't there either; theirs are the marks from their own sites, cut from the wordmark
-// where the two are one drawing. MakerOnline and Snapmaker Space are black-and-white marks, so they take the
-// text colour to show in both themes.
+// Snapmaker Space and the coming-soon sites aren't there either; theirs are the marks from their own sites, cut from
+// the wordmark where the two are one drawing. MakerOnline and Snapmaker Space are black-and-white marks, so they take
+// the text colour to show in both themes.
 export type ProviderId =
   | "makerworld"
   | "thingiverse"
@@ -13,7 +13,7 @@ export type ProviderId =
   | "makeronline"
   | "crealitycloud"
   | "nexprint"
-  | "snapmakerspace";
+  | "snapmaker";
 
 /** Sites shown as "Coming soon": listed, but nothing can be done with them yet. */
 export const COMING_SOON_PROVIDERS: { id: ProviderId; name: string }[] = [
@@ -22,7 +22,6 @@ export const COMING_SOON_PROVIDERS: { id: ProviderId; name: string }[] = [
   { id: "makeronline", name: "MakerOnline" },
   { id: "crealitycloud", name: "Creality Cloud" },
   { id: "nexprint", name: "NextPrint" },
-  { id: "snapmakerspace", name: "Snapmaker Space" },
 ];
 
 type Logo = {
@@ -91,7 +90,7 @@ const LOGOS: Record<ProviderId, Logo> = {
     path: "M15 18.5519L19.1113 12.0919H25.6592C26.2106 12.0921 26.7007 12.4444 26.877 12.9669L29.9307 22.0236C30.2114 22.8566 29.592 23.7198 28.7129 23.7198H1.28613C0.407131 23.7196 -0.212382 22.8566 0.0683594 22.0236L3.12305 12.9669C3.29939 12.4443 3.78924 12.0919 4.34082 12.0919H10.8877L7.21191 6.31555C6.66766 5.45993 7.2819 4.34031 8.2959 4.33997H21.7002C22.7143 4.34001 23.3292 5.45985 22.7852 6.31555L19.1094 12.0919H10.8887L15 18.5519Z",
   },
   // A white S on a black disc; the S is cut out instead, so the disc can take the text colour.
-  snapmakerspace: {
+  snapmaker: {
     viewBox: "0 0 36 36",
     color: "currentColor",
     fillRule: "evenodd",

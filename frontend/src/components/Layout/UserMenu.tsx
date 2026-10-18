@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
-import ButtonBase from "@mui/material/ButtonBase";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
@@ -19,15 +18,15 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import type { AuthUser } from "../../api/auth";
 import type { ConfigurationTab } from "./ConfigurationDialog";
 import { IMPORT_PROVIDER_INFO } from "../../constants/importProviders";
+import { COMING_SOON_PROVIDERS, ProviderLogo, type ProviderId } from "./ConfigurationDialog/providerLogos";
 import { SELF_AUTHOR_ID } from "../../constants/selfAuthor";
 import { useGravatarUrl } from "../../hooks/useGravatarUrl";
 import { settingsApi } from "../../api/settings";
 import { useDisabledProviders } from "../../hooks/useDisabledProviders";
 
 type ServiceChipDef = {
-  key: "makerworld" | "thingiverse" | "printables" | "myminifactory";
+  key: "makerworld" | "thingiverse" | "printables" | "myminifactory" | "snapmaker";
   label: string;
-  color: string;
   connected: boolean;
   /** Explains what's missing when not connected. */
   disabledReason?: string;
@@ -40,7 +39,7 @@ type Props = {
   onLogout: () => void;
 };
 
-/** Identity, quick settings and import-provider connection chips. Connection status comes from the
+/** Identity, quick settings and import-provider connection icons. Connection status comes from the
  *  backend, not localStorage, which may disagree with the DB. */
 export function UserMenu({ user, onOpenConfiguration, onOpenProfile, onLogout }: Props) {
   const { t } = useTranslation(["app", "common"]);
@@ -51,6 +50,8 @@ export function UserMenu({ user, onOpenConfiguration, onOpenProfile, onLogout }:
   const [makerworldExpired, setMakerworldExpired] = React.useState(false);
   const [thingiverseConfigured, setThingiverseConfigured] = React.useState(false);
   const [myminifactoryConfigured, setMyminifactoryConfigured] = React.useState(false);
+  const [snapmakerConfigured, setSnapmakerConfigured] = React.useState(false);
+  const [snapmakerExpired, setSnapmakerExpired] = React.useState(false);
 
   const menuOpen = Boolean(anchorEl);
   // Checked on every open: the cookie can change in Configuration while the menu stays mounted.
@@ -75,6 +76,14 @@ export function UserMenu({ user, onOpenConfiguration, onOpenProfile, onLogout }:
       .getMyminifactory()
       .then((res) => {
         if (active) setMyminifactoryConfigured(res.configured);
+      })
+      .catch(() => undefined);
+    settingsApi
+      .getSnapmakerSession()
+      .then((res) => {
+        if (!active) return;
+        setSnapmakerConfigured(res.configured);
+        setSnapmakerExpired(res.expired);
       })
       .catch(() => undefined);
     return () => {
@@ -106,9 +115,32 @@ export function UserMenu({ user, onOpenConfiguration, onOpenProfile, onLogout }:
       connected: myminifactoryConfigured,
       disabledReason: t("userMenu.myminifactoryDisabledReason"),
     },
+    {
+      key: "snapmaker",
+      ...IMPORT_PROVIDER_INFO.snapmaker,
+      connected: snapmakerConfigured && !snapmakerExpired,
+      disabledReason: snapmakerExpired ? t("providers.snapmaker.expired") : t("userMenu.snapmakerDisabledReason"),
+    },
   ];
-  // Turned off by an admin: no chip, and with none left, no row.
-  const services = allServices.filter((service) => !disabledProviders.has(service.key));
+  // Turned off by an admin: no icon. Coming-soon sites follow the live ones.
+  const services: { id: ProviderId; label: string; connected: boolean; tooltip: string }[] = [
+    ...allServices
+      .filter((service) => !disabledProviders.has(service.key))
+      .map((svc) => ({
+        id: svc.key,
+        label: svc.label,
+        connected: svc.connected,
+        tooltip: svc.connected
+          ? t("userMenu.serviceConnected", { service: svc.label })
+          : (svc.disabledReason ?? t("userMenu.serviceNotConnected", { service: svc.label })),
+      })),
+    ...COMING_SOON_PROVIDERS.map(({ id, name }) => ({
+      id,
+      label: name,
+      connected: false,
+      tooltip: `${name}: ${t("providers.comingSoon")}`,
+    })),
+  ];
 
   return (
     <>
@@ -188,42 +220,33 @@ export function UserMenu({ user, onOpenConfiguration, onOpenProfile, onLogout }:
           </ListItemIcon>
           <ListItemText>{t("configuration.title")}</ListItemText>
         </MenuItem>
-        {services.length > 0 && [
-          <Divider key="divider" />,
-          <Box key="services" sx={{ px: 2, py: 1.25, display: "flex", gap: 0.75 }}>
-            {services.map((svc) => (
-              <ButtonBase
-                key={svc.key}
+        <Divider />
+        <Box sx={{ px: 1.5, py: 1, display: "flex", flexWrap: "wrap", gap: 0.5, maxWidth: 260 }}>
+          {services.map((svc) => (
+            <Tooltip key={svc.id} title={svc.tooltip}>
+              <IconButton
+                size="small"
+                aria-label={svc.tooltip}
                 onClick={() => {
                   closeMenu();
                   onOpenConfiguration("providers");
                 }}
-                title={
-                  svc.connected
-                    ? t("userMenu.serviceConnected", { service: svc.label })
-                    : (svc.disabledReason ?? t("userMenu.serviceNotConnected", { service: svc.label }))
-                }
                 sx={{
-                  px: 1,
-                  py: 0.375,
-                  borderRadius: 1,
-                  fontSize: 11,
-                  fontWeight: 600,
-                  lineHeight: 1.4,
-                  whiteSpace: "nowrap",
-                  color: "#fff",
-                  // Grey rather than dimmed so the two states are unmistakable.
-                  bgcolor: svc.connected ? svc.color : "grey.500",
-                  opacity: svc.connected ? 1 : 0.5,
-                  transition: "filter 150ms",
-                  "&:hover": { filter: "brightness(1.1)" },
+                  p: 0.625,
+                  // Greyed out so connected logos stand out at a glance.
+                  "& svg": {
+                    filter: svc.connected ? "none" : "grayscale(1)",
+                    opacity: svc.connected ? 1 : 0.4,
+                    transition: "filter 150ms, opacity 150ms",
+                  },
+                  "&:hover svg, &:focus-visible svg": { opacity: svc.connected ? 1 : 0.7 },
                 }}
               >
-                {svc.label}
-              </ButtonBase>
-            ))}
-          </Box>,
-        ]}
+                <ProviderLogo id={svc.id} size={18} />
+              </IconButton>
+            </Tooltip>
+          ))}
+        </Box>
       </Menu>
     </>
   );

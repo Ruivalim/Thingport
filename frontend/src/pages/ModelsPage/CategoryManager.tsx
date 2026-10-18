@@ -71,7 +71,8 @@ function hasMeta(category: Category): boolean {
     category.makerworld_cat_ids ||
     category.thingiverse_cat_ids ||
     category.printables_cat_ids ||
-    category.myminifactory_cat_ids,
+    category.myminifactory_cat_ids ||
+    category.snapmaker_cat_ids,
   );
 }
 

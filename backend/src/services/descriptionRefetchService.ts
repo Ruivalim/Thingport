@@ -15,7 +15,7 @@ import { getDisabledProviders } from "./providerSettingsService";
 // Re-reads every imported model's description for one user from its source, replacing the stored
 // one, e.g. to bring models imported as plain text up to formatted descriptions with images.
 
-const SOURCE_PROVIDERS = ["makerworld", "thingiverse", "printables", "myminifactory"] as const;
+const SOURCE_PROVIDERS = ["makerworld", "thingiverse", "printables", "myminifactory", "snapmaker"] as const;
 type SourceProvider = (typeof SOURCE_PROVIDERS)[number];
 
 export type DescriptionRefetchRun = {

@@ -7,7 +7,15 @@ import { LIKES_ID_PREFIX, type CollectionSyncOut, type SyncProfileScope } from "
 import { isSystemCollectionId } from "./collectionService";
 import { fetchListing, syncCollection } from "./collectionSyncRunner";
 import type { SyncIntervalHours } from "./collectionSyncSchedule";
-import { enableSync, parseSyncSource, type SyncProvider, updateSyncSettings } from "./collectionSyncService";
+import {
+  enableSync,
+  hasProfiles,
+  parseSyncSource,
+  type SyncProvider,
+  updateSyncSettings,
+} from "./collectionSyncService";
+import { listSnapmakerCollections, SnapmakerAuthError } from "./snapmakerApi";
+import { getSnapmakerConnection, getUserSnapmakerId, getUserSnapmakerToken } from "./snapmakerSessionService";
 import { MakerworldAuthError, MakerworldCaptchaError, extractMakerworldBearerToken } from "./makerworldCloudApi";
 import { fetchMakerworldCollectionCard, listMakerworldOwnCollections } from "./makerworldCollections";
 import { getUserMakerworldCookie } from "./makerworldCookieService";
@@ -42,7 +50,7 @@ import {
 } from "./thingiverseApi";
 import { assertProviderEnabled } from "./providerSettingsService";
 
-export const BROWSABLE_PROVIDERS = ["makerworld", "printables", "thingiverse", "myminifactory"] as const;
+export const BROWSABLE_PROVIDERS = ["makerworld", "printables", "thingiverse", "myminifactory", "snapmaker"] as const;
 export type BrowsableProvider = (typeof BROWSABLE_PROVIDERS)[number];
 
 /** `connected`: the instance can reach it for this user at all. `account`: who they are there, for
@@ -65,7 +73,7 @@ export type ProviderCollectionOut = {
 };
 
 export async function getProviderAccounts(userId: string): Promise<ProviderAccountsOut> {
-  const [user, thingiverseToken, myminifactoryKey] = await Promise.all([
+  const [user, thingiverseToken, myminifactoryKey, snapmaker] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -77,12 +85,14 @@ export async function getProviderAccounts(userId: string): Promise<ProviderAccou
     }),
     getThingiverseAccessToken(),
     getMyminifactoryApiKey(),
+    getSnapmakerConnection(userId),
   ]);
   return {
     makerworld: { connected: Boolean(extractMakerworldBearerToken(user?.makerworldCookie)), account: null },
     printables: { connected: true, account: user?.printablesHandle ?? null },
     thingiverse: { connected: Boolean(thingiverseToken), account: user?.thingiverseUsername ?? null },
     myminifactory: { connected: Boolean(myminifactoryKey), account: user?.myminifactoryUsername ?? null },
+    snapmaker: { connected: snapmaker === "connected", account: null },
   };
 }
 
@@ -125,6 +135,8 @@ export async function setProviderAccount(
     const user = key ? await providerCall(() => resolveMyminifactoryUser(value!, key)) : null;
     if (value && !user) throw new HttpError(404, `MyMiniFactory has no user "${value}"`);
     await prisma.user.update({ where: { id: userId }, data: { myminifactoryUsername: user?.username ?? null } });
+  } else if (provider === "snapmaker") {
+    throw new HttpError(400, "Snapmaker Space is linked through its sign-in in Configuration > Providers");
   } else {
     throw new HttpError(400, "MakerWorld is linked through its cookie in Configuration > Providers");
   }
@@ -160,8 +172,18 @@ async function providerCall<T>(call: () => Promise<T>): Promise<T> {
     if (err instanceof ThingiverseAuthError) throw new HttpError(400, err.message);
     if (err instanceof MyminifactoryRateLimitError) throw new HttpError(429, err.message);
     if (err instanceof MyminifactoryAuthError) throw new HttpError(400, err.message);
+    if (err instanceof SnapmakerAuthError) throw new HttpError(400, err.message);
     throw err;
   }
+}
+
+/** The user's likes and bookmarks, which only they can read, with their own sign-in. */
+async function snapmakerCards(userId: string): Promise<ProviderCollectionCard[]> {
+  const [token, snapmakerId] = await Promise.all([getUserSnapmakerToken(userId), getUserSnapmakerId(userId)]);
+  if (!token || !snapmakerId) {
+    throw new HttpError(409, "Connect Snapmaker Space in Configuration > Providers, or visit it with Thingport Grab");
+  }
+  return providerCall(() => listSnapmakerCollections(token, snapmakerId));
 }
 
 async function withSyncs(
@@ -214,6 +236,8 @@ export async function listProviderCollections(
     const listedIds = new Set(listed.map((card) => card.id));
     const privateOnes = (pushed.collections ?? []).filter((card) => card.private && !listedIds.has(card.id));
     cards = [...(pushed.likes ? [pushed.likes] : []), ...listed, ...privateOnes];
+  } else if (provider === "snapmaker") {
+    cards = await snapmakerCards(userId);
   } else if (provider === "myminifactory") {
     const key = await requireMyminifactoryKey();
     if (!user?.myminifactoryUsername) throw new HttpError(409, "Tell Thingport your MyMiniFactory username first");
@@ -239,7 +263,10 @@ export async function listProviderCollections(
 export async function lookupProviderCollection(userId: string, url: string): Promise<ProviderCollectionOut> {
   const source = parseSyncSource(url);
   if (!source)
-    throw new HttpError(400, "That isn't a MakerWorld, Printables, Thingiverse or MyMiniFactory collection link");
+    throw new HttpError(
+      400,
+      "That isn't a MakerWorld, Printables, Thingiverse, MyMiniFactory or Snapmaker Space collection link",
+    );
   await assertProviderEnabled(source.provider);
   let card: ProviderCollectionCard | null;
   if (source.likesOf && source.provider === "thingiverse") {
@@ -263,6 +290,9 @@ export async function lookupProviderCollection(userId: string, url: string): Pro
       (await fetchPrintablesCollectionCard(source.externalId)) ??
       (await pushedPrintablesCards(userId)).collections?.find((pushed) => pushed.id === source.externalId) ??
       null;
+  } else if (source.provider === "snapmaker") {
+    // Only the user's own likes and bookmarks are there to find.
+    card = (await snapmakerCards(userId)).find((own) => own.id === source.externalId) ?? null;
   } else if (source.provider === "myminifactory") {
     const key = await requireMyminifactoryKey();
     const [username, slug] = source.externalId.split("/");
@@ -291,10 +321,13 @@ export async function enableSyncFromApp(
   if (isSystemCollectionId(collectionId)) throw new HttpError(400, "This collection can't be synced");
   const source = parseSyncSource(input.url);
   if (!source)
-    throw new HttpError(400, "That isn't a MakerWorld, Printables, Thingiverse or MyMiniFactory collection link");
+    throw new HttpError(
+      400,
+      "That isn't a MakerWorld, Printables, Thingiverse, MyMiniFactory or Snapmaker Space collection link",
+    );
   await assertProviderEnabled(source.provider);
-  if (input.profileScope && source.provider !== "makerworld") {
-    throw new HttpError(400, "Only MakerWorld models have print profiles to pick");
+  if (input.profileScope && !hasProfiles(source.provider)) {
+    throw new HttpError(400, "Only MakerWorld and Snapmaker Space models have print profiles to pick");
   }
 
   let knownIds: string[] = [];

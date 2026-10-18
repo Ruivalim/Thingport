@@ -29,9 +29,10 @@ export function buildManifest(target: Target, pkg: { version: string; descriptio
       default_icon: iconSet("dark"),
     },
     background: target === "firefox" ? { scripts: ["background.js"] } : { service_worker: "background.js" },
-    // scripting: the content script for sites the user turns on later (src/shared/optionalSites.ts). It carries no
-    // install warning, so adding it didn't need everyone to approve the update.
-    permissions: ["storage", "cookies", "downloads", "scripting"],
+    // scripting: the content script for sites the user turns on later (src/shared/optionalSites.ts). alarms: renewing
+    // the Snapmaker sign-in on a timer (src/background/snapmakerSession.ts). Neither carries an install warning, so
+    // adding them didn't need everyone to approve the update.
+    permissions: ["storage", "cookies", "downloads", "scripting", "alarms"],
     // chrome.cookies needs these as host permissions; content script matches don't count. Their
     // session cookies are HttpOnly, so only the background can read them.
     host_permissions: COOKIE_HOSTS,

@@ -1,8 +1,9 @@
-// Batch flow for Thingiverse Likes/Collections and Printables and MyMiniFactory Collections. MakerWorld collections
-// use the guided flow in makerworldCollection.ts.
+// Batch flow for Thingiverse Likes/Collections, Printables and MyMiniFactory Collections, and Snapmaker Space likes
+// and bookmarks. MakerWorld collections use the guided flow in makerworldCollection.ts.
 
 import type { BatchEntriesResult, ImportJob, SyncLookup } from "../../shared/api";
-import { ctx } from "../context";
+import { ctx, setContext } from "../context";
+import { parseSnapmakerListUrl, snapmakerListUrl, type SnapmakerList } from "../../shared/urls";
 import { api, escapeHtml, sleep } from "../runtime";
 import { isPanelMounted, onPanelAction, panelQueryAll, renderPanel } from "../shell";
 import { errorHtml, statusHtml, successHtml } from "./results";
@@ -11,7 +12,19 @@ import { applySyncToggle, loadSyncState, readSyncToggle, syncChangeNote, syncTog
 import { printablesToken, readCollectionForPanel } from "../printables";
 import { pushPrintablesNow } from "../providerAccount";
 
-type BatchKey = "thingiverse:likes" | "thingiverse:collection" | "printables:collection" | "myminifactory:collection";
+type BatchKey =
+  | "thingiverse:likes"
+  | "thingiverse:collection"
+  | "printables:collection"
+  | "myminifactory:collection"
+  | "snapmaker:likes"
+  | "snapmaker:bookmarks";
+
+const SNAPMAKER_LIST = {
+  entries: "/import/snapmaker-list/entries",
+  start: "/import/snapmaker-list",
+  idField: "model_ids",
+};
 
 const BATCH_ENDPOINTS: Record<BatchKey, { entries: string; start: string; idField: string }> = {
   "thingiverse:likes": {
@@ -34,7 +47,41 @@ const BATCH_ENDPOINTS: Record<BatchKey, { entries: string; start: string; idFiel
     start: "/import/myminifactory-collection",
     idField: "object_ids",
   },
+  "snapmaker:likes": SNAPMAKER_LIST,
+  "snapmaker:bookmarks": SNAPMAKER_LIST,
 };
+
+const SNAPMAKER_LISTS: { list: SnapmakerList; label: string }[] = [
+  { list: "likes", label: "Likes" },
+  { list: "bookmarks", label: "Bookmarks" },
+];
+
+/** Snapmaker shows likes and bookmarks on one page without changing its address, so the panel picks which. */
+function snapmakerListSwitchHtml(): string {
+  const { classification } = ctx();
+  if (classification.provider !== "snapmaker" || classification.kind !== "batch") return "";
+  const options = SNAPMAKER_LISTS.map(
+    ({ list, label }) =>
+      `<button class="tg-segmented__option" type="button" data-action="list-${list}" aria-pressed="${classification.type === list}">${label}</button>`,
+  ).join("");
+  return `<div class="tg-segmented" role="group" aria-label="Which list">${options}</div>`;
+}
+
+function wireSnapmakerListSwitch(): void {
+  for (const { list } of SNAPMAKER_LISTS) {
+    onPanelAction(`list-${list}`, () => {
+      const current = ctx();
+      const userId = parseSnapmakerListUrl(current.url)?.userId;
+      if (!userId || (current.classification.kind === "batch" && current.classification.type === list)) return;
+      setContext({
+        ...current,
+        url: snapmakerListUrl(userId, list),
+        classification: { kind: "batch", provider: "snapmaker", type: list },
+      });
+      void loadBatchEntries();
+    });
+  }
+}
 
 function endpoints() {
   const { provider, type } = ctx().classification;
@@ -110,7 +157,8 @@ export async function loadBatchEntries(): Promise<void> {
   try {
     [result, sync] = await Promise.all([loadEntries(), loadSyncState()]);
   } catch (err) {
-    renderPanel(errorHtml(err));
+    renderPanel(`${snapmakerListSwitchHtml()}${errorHtml(err)}`);
+    wireSnapmakerListSwitch();
     return;
   }
   const allImported = result.entries.every((entry) => entry.already_imported);
@@ -127,6 +175,7 @@ export async function loadBatchEntries(): Promise<void> {
     .join("");
   const found = `${result.entries.length} models found${result.truncated ? " (more available on the site)" : ""}`;
   renderPanel(`
+    ${snapmakerListSwitchHtml()}
     <div class="tg-title">${escapeHtml(result.title || "Import models")}</div>
     <div class="tg-hint">${allImported && result.entries.length ? `${found}, all already in your library.` : found}</div>
     <div class="tg-entries">${rows}</div>
@@ -134,6 +183,7 @@ export async function loadBatchEntries(): Promise<void> {
     <button class="tg-btn" type="button" data-action="import">${allImported && sync ? "Save" : "Import selected"}</button>
   `);
   onPanelAction("import", () => void runBatchImport(result, sync));
+  wireSnapmakerListSwitch();
 }
 
 async function runBatchImport(result: PanelEntries, sync: SyncLookup | null): Promise<void> {

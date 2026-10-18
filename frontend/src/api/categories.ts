@@ -19,6 +19,7 @@ export type Category = {
   thingiverse_cat_ids: string;
   printables_cat_ids: string;
   myminifactory_cat_ids: string;
+  snapmaker_cat_ids: string;
 };
 
 export type CategoryMetaInput = {
@@ -28,6 +29,7 @@ export type CategoryMetaInput = {
   thingiverseCatIds: string;
   printablesCatIds: string;
   myminifactoryCatIds: string;
+  snapmakerCatIds: string;
 };
 
 export const categoriesApi = {
@@ -75,6 +77,7 @@ export const categoriesApi = {
         thingiverse_cat_ids: meta.thingiverseCatIds,
         printables_cat_ids: meta.printablesCatIds,
         myminifactory_cat_ids: meta.myminifactoryCatIds,
+        snapmaker_cat_ids: meta.snapmakerCatIds,
       }),
     });
     if (res.status === 401) throw new UnauthorizedError();

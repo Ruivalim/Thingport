@@ -70,6 +70,14 @@ model User {
   myminifactoryCookie      String?
   // When MyMiniFactory last turned the session down.
   myminifactoryRejectedAt  DateTime?
+  // The user's Snapmaker access token (a JWT, valid a day). Snapmaker's refresh tokens work once, so Thingport never
+  // refreshes it itself: Thingport Grab keeps the browser's login fresh and sends each new one here.
+  snapmakerToken           String?
+  snapmakerTokenExpiresAt  DateTime?
+  // Their Snapmaker user id, from the token: their likes and bookmarks are synced under it.
+  snapmakerUserId          String?
+  // When Snapmaker last turned the token down.
+  snapmakerRejectedAt      DateTime?
   slicer                   String?
   // "light" | "dark" | "system"; null means never set.
   themePreference          String?
@@ -141,6 +149,7 @@ model Category {
   thingiverseCatIds   Int[]      @default([])
   printablesCatIds    Int[]      @default([])
   myminifactoryCatIds Int[]      @default([])
+  snapmakerCatIds     Int[]      @default([])
   prints              Print[]
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
@@ -151,6 +160,7 @@ model Category {
   @@index([thingiverseCatIds], type: Gin)
   @@index([printablesCatIds], type: Gin)
   @@index([myminifactoryCatIds], type: Gin)
+  @@index([snapmakerCatIds], type: Gin)
 }
 
 model Print {

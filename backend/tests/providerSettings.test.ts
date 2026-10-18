@@ -30,7 +30,7 @@ beforeAll(async () => {
 
 // Files share one database: every provider is back on afterwards, even when a test fails.
 afterAll(async () => {
-  for (const provider of ["makerworld", "printables", "thingiverse", "myminifactory"] as const)
+  for (const provider of ["makerworld", "printables", "thingiverse", "myminifactory", "snapmaker"] as const)
     await setProviderEnabled(provider, true);
 });
 
@@ -43,6 +43,7 @@ describe("turning providers off", () => {
       printables: true,
       thingiverse: true,
       myminifactory: true,
+      snapmaker: true,
     });
 
     expect(
@@ -59,6 +60,7 @@ describe("turning providers off", () => {
       printables: true,
       thingiverse: false,
       myminifactory: true,
+      snapmaker: true,
     });
   });
 

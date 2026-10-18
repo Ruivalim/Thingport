@@ -27,6 +27,8 @@ import {
   isMyminifactoryObjectUrl,
   isPrintablesCollectionUrl,
   isPrintablesModelUrl,
+  isSnapmakerListUrl,
+  isSnapmakerModelUrl,
   isThingiverseCollectionUrl,
   isThingiverseLikesUrl,
   isThingiverseThingUrl,
@@ -64,6 +66,8 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
     startPrintablesCollectionImport,
     startMyminifactoryCollectionImport,
     startMakerworldProfilesImport,
+    startSnapmakerProfilesImport,
+    startSnapmakerListImport,
     startLinksImport,
   } = useImportJob();
   const isBusy = uploading || importing || zipPrompt.isOpen || collectionPrompt.isOpen || importModePrompt.isOpen;
@@ -251,7 +255,7 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
     showToast({ message: t(key, { name }) });
   };
 
-  /** `profileScope`: which MakerWorld print profiles to import; more than the link's runs as a job. */
+  /** `profileScope`: which MakerWorld or Snapmaker print profiles to import; more than the link's runs as a job. */
   const submitImport = async (
     rawUrl: string,
     captcha?: CaptchaAnswer | null,
@@ -277,6 +281,11 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
 
       if (profileScope !== "url" && isMakerworldModelUrl(url)) {
         await startMakerworldProfilesImport({ ...payload, scope: profileScope });
+        return;
+      }
+
+      if (profileScope !== "url" && isSnapmakerModelUrl(url)) {
+        await startSnapmakerProfilesImport({ ...payload, scope: profileScope });
         return;
       }
 
@@ -388,7 +397,39 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
         return;
       }
 
-      if (isThingiverseThingUrl(url) || isPrintablesModelUrl(url) || isMyminifactoryObjectUrl(url)) {
+      if (isSnapmakerListUrl(url)) {
+        setImporting(false);
+        await collectionPrompt.prompt({
+          label: url,
+          loadEntries: async () => {
+            try {
+              return await importsApi.listSnapmakerListEntries(payload);
+            } catch (err) {
+              if (err instanceof UnauthorizedError) onUnauthorized?.();
+              throw err;
+            }
+          },
+          onImportSelected: async (modelIds: string[]) => {
+            try {
+              await startSnapmakerListImport({ ...payload, model_ids: modelIds });
+            } catch (err) {
+              if (err instanceof UnauthorizedError) {
+                onUnauthorized?.();
+                return;
+              }
+              throw err;
+            }
+          },
+        });
+        return;
+      }
+
+      if (
+        isThingiverseThingUrl(url) ||
+        isPrintablesModelUrl(url) ||
+        isMyminifactoryObjectUrl(url) ||
+        isSnapmakerModelUrl(url)
+      ) {
         // The backend splits these into plates itself.
         const imported = await importsApi.fromLink(payload);
         showImportedToast(imported);

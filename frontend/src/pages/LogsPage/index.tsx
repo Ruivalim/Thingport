@@ -162,6 +162,7 @@ export default function LogsPage({ onUnauthorized }: Props) {
           printables: "Printables",
           thingiverse: "Thingiverse",
           myminifactory: "MyMiniFactory",
+          snapmaker: "Snapmaker Space",
         };
         const provider = typeof d.provider === "string" ? (names[d.provider] ?? d.provider) : "";
         return t(d.enabled ? "adminSettings.logs.providerOn" : "adminSettings.logs.providerOff", { provider });

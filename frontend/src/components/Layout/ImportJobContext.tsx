@@ -11,6 +11,8 @@ type StartThingiverseCollectionImportPayload = Parameters<typeof importsApi.from
 type StartPrintablesCollectionImportPayload = Parameters<typeof importsApi.fromPrintablesCollection>[0];
 type StartMyminifactoryCollectionImportPayload = Parameters<typeof importsApi.fromMyminifactoryCollection>[0];
 type StartMakerworldProfilesImportPayload = Parameters<typeof importsApi.fromMakerworldProfiles>[0];
+type StartSnapmakerProfilesImportPayload = Parameters<typeof importsApi.fromSnapmakerProfiles>[0];
+type StartSnapmakerListImportPayload = Parameters<typeof importsApi.fromSnapmakerList>[0];
 type StartLinksImportPayload = Parameters<typeof importsApi.fromLinks>[0];
 
 type ImportJobContextValue = {
@@ -24,6 +26,8 @@ type ImportJobContextValue = {
   startPrintablesCollectionImport: (payload: StartPrintablesCollectionImportPayload) => Promise<void>;
   startMyminifactoryCollectionImport: (payload: StartMyminifactoryCollectionImportPayload) => Promise<void>;
   startMakerworldProfilesImport: (payload: StartMakerworldProfilesImportPayload) => Promise<void>;
+  startSnapmakerProfilesImport: (payload: StartSnapmakerProfilesImportPayload) => Promise<void>;
+  startSnapmakerListImport: (payload: StartSnapmakerListImportPayload) => Promise<void>;
   startLinksImport: (payload: StartLinksImportPayload) => Promise<void>;
   /** Reruns the links that failed on the finished job shown in the progress bar. */
   retryJob: () => Promise<void>;
@@ -191,6 +195,26 @@ export function ImportJobProvider({
     [startPolling],
   );
 
+  const startSnapmakerProfilesImport = useCallback(
+    async (payload: StartSnapmakerProfilesImportPayload) => {
+      const { job_id } = await importsApi.fromSnapmakerProfiles(payload);
+      const job = await importsApi.getImportJob(job_id);
+      setActiveJob(job);
+      startPolling(job_id);
+    },
+    [startPolling],
+  );
+
+  const startSnapmakerListImport = useCallback(
+    async (payload: StartSnapmakerListImportPayload) => {
+      const { job_id } = await importsApi.fromSnapmakerList(payload);
+      const job = await importsApi.getImportJob(job_id);
+      setActiveJob(job);
+      startPolling(job_id);
+    },
+    [startPolling],
+  );
+
   const startLinksImport = useCallback(
     async (payload: StartLinksImportPayload) => {
       const { job_id } = await importsApi.fromLinks(payload);
@@ -225,6 +249,8 @@ export function ImportJobProvider({
       startPrintablesCollectionImport,
       startMyminifactoryCollectionImport,
       startMakerworldProfilesImport,
+      startSnapmakerProfilesImport,
+      startSnapmakerListImport,
       startLinksImport,
       retryJob,
       dismissJob,
@@ -238,6 +264,8 @@ export function ImportJobProvider({
       startPrintablesCollectionImport,
       startMyminifactoryCollectionImport,
       startMakerworldProfilesImport,
+      startSnapmakerProfilesImport,
+      startSnapmakerListImport,
       startLinksImport,
       retryJob,
       dismissJob,

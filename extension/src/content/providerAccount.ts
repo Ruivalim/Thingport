@@ -74,6 +74,12 @@ async function syncPrintables(): Promise<void> {
 
 export function captureProviderAccount(hostname: string): void {
   if (captured) return;
+  if (hostname === "space.snapmaker.com") {
+    captured = true;
+    // Its sign-in downloads the files, and lasts a day: kept fresh by the background, and sent on.
+    void send("SYNC_SNAPMAKER_SESSION");
+    return;
+  }
   const provider = hostname.endsWith("printables.com")
     ? "printables"
     : hostname.endsWith("thingiverse.com")
