@@ -12,8 +12,8 @@
 // {{changes}} and {{testServer}} from RELEASE_VERSION, RELEASE_TAG and EDGE_REVIEW_TEST_SERVER (a
 // secret: a reviewer account on a test server); see edge-certification-notes.txt.
 //
-// Run by .github/workflows/extension-release.yml when package.json's version hasn't been
-// published to Edge yet (see extension/CONTRIBUTING.md for setting up the credentials).
+// Run by .github/workflows/extension-store-release.yml for each new version (see
+// extension/CONTRIBUTING.md for setting up the credentials).
 // EDGE_API_BASE overrides the API root, for testing against a mock.
 
 import { readFile } from "node:fs/promises";

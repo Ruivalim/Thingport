@@ -183,21 +183,20 @@ Two workflows, for two different jobs.
 
 **Every merge -- `.github/workflows/extension-release.yml`.** Runs on every push and pull request
 touching this folder: typecheck, lint, the Chrome/Edge build, and `web-ext lint` on the Firefox
-build. On a push to `main` it also signs the Firefox build through AMO's unlisted channel and
-publishes `thingport-grab-chrome.zip`, `thingport-grab-edge.zip` and `thingport-grab-firefox.xpi`
-to the `extension-latest` release, for installing by hand (the in-app Download page links the
-store listings instead).
-It never changes the version: AMO rejects a version number it has already signed, so CI signs a
-copy of the built manifest with the run number appended (e.g. `1.1.2.456`).
+build. It publishes nothing.
 
 **Versioned releases -- `.github/workflows/extension-store-release.yml`.** Every **Friday at 13:00
 Polish time**, or whenever you start it (**Actions > Extension store release > Run workflow**, or
 `gh workflow run extension-store-release.yml`), it releases whatever changed in the extension since
 the last release, with [semantic-release](https://semantic-release.gitbook.io/) (see below): bumps
 the version, writes `CHANGELOG.md`, commits both to `main`, tags it, creates a GitHub release with
-the store zips, and publishes to the Chrome Web Store, Edge Add-ons and Firefox Add-ons. If nothing
-releasable changed,
-the run just ends.
+the store zips, and publishes to the Chrome Web Store, Edge Add-ons and Firefox Add-ons. It also
+moves the `extension-latest` release to the same build -- `thingport-grab-chrome.zip`,
+`thingport-grab-edge.zip` and a `thingport-grab-firefox.xpi` signed through AMO's unlisted channel --
+for installing by hand (the in-app Download page links the store listings instead). AMO rejects a
+version number it has already seen, and the listed submission takes the real one, so the `.xpi`
+carries the run number as an extra segment (e.g. `1.1.2.456`). If nothing releasable changed, the
+run just ends.
 
 ### Versioning: how the next version is picked
 
