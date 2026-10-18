@@ -1,0 +1,5 @@
+# Commits in this repo carry no AI co-author trailers (see .claude/CLAUDE.md).
+if grep -qiE '^Co-Authored-By:.*(claude|anthropic)' "$1"; then
+  echo "commit-msg: remove the Claude Co-Authored-By trailer -- this repo doesn't take AI attribution." >&2
+  exit 1
+fi
