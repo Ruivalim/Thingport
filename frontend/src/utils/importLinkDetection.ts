@@ -110,7 +110,8 @@ export function isSnapmakerListUrl(url: string): boolean {
   if (!parsed || parsed.hostname.toLowerCase() !== "space.snapmaker.com") return false;
   return (
     /^\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?creator\/\d+\/?$/i.test(parsed.pathname) &&
-    parsed.searchParams.get("tab") === "interactions"
+    parsed.searchParams.get("tab") === "interactions" &&
+    ["likes", "bookmarks"].includes(parsed.searchParams.get("list") ?? "")
   );
 }
 

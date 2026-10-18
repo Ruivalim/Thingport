@@ -83,9 +83,19 @@ async function renew(): Promise<string | null> {
   return access;
 }
 
+// Shared by concurrent callers, so two of them can't both spend the same single-use refresh token.
+let inFlight: Promise<{ userId: string | null }> | null = null;
+
 /** Sends Thingport a token that lasts, renewing the browser's when it, or the one Thingport has, is running out.
  *  Best-effort: never throws. Returns the signed-in Snapmaker user's id, or null when there's none. */
-export async function syncSnapmakerSession(): Promise<{ userId: string | null }> {
+export function syncSnapmakerSession(): Promise<{ userId: string | null }> {
+  inFlight ??= syncOnce().finally(() => {
+    inFlight = null;
+  });
+  return inFlight;
+}
+
+async function syncOnce(): Promise<{ userId: string | null }> {
   const site = OPTIONAL_SITES.find((s) => s.id === "snapmaker");
   if (!site || !(await siteEnabled(site).catch(() => false))) return { userId: null };
   try {

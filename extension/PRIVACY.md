@@ -37,7 +37,9 @@ the list of recent imports, which is synced between your browsers as described b
 ## What the extension sends, and where
 
 The extension only communicates with **your Thingport instance** (the address you entered) and with
-the **provider site you're on**.
+the **provider site you're on**. The one exception: once you've allowed Snapmaker Space, it also renews your
+Snapmaker sign-in at id.snapmaker.com every few hours while the browser is open, even with no Snapmaker page open
+(see below).
 
 **To your Thingport instance:**
 

@@ -220,5 +220,6 @@ describe("Snapmaker sign-in", () => {
     expect(normalizeSnapmakerToken("")).toBeNull();
     expect(normalizeSnapmakerToken("not a token")).toBeNull();
     expect(normalizeSnapmakerToken("a.b.c")).toBeNull();
+    expect(normalizeSnapmakerToken("login_access_token=%E0%A4%A")).toBeNull();
   });
 });

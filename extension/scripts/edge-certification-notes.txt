@@ -11,7 +11,7 @@ HOW TO TEST
 
 PERMISSIONS
 - storage: the server address, sign-in and recent imports.
-- cookies: reads the MakerWorld session cookie, on makerworld.com only, which MakerWorld requires for downloads, and the MyMiniFactory session cookie, on myminifactory.com only, which downloads the user's bought models from their own library, and reads and renews the Snapmaker Space sign-in cookies, on snapmaker.com only, which Snapmaker requires for any download. All are sent only to the user's own server.
+- cookies: reads the MakerWorld session cookie, on makerworld.com only, which MakerWorld requires for downloads, and the MyMiniFactory session cookie, on myminifactory.com only, which downloads the user's bought models from their own library, and reads and renews the Snapmaker Space sign-in cookies, on snapmaker.com only, which Snapmaker requires for any download. The MakerWorld and MyMiniFactory cookies and the Snapmaker access token are sent only to the user's own server; the Snapmaker refresh token is sent only to Snapmaker's own sign-in service (id.snapmaker.com), to renew the sign-in.
 - downloads: reads the link from a download MakerWorld's page starts, then cancels it.
 - alarms: renews the Snapmaker Space sign-in every few hours, as it lasts a day; only once the user has turned Snapmaker Space on.
 - scripting: registers the content script on MyMiniFactory and Snapmaker Space, and on model sites added in later versions, once the user allows them.

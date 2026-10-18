@@ -32,7 +32,13 @@ export function normalizeSnapmakerToken(raw: string | null | undefined): Snapmak
     .split(";")
     .map((part) => part.trim())
     .find((part) => part.startsWith(`${ACCESS_COOKIE}=`));
-  if (pair) text = decodeURIComponent(pair.slice(ACCESS_COOKIE.length + 1));
+  if (pair) {
+    try {
+      text = decodeURIComponent(pair.slice(ACCESS_COOKIE.length + 1));
+    } catch {
+      return null; // Malformed percent-encoding: not a token.
+    }
+  }
   if (!/^[\w-]+\.[\w-]+\.[\w-]+$/.test(text)) return null;
   const payload = jwtPayload(text);
   if (!payload) return null;
