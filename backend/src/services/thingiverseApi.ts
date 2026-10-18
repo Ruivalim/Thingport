@@ -1,4 +1,5 @@
-import { IMPORT_BROWSER_USER_AGENT, IMPORT_TIMEOUT_SECONDS } from "../config";
+import { IMPORT_TIMEOUT_SECONDS } from "../config";
+import { browserFetch } from "../utils/browserFetch";
 import type { ImportedAuthorInfo, ImportedPageMetadata } from "./importResolvers";
 import { cleanThingiverseMarkdown } from "./descriptionMarkdown";
 import type { ProviderCollectionCard } from "./providerCollectionCard";
@@ -80,16 +81,7 @@ export function parseThingiverseLikesUrl(url: string): { username: string } | nu
 }
 
 async function rawApiFetch(url: string): Promise<Response> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
-  try {
-    return await fetch(url, {
-      headers: { "User-Agent": IMPORT_BROWSER_USER_AGENT, Accept: "application/json" },
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timeout);
-  }
+  return browserFetch(url, { headers: { Accept: "application/json" }, timeoutMs: API_TIMEOUT_MS });
 }
 
 /** Once a challenge is seen, calls go straight through FlareSolverr for a while. JSON API calls

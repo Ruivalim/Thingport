@@ -5,6 +5,7 @@ import { DESCRIPTION_IMAGES, IMPORT_BROWSER_USER_AGENT, IMPORT_TIMEOUT_SECONDS }
 import { prisma } from "../db";
 import { mapWithConcurrency } from "../utils/concurrency";
 import { validateRemoteUrl } from "../utils/urlUtils";
+import { browserFetch, needsBrowserFetch } from "../utils/browserFetch";
 import { readCapped } from "../utils/readCapped";
 
 const IMAGE_MAX_BYTES = 16 * 1024 * 1024;
@@ -47,11 +48,10 @@ async function fetchImage(url: string, deadline: number): Promise<Buffer | null>
     let current = url;
     for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
       await validateRemoteUrl(current);
-      const res = await fetch(current, {
-        headers: { "User-Agent": IMPORT_BROWSER_USER_AGENT, Accept: "image/*" },
-        redirect: "manual",
-        signal: controller.signal,
-      });
+      const headers = { "User-Agent": IMPORT_BROWSER_USER_AGENT, Accept: "image/*" };
+      const res = needsBrowserFetch(current)
+        ? await browserFetch(current, { headers, redirect: "manual", signal: controller.signal })
+        : await fetch(current, { headers, redirect: "manual", signal: controller.signal });
       const location = res.headers.get("location");
       if (res.status >= 300 && res.status < 400 && location) {
         await res.body?.cancel().catch(() => undefined);

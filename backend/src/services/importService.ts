@@ -22,6 +22,7 @@ import {
 } from "../utils/fileUtils";
 import { validateRemoteUrl } from "../utils/urlUtils";
 import { readCapped } from "../utils/readCapped";
+import { browserFetch, needsBrowserFetch } from "../utils/browserFetch";
 import { mapWithConcurrency, maybeSleep, sleep } from "../utils/concurrency";
 import {
   CLOUDFLARE_BLOCKED_CODE,
@@ -118,6 +119,7 @@ function parseCharset(contentType: string | null): string {
 }
 
 async function rawFetch(url: string, headers: Record<string, string>): Promise<Response> {
+  if (needsBrowserFetch(url)) return browserFetch(url, { headers, timeoutMs: IMPORT_TIMEOUT_SECONDS * 1000 });
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), IMPORT_TIMEOUT_SECONDS * 1000);
   try {
