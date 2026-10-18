@@ -27,6 +27,8 @@ import {
   setSimplifyPreviews,
   setSmtpSettings,
   setThingiverseAccessToken,
+  getMyminifactoryApiKey,
+  setMyminifactoryApiKey,
   type SmtpSettings,
   getAiCategorizationPrefs,
   setAiCategorizationPrefs,
@@ -48,6 +50,12 @@ import {
 import { getMakerworldConnection, setUserMakerworldCookie } from "../services/makerworldCookieService";
 import { type MakerworldCookieCheck, verifyMakerworldCookie } from "../services/makerworldCloudApi";
 import { verifyThingiverseAccessToken } from "../services/thingiverseApi";
+import { checkMyminifactoryApiKey, checkMyminifactorySession } from "../services/myminifactoryApi";
+import {
+  getMyminifactoryConnection,
+  normalizeMyminifactoryCookie,
+  setUserMyminifactoryCookie,
+} from "../services/myminifactorySessionService";
 import { SLICER_IDS, getUserSlicer, setUserSlicer } from "../services/slicerPreferenceService";
 import { CATEGORIES_VIEWS, getCategoriesView, setCategoriesView } from "../services/categoriesViewService";
 import {
@@ -346,6 +354,37 @@ router.post(
   }),
 );
 
+// Like Thingiverse's: readable by every user, and GET only says whether a key is set.
+router.get(
+  "/settings/myminifactory",
+  asyncHandler(async (_req, res) => {
+    res.json({ configured: Boolean(await getMyminifactoryApiKey()) });
+  }),
+);
+
+const MYMINIFACTORY_KEY_PROBLEMS = {
+  rejected: "MyMiniFactory rejected this API key. Check it in your MyMiniFactory account settings and try again.",
+  blocked:
+    "MyMiniFactory blocked the check (rate limit or Cloudflare challenge), so the key couldn't be verified. Wait a while and try again.",
+  unreachable: "Couldn't reach MyMiniFactory to verify this API key. Try again in a moment.",
+} as const;
+
+const myminifactorySettingsSchema = z.object({ api_key: z.string().nullable() });
+router.post(
+  "/settings/myminifactory",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const body = parseBody(myminifactorySettingsSchema, req.body);
+    const trimmed = (body.api_key ?? "").trim();
+    if (trimmed) {
+      const result = await checkMyminifactoryApiKey(trimmed);
+      if (result !== "ok") throw new HttpError(422, MYMINIFACTORY_KEY_PROBLEMS[result]);
+    }
+    await setMyminifactoryApiKey(body.api_key);
+    res.json({ configured: Boolean(trimmed) });
+  }),
+);
+
 function smtpSettingsOut(smtp: SmtpSettings) {
   return {
     host: smtp.host,
@@ -527,6 +566,47 @@ router.patch(
       verified = true;
     }
     const configured = await setUserMakerworldCookie(req.userId!, body.cookie, { verified });
+    res.json({ configured });
+  }),
+);
+
+// Per-user, beside the instance's MyMiniFactory API key: the session that downloads paid and login-only models.
+router.get(
+  "/settings/myminifactory-session",
+  asyncHandler(async (req, res) => {
+    const connection = await getMyminifactoryConnection(req.userId!);
+    res.json({ configured: connection !== "disconnected", expired: connection === "expired" });
+  }),
+);
+
+// `verify` is opt-in, as for MakerWorld: Thingport Grab sends a session it just read from a signed-in browser.
+const myminifactorySessionSchema = z.object({
+  cookie: z.string().max(10_000).nullable(),
+  verify: z.boolean().optional(),
+});
+router.patch(
+  "/settings/myminifactory-session",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(myminifactorySessionSchema, req.body);
+    const cookie = normalizeMyminifactoryCookie(body.cookie);
+    if ((body.cookie ?? "").trim() && !cookie) {
+      throw new HttpError(422, "That doesn't look like a MyMiniFactory session: paste the PHPSESSID cookie's value.");
+    }
+    let verified = false;
+    if (body.verify && cookie) {
+      const check = await checkMyminifactorySession(cookie);
+      if (check === "rejected") {
+        throw new HttpError(
+          422,
+          "MyMiniFactory didn't accept this session -- it may have expired. Copy a fresh PHPSESSID from a signed-in myminifactory.com tab and try again.",
+        );
+      }
+      // 503, not 422: nothing is known to be wrong with the session.
+      if (check === "unreachable")
+        throw new HttpError(503, "Couldn't reach MyMiniFactory to check this session. Try again in a moment.");
+      verified = true;
+    }
+    const configured = await setUserMyminifactoryCookie(req.userId!, cookie, { verified });
     res.json({ configured });
   }),
 );

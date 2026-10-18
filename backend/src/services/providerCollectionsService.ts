@@ -24,7 +24,14 @@ import {
   pushedPrintablesModels,
   writePrintablesListing,
 } from "./providerListingsService";
-import { getThingiverseAccessToken } from "./settingsService";
+import { getMyminifactoryApiKey, getThingiverseAccessToken } from "./settingsService";
+import {
+  fetchMyminifactoryCollectionCard,
+  listMyminifactoryUserCollections,
+  MyminifactoryAuthError,
+  MyminifactoryRateLimitError,
+  resolveMyminifactoryUser,
+} from "./myminifactoryApi";
 import {
   fetchThingiverseCollectionCard,
   fetchThingiverseLikesSummary,
@@ -35,7 +42,7 @@ import {
 } from "./thingiverseApi";
 import { assertProviderEnabled } from "./providerSettingsService";
 
-export const BROWSABLE_PROVIDERS = ["makerworld", "printables", "thingiverse"] as const;
+export const BROWSABLE_PROVIDERS = ["makerworld", "printables", "thingiverse", "myminifactory"] as const;
 export type BrowsableProvider = (typeof BROWSABLE_PROVIDERS)[number];
 
 /** `connected`: the instance can reach it for this user at all. `account`: who they are there, for
@@ -58,17 +65,24 @@ export type ProviderCollectionOut = {
 };
 
 export async function getProviderAccounts(userId: string): Promise<ProviderAccountsOut> {
-  const [user, thingiverseToken] = await Promise.all([
+  const [user, thingiverseToken, myminifactoryKey] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
-      select: { makerworldCookie: true, printablesHandle: true, thingiverseUsername: true },
+      select: {
+        makerworldCookie: true,
+        printablesHandle: true,
+        thingiverseUsername: true,
+        myminifactoryUsername: true,
+      },
     }),
     getThingiverseAccessToken(),
+    getMyminifactoryApiKey(),
   ]);
   return {
     makerworld: { connected: Boolean(extractMakerworldBearerToken(user?.makerworldCookie)), account: null },
     printables: { connected: true, account: user?.printablesHandle ?? null },
     thingiverse: { connected: Boolean(thingiverseToken), account: user?.thingiverseUsername ?? null },
+    myminifactory: { connected: Boolean(myminifactoryKey), account: user?.myminifactoryUsername ?? null },
   };
 }
 
@@ -76,6 +90,12 @@ async function requireThingiverseToken(): Promise<string> {
   const token = await getThingiverseAccessToken();
   if (!token) throw new HttpError(409, "Thingiverse isn't connected on this Thingport yet");
   return token;
+}
+
+async function requireMyminifactoryKey(): Promise<string> {
+  const key = await getMyminifactoryApiKey();
+  if (!key) throw new HttpError(409, "MyMiniFactory isn't connected on this Thingport yet");
+  return key;
 }
 
 /** `input` is a username, handle or profile link; null forgets it. */
@@ -100,6 +120,11 @@ export async function setProviderAccount(
     const user = token ? await providerCall(() => resolveThingiverseUser(value!, token)) : null;
     if (value && !user) throw new HttpError(404, `Thingiverse has no user "${value}"`);
     await prisma.user.update({ where: { id: userId }, data: { thingiverseUsername: user?.username ?? null } });
+  } else if (provider === "myminifactory") {
+    const key = value ? await requireMyminifactoryKey() : null;
+    const user = key ? await providerCall(() => resolveMyminifactoryUser(value!, key)) : null;
+    if (value && !user) throw new HttpError(404, `MyMiniFactory has no user "${value}"`);
+    await prisma.user.update({ where: { id: userId }, data: { myminifactoryUsername: user?.username ?? null } });
   } else {
     throw new HttpError(400, "MakerWorld is linked through its cookie in Configuration > Providers");
   }
@@ -133,6 +158,8 @@ async function providerCall<T>(call: () => Promise<T>): Promise<T> {
     }
     if (err instanceof ThingiverseRateLimitError) throw new HttpError(429, err.message);
     if (err instanceof ThingiverseAuthError) throw new HttpError(400, err.message);
+    if (err instanceof MyminifactoryRateLimitError) throw new HttpError(429, err.message);
+    if (err instanceof MyminifactoryAuthError) throw new HttpError(400, err.message);
     throw err;
   }
 }
@@ -170,7 +197,7 @@ export async function listProviderCollections(
   await assertProviderEnabled(provider);
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { makerworldCookie: true, printablesUserId: true, thingiverseUsername: true },
+    select: { makerworldCookie: true, printablesUserId: true, thingiverseUsername: true, myminifactoryUsername: true },
   });
   let cards: ProviderCollectionCard[];
   if (provider === "makerworld") {
@@ -187,6 +214,11 @@ export async function listProviderCollections(
     const listedIds = new Set(listed.map((card) => card.id));
     const privateOnes = (pushed.collections ?? []).filter((card) => card.private && !listedIds.has(card.id));
     cards = [...(pushed.likes ? [pushed.likes] : []), ...listed, ...privateOnes];
+  } else if (provider === "myminifactory") {
+    const key = await requireMyminifactoryKey();
+    if (!user?.myminifactoryUsername) throw new HttpError(409, "Tell Thingport your MyMiniFactory username first");
+    const username = user.myminifactoryUsername;
+    cards = await providerCall(() => listMyminifactoryUserCollections(username, key));
   } else {
     const token = await requireThingiverseToken();
     if (!user?.thingiverseUsername) throw new HttpError(409, "Tell Thingport your Thingiverse username first");
@@ -206,7 +238,8 @@ export async function listProviderCollections(
 /** A pasted collection link, as the same card a listing shows. */
 export async function lookupProviderCollection(userId: string, url: string): Promise<ProviderCollectionOut> {
   const source = parseSyncSource(url);
-  if (!source) throw new HttpError(400, "That isn't a MakerWorld, Printables or Thingiverse collection link");
+  if (!source)
+    throw new HttpError(400, "That isn't a MakerWorld, Printables, Thingiverse or MyMiniFactory collection link");
   await assertProviderEnabled(source.provider);
   let card: ProviderCollectionCard | null;
   if (source.likesOf && source.provider === "thingiverse") {
@@ -230,6 +263,10 @@ export async function lookupProviderCollection(userId: string, url: string): Pro
       (await fetchPrintablesCollectionCard(source.externalId)) ??
       (await pushedPrintablesCards(userId)).collections?.find((pushed) => pushed.id === source.externalId) ??
       null;
+  } else if (source.provider === "myminifactory") {
+    const key = await requireMyminifactoryKey();
+    const [username, slug] = source.externalId.split("/");
+    card = await providerCall(() => fetchMyminifactoryCollectionCard(username, slug, key));
   } else {
     const token = await requireThingiverseToken();
     card = await providerCall(() => fetchThingiverseCollectionCard(source.externalId, token));
@@ -253,7 +290,8 @@ export async function enableSyncFromApp(
 ): Promise<EnableFromAppResult> {
   if (isSystemCollectionId(collectionId)) throw new HttpError(400, "This collection can't be synced");
   const source = parseSyncSource(input.url);
-  if (!source) throw new HttpError(400, "That isn't a MakerWorld, Printables or Thingiverse collection link");
+  if (!source)
+    throw new HttpError(400, "That isn't a MakerWorld, Printables, Thingiverse or MyMiniFactory collection link");
   await assertProviderEnabled(source.provider);
   if (input.profileScope && source.provider !== "makerworld") {
     throw new HttpError(400, "Only MakerWorld models have print profiles to pick");

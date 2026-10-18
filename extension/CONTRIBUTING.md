@@ -58,6 +58,14 @@ Colors, spacing and type live in `src/styles/_tokens.scss`. Colors are CSS custo
 light and a dark palette: the popup follows the browser's color scheme, while the in-page UI always
 uses the light one.
 
+### Adding a provider site
+
+Don't add a new site to `PROVIDER_MATCHES` in `scripts/manifest.ts`: new host access in an update makes Chrome and
+Edge switch the extension off for every user until they approve it. Add it to `OPTIONAL_SITES` in
+`src/shared/optionalSites.ts` instead. Users who clicked **Turn on** under **More sites** in the popup already granted
+all-sites access, so the background registers the content script there on its own; for everyone else, the button
+comes back, naming the new site.
+
 ### Before opening a pull request
 
 - `npm run verify` passes (typecheck, lint, all three builds).
@@ -162,7 +170,10 @@ templates in `store-assets/` (styled like the website's social card):
 Run `npm run screenshots` first when the screenshots need refreshing. They show live provider
 pages, so check them before uploading: a front-page model can be someone else's trademarked
 character, and Printables pages carry its own ads. Pick neutral models with
-`npm run screenshots -- --makerworld=<url> --printables=<url> --thingiverse=<url>`.
+`npm run screenshots -- --makerworld=<url> --printables=<url> --thingiverse=<url>`. MyMiniFactory uses a fixed free
+model and collection (its front page is mostly paid miniatures, some not safe for work); `--myminifactory=<url>` and
+`--myminifactory-collection=<url>` change them. The screenshot build has all-sites access already granted, since
+Playwright can't click the browser's permission prompt.
 
 ### Regenerating the screenshots
 

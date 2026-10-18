@@ -1,6 +1,6 @@
 // Glyphs from Simple Icons (CC0). MakerWorld has none of its own there, so it takes Bambu Lab's,
-// whose site it is.
-export type ProviderId = "makerworld" | "thingiverse" | "printables" | "thangs";
+// whose site it is. MyMiniFactory isn't there either; its glyph is its own favicon, scaled to 24.
+export type ProviderId = "makerworld" | "thingiverse" | "printables" | "myminifactory" | "thangs";
 
 const LOGOS: Record<ProviderId, { path: string; color: string }> = {
   makerworld: {
@@ -18,6 +18,10 @@ const LOGOS: Record<ProviderId, { path: string; color: string }> = {
   printables: {
     color: "#FA6831",
     path: "M3.678 4.8 12 9.6v9.6l8.322-4.8V4.8L12 0ZM12 19.2l-8.322-4.8V24Z",
+  },
+  myminifactory: {
+    color: "#00C4A6",
+    path: "M24 0.241V23.759a0.241 0.241 0 0 1 -0.241 0.241H14.4V19.201h4.801V7.2H14.4V14.4H9.6V7.2H4.799v12.001H9.6v4.799H0.481A0.481 0.481 0 0 1 0 23.519V0.241A0.241 0.241 0 0 1 0.241 0H23.759A0.241 0.241 0 0 1 24 0.241Z",
   },
 };
 

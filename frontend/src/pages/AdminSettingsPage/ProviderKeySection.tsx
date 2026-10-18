@@ -9,16 +9,30 @@ import Typography from "@mui/material/Typography";
 import { UnauthorizedError } from "../../api/client";
 import { settingsApi } from "../../api/settings";
 
+/** The providers whose access is one key for the whole instance. */
+export type KeyedProvider = "thingiverse" | "myminifactory";
+
+const KEY_API: Record<
+  KeyedProvider,
+  { get: () => Promise<{ configured: boolean }>; update: (key: string | null) => Promise<{ configured: boolean }> }
+> = {
+  thingiverse: { get: settingsApi.getThingiverse, update: settingsApi.updateThingiverse },
+  myminifactory: { get: settingsApi.getMyminifactory, update: settingsApi.updateMyminifactory },
+};
+
 type Props = {
+  provider: KeyedProvider;
   onUnauthorized?: () => void;
-  /** Whether a token is set, whenever that's learned or changes. */
+  /** Whether a key is set, whenever that's learned or changes. */
   onConfiguredChange?: (configured: boolean) => void;
 };
 
-/** The Thingiverse token form, in the Providers page's dialog. Instance-wide and write-only: the server only reports
- *  whether a token is set. */
-export default function ThingiverseSection({ onUnauthorized, onConfiguredChange }: Props) {
+/** A provider's instance key form (Thingiverse's App Token, MyMiniFactory's API key), in the Providers page's dialog.
+ *  Write-only: the server only reports whether a key is set. */
+export default function ProviderKeySection({ provider, onUnauthorized, onConfiguredChange }: Props) {
   const { t } = useTranslation("app");
+  const api = KEY_API[provider];
+  const k = (key: string) => t(`adminSettings.${provider}.${key}`);
   const [configured, setConfigured] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [draft, setDraft] = React.useState("");
@@ -31,7 +45,7 @@ export default function ThingiverseSection({ onUnauthorized, onConfiguredChange 
     setLoading(true);
     void (async () => {
       try {
-        const data = await settingsApi.getThingiverse();
+        const data = await api.get();
         if (active) setConfigured(data.configured);
       } catch (err) {
         if (err instanceof UnauthorizedError) onUnauthorized?.();
@@ -42,7 +56,7 @@ export default function ThingiverseSection({ onUnauthorized, onConfiguredChange 
     return () => {
       active = false;
     };
-  }, [onUnauthorized]);
+  }, [api, onUnauthorized]);
 
   React.useEffect(() => {
     if (!loading) onConfiguredChange?.(configured);
@@ -55,15 +69,15 @@ export default function ThingiverseSection({ onUnauthorized, onConfiguredChange 
     setStatus(null);
     setError(null);
     try {
-      const data = await settingsApi.updateThingiverse(trimmed);
+      const data = await api.update(trimmed);
       setConfigured(data.configured);
       setDraft("");
-      setStatus(t("adminSettings.thingiverse.saved"));
+      setStatus(k("saved"));
     } catch (err) {
       if (err instanceof UnauthorizedError) {
         onUnauthorized?.();
       } else {
-        setError(err instanceof Error ? err.message : t("adminSettings.thingiverse.failed"));
+        setError(err instanceof Error ? err.message : k("failed"));
       }
     } finally {
       setSaving(false);
@@ -75,15 +89,15 @@ export default function ThingiverseSection({ onUnauthorized, onConfiguredChange 
     setStatus(null);
     setError(null);
     try {
-      const data = await settingsApi.updateThingiverse(null);
+      const data = await api.update(null);
       setConfigured(data.configured);
       setDraft("");
-      setStatus(t("adminSettings.thingiverse.cleared"));
+      setStatus(k("cleared"));
     } catch (err) {
       if (err instanceof UnauthorizedError) {
         onUnauthorized?.();
       } else {
-        setError(err instanceof Error ? err.message : t("adminSettings.thingiverse.failed"));
+        setError(err instanceof Error ? err.message : k("failed"));
       }
     } finally {
       setSaving(false);
@@ -93,21 +107,19 @@ export default function ThingiverseSection({ onUnauthorized, onConfiguredChange 
   return (
     <Stack spacing={2}>
       <Typography variant="caption" color="text.secondary">
-        {t("adminSettings.thingiverse.helpText")}
+        {k("helpText")}
       </Typography>
 
       <Alert severity={configured ? "success" : "warning"}>
-        {configured
-          ? t("adminSettings.thingiverse.statusConfigured")
-          : t("adminSettings.thingiverse.statusNotConfigured")}
+        {configured ? k("statusConfigured") : k("statusNotConfigured")}
       </Alert>
 
       <TextField
-        label={t("adminSettings.thingiverse.tokenLabel")}
+        label={k("tokenLabel")}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
-        placeholder={t("adminSettings.thingiverse.tokenPlaceholder") ?? undefined}
-        helperText={configured ? t("adminSettings.thingiverse.tokenHelperConfigured") : undefined}
+        placeholder={k("tokenPlaceholder") ?? undefined}
+        helperText={configured ? k("tokenHelperConfigured") : undefined}
         disabled={loading || saving}
         fullWidth
         autoComplete="off"
@@ -115,11 +127,11 @@ export default function ThingiverseSection({ onUnauthorized, onConfiguredChange 
 
       <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap>
         <Button variant="contained" onClick={save} disabled={loading || saving || !draft.trim()}>
-          {saving ? t("adminSettings.thingiverse.saving") : t("adminSettings.thingiverse.save")}
+          {saving ? k("saving") : k("save")}
         </Button>
         {configured && (
           <Button variant="outlined" color="error" onClick={clear} disabled={loading || saving}>
-            {t("adminSettings.thingiverse.clear")}
+            {k("clear")}
           </Button>
         )}
         {saving && <CircularProgress size={14} />}

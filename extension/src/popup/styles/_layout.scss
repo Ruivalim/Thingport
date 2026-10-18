@@ -107,6 +107,25 @@ body {
   }
 }
 
+// Gone for good once access is granted, fading out as it goes.
+.sites {
+  transition: opacity 0.2s ease;
+
+  &--leaving {
+    opacity: 0;
+  }
+
+  &__text {
+    margin: 0;
+    font-size: t.$font-size-sm;
+    line-height: 1.4;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
 .error {
   display: none;
   margin-top: t.$space-2;

@@ -1,4 +1,4 @@
-// Reads who the user is signed in as on Printables and Thingiverse, once per tab, and tells the
+// Reads who the user is signed in as on Printables, Thingiverse and MyMiniFactory, once per tab, and tells the
 // background (see background/providerAccounts.ts). Only the signed-in account: these pages link to
 // plenty of other people's profiles too.
 
@@ -23,6 +23,18 @@ async function readThingiverseUsername(): Promise<string | null> {
     await sleep(HEADER_POLL_MS);
   }
   return null;
+}
+
+/** MyMiniFactory renders its top menu from data in the page, which names the signed-in user;
+ *  `userDetails` is null when signed out. */
+function readMyminifactoryUsername(): string | null {
+  try {
+    const data = document.querySelector('[data-component-name="TopMenu"]')?.textContent;
+    const user = data ? (JSON.parse(data) as { userDetails?: { username?: unknown } | null }).userDetails : null;
+    return typeof user?.username === "string" && user.username.trim() ? user.username.trim() : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Reads and sends what only the user sees on Printables, when it's time (or `now`). */
@@ -66,11 +78,21 @@ export function captureProviderAccount(hostname: string): void {
     ? "printables"
     : hostname.endsWith("thingiverse.com")
       ? "thingiverse"
-      : null;
+      : hostname.endsWith("myminifactory.com")
+        ? "myminifactory"
+        : null;
   if (!provider) return;
   captured = true;
   if (provider === "printables") {
     void syncPrintables();
+    return;
+  }
+  if (provider === "myminifactory") {
+    const value = readMyminifactoryUsername();
+    if (!value) return;
+    void send("REPORT_PROVIDER_ACCOUNT", { provider, value });
+    // Signed in: its session downloads the paid and login-only models in the user's library.
+    void send("SYNC_MYMINIFACTORY_SESSION");
     return;
   }
   void readThingiverseUsername().then((value) => {

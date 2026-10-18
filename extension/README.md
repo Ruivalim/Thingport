@@ -1,7 +1,7 @@
 # Thingport Grab
 
-A browser extension for Chrome, Edge and Firefox that imports MakerWorld, Thingiverse, and
-Printables models into your self-hosted Thingport instance without leaving the provider's site.
+A browser extension for Chrome, Edge and Firefox that imports MakerWorld, Thingiverse, Printables
+and MyMiniFactory models into your self-hosted Thingport instance without leaving the provider's site.
 Visiting a model, collection, or Thingiverse Likes page shows a floating Thingport icon; clicking it
 opens a small panel to pick what to import (and, for a single model, an optional destination
 collection), then imports it the same way Thingport's own "+ Add > Import" does.
@@ -32,6 +32,10 @@ it stores and sends.
   <tr>
     <td width="50%"><a href="docs/screenshots/collection-printables.jpg"><img src="docs/screenshots/collection-printables.jpg" alt="Import panel on a Printables collection, listing its models"></a><br><sub><b>Printables collection</b> -- pick which models to import</sub></td>
     <td width="50%"><a href="docs/screenshots/collection-makerworld.jpg"><img src="docs/screenshots/collection-makerworld.jpg" alt="Guided import of a MakerWorld collection, waiting 30 seconds between models"></a><br><sub><b>MakerWorld collection</b> -- guided import, paced between models</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><a href="docs/screenshots/panel-myminifactory.jpg"><img src="docs/screenshots/panel-myminifactory.jpg" alt="Import panel on a MyMiniFactory object page"></a><br><sub><b>MyMiniFactory</b> -- import panel on a free model's page</sub></td>
+    <td width="50%"><a href="docs/screenshots/collection-myminifactory.jpg"><img src="docs/screenshots/collection-myminifactory.jpg" alt="Import panel on a MyMiniFactory collection, with sync ticked"></a><br><sub><b>MyMiniFactory collection</b> -- pick models, keep it in sync</sub></td>
   </tr>
   <tr>
     <td width="50%"><a href="docs/screenshots/setup-dialog-makerworld.jpg"><img src="docs/screenshots/setup-dialog-makerworld.jpg" alt="Setup dialog opened from the grayed-out icon"></a><br><sub><b>Not set up yet</b> -- the grayed-out icon's setup dialog</sub></td>
@@ -166,11 +170,24 @@ account doesn't already have a MakerWorld cookie saved, the extension also conne
 Configuration > Providers for you, so the plain web app's own imports benefit too, not just ones started
 from the extension.
 
+### MyMiniFactory and newer sites: allow them once
+
+Sites added after MakerWorld, Printables and Thingiverse, starting with MyMiniFactory, need one click first: **Turn
+on** under **More sites** in the popup. Your browser then asks once for access to all websites, so every site added in
+a later update works straight away, with no new prompt. The extension still only runs on the model sites it supports.
+(An update that added each site to the extension itself would have the browser switch the extension off for everyone
+until they approved it, every time.) The button is gone once allowed, and only comes back if you take the access back
+in your browser's extension settings.
+
+Opening MyMiniFactory while signed in also connects your MyMiniFactory account to Thingport, so the models you
+bought, and free ones that only download when signed in, import from your library. On a paid model you haven't
+bought, the panel says so instead of offering an import.
+
 ## What counts as "importable"
 
-- A single model page (MakerWorld, a Thingiverse Thing, a Printables Model) -- hidden automatically
+- A single model page (MakerWorld, a Thingiverse Thing, a Printables Model, a MyMiniFactory object) -- hidden automatically
   once you've already imported that exact page.
-- A MakerWorld collection, a Thingiverse Collection or Likes page, or a Printables collection --
+- A MakerWorld collection, a Thingiverse Collection or Likes page, or a Printables or MyMiniFactory collection --
   lets you import the listed designs in one go.
 
 Picking a destination collection is only offered for a single-model import; a batch import instead
@@ -182,7 +199,7 @@ just stops showing progress, it doesn't cancel anything.
 
 ### Synced collections
 
-On a MakerWorld, Printables or Thingiverse collection page, the panel's **Keep this collection in
+On a MakerWorld, Printables, Thingiverse or MyMiniFactory collection page, the panel's **Keep this collection in
 sync** box (off by default) links the collection to its Thingport counterpart. A Thingiverse user's
 Likes page works the same way (**Keep these likes in sync**), filing into "Thingiverse likes
 (@username)" and picking up models they like later. Thingport then checks

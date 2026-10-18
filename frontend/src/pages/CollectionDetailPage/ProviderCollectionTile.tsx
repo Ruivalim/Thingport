@@ -14,6 +14,7 @@ export const PROVIDER_ACCENTS: Record<BrowsableProvider, string> = {
   makerworld: "#00AE42",
   printables: "#FA6831",
   thingiverse: "#5575FE",
+  myminifactory: "#00C4A6",
 };
 
 type Props = {
@@ -37,11 +38,9 @@ function Thumb({ src, sx }: { src: string | undefined; sx?: object }) {
 
 function ModelCount({ count, provider }: { count: number; provider: BrowsableProvider }) {
   const { t } = useTranslation("models");
-  return (
-    <>
-      {t(provider === "thingiverse" ? "collections.sync.browse.things" : "collections.sync.browse.models", { count })}
-    </>
-  );
+  // Each site's own word for what it holds.
+  const noun = provider === "thingiverse" ? "things" : provider === "myminifactory" ? "objects" : "models";
+  return <>{t(`collections.sync.browse.${noun}`, { count })}</>;
 }
 
 /** MakerWorld: a 2x2 mosaic, "+N" over the last tile, the deck edges below. */
@@ -212,10 +211,42 @@ function ThingiverseTile({ collection }: { collection: ProviderCollection }) {
   );
 }
 
+// MyMiniFactory's card: name and count, then the cover model large, then a row of three more.
+function MyMiniFactoryTile({ collection }: { collection: ProviderCollection }) {
+  const [cover, ...rest] = collection.thumbnails;
+  return (
+    <Box
+      sx={{
+        borderRadius: "4px",
+        border: 1,
+        borderColor: "divider",
+        borderBottom: `3px solid ${PROVIDER_ACCENTS.myminifactory}`,
+        bgcolor: "background.paper",
+        p: 1.25,
+      }}
+    >
+      <Typography noWrap sx={{ fontWeight: 700, fontSize: "0.875rem" }}>
+        {collection.name}
+      </Typography>
+      <Box sx={{ display: "flex", alignItems: "center", fontSize: "0.8rem", color: "text.secondary" }}>
+        <ModelCount count={collection.model_count} provider="myminifactory" />
+        {collection.private && <LockOutlinedIcon sx={{ fontSize: 14, ml: "auto" }} />}
+      </Box>
+      <Thumb src={cover} sx={{ aspectRatio: "16 / 9", mt: 1, borderRadius: "2px" }} />
+      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "4px", mt: "4px" }}>
+        {[0, 1, 2].map((i) => (
+          <Thumb key={i} src={rest[i]} sx={{ aspectRatio: "1 / 1", borderRadius: "2px" }} />
+        ))}
+      </Box>
+    </Box>
+  );
+}
+
 const TILES: Record<BrowsableProvider, (props: { collection: ProviderCollection }) => JSX.Element> = {
   makerworld: MakerWorldTile,
   printables: PrintablesTile,
   thingiverse: ThingiverseTile,
+  myminifactory: MyMiniFactoryTile,
 };
 
 /** A provider's collection to pick, drawn in that provider's colours and manner. One already synced
@@ -315,6 +346,28 @@ export function ProviderCollectionTileSkeleton({ provider }: { provider: Browsab
           ))}
         </Box>
         {lines}
+      </Box>
+    );
+  }
+  if (provider === "myminifactory") {
+    return (
+      <Box
+        aria-hidden
+        sx={{
+          borderRadius: "4px",
+          border: 1,
+          borderColor: "divider",
+          borderBottom: `3px solid ${PROVIDER_ACCENTS.myminifactory}`,
+          p: 1.25,
+        }}
+      >
+        {lines}
+        <Skeleton variant="rectangular" sx={{ width: "100%", height: "auto", aspectRatio: "16 / 9", mt: 1 }} />
+        <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "4px", mt: "4px" }}>
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} variant="rectangular" sx={{ width: "100%", height: "auto", aspectRatio: "1 / 1" }} />
+          ))}
+        </Box>
       </Box>
     );
   }

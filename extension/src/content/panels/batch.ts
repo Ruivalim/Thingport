@@ -1,4 +1,4 @@
-// Batch flow for Thingiverse Likes/Collections and Printables Collections. MakerWorld collections
+// Batch flow for Thingiverse Likes/Collections and Printables and MyMiniFactory Collections. MakerWorld collections
 // use the guided flow in makerworldCollection.ts.
 
 import type { BatchEntriesResult, ImportJob, SyncLookup } from "../../shared/api";
@@ -11,7 +11,7 @@ import { applySyncToggle, loadSyncState, readSyncToggle, syncChangeNote, syncTog
 import { printablesToken, readCollectionForPanel } from "../printables";
 import { pushPrintablesNow } from "../providerAccount";
 
-type BatchKey = "thingiverse:likes" | "thingiverse:collection" | "printables:collection";
+type BatchKey = "thingiverse:likes" | "thingiverse:collection" | "printables:collection" | "myminifactory:collection";
 
 const BATCH_ENDPOINTS: Record<BatchKey, { entries: string; start: string; idField: string }> = {
   "thingiverse:likes": {
@@ -28,6 +28,11 @@ const BATCH_ENDPOINTS: Record<BatchKey, { entries: string; start: string; idFiel
     entries: "/import/printables-collection/entries",
     start: "/import/printables-collection",
     idField: "model_ids",
+  },
+  "myminifactory:collection": {
+    entries: "/import/myminifactory-collection/entries",
+    start: "/import/myminifactory-collection",
+    idField: "object_ids",
   },
 };
 

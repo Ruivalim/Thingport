@@ -20,7 +20,7 @@ import { useConfirm } from "../../components/ConfirmProvider";
 import { ProviderLogo } from "../../components/Layout/ConfigurationDialog/providerLogos";
 import SectionHeader from "../../components/SectionHeader";
 import { publishProviders } from "../../hooks/useDisabledProviders";
-import ThingiverseSection from "./ThingiverseSection";
+import ProviderKeySection, { type KeyedProvider } from "./ProviderKeySection";
 
 type Props = {
   onUnauthorized?: () => void;
@@ -30,17 +30,26 @@ const NAMES: Record<ImportProvider, string> = {
   makerworld: "MakerWorld",
   printables: "Printables",
   thingiverse: "Thingiverse",
+  myminifactory: "MyMiniFactory",
 };
 
-/** The sites Thingport imports from and syncs with: each can be turned off for everyone, and Thingiverse's token set. */
+const KEYED = new Set<ImportProvider>(["thingiverse", "myminifactory"]);
+const isKeyed = (provider: ImportProvider): provider is KeyedProvider => KEYED.has(provider);
+
+/** The sites Thingport imports from and syncs with: each can be turned off for everyone, and the instance keys of
+ *  the ones that need one set. */
 export default function ProvidersPage({ onUnauthorized }: Props) {
   const { t } = useTranslation(["app", "common"]);
   const confirm = useConfirm();
   const [providers, setProviders] = React.useState<ProviderSetting[] | null>(null);
   const [saving, setSaving] = React.useState<ImportProvider | null>(null);
   const [error, setError] = React.useState<string | null>(null);
-  const [tokenOpen, setTokenOpen] = React.useState(false);
-  const [tokenSet, setTokenSet] = React.useState<boolean | null>(null);
+  const [keyOpen, setKeyOpen] = React.useState<KeyedProvider | null>(null);
+  const [keySet, setKeySet] = React.useState<Partial<Record<KeyedProvider, boolean>>>({});
+  const onKeyConfigured = React.useCallback(
+    (configured: boolean) => keyOpen && setKeySet((current) => ({ ...current, [keyOpen]: configured })),
+    [keyOpen],
+  );
 
   const fail = React.useCallback(
     (err: unknown) => {
@@ -57,7 +66,11 @@ export default function ProvidersPage({ onUnauthorized }: Props) {
       (err: unknown) => active && fail(err),
     );
     settingsApi.getThingiverse().then(
-      (data) => active && setTokenSet(data.configured),
+      (data) => active && setKeySet((current) => ({ ...current, thingiverse: data.configured })),
+      () => undefined,
+    );
+    settingsApi.getMyminifactory().then(
+      (data) => active && setKeySet((current) => ({ ...current, myminifactory: data.configured })),
       () => undefined,
     );
     return () => {
@@ -98,8 +111,12 @@ export default function ProvidersPage({ onUnauthorized }: Props) {
         </Alert>
       )}
       <Paper variant="outlined" sx={{ borderRadius: "12px", overflow: "hidden" }}>
-        {(providers ?? (["makerworld", "printables", "thingiverse"] as const).map((id) => ({ id, enabled: true }))).map(
-          ({ id, enabled }) => (
+        {(
+          providers ??
+          (["makerworld", "printables", "thingiverse", "myminifactory"] as const).map((id) => ({ id, enabled: true }))
+        ).map(({ id, enabled }) => {
+          const keySetHere = isKeyed(id) ? keySet[id] : undefined;
+          return (
             <Stack
               key={id}
               direction="row"
@@ -117,18 +134,15 @@ export default function ProvidersPage({ onUnauthorized }: Props) {
                 <Typography variant="body2" color="text.secondary">
                   {t(`adminSettings.providers.descriptions.${id}`)}
                 </Typography>
-                {id === "thingiverse" && tokenSet !== null && (
-                  <Typography variant="caption" color={tokenSet ? "success.main" : "warning.main"}>
-                    {t(tokenSet ? "adminSettings.providers.tokenSet" : "adminSettings.providers.tokenMissing")}
+                {isKeyed(id) && keySetHere !== undefined && (
+                  <Typography variant="caption" color={keySetHere ? "success.main" : "warning.main"}>
+                    {t(`adminSettings.providers.keyStatus.${id}.${keySetHere ? "set" : "missing"}`)}
                   </Typography>
                 )}
               </Box>
-              {id === "thingiverse" && (
-                <Tooltip title={t("adminSettings.providers.tokenSettings")}>
-                  <IconButton
-                    aria-label={t("adminSettings.providers.tokenSettings")}
-                    onClick={() => setTokenOpen(true)}
-                  >
+              {isKeyed(id) && (
+                <Tooltip title={t(`adminSettings.${id}.heading`)}>
+                  <IconButton aria-label={t(`adminSettings.${id}.heading`)} onClick={() => setKeyOpen(id)}>
                     <SettingsOutlinedIcon />
                   </IconButton>
                 </Tooltip>
@@ -150,23 +164,30 @@ export default function ProvidersPage({ onUnauthorized }: Props) {
                 <Skeleton variant="rounded" width={34} height={14} sx={{ mx: 1.5 }} />
               )}
             </Stack>
-          ),
-        )}
+          );
+        })}
       </Paper>
 
-      <Dialog open={tokenOpen} onClose={() => setTokenOpen(false)} fullWidth maxWidth="sm">
+      <Dialog open={Boolean(keyOpen)} onClose={() => setKeyOpen(null)} fullWidth maxWidth="sm">
         <DialogTitle sx={{ pr: 6 }}>
-          {t("adminSettings.thingiverse.heading")}
+          {keyOpen && t(`adminSettings.${keyOpen}.heading`)}
           <IconButton
             aria-label={t("common:close")}
-            onClick={() => setTokenOpen(false)}
+            onClick={() => setKeyOpen(null)}
             sx={{ position: "absolute", right: 8, top: 8 }}
           >
             <CloseIcon />
           </IconButton>
         </DialogTitle>
         <DialogContent>
-          <ThingiverseSection onUnauthorized={onUnauthorized} onConfiguredChange={setTokenSet} />
+          {keyOpen && (
+            <ProviderKeySection
+              key={keyOpen}
+              provider={keyOpen}
+              onUnauthorized={onUnauthorized}
+              onConfiguredChange={onKeyConfigured}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </Stack>

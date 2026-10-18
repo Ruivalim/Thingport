@@ -327,6 +327,41 @@ export const importsApi = {
     return res.json();
   },
 
+  listMyminifactoryCollectionEntries: async (payload: ImportLinkPayload): Promise<ImportCollectionEntriesResult> => {
+    const res = await fetch(`${apiBase()}/import/myminifactory-collection/entries`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) {
+      throw new UnauthorizedError();
+    }
+    if (!res.ok) {
+      const message = await readErrorMessage(res, "Could not load this collection");
+      throw new Error(message);
+    }
+    return res.json();
+  },
+
+  /** Returns immediately; ImportJobContext polls the job. */
+  fromMyminifactoryCollection: async (
+    payload: ImportLinkPayload & { object_ids: string[] },
+  ): Promise<{ job_id: string }> => {
+    const res = await fetch(`${apiBase()}/import/myminifactory-collection`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) {
+      throw new UnauthorizedError();
+    }
+    if (!res.ok) {
+      const message = await readErrorMessage(res, "MyMiniFactory collection import failed");
+      throw new Error(message);
+    }
+    return res.json();
+  },
+
   getActiveImportJob: async (): Promise<ImportJob | null> => {
     const res = await fetch(`${apiBase()}/import/jobs/active`, { headers: authHeaders() });
     if (res.status === 401) throw new UnauthorizedError();

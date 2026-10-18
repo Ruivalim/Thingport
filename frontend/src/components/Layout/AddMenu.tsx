@@ -33,6 +33,7 @@ import {
   IMPORT_LINK_EXAMPLES,
   isMakerworldCollectionUrl,
   isMakerworldModelUrl,
+  isMyminifactoryCollectionUrl,
   isPrintablesCollectionUrl,
   isThingiverseCollectionUrl,
   isThingiverseLikesUrl,
@@ -41,7 +42,7 @@ import {
 import type { MakerworldProfileScope } from "../../api/imports";
 import { allProvidersOff, useDisabledProviders } from "../../hooks/useDisabledProviders";
 
-const IMPORT_PROVIDERS: ImportProviderKey[] = ["makerworld", "thingiverse", "printables"];
+const IMPORT_PROVIDERS: ImportProviderKey[] = ["makerworld", "thingiverse", "printables", "myminifactory"];
 
 /** What the search palette's !import command calls. */
 export type AddMenuHandle = {
@@ -104,7 +105,8 @@ const AddMenu = React.forwardRef<AddMenuHandle, Props>(function AddMenu(
           isMakerworldCollectionUrl(link) ||
           isThingiverseLikesUrl(link) ||
           isThingiverseCollectionUrl(link) ||
-          isPrintablesCollectionUrl(link),
+          isPrintablesCollectionUrl(link) ||
+          isMyminifactoryCollectionUrl(link),
       )
     : isMakerworldCollectionUrl(linkValue);
   const isMakerworldModel = links.some((link) => isMakerworldModelUrl(link));

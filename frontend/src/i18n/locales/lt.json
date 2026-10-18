@@ -95,7 +95,7 @@
     },
     "uploadBar": {
       "uploading": "Įkeliama…",
-      "linkPlaceholder": "Įklijuokite modelio nuorodą (MakerWorld, Printables, Thingiverse...)",
+      "linkPlaceholder": "Įklijuokite modelio nuorodą (MakerWorld, Printables, Thingiverse, MyMiniFactory...)",
       "importing": "Importuojama…",
       "importFailed": "Importuoti nepavyko",
       "uploadFailed": "Nepavyko įkelti: {{files}}",
@@ -268,6 +268,7 @@
       "serviceNotConnected": "{{service}}: neprijungta",
       "makerworldDisabledReason": "MakerWorld: neprijungta",
       "thingiverseDisabledReason": "Thingiverse: administratorius dar nesukonfigūravo API rakto",
+      "myminifactoryDisabledReason": "MyMiniFactory: administratorius dar nesukonfigūravo API rakto",
       "myModels": "Mano modeliai"
     },
     "notifications": {
@@ -330,7 +331,7 @@
         },
         "import": "Importuoti iš nuorodos",
         "importFrom": "Importuoti iš {{provider}}",
-        "importNotSupported": "Ne MakerWorld, Printables ar Thingiverse nuoroda; atidaromas importavimo langas",
+        "importNotSupported": "Ne MakerWorld, Printables, Thingiverse ar MyMiniFactory nuoroda; atidaromas importavimo langas",
         "language": "Kalba: {{name}}",
         "appearance": "Atidaryti išvaizdą",
         "providers": "Atidaryti šaltinius",
@@ -529,11 +530,19 @@
         "descriptions": {
           "makerworld": "Bambu Lab modelių svetainė: importai su spausdinimo profiliais ir kolekcijų sinchronizavimas.",
           "printables": "Prusa modelių svetainė: importai bei viešų ir privačių kolekcijų sinchronizavimas.",
-          "thingiverse": "Importai, kolekcijos ir patikę modeliai, naudojant šio Thingport programėlės raktą."
+          "thingiverse": "Importai, kolekcijos ir patikę modeliai, naudojant šio Thingport programėlės raktą.",
+          "myminifactory": "Modeliai ir viešos kolekcijos, naudojant šio Thingport API raktą; nusipirkti modeliai – per kiekvieno naudotojo MyMiniFactory paskyrą."
         },
-        "tokenSet": "Programėlės raktas nustatytas",
-        "tokenMissing": "Nėra programėlės rakto: Thingiverse importai neveiks, kol jo nenustatysite",
-        "tokenSettings": "Thingiverse programėlės raktas",
+        "keyStatus": {
+          "thingiverse": {
+            "set": "Programėlės raktas nustatytas",
+            "missing": "Nėra programėlės rakto: Thingiverse importai neveiks, kol jo nenustatysite"
+          },
+          "myminifactory": {
+            "set": "API raktas nustatytas",
+            "missing": "Nėra API rakto: MyMiniFactory importai neveiks, kol jo nenustatysite"
+          }
+        },
         "turnOff": "Išjungti {{name}}",
         "turnOn": "Įjungti {{name}}",
         "disableTitle": "Išjungti {{name}}?",
@@ -647,9 +656,21 @@
               "timeout": "Thingiverse laiku neatsakė. Bandykite vėliau."
             }
           },
+          "myminifactory": {
+            "name": "MyMiniFactory",
+            "description": "Sistemos MyMiniFactory API raktas – modeliams nuskaityti, kolekcijoms sinchronizuoti ir autoriams susieti. Nemokami modeliai atsisiunčiami ir be jo.",
+            "problems": {
+              "disabled": "Išjungta skiltyje „Tiekėjai“, todėl netikrinama. Įjunkite MyMiniFactory ten, kad galėtumėte naudoti.",
+              "not_configured": "API raktas nenurodytas. MyMiniFactory importai ir sinchronizacijos neveiks, kol jo nepridėsite nustatymuose (sukurkite programėlę myminifactory.com/settings/developer/application).",
+              "token_rejected": "MyMiniFactory atmetė API raktą. Patikrinkite jį myminifactory.com/settings/developer ir vėl išsaugokite nustatymuose.",
+              "blocked": "MyMiniFactory atsakė Cloudflare patikra – tai nieko nesako apie raktą. Įdiekite FlareSolverr arba palaukite: dažniausiai praeina po kurio laiko.",
+              "unreachable": "Thingport nepasiekė MyMiniFactory. Patikrinkite serverio interneto ryšį arba bandykite vėliau.",
+              "timeout": "MyMiniFactory laiku neatsakė. Bandykite vėliau."
+            }
+          },
           "grab": {
             "name": "Thingport Grab",
-            "description": "Naršyklės plėtinys, kuriuo modelius iš MakerWorld, Printables ir Thingiverse importuojate tiesiog naršydami, net ištisas kolekcijas, be nuorodų kopijavimo. Jis taip pat perkelia Printables patiktukus, kuriuos matote tik jūs.",
+            "description": "Naršyklės plėtinys, kuriuo modelius iš MakerWorld, Printables, Thingiverse ir MyMiniFactory importuojate tiesiog naršydami, net ištisas kolekcijas, be nuorodų kopijavimo. Jis taip pat perkelia Printables patiktukus, kuriuos matote tik jūs.",
             "problems": {
               "not_seen": "Su šiuo serveriu Grab dar nenaudota nė vienoje naršyklėje. Įdiekite jį skiltyje „Atsisiuntimai“ ir prijunkite prie Thingport. Taip importuoti paprasčiausia, o kai kurios svetainės failus duoda tik naršyklei."
             }
@@ -847,11 +868,14 @@
           "thingiverse_no_token": "Thingiverse modeliai praleisti: pridėkite Thingiverse programėlės raktą skiltyje Administravimas > Tiekėjai.",
           "thingiverse_token_rejected": "Thingiverse modeliai praleisti: Thingiverse atmetė programėlės raktą, nurodytą skiltyje Administravimas > Tiekėjai.",
           "thingiverse_rate_limited": "Thingiverse modeliai praleisti: Thingiverse pradėjo riboti užklausas. Paprastai tai praeina po kurio laiko — bandykite vėliau.",
+          "myminifactory_no_key": "MyMiniFactory modeliai praleisti: pridėkite MyMiniFactory API raktą skiltyje Administravimas > Tiekėjai.",
+          "myminifactory_key_rejected": "MyMiniFactory modeliai praleisti: MyMiniFactory atmetė API raktą, nurodytą skiltyje Administravimas > Tiekėjai.",
+          "myminifactory_rate_limited": "MyMiniFactory modeliai praleisti: MyMiniFactory pradėjo riboti užklausas. Paprastai tai praeina po kurio laiko — bandykite vėliau.",
           "makerworld_captcha": "MakerWorld modeliai praleisti: MakerWorld paprašė CAPTCHA ir maždaug 2 valandoms blokuoja tolesnes užklausas. Bandykite vėliau.",
           "makerworld_login_rejected": "MakerWorld modeliai praleisti: MakerWorld atmetė išsaugotą MakerWorld prisijungimą. Atnaujinkite jį skiltyje Konfigūracija > Šaltiniai."
         },
         "refetchTitle": "Iš naujo gauti modelių aprašymus",
-        "refetchDesc": "Pakeičia kiekvieno naudotojo iš MakerWorld, Printables ar Thingiverse importuoto modelio aprašymą dabartiniu aprašymu iš tos svetainės, su formatavimu ir paveikslėliais. Naudokite tai modeliams, importuotiems prieš atsirandant formatuotų aprašymų palaikymui, atnaujinti. Naudotojo atlikti tų aprašymų pakeitimai bus prarasti. Modeliai, kurių šaltinio nebėra, išlaiko savo aprašymą. Vykdoma fone — MakerWorld užklausos atliekamos su pertraukomis, kad būtų išvengta CAPTCHA, todėl didelė biblioteka gali užtrukti.",
+        "refetchDesc": "Pakeičia kiekvieno naudotojo iš MakerWorld, Printables, Thingiverse ar MyMiniFactory importuoto modelio aprašymą dabartiniu aprašymu iš tos svetainės, su formatavimu ir paveikslėliais. Naudokite tai modeliams, importuotiems prieš atsirandant formatuotų aprašymų palaikymui, atnaujinti. Naudotojo atlikti tų aprašymų pakeitimai bus prarasti. Modeliai, kurių šaltinio nebėra, išlaiko savo aprašymą. Vykdoma fone — MakerWorld užklausos atliekamos su pertraukomis, kad būtų išvengta CAPTCHA, todėl didelė biblioteka gali užtrukti.",
         "refetchUserOption": "{{name}} ({{email}}) — importuotų modelių: {{count}}",
         "refetchButton": "Gauti aprašymus iš naujo…",
         "refetchConfirm": "Pakeisti {{email}} priklausančių importuotų modelių ({{count}}) aprašymus aprašymais iš jų šaltinių? Visi tų aprašymų pakeitimai bus prarasti.",
@@ -875,6 +899,21 @@
         "saved": "Išsaugota.",
         "cleared": "Programėlės raktas pašalintas.",
         "failed": "Nepavyko išsaugoti Thingiverse nustatymų."
+      },
+      "myminifactory": {
+        "heading": "MyMiniFactory API raktas",
+        "helpText": "Sukurkite programėlę adresu myminifactory.com/settings/developer/application ir įklijuokite ten parodytą API raktą. Nemokami modeliai atsisiunčiami ir be jo, bet jis reikalingas jų informacijai ir jūsų kolekcijoms nuskaityti.",
+        "statusConfigured": "Šiuo metu sukonfigūruotas API raktas.",
+        "statusNotConfigured": "API raktas dar nesukonfigūruotas -- MyMiniFactory importas neveiks, kol jis nebus nustatytas.",
+        "tokenLabel": "API raktas",
+        "tokenPlaceholder": "Įklijuokite naują raktą, kad pakeistumėte dabartinį",
+        "tokenHelperConfigured": "Saugumo sumetimais dabartinis raktas daugiau nerodomas -- palikite tuščią, kad jį išsaugotumėte, arba įklijuokite naują, kad jį pakeistumėte.",
+        "save": "Išsaugoti",
+        "saving": "Saugoma…",
+        "clear": "Pašalinti raktą",
+        "saved": "Išsaugota.",
+        "cleared": "API raktas pašalintas.",
+        "failed": "Nepavyko išsaugoti MyMiniFactory nustatymų."
       },
       "ai": {
         "heading": "DI",
@@ -1447,7 +1486,7 @@
       "intro": "Papildomi įrankiai, veikiantys kartu su jūsų Thingport aplinka.",
       "extension": {
         "heading": "Thingport Grab",
-        "intro": "Naršyklės plėtinys, importuojantis MakerWorld, Thingiverse ir Printables modelius tiesiai iš jų puslapių.",
+        "intro": "Naršyklės plėtinys, importuojantis MakerWorld, Thingiverse, Printables ir MyMiniFactory modelius tiesiai iš jų puslapių.",
         "name": "Thingport Grab",
         "store": {
           "chrome": "Gauti iš Chrome Web Store",
@@ -1610,6 +1649,17 @@
         ],
         "shared": "Šis raktas bendras visiems šio Thingport naudotojams.",
         "adminOnly": "Tai nustatyti gali tik šio Thingport administratorius."
+      },
+      "myminifactory": {
+        "placeholder": "PHPSESSID reikšmė arba visa Cookie antraštė",
+        "steps": [
+          "Paprasčiausia: su Thingport Grab tiesiog atverkite myminifactory.com prisijungę, ir jis prijungs jūsų paskyrą pats.",
+          "Arba rankiniu būdu: prisijunkite prie myminifactory.com ir atverkite naršyklės kūrėjo įrankius (F12).",
+          "Skiltyje Application (Chrome, Edge) arba Storage (Firefox) → Cookies → www.myminifactory.com nukopijuokite PHPSESSID reikšmę ir įklijuokite ją žemiau."
+        ],
+        "notConnected": "Nemokami modeliai importuojami ir be jos. Prijunkite paskyrą, kad galėtumėte importuoti nusipirktus modelius ir nemokamus, kuriems reikia prisijungti.",
+        "expired": "Prisijungimo galiojimas baigėsi. Atverkite myminifactory.com su Thingport Grab arba vėl prijunkite MyMiniFactory skiltyje Konfigūracija → Šaltiniai.",
+        "expiredStatus": "Prisijungimas nebegalioja"
       },
       "printables": {
         "alwaysConnected": "Printables prijungta iš karto: nereikia paskyros ar rakto."
@@ -2569,29 +2619,37 @@
           "things_few": "{{count}} modeliai",
           "things_many": "{{count}} modelio",
           "things_other": "{{count}} modelių",
+          "objects_one": "{{count}} objektas",
+          "objects_few": "{{count}} objektai",
+          "objects_many": "{{count}} objekto",
+          "objects_other": "{{count}} objektų",
           "takenBy": "Sinchronizuojama su „{{name}}“",
           "loadFailed": "Nepavyko įkelti kolekcijų.",
           "lookupFailed": "Nepavyko rasti šios kolekcijos.",
-          "notALink": "Įklijuokite MakerWorld, Printables arba Thingiverse kolekcijos nuorodą.",
+          "notALink": "Įklijuokite MakerWorld, Printables, Thingiverse arba MyMiniFactory kolekcijos nuorodą.",
           "usernameFailed": "Nepavyko išsaugoti vartotojo vardo.",
           "openProviders": "Atidaryti tiekėjus",
           "notConnected": {
             "makerworld": "Prijunkite MakerWorld per Konfigūracija > Šaltiniai, kad čia matytumėte savo kolekcijas. Pagal slapuką Thingport žino, kas jūs ten esate.",
             "printables": "Printables šiuo metu nepasiekiamas.",
-            "thingiverse": "Thingiverse šiame Thingport dar neprijungtas. Administratorius gali jį prijungti per Konfigūracija > Tiekėjai."
+            "thingiverse": "Thingiverse šiame Thingport dar neprijungtas. Administratorius gali jį prijungti per Konfigūracija > Tiekėjai.",
+            "myminifactory": "MyMiniFactory šiame Thingport dar neprijungtas. Administratorius gali jį prijungti per Konfigūracija > Tiekėjai."
           },
           "usernameLabel": "Jūsų {{provider}} vartotojo vardas",
           "usernameHint": {
             "printables": "Thingport parodys jūsų viešas Printables kolekcijas. Paklausiama tik kartą.",
-            "thingiverse": "Thingport parodys jūsų viešas Thingiverse kolekcijas. Paklausiama tik kartą."
+            "thingiverse": "Thingport parodys jūsų viešas Thingiverse kolekcijas. Paklausiama tik kartą.",
+            "myminifactory": "Thingport parodys jūsų viešas MyMiniFactory kolekcijas. Paklausiama tik kartą."
           },
           "usernamePlaceholder": {
             "printables": "@vardas arba profilio nuoroda",
-            "thingiverse": "Vartotojo vardas arba profilio nuoroda"
+            "thingiverse": "Vartotojo vardas arba profilio nuoroda",
+            "myminifactory": "Vartotojo vardas arba profilio nuoroda"
           },
           "showing": {
             "printables": "Rodomos @{{user}} kolekcijos.",
-            "thingiverse": "Rodomos viešos @{{user}} kolekcijos."
+            "thingiverse": "Rodomos viešos @{{user}} kolekcijos.",
+            "myminifactory": "Rodomos viešos @{{user}} kolekcijos."
           },
           "change": "Keisti",
           "empty": "{{provider}} kolekcijų dar nėra.",
@@ -2615,7 +2673,8 @@
           "forgetTitle": "Pamiršti jūsų {{provider}} paskyrą?",
           "forgetMessage": {
             "printables": "Thingport neberodys jūsų Printables kolekcijų, o Thingport Grab nebesiųs jūsų privačių kolekcijų ir pamėgtų modelių, kol vėl nurodysite vartotojo vardą. Jau nustatyti sinchronizavimai išsaugos savo modelius; privačių kolekcijų ir pamėgtų modelių sinchronizavimas iki tol sustos.",
-            "thingiverse": "Thingport neberodys jūsų Thingiverse kolekcijų, kol vėl nurodysite vartotojo vardą. Jau nustatyti sinchronizavimai išsaugos savo modelius."
+            "thingiverse": "Thingport neberodys jūsų Thingiverse kolekcijų, kol vėl nurodysite vartotojo vardą. Jau nustatyti sinchronizavimai išsaugos savo modelius.",
+            "myminifactory": "Thingport neberodys jūsų MyMiniFactory kolekcijų, kol vėl nurodysite vartotojo vardą. Jau nustatyti sinchronizavimai išsaugos savo modelius."
           }
         }
       }
@@ -2692,6 +2751,7 @@
         "makerworldCatIdLabel": "MakerWorld kategorijų ID",
         "thingiverseCatIdLabel": "Thingiverse kategorijų ID",
         "printablesCatIdLabel": "Printables kategorijų ID",
+        "myminifactoryCatIdLabel": "MyMiniFactory kategorijų ID",
         "catIdsPlaceholder": "pvz. 800;71;1001",
         "catIdsHelp": "Kelis ID atskirkite „;“ -- atitiks, jei importo kategorija sutampa su bet kuriuo iš jų",
         "dragToMove": "Vilkite, kad perkeltumėte"

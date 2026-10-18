@@ -1,7 +1,7 @@
 import { Impit } from "impit";
 
-// Thingiverse's Cloudflare challenges clients by their TLS handshake, whatever the headers or
-// cookies, and Node's fetch is on its list. impit sends Chrome's handshake and headers.
+// Thingiverse's and MyMiniFactory's Cloudflare challenge clients by their TLS handshake, whatever the
+// headers or cookies, and Node's fetch is on its list. impit sends Chrome's handshake and headers.
 const following = new Impit({ browser: "chrome", timeout: null });
 const manual = new Impit({ browser: "chrome", timeout: null, followRedirects: false });
 
@@ -11,7 +11,7 @@ const NULL_BODY_STATUSES = new Set([204, 205, 304]);
 export function needsBrowserFetch(url: string): boolean {
   try {
     const host = new URL(url).hostname.toLowerCase();
-    return host === "thingiverse.com" || host.endsWith(".thingiverse.com");
+    return ["thingiverse.com", "myminifactory.com"].some((domain) => host === domain || host.endsWith(`.${domain}`));
   } catch {
     return false;
   }

@@ -28,9 +28,16 @@ const PROVIDERS: { id: ProviderId; name: string; comingSoon?: boolean }[] = [
   { id: "makerworld", name: "MakerWorld" },
   { id: "thingiverse", name: "Thingiverse" },
   { id: "printables", name: "Printables" },
+  { id: "myminifactory", name: "MyMiniFactory" },
   { id: "thangs", name: "Thangs", comingSoon: true },
 ];
 const isComingSoon = (id: ProviderId) => PROVIDERS.some((provider) => provider.id === id && provider.comingSoon);
+// Connected with one key for the whole instance, which only an admin sets.
+const SHARED = new Set<ProviderId>(["thingiverse"]);
+// Connected with the user's own sign-in, which the site can turn down once it expires. MyMiniFactory's also has
+// the instance's API key, set in Administration; the user's sign-in adds paid and login-only models.
+type SessionProvider = "makerworld" | "myminifactory";
+const isSessionProvider = (id: ProviderId): id is SessionProvider => id === "makerworld" || id === "myminifactory";
 
 type Props = {
   isAdmin: boolean;
@@ -46,15 +53,20 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
   const disabledProviders = useDisabledProviders();
   const { t } = useTranslation(["app", "common"]);
   const confirm = useConfirm();
-  // Thingiverse is unknown until loaded, so a non-admin doesn't briefly see it locked.
+  // The shared ones are unknown until loaded, so a non-admin doesn't briefly see them locked.
   const [connected, setConnected] = React.useState<Record<ProviderId, boolean | null>>({
     makerworld: Boolean(cookie.trim()),
     thingiverse: null,
     printables: true,
+    myminifactory: null,
     thangs: false,
   });
   const [menu, setMenu] = React.useState<{ id: ProviderId; top: number; left: number } | null>(null);
-  const [makerworldExpired, setMakerworldExpired] = React.useState(false);
+  const [expired, setExpired] = React.useState<Record<SessionProvider, boolean>>({
+    makerworld: false,
+    myminifactory: false,
+  });
+  const isExpired = (id: ProviderId) => isSessionProvider(id) && Boolean(connected[id]) && expired[id];
   const [connecting, setConnecting] = React.useState<ProviderId | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [notice, setNotice] = React.useState<string | null>(null);
@@ -66,12 +78,20 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
       .then((res) => {
         if (!active) return;
         setConnected((current) => ({ ...current, makerworld: res.configured }));
-        setMakerworldExpired(res.expired);
+        setExpired((current) => ({ ...current, makerworld: res.expired }));
       })
       .catch(() => undefined);
     settingsApi
       .getThingiverse()
       .then((res) => active && setConnected((current) => ({ ...current, thingiverse: res.configured })))
+      .catch(() => undefined);
+    settingsApi
+      .getMyminifactorySession()
+      .then((res) => {
+        if (!active) return;
+        setConnected((current) => ({ ...current, myminifactory: res.configured }));
+        setExpired((current) => ({ ...current, myminifactory: res.expired }));
+      })
       .catch(() => undefined);
     return () => {
       active = false;
@@ -83,7 +103,7 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
   const lockedReason = (id: ProviderId) => {
     if (isComingSoon(id)) return t("providers.comingSoon");
     if (id === "printables") return t("providers.printables.alwaysConnected");
-    if (id === "thingiverse" && !isAdmin) return t("providers.thingiverse.adminOnly");
+    if (SHARED.has(id) && !isAdmin) return t(`providers.${id}.adminOnly`);
     return null;
   };
 
@@ -93,10 +113,14 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
       const result = await settingsApi.updateMakerworld(value);
       onUpdateMakerWorld({ cookie: value ?? "" });
       setConnected((current) => ({ ...current, makerworld: result.configured }));
-      setMakerworldExpired(false);
+      setExpired((current) => ({ ...current, makerworld: false }));
     } else if (id === "thingiverse") {
       const result = await settingsApi.updateThingiverse(value);
       setConnected((current) => ({ ...current, thingiverse: result.configured }));
+    } else if (id === "myminifactory") {
+      const result = await settingsApi.updateMyminifactorySession(value);
+      setConnected((current) => ({ ...current, myminifactory: result.configured }));
+      setExpired((current) => ({ ...current, myminifactory: false }));
     }
   };
 
@@ -113,7 +137,7 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
     if (locked) {
       setConnecting(null);
       setNotice(locked);
-    } else if (connected[id] === false || (id === "makerworld" && makerworldExpired)) {
+    } else if (connected[id] === false || isExpired(id)) {
       startConnect(id);
     }
   };
@@ -122,10 +146,9 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
     const name = nameOf(id);
     const ok = await confirm({
       title: t("providers.disconnectTitle", { name }),
-      message:
-        id === "thingiverse"
-          ? t("providers.disconnectMessageShared", { name })
-          : t("providers.disconnectMessage", { name }),
+      message: SHARED.has(id)
+        ? t("providers.disconnectMessageShared", { name })
+        : t("providers.disconnectMessage", { name }),
       confirmLabel: t("providers.disconnect"),
       destructive: true,
     });
@@ -148,7 +171,7 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
   const menuId = menu?.id;
   const menuConnected = menuId ? Boolean(connected[menuId]) : false;
   // Still connected, so it can be disconnected, but offered a fresh connect first.
-  const menuExpired = menuId === "makerworld" && menuConnected && makerworldExpired;
+  const menuExpired = menuId ? isExpired(menuId) : false;
   const menuLocked = menuId ? lockedReason(menuId) : null;
 
   return (
@@ -158,17 +181,19 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
         {PROVIDERS.filter(({ id }) => !disabledProviders.has(id as ImportProvider)).map(({ id, name }) => {
           const isConnected = Boolean(connected[id]);
           const locked = lockedReason(id);
-          const expired = id === "makerworld" && isConnected && makerworldExpired;
-          const status = connected[id] === null ? null : isConnected && !expired;
+          const tileExpired = isExpired(id);
+          const status = connected[id] === null ? null : isConnected && !tileExpired;
           const tooltip = isComingSoon(id)
             ? t("providers.comingSoon")
-            : expired
-              ? t("providers.makerworld.expired")
-              : id === "thingiverse" && locked && !isConnected
+            : tileExpired
+              ? t(`providers.${id}.expired`)
+              : SHARED.has(id) && locked && !isConnected
                 ? locked
                 : isConnected
                   ? t("providers.connected")
-                  : t("providers.notConnected");
+                  : id === "myminifactory"
+                    ? t("providers.myminifactory.notConnected")
+                    : t("providers.notConnected");
           return (
             <AppTile
               key={id}
@@ -178,7 +203,7 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
               badge={status === null || isComingSoon(id) ? undefined : status}
               highlighted={connecting === id || menuId === id}
               tooltip={status === null ? undefined : tooltip}
-              ariaLabel={`${name}: ${expired ? t("providers.makerworld.expired") : isConnected ? t("providers.connected") : t("providers.notConnected")}`}
+              ariaLabel={`${name}: ${tileExpired ? t(`providers.${id}.expired`) : isConnected ? t("providers.connected") : t("providers.notConnected")}`}
               onContextMenu={(event) => openMenu(id, event)}
               onActivate={() => activate(id)}
             />
@@ -202,7 +227,7 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
               isComingSoon(menuId)
                 ? t("providers.comingSoon")
                 : menuExpired
-                  ? t("providers.makerworld.expiredStatus")
+                  ? t(`providers.${menuId}.expiredStatus`)
                   : menuConnected
                     ? t("providers.connected")
                     : t("providers.notConnected")
@@ -337,9 +362,9 @@ function ConnectBox({ id, name, onCancel, onConnect, onUnauthorized }: ConnectBo
           <li key={step}>{step}</li>
         ))}
       </Box>
-      {id === "thingiverse" && (
+      {SHARED.has(id) && (
         <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>
-          {t("providers.thingiverse.shared")}
+          {t(`providers.${id}.shared`)}
         </Typography>
       )}
       <TextField

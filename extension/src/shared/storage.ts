@@ -18,6 +18,8 @@ export const STORAGE_KEYS = {
   loginVerifiedAt: "loginVerifiedAt",
   // Lets the cookie sync skip a redundant PATCH.
   lastSyncedMakerworldCookie: "lastSyncedMakerworldCookie",
+  // The MyMiniFactory session last sent, and to which Thingport account.
+  lastSyncedMyminifactorySession: "lastSyncedMyminifactorySession",
   // The Printables and Thingiverse usernames last sent to the instance, so unchanged ones aren't.
   lastSentProviderAccounts: "lastSentProviderAccounts",
   // When Printables' lists were last read and sent, so a burst of page loads reads them once.
@@ -40,6 +42,7 @@ export type StoredConfig = {
   tokenExpiresAt?: number;
   loginVerifiedAt?: number;
   lastSyncedMakerworldCookie?: string;
+  lastSyncedMyminifactorySession?: { account: string; value: string };
   /** `account` is the Thingport instance and email they were sent to. */
   lastSentProviderAccounts?: { account: string; values: Record<string, string> };
   lastPrintablesPushAt?: number;

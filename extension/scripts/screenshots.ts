@@ -8,13 +8,13 @@
 //
 //   npm run screenshots -- --makerworld=https://makerworld.com/en/models/123 --printables=...
 //
-// The collection shots use fixed collections, changeable with --printables-collection=<url> and
-// --makerworld-collection=<url>. --only=<names> refreshes just those shots, e.g.
+// The collection shots use fixed collections, changeable with --printables-collection=<url>,
+// --makerworld-collection=<url> and --myminifactory-collection=<url>. --only=<names> refreshes just those shots, e.g.
 // --only=collection-printables,collection-makerworld.
 //
 // Needs Playwright's Chromium once: `npx playwright install chromium`.
 
-import { mkdir, rm } from "node:fs/promises";
+import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import os from "node:os";
@@ -32,9 +32,14 @@ const POPUP_WIDTH = 320;
 const NEW_COLLECTION_NAME = "Desk organizers";
 const PRINTABLES_COLLECTION = "https://www.printables.com/@Thinkable/collections/342542";
 const MAKERWORLD_COLLECTION = "https://makerworld.com/en/collections/15756490-little-coin";
+// Free models, so the shots never need a MyMiniFactory account with purchases.
+const MYMINIFACTORY_COLLECTION =
+  "https://www.myminifactory.com/users/Scan%20The%20World/collection/egyptian-collection";
 
-type ProviderName = "makerworld" | "thingiverse" | "printables";
-const PROVIDERS: { name: ProviderName; label: string; home: string; modelLink: RegExp }[] = [
+type ProviderName = "makerworld" | "thingiverse" | "printables" | "myminifactory";
+// `fixed`: always this model, unless one's given. MyMiniFactory's front page is mostly paid miniatures, some not
+// safe for work.
+const PROVIDERS: { name: ProviderName; label: string; home: string; modelLink: RegExp; fixed?: string }[] = [
   {
     name: "makerworld",
     label: "MakerWorld",
@@ -52,6 +57,13 @@ const PROVIDERS: { name: ProviderName; label: string; home: string; modelLink: R
     label: "Printables",
     home: "https://www.printables.com/",
     modelLink: /^https:\/\/www\.printables\.com\/model\/\d+-[^/?#]+$/,
+  },
+  {
+    name: "myminifactory",
+    label: "MyMiniFactory",
+    home: "https://www.myminifactory.com/",
+    modelLink: /^https:\/\/www\.myminifactory\.com\/object\/3d-print-[^/?#]+-\d+$/,
+    fixed: "https://www.myminifactory.com/object/3d-print-funny-pen-holder-or-vase-skull-100000",
   },
 ];
 
@@ -83,6 +95,7 @@ function startMockInstance(state: MockState): Promise<{ url: string; close: () =
       case "POST /api/import/inspect":
         return json({ title: state.inspectTitle, is_zip: false });
       case "POST /api/import/printables-collection/entries":
+      case "POST /api/import/myminifactory-collection/entries":
         return json(state.batch ?? { title: null, entries: [] });
       case "GET /api/collections":
         return json(collections);
@@ -119,15 +132,29 @@ function wanted(...files: string[]): boolean {
   return !ONLY.length || files.some((file) => ONLY.includes(file.replace(/\.\w+$/, "")));
 }
 
+/** dist/chrome with access to all sites already granted, as the popup's "More sites" button leaves it: Playwright
+ *  can't click the browser's permission prompt. Grab still registers its content script on the optional sites itself. */
+async function extensionWithOptionalSites(): Promise<string> {
+  const dir = path.join(os.tmpdir(), `thingport-grab-screenshots-ext-${process.pid}`);
+  await rm(dir, { recursive: true, force: true });
+  await cp(EXTENSION_DIR, dir, { recursive: true });
+  const manifestPath = path.join(dir, "manifest.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as { host_permissions: string[] };
+  manifest.host_permissions.push("*://*/*");
+  await writeFile(manifestPath, JSON.stringify(manifest, null, 2));
+  return dir;
+}
+
 async function launch(mockPort: number): Promise<{ context: BrowserContext; worker: Worker; extensionId: string }> {
   const userDataDir = path.join(os.tmpdir(), `thingport-grab-screenshots-${process.pid}`);
+  const extensionDir = await extensionWithOptionalSites();
   const context = await chromium.launchPersistentContext(userDataDir, {
     headless: false,
     viewport: PAGE_VIEWPORT,
     deviceScaleFactor: 2,
     args: [
-      `--disable-extensions-except=${EXTENSION_DIR}`,
-      `--load-extension=${EXTENSION_DIR}`,
+      `--disable-extensions-except=${extensionDir}`,
+      `--load-extension=${extensionDir}`,
       // Otherwise Cloudflare (Printables) recognizes the automated browser.
       "--disable-blink-features=AutomationControlled",
       `--host-resolver-rules=MAP ${DEMO_HOST}:80 127.0.0.1:${mockPort}`,
@@ -157,6 +184,8 @@ async function openPage(page: Page, url: string): Promise<void> {
 
 /** The first one is replaced by --<provider>=<url> when given. */
 async function findModelUrls(page: Page, provider: (typeof PROVIDERS)[number], count: number): Promise<string[]> {
+  const fixed = argValue(provider.name) ?? provider.fixed;
+  if (fixed) return [fixed];
   await openPage(page, provider.home);
   const links = await page.$$eval("a[href]", (as) => as.map((a) => (a as HTMLAnchorElement).href.split(/[?#]/)[0]));
   const found = [...new Set(links.filter((href) => provider.modelLink.test(href)))];
@@ -208,6 +237,29 @@ async function readPrintablesCollection(page: Page): Promise<BatchEntriesResult>
     title: name || null,
     // A couple already in the library, to show how those are marked.
     already_imported: i === 1 || i === 4,
+  }));
+  return { title, entries };
+}
+
+/** The same for a MyMiniFactory collection, whose cards link each object twice too. */
+async function readMyminifactoryCollection(page: Page): Promise<BatchEntriesResult> {
+  await page.locator('a[href*="/object/3d-print-"]').first().waitFor({ timeout: 30000 });
+  const { title, links } = await page.evaluate(() => ({
+    title: document.querySelector(".collection-title, h1")?.textContent?.trim() || null,
+    links: [...document.querySelectorAll<HTMLAnchorElement>('a[href*="/object/3d-print-"]')].map((a) => ({
+      href: a.href,
+      text: a.getAttribute("title") || a.textContent?.trim() || "",
+    })),
+  }));
+  const titles = new Map<string, string>();
+  for (const { href, text } of links) {
+    const id = href.match(/-(\d+)\/?$/)?.[1];
+    if (id && !titles.get(id)) titles.set(id, text);
+  }
+  const entries = [...titles].map(([id, name], i) => ({
+    design_id: id,
+    title: name || null,
+    already_imported: i === 2,
   }));
   return { title, entries };
 }
@@ -346,6 +398,17 @@ async function main(): Promise<void> {
       await page.locator("#tg-sync").check();
       await page.evaluate(() => window.scrollTo(0, 0));
       await screenshotViewport(page, "collection-makerworld.jpg");
+    }
+
+    if (wanted("collection-myminifactory")) {
+      const myminifactoryCollection = argValue("myminifactory-collection") ?? MYMINIFACTORY_COLLECTION;
+      await openPage(page, myminifactoryCollection);
+      mockState.batch = await readMyminifactoryCollection(page);
+      console.log(`MyMiniFactory collection: ${myminifactoryCollection} -- ${mockState.batch.entries.length} models`);
+      await page.locator(".tg-fab:not(.tg-fab--inactive)").click();
+      await page.locator('.tg-panel [data-action="import"]').waitFor({ timeout: 20000 });
+      await page.locator("#tg-sync").check();
+      await screenshotViewport(page, "collection-myminifactory.jpg");
     }
 
     console.log(`Screenshots written to ${path.relative(process.cwd(), OUT_DIR)}/`);

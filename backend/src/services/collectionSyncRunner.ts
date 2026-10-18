@@ -41,8 +41,9 @@ import {
   fetchThingiverseCollectionThings,
   fetchThingiverseUserLikes,
 } from "./thingiverseApi";
+import { checkMyminifactoryCollection, fetchMyminifactoryCollectionObjects } from "./myminifactoryApi";
 import { syncLikesUsername } from "../dto";
-import { getThingiverseAccessToken } from "./settingsService";
+import { getMyminifactoryApiKey, getThingiverseAccessToken } from "./settingsService";
 import { createNotification } from "./notificationService";
 import { createLog } from "./auditLog";
 import { getDisabledProviders, isProviderEnabled, type Provider } from "./providerSettingsService";
@@ -93,6 +94,14 @@ export async function fetchListing(
     if (!(await checkThingiverseCollection(id, token))) return null;
     const { entries } = await fetchThingiverseCollectionThings(id, token);
     return entries.map((e) => e.thingId);
+  }
+  if (sync.provider === "myminifactory") {
+    const apiKey = await getMyminifactoryApiKey();
+    if (!apiKey) throw new Error("MyMiniFactory isn't connected on this Thingport");
+    const [username, slug] = id.split("/");
+    if (!(await checkMyminifactoryCollection(username, slug, apiKey))) return null;
+    const listing = await fetchMyminifactoryCollectionObjects(username, slug, apiKey);
+    return listing ? listing.entries.map((e) => e.objectId) : null;
   }
   throw new Error(`Unknown provider "${sync.provider}"`);
 }
@@ -154,6 +163,11 @@ const CONNECTION_PROBLEMS = {
     reason: "Thingiverse isn't connected on this Thingport.",
     fix: "an admin connects it again",
   },
+  myminifactoryDisconnected: {
+    error: "MyMiniFactory isn't connected on this Thingport",
+    reason: "MyMiniFactory isn't connected on this Thingport.",
+    fix: "an admin connects it again",
+  },
 } satisfies Record<string, ConnectionProblem>;
 
 /** `"A"`, `"A" and "B"`, or the first few and how many more. */
@@ -194,6 +208,9 @@ async function connectionProblem(sync: Pick<CollectionSync, "userId" | "provider
   }
   if (sync.provider === "thingiverse" && !(await getThingiverseAccessToken())) {
     return CONNECTION_PROBLEMS.thingiverseDisconnected;
+  }
+  if (sync.provider === "myminifactory" && !(await getMyminifactoryApiKey())) {
+    return CONNECTION_PROBLEMS.myminifactoryDisconnected;
   }
   return null;
 }

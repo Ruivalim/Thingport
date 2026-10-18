@@ -1,7 +1,7 @@
 Thingport Grab {{version}}. Changes in this version: {{changes}}
 
 WHAT IT DOES
-Imports 3D-printing models from MakerWorld, Printables and Thingiverse into the user's own self-hosted Thingport server (open source: https://github.com/TautvydasDerzinskas/Thingport). It has no servers of its own and sends nothing to the developer or any third party.
+Imports 3D-printing models from MakerWorld, Printables, Thingiverse and, once turned on, MyMiniFactory into the user's own self-hosted Thingport server (open source: https://github.com/TautvydasDerzinskas/Thingport). It has no servers of its own and sends nothing to the developer or any third party.
 
 HOW TO TEST
 1. A Thingport server is required. {{testServer}}
@@ -11,8 +11,9 @@ HOW TO TEST
 
 PERMISSIONS
 - storage: the server address, sign-in and recent imports.
-- cookies: reads the MakerWorld session cookie, on makerworld.com only, which MakerWorld requires for downloads.
+- cookies: reads the MakerWorld session cookie, on makerworld.com only, which MakerWorld requires for downloads, and the MyMiniFactory session cookie, on myminifactory.com only, which downloads the user's bought models from their own library. Both are sent only to the user's own server.
 - downloads: reads the link from a download MakerWorld's page starts, then cancels it.
-- host access: the three model sites, and the user's own server address (requested at setup).
+- scripting: registers the content script on MyMiniFactory, and on model sites added in later versions, once the user allows them.
+- host access: the three model sites; the user's own server address (requested at setup); and, optionally, all websites, requested only when the user clicks "Turn on" under More sites in the popup, so model sites added in later versions need no new permission. The content script is only ever registered on supported model sites.
 
 The code isn't minified or obfuscated. Documentation: https://thingport.net/docs/grab/ Privacy policy: https://github.com/TautvydasDerzinskas/Thingport/blob/main/extension/PRIVACY.md

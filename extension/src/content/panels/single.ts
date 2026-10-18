@@ -1,4 +1,4 @@
-// Thingiverse and Printables import directly; other links go through /import/inspect first, like
+// Thingiverse, Printables and MyMiniFactory import directly; other links go through /import/inspect first, like
 // the web app's useUploadImport.tsx.
 
 import type { FillGapsResult, InspectResult, SourceGap, ZipEntriesResult } from "../../shared/api";
@@ -35,6 +35,13 @@ function guessPageTitle(): string | null {
   if (h1) return h1;
   const og = document.querySelector<HTMLMetaElement>('meta[property="og:title"]')?.content?.trim();
   return og || document.title.trim() || null;
+}
+
+/** A MyMiniFactory object the user hasn't bought: its page has a cart button where free and bought ones have their
+ *  download button. A bought one imports from the user's library. */
+function isPaidMyminifactoryObject(): boolean {
+  const { provider } = ctx().classification;
+  return provider === "myminifactory" && !document.querySelector('[data-component-name="DownloadButton"]');
 }
 
 // Several profile resolutions in a quick burst still look automated to MakerWorld.
@@ -106,9 +113,18 @@ export async function loadSingleItem(): Promise<void> {
     return;
   }
   const { provider, type } = ctx().classification;
+  if (isPaidMyminifactoryObject()) {
+    renderPanel(`
+      <div class="tg-title">Paid model</div>
+      <div class="tg-hint">Buy it on MyMiniFactory first. Once it's in your library, Thingport imports it from there.</div>
+    `);
+    return;
+  }
   renderFunStatus(checkingLinkPhrases(provider));
   const skipInspect =
-    (provider === "thingiverse" && type === "thing") || (provider === "printables" && type === "model");
+    (provider === "thingiverse" && type === "thing") ||
+    (provider === "printables" && type === "model") ||
+    (provider === "myminifactory" && type === "object");
 
   let zipFilename: string | null = null;
   if (skipInspect) {

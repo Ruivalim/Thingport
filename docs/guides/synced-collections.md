@@ -1,17 +1,18 @@
 # Synced collections
 
-A synced collection follows a collection on MakerWorld, Printables or Thingiverse. When a model is added to it there,
-Thingport imports that model into the matching Thingport collection on its own, without you visiting the page again.
+A synced collection follows a collection on MakerWorld, Printables, Thingiverse or MyMiniFactory. When a model is added
+to it there, Thingport imports that model into the matching Thingport collection on its own, without you visiting the
+page again.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../assets/collection-sync-dark.gif">
-  <img src="../assets/collection-sync-light.gif" alt="Models flowing from a MakerWorld, Printables or Thingiverse collection, through Thingport, into a synced collection">
+  <img src="../assets/collection-sync-light.gif" alt="Models flowing from a MakerWorld, Printables, Thingiverse or MyMiniFactory collection, through Thingport, into a synced collection">
 </picture>
 
 ## Why sync a collection
 
-- **Keep collecting where you already do.** Save models to a collection on MakerWorld, Printables or Thingiverse as you
-  browse, even from your phone, and they turn up in your library later.
+- **Keep collecting where you already do.** Save models to a collection on MakerWorld, Printables, Thingiverse or
+  MyMiniFactory as you browse, even from your phone, and they turn up in your library later.
 - **Follow other people's collections.** Sync a designer's or a friend's public collection, and get each model they
   add to it.
 - **A real copy of everything.** Each new model is imported with its files, photos, description, tags and author, so
@@ -26,22 +27,23 @@ Thingport imports that model into the matching Thingport collection on its own, 
   extension, on the provider collection's page.
 - Connect the provider under **Configuration → Providers** where it needs it (see
   [provider setup](../PROVIDER_SETUP.md)). Printables needs nothing. MakerWorld needs your session cookie to import
-  models, and to read a private collection. Thingiverse needs an App Token.
+  models, and to read a private collection. Thingiverse needs an App Token, and MyMiniFactory an API key. A
+  MyMiniFactory collection's paid models are left out of its sync.
 
 ## Turn sync on in Thingport
 
 1. Open the Thingport collection that should follow one on a provider, or create it first.
 2. Choose **⋮ → Sync configuration**. A collection that isn't synced yet opens on **Browse**.
-3. Pick the provider. Your own collections there are listed: on MakerWorld through your cookie, private ones
-   included; on Printables and Thingiverse, the public ones of the username you give the first time. Or paste any
+3. Pick the provider. Your own collections there are listed: on MakerWorld through your cookie, private ones included;
+   on Printables, Thingiverse and MyMiniFactory, the public ones of the username you give the first time. Or paste any
    collection's link, yours or someone else's.
 4. Pick a collection and click **Sync with "…"**. **Settings** sets how often it's checked, and for MakerWorld which
    print profiles each new model brings, before you do.
 
-What happens to the models already in the provider's collection depends on the provider. On Printables and Thingiverse
-they're imported now, one at a time. MakerWorld rate-limits bulk imports quickly, so there only models added from now
-on come in; ones already in your library are added to the collection either way. A provider collection syncs with one
-Thingport collection at most, so one that's taken shows which collection follows it.
+What happens to the models already in the provider's collection depends on the provider. On Printables, Thingiverse and
+MyMiniFactory they're imported now, one at a time. MakerWorld rate-limits bulk imports quickly, so there only models
+added from now on come in; ones already in your library are added to the collection either way. A provider collection
+syncs with one Thingport collection at most, so one that's taken shows which collection follows it.
 
 ### Private Printables collections and your Printables likes
 
@@ -53,7 +55,8 @@ read it, and its models come in on that next visit.
 
 ## Turn sync on with Thingport Grab
 
-1. Open the collection's page on MakerWorld, Printables or Thingiverse. A Thingiverse user's **Likes** page works too.
+1. Open the collection's page on MakerWorld, Printables, Thingiverse or MyMiniFactory (allowed once from Thingport
+   Grab's popup first). A Thingiverse user's **Likes** page works too.
 2. Click the Thingport Grab button in the bottom-right corner. The panel lists the models in the collection.
 3. Tick **Keep this collection in sync** (**Keep these likes in sync** on a Likes page). It's off by default.
 4. Pick the models to import now and click **Import selected** (**Start import** on MakerWorld).

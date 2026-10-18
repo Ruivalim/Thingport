@@ -44,6 +44,7 @@ const PASTE_EXAMPLES: Record<BrowsableProvider, string> = {
   makerworld: "https://makerworld.com/en/collections/…",
   printables: "https://www.printables.com/@…/collections/…",
   thingiverse: "https://www.thingiverse.com/…/collections/…",
+  myminifactory: "https://www.myminifactory.com/users/…/collection/…",
 };
 
 /** The one the user's slicer goes with, unless it isn't connected; then the first that is. Only from `available`,

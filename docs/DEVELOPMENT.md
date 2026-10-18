@@ -94,8 +94,8 @@ Open <http://localhost:5173>. **The first account you register becomes the admin
 
 ## Optional: FlareSolverr
 
-Thingiverse sits behind Cloudflare, and some imports need FlareSolverr to get through. It's
-optional -- without it those imports will simply fail.
+Thingiverse and MyMiniFactory sit behind Cloudflare, and some imports need FlareSolverr to get through. It's optional --
+without it those imports will simply fail.
 
 ```bash
 docker run -d --name thingport-flaresolverr -p 8191:8191 ghcr.io/flaresolverr/flaresolverr:latest
@@ -259,4 +259,4 @@ ordinary notification (the System tab). To post one, add an entry to `entries` a
 ## Related documents
 
 - [CONTRIBUTING.md](../CONTRIBUTING.md) -- branch, commit and pull request workflow
-- [PROVIDER_SETUP.md](PROVIDER_SETUP.md) -- MakerWorld / Thingiverse / Printables credentials
+- [PROVIDER_SETUP.md](PROVIDER_SETUP.md) -- MakerWorld / Thingiverse / Printables / MyMiniFactory credentials

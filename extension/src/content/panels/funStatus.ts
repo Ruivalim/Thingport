@@ -11,6 +11,7 @@ export const SITE_NAMES: Record<Provider, string> = {
   makerworld: "MakerWorld",
   printables: "Printables",
   thingiverse: "Thingiverse",
+  myminifactory: "MyMiniFactory",
 };
 
 /** The instance inspects the link: finds the file, reads its title, checks whether it's a zip. */

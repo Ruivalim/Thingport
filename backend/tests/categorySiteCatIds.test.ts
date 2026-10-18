@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
 import { createApp } from "../src/app";
 import { prisma } from "../src/db";
+import { resolveCategoryIdByCategory } from "../src/services/importService";
 
 // Free-text "800;71;1001" input for the *_cat_ids fields.
 
@@ -113,5 +114,25 @@ describe("PATCH /category/:id/meta -- multi-value category ids", () => {
     expect(res.body.makerworld_cat_ids).toBe("1;2");
     expect(res.body.thingiverse_cat_ids).toBe("3;4");
     expect(res.body.printables_cat_ids).toBe("5;6");
+  });
+});
+
+describe("resolveCategoryIdByCategory -- the most specific site category wins", () => {
+  it("files a model under the category its own site category maps to, not the one its parent's does", async () => {
+    const email = `category-specificity-${Date.now()}@example.com`;
+    const res = await request(app)
+      .post("/api/register")
+      .send({ displayName: "Specificity Test", email, password: "password123" });
+    expect(res.status).toBe(200);
+    const userId: string = res.body.user.id;
+    const named = async (name: string) =>
+      (await prisma.category.findFirstOrThrow({ where: { userId, name, kind: "category" } })).id;
+
+    // MyMiniFactory's Phones & Tablets (94) maps to Gadgets; its parent, Gadgets & Electronics (59), to Electronics.
+    expect(await resolveCategoryIdByCategory(userId, "myminifactory", [94, 59])).toBe(await named("Gadgets"));
+    expect(await resolveCategoryIdByCategory(userId, "myminifactory", [59, 94])).toBe(await named("Electronics"));
+    // Vases (362) under Home Decor (335), which the starter Decor category both lists.
+    expect(await resolveCategoryIdByCategory(userId, "myminifactory", [362, 335])).toBe(await named("Decor"));
+    expect(await resolveCategoryIdByCategory(userId, "myminifactory", [358])).toBeNull();
   });
 });

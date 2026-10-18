@@ -40,7 +40,13 @@ import {
   parseThingiverseLikesUrl,
 } from "../services/thingiverseApi";
 import { fetchPrintablesCollectionEntries, parsePrintablesCollectionUrl } from "../services/printablesApi";
-import { getThingiverseAccessToken } from "../services/settingsService";
+import { getMyminifactoryApiKey, getThingiverseAccessToken } from "../services/settingsService";
+import {
+  fetchMyminifactoryCollectionObjects,
+  MyminifactoryAuthError,
+  MyminifactoryRateLimitError,
+  parseMyminifactoryCollectionUrl,
+} from "../services/myminifactoryApi";
 import { getUserMakerworldCookie } from "../services/makerworldCookieService";
 import { listZipEntries } from "../services/zipService";
 import { createJob, createJobItems, getActiveJob, getJob, listJobItems } from "../services/importJobService";
@@ -50,6 +56,7 @@ import {
   runCollectionImportJob,
   runLinksImportJob,
   runMakerworldProfilesImportJob,
+  runMyminifactoryCollectionImportJob,
   runPrintablesCollectionImportJob,
   runThingiverseCollectionImportJob,
   runThingiverseLikesImportJob,
@@ -202,7 +209,7 @@ router.get(
 );
 
 const statusBatchSchema = z.object({
-  provider: z.enum(["makerworld", "thingiverse", "printables"]),
+  provider: z.enum(["makerworld", "thingiverse", "printables", "myminifactory"]),
   external_ids: z.array(z.string().max(64)).max(10_000),
 });
 
@@ -388,6 +395,55 @@ router.post(
   }),
 );
 
+const MYMINIFACTORY_NOT_CONFIGURED =
+  "MyMiniFactory import isn't configured for this instance yet -- ask an admin to add an API key in Administration > Providers.";
+
+router.post(
+  "/import/myminifactory-collection/entries",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(importRequestSchema, req.body);
+    const url = await enabledImportUrl(body.url);
+    const parsed = parseMyminifactoryCollectionUrl(url);
+    if (!parsed) throw new HttpError(400, "Not a MyMiniFactory collection URL");
+    const apiKey = await getMyminifactoryApiKey();
+    if (!apiKey) throw new HttpError(503, MYMINIFACTORY_NOT_CONFIGURED);
+
+    let listing: Awaited<ReturnType<typeof fetchMyminifactoryCollectionObjects>>;
+    try {
+      listing = await fetchMyminifactoryCollectionObjects(parsed.username, parsed.slug, apiKey);
+    } catch (err) {
+      if (err instanceof MyminifactoryRateLimitError) throw new HttpError(429, err.message);
+      // 400, not 401: the frontend treats any 401 as an expired Thingport session.
+      if (err instanceof MyminifactoryAuthError) throw new HttpError(400, err.message);
+      throw err;
+    }
+    if (listing && !listing.entries.length && listing.paid) {
+      throw new HttpError(
+        400,
+        "Every model in this collection is paid, and Thingport can import MyMiniFactory's free models only.",
+      );
+    }
+    if (!listing?.entries.length) throw new HttpError(400, "Could not load this collection's models");
+
+    const alreadyImported = await findImportedExternalIds(
+      req.userId!,
+      "myminifactory",
+      listing.entries.map((e) => e.objectId),
+    );
+    res.json({
+      title: listing.title,
+      total: listing.entries.length,
+      truncated: listing.truncated,
+      entries: listing.entries.map((e) => ({
+        design_id: e.objectId,
+        title: e.title,
+        cover: e.cover,
+        already_imported: alreadyImported.has(e.objectId),
+      })),
+    });
+  }),
+);
+
 // Batch imports run in the background and are polled via GET /import/jobs/:id. One RUNNING job
 // per user doubles as the "already in progress" lock.
 
@@ -495,6 +551,29 @@ router.post(
       total: body.model_ids.length,
     });
     void runPrintablesCollectionImportJob(job.id, req.userId!, { ...body, url, collectionId: parsed.collectionId });
+    res.status(202).json({ job_id: job.id });
+  }),
+);
+
+const myminifactoryCollectionImportRequestSchema = importRequestSchema.extend({
+  object_ids: z.array(z.string()).min(1),
+});
+
+router.post(
+  "/import/myminifactory-collection",
+  requireCaptcha("import"),
+  asyncHandler(async (req, res) => {
+    const body = parseBody(myminifactoryCollectionImportRequestSchema, req.body);
+    await assertNoActiveJob(req.userId!);
+    const url = await enabledImportUrl(body.url);
+    const parsed = parseMyminifactoryCollectionUrl(url);
+    if (!parsed) throw new HttpError(400, "Not a MyMiniFactory collection URL");
+    const job = await createJob(req.userId!, "COLLECTION", {
+      sourceUrl: url,
+      provider: "myminifactory",
+      total: body.object_ids.length,
+    });
+    void runMyminifactoryCollectionImportJob(job.id, req.userId!, { ...body, url, ...parsed });
     res.status(202).json({ job_id: job.id });
   }),
 );

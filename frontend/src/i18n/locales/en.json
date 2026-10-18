@@ -95,7 +95,7 @@
     },
     "uploadBar": {
       "uploading": "Uploading…",
-      "linkPlaceholder": "Paste model link (MakerWorld, Printables, Thingiverse...)",
+      "linkPlaceholder": "Paste model link (MakerWorld, Printables, Thingiverse, MyMiniFactory...)",
       "importing": "Importing…",
       "importFailed": "Import failed",
       "uploadFailed": "Failed to upload: {{files}}",
@@ -268,6 +268,7 @@
       "serviceNotConnected": "{{service}}: not connected",
       "makerworldDisabledReason": "MakerWorld: not connected",
       "thingiverseDisabledReason": "Thingiverse: the admin hasn't configured an API key yet",
+      "myminifactoryDisabledReason": "MyMiniFactory: the admin hasn't configured an API key yet",
       "myModels": "My models"
     },
     "notifications": {
@@ -330,7 +331,7 @@
         },
         "import": "Import from a link",
         "importFrom": "Import from {{provider}}",
-        "importNotSupported": "Not a MakerWorld, Printables or Thingiverse link; opens the import window",
+        "importNotSupported": "Not a MakerWorld, Printables, Thingiverse or MyMiniFactory link; opens the import window",
         "language": "Language: {{name}}",
         "appearance": "Open Appearance",
         "providers": "Open Providers",
@@ -529,11 +530,19 @@
         "descriptions": {
           "makerworld": "Bambu Lab's model site: imports with print profiles, and collections to sync.",
           "printables": "Prusa's model site: imports, and public and private collections to sync.",
-          "thingiverse": "Imports, collections and liked models, through this Thingport's App Token."
+          "thingiverse": "Imports, collections and liked models, through this Thingport's App Token.",
+          "myminifactory": "Models and public collections, through this Thingport's API key; bought models through each user's own MyMiniFactory account."
         },
-        "tokenSet": "App Token set",
-        "tokenMissing": "No App Token: Thingiverse imports won't work until one is set",
-        "tokenSettings": "Thingiverse App Token",
+        "keyStatus": {
+          "thingiverse": {
+            "set": "App Token set",
+            "missing": "No App Token: Thingiverse imports won't work until one is set"
+          },
+          "myminifactory": {
+            "set": "API key set",
+            "missing": "No API key: MyMiniFactory imports won't work until one is set"
+          }
+        },
         "turnOff": "Turn {{name}} off",
         "turnOn": "Turn {{name}} on",
         "disableTitle": "Turn {{name}} off?",
@@ -646,9 +655,21 @@
               "timeout": "Thingiverse didn't answer in time. Try again later."
             }
           },
+          "myminifactory": {
+            "name": "MyMiniFactory",
+            "description": "The instance's MyMiniFactory API key, used to read models, sync collections and link authors from MyMiniFactory. Free models download without it.",
+            "problems": {
+              "disabled": "Turned off under Providers, so nothing is checked. Turn MyMiniFactory back on there to use it.",
+              "not_configured": "No API key set. MyMiniFactory imports and syncs won't work until one is added in Settings (create an app at myminifactory.com/settings/developer/application).",
+              "token_rejected": "MyMiniFactory rejected the API key. Check it under myminifactory.com/settings/developer and save it in Settings again.",
+              "blocked": "MyMiniFactory answered with a Cloudflare challenge, which says nothing about the key. Set up FlareSolverr, or wait: it usually clears after a while.",
+              "unreachable": "Thingport couldn't reach MyMiniFactory. Check the server's internet access, or try again later.",
+              "timeout": "MyMiniFactory didn't answer in time. Try again later."
+            }
+          },
           "grab": {
             "name": "Thingport Grab",
-            "description": "The browser extension for importing models from MakerWorld, Printables and Thingiverse while you browse them, including whole collections, with no links to copy. It also brings over Printables likes, which only you can see.",
+            "description": "The browser extension for importing models from MakerWorld, Printables, Thingiverse and MyMiniFactory while you browse them, including whole collections, with no links to copy. It also brings over Printables likes, which only you can see.",
             "problems": {
               "not_seen": "No browser has used Grab with this instance yet. Install it from Downloads and connect it to Thingport. It's the easiest way to import, and some sites only let a browser get their files."
             }
@@ -839,11 +860,14 @@
           "thingiverse_no_token": "Thingiverse models were skipped: add a Thingiverse App Token in Administration > Providers.",
           "thingiverse_token_rejected": "Thingiverse models were skipped: Thingiverse rejected the App Token in Administration > Providers.",
           "thingiverse_rate_limited": "Thingiverse models were skipped: Thingiverse started blocking requests with a rate limit. It usually clears after a while — try again later.",
+          "myminifactory_no_key": "MyMiniFactory models were skipped: add a MyMiniFactory API key in Administration > Providers.",
+          "myminifactory_key_rejected": "MyMiniFactory models were skipped: MyMiniFactory rejected the API key in Administration > Providers.",
+          "myminifactory_rate_limited": "MyMiniFactory models were skipped: MyMiniFactory started blocking requests. It usually clears after a while — try again later.",
           "makerworld_captcha": "MakerWorld models were skipped: MakerWorld asked for a CAPTCHA, and blocks further requests for about 2 hours. Try again later.",
           "makerworld_login_rejected": "MakerWorld models were skipped: MakerWorld rejected the saved MakerWorld login. Update it in Configuration > Providers."
         },
         "refetchTitle": "Refetch model descriptions",
-        "refetchDesc": "Replaces the description of every model a user imported from MakerWorld, Printables or Thingiverse with the current one from that site, with its formatting and images. Use it to bring models imported before formatted descriptions were supported up to date. Changes the user made to those descriptions are lost. Models whose source is gone keep their description. It runs in the background — MakerWorld requests are spaced out to avoid its CAPTCHA, so a large library can take a while.",
+        "refetchDesc": "Replaces the description of every model a user imported from MakerWorld, Printables, Thingiverse or MyMiniFactory with the current one from that site, with its formatting and images. Use it to bring models imported before formatted descriptions were supported up to date. Changes the user made to those descriptions are lost. Models whose source is gone keep their description. It runs in the background — MakerWorld requests are spaced out to avoid its CAPTCHA, so a large library can take a while.",
         "refetchUserOption": "{{name}} ({{email}}) — {{count}} imported models",
         "refetchButton": "Refetch descriptions…",
         "refetchConfirm": "Replace the descriptions of {{count}} imported model(s) belonging to {{email}} with the ones from their source sites? Any changes made to those descriptions will be lost.",
@@ -867,6 +891,21 @@
         "saved": "Saved.",
         "cleared": "App Token removed.",
         "failed": "Failed to save Thingiverse settings."
+      },
+      "myminifactory": {
+        "heading": "MyMiniFactory API key",
+        "helpText": "Create an app at myminifactory.com/settings/developer/application and paste the API key it shows you. Free models download without it, but it's needed to read their details and your collections.",
+        "statusConfigured": "An API key is currently configured.",
+        "statusNotConfigured": "No API key is configured yet -- MyMiniFactory imports will fail until one is set.",
+        "tokenLabel": "API key",
+        "tokenPlaceholder": "Paste a new key to replace the current one",
+        "tokenHelperConfigured": "For security, the current key is never shown again -- leave this blank to keep it, or paste a new one to replace it.",
+        "save": "Save",
+        "saving": "Saving…",
+        "clear": "Remove key",
+        "saved": "Saved.",
+        "cleared": "API key removed.",
+        "failed": "Failed to save MyMiniFactory settings."
       },
       "ai": {
         "heading": "AI",
@@ -1417,7 +1456,7 @@
       "intro": "Companion tools that work alongside your Thingport instance.",
       "extension": {
         "heading": "Thingport Grab",
-        "intro": "A browser extension that imports MakerWorld, Thingiverse, and Printables models straight from their own pages.",
+        "intro": "A browser extension that imports MakerWorld, Thingiverse, Printables and MyMiniFactory models straight from their own pages.",
         "name": "Thingport Grab",
         "store": {
           "chrome": "Get from Chrome Web Store",
@@ -1555,6 +1594,17 @@
         ],
         "shared": "This token is shared by everyone on this Thingport.",
         "adminOnly": "Only an admin of this Thingport can set this up."
+      },
+      "myminifactory": {
+        "placeholder": "PHPSESSID value, or the whole Cookie header",
+        "steps": [
+          "Easiest: with Thingport Grab, just open myminifactory.com while signed in, and it connects your account for you.",
+          "Or by hand: sign in at myminifactory.com and open your browser's developer tools (F12).",
+          "Under Application (Chrome, Edge) or Storage (Firefox) → Cookies → www.myminifactory.com, copy the value of PHPSESSID and paste it below."
+        ],
+        "notConnected": "Free models import without it. Connect your account to import the models you bought, and free ones that need a sign-in.",
+        "expired": "Sign-in expired. Visit myminifactory.com with Thingport Grab, or connect MyMiniFactory again in Configuration → Providers.",
+        "expiredStatus": "Sign-in expired"
       },
       "printables": {
         "alwaysConnected": "Printables is connected by default: it needs no account or key."
@@ -2501,29 +2551,35 @@
           "models_other": "{{count}} models",
           "things_one": "{{count}} Thing",
           "things_other": "{{count}} Things",
+          "objects_one": "{{count}} object",
+          "objects_other": "{{count}} objects",
           "takenBy": "Synced with \"{{name}}\"",
           "loadFailed": "Couldn't load the collections.",
           "lookupFailed": "Couldn't find that collection.",
-          "notALink": "Paste a MakerWorld, Printables or Thingiverse collection link.",
+          "notALink": "Paste a MakerWorld, Printables, Thingiverse or MyMiniFactory collection link.",
           "usernameFailed": "Couldn't save the username.",
           "openProviders": "Open Providers",
           "notConnected": {
             "makerworld": "Connect MakerWorld in Configuration > Providers to see your collections here. Its cookie tells Thingport who you are there.",
             "printables": "Printables can't be reached right now.",
-            "thingiverse": "Thingiverse isn't connected on this Thingport yet. An admin can connect it in Configuration > Providers."
+            "thingiverse": "Thingiverse isn't connected on this Thingport yet. An admin can connect it in Configuration > Providers.",
+            "myminifactory": "MyMiniFactory isn't connected on this Thingport yet. An admin can connect it in Configuration > Providers."
           },
           "usernameLabel": "Your {{provider}} username",
           "usernameHint": {
             "printables": "Thingport lists your public Printables collections. It only needs asking once.",
-            "thingiverse": "Thingport lists your public Thingiverse collections. It only needs asking once."
+            "thingiverse": "Thingport lists your public Thingiverse collections. It only needs asking once.",
+            "myminifactory": "Thingport lists your public MyMiniFactory collections. It only needs asking once."
           },
           "usernamePlaceholder": {
             "printables": "@handle or profile link",
-            "thingiverse": "Username or profile link"
+            "thingiverse": "Username or profile link",
+            "myminifactory": "Username or profile link"
           },
           "showing": {
             "printables": "Showing @{{user}}'s collections.",
-            "thingiverse": "Showing @{{user}}'s public collections."
+            "thingiverse": "Showing @{{user}}'s public collections.",
+            "myminifactory": "Showing @{{user}}'s public collections."
           },
           "change": "Change",
           "empty": "No collections on {{provider}} yet.",
@@ -2545,7 +2601,8 @@
           "forgetTitle": "Forget your {{provider}} account?",
           "forgetMessage": {
             "printables": "Thingport stops listing your Printables collections, and Thingport Grab stops sending your private collections and likes, until you give your username again. Syncs already set up keep their models; those of private collections and likes pause until then.",
-            "thingiverse": "Thingport stops listing your Thingiverse collections until you give your username again. Syncs already set up keep their models."
+            "thingiverse": "Thingport stops listing your Thingiverse collections until you give your username again. Syncs already set up keep their models.",
+            "myminifactory": "Thingport stops listing your MyMiniFactory collections until you give your username again. Syncs already set up keep their models."
           }
         }
       }
@@ -2620,6 +2677,7 @@
         "makerworldCatIdLabel": "MakerWorld category IDs",
         "thingiverseCatIdLabel": "Thingiverse category IDs",
         "printablesCatIdLabel": "Printables category IDs",
+        "myminifactoryCatIdLabel": "MyMiniFactory category IDs",
         "catIdsPlaceholder": "e.g. 800;71;1001",
         "catIdsHelp": "Separate multiple IDs with \";\" -- matches if an import's category is any of these",
         "dragToMove": "Drag to move"

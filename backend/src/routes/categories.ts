@@ -190,6 +190,7 @@ const categoryMetaSchema = z.object({
   makerworld_cat_ids: catIdsField,
   thingiverse_cat_ids: catIdsField,
   printables_cat_ids: catIdsField,
+  myminifactory_cat_ids: catIdsField,
 });
 
 router.patch(
@@ -206,6 +207,7 @@ router.patch(
         makerworldCatIds: parseCatIdsInput(body.makerworld_cat_ids),
         thingiverseCatIds: parseCatIdsInput(body.thingiverse_cat_ids),
         printablesCatIds: parseCatIdsInput(body.printables_cat_ids),
+        myminifactoryCatIds: parseCatIdsInput(body.myminifactory_cat_ids),
       },
     });
     res.json(toCategoryOut(updated));

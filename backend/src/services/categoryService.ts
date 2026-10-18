@@ -75,6 +75,7 @@ export async function seedDefaultCategories(tx: Prisma.TransactionClient, userId
         makerworldCatIds: node.makerworldCatIds ?? [],
         thingiverseCatIds: node.thingiverseCatIds ?? [],
         printablesCatIds: node.printablesCatIds ?? [],
+        myminifactoryCatIds: node.myminifactoryCatIds ?? [],
       },
     });
     let i = 0;
