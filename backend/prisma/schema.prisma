@@ -19,6 +19,14 @@ enum CategorySource {
   LEGACY
 }
 
+/// What an AI connection sends as reasoning_effort, spelled the way providers expect it.
+enum ReasoningEffort {
+  none
+  low
+  medium
+  high
+}
+
 model User {
   id                       String            @id @default(cuid())
   email                    String            @unique
@@ -530,20 +538,20 @@ model Setting {
 
 /// An OpenAI-compatible AI service. Features use the default one unless set to another.
 model AiConnection {
-  id          String   @id @default(cuid())
-  baseUrl     String
+  id              String           @id @default(cuid())
+  baseUrl         String
   /// Write-only: the API only ever says whether one is set.
-  apiKey      String?
-  model       String
-  timeoutMs   Int      @default(60000)
+  apiKey          String?
+  model           String
+  timeoutMs       Int              @default(60000)
   /// How many requests may wait on this provider at once.
-  concurrency Int      @default(1)
-  /// Off asks a reasoning model to skip thinking, which on a CPU takes minutes.
-  thinking    Boolean  @default(true)
-  isDefault   Boolean  @default(false)
-  position    Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  concurrency     Int              @default(1)
+  /// Sent as reasoning_effort. Null sends nothing, leaving it to the provider.
+  reasoningEffort ReasoningEffort?
+  isDefault       Boolean          @default(false)
+  position        Int              @default(0)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 }
 
 /// An OpenID Connect identity provider (Authentik, PocketID, ...) people can sign in with.

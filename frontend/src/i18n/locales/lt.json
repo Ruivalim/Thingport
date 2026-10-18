@@ -912,8 +912,15 @@
           "keyOptional": "Neprivaloma. Vietiniams serveriams, tokiems kaip Ollama, jo paprastai nereikia.",
           "concurrency": "Lygiagrečios užklausos (1-4)",
           "timeout": "Užklausos skirtasis laikas (ms)",
-          "thinking": "Leisti modeliui pagalvoti prieš atsakant",
-          "thinkingHint": "Išjunkite, kad samprotaujantis modelis (pvz., qwen3) lėtoje įrangoje atsakytų greičiau. Jei tiekėjas nepalaiko samprotavimo išjungimo, užklausa siunčiama be šio nustatymo.",
+          "reasoningEffort": "Samprotavimo lygis",
+          "reasoningEffortHint": "Siunčiama tiekėjui kaip reasoning_effort. Palikite tiekėjo numatytąjį, nebent samprotaujantis modelis veikia lėtai arba jam pritrūksta žetonų: „Nėra“ išjungia qwen3 samprotavimą, o gpt-oss jo išjungti negali ir jam reikia „Žemas“. Jei tiekėjas šio nustatymo nepriima, užklausa siunčiama be jo.",
+          "reasoningEffortDefault": "Tiekėjo numatytasis (nieko nesiųsti)",
+          "reasoningEffortLevels": {
+            "none": "Nėra",
+            "low": "Žemas",
+            "medium": "Vidutinis",
+            "high": "Aukštas"
+          },
           "test": "Tikrinti ryšį",
           "testing": "Tikrinama…",
           "testSuccess": "Prisijungta prie {{model}} per {{latency}} ms.",

@@ -902,8 +902,15 @@
           "keyOptional": "Optional. Local servers such as Ollama usually don't need one.",
           "concurrency": "Concurrent requests (1-4)",
           "timeout": "Request timeout (ms)",
-          "thinking": "Let the model think before answering",
-          "thinkingHint": "Turn off to speed up a reasoning model (such as qwen3) on slow hardware. If the provider doesn't support turning thinking off, the request is sent without it.",
+          "reasoningEffort": "Reasoning effort",
+          "reasoningEffortHint": "Sent to the provider as reasoning_effort. Leave it on the provider's default unless a reasoning model is slow or runs out of tokens: None stops qwen3 thinking, but gpt-oss can't stop and needs Low. If the provider rejects the setting, the request is sent without it.",
+          "reasoningEffortDefault": "Provider default (send nothing)",
+          "reasoningEffortLevels": {
+            "none": "None",
+            "low": "Low",
+            "medium": "Medium",
+            "high": "High"
+          },
           "test": "Test connection",
           "testing": "Testing…",
           "testSuccess": "Connected to {{model}} in {{latency}} ms.",
