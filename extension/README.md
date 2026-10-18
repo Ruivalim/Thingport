@@ -60,7 +60,7 @@ keeps it up to date from then on. Other Chromium browsers that install from the 
 <details>
 <summary>Alternative: install the Chrome build by hand</summary>
 
-Only needed if you can't use the store, e.g. to try a build before it's been published there:
+Only needed if you can't use the store, e.g. to get a release before the store's review lets it through:
 
 1. Download `thingport-grab-chrome.zip` from the
    [`extension-latest` release](https://github.com/TautvydasDerzinskas/Thingport/releases/tag/extension-latest)
@@ -82,10 +82,10 @@ keeps it up to date from then on.
 <details>
 <summary>Alternative: install the Firefox build by hand</summary>
 
-Only needed if you can't use the store, e.g. to try a build before it's been published there.
+Only needed if you can't use the store, e.g. to get a release before the store's review lets it through.
 Firefox refuses to install _any_ unsigned extension outside of Developer Edition/Nightly, so this
 is a Mozilla-signed `.xpi` rather than a zip -- CI signs one for self-distribution (the "unlisted"
-channel) on every push to `main` (see [Releases](CONTRIBUTING.md#releases-ci) in the development
+channel) with every release (see [Releases](CONTRIBUTING.md#releases-ci) in the development
 guide):
 
 1. Download `thingport-grab-firefox.xpi` from the
@@ -105,7 +105,7 @@ it up to date from then on.
 <details>
 <summary>Alternative: install the Edge build by hand</summary>
 
-Only needed if you can't use the store, e.g. to try a build before it's been published there:
+Only needed if you can't use the store, e.g. to get a release before the store's review lets it through:
 
 1. Download `thingport-grab-edge.zip` from the
    [`extension-latest` release](https://github.com/TautvydasDerzinskas/Thingport/releases/tag/extension-latest)
