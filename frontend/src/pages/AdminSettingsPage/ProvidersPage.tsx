@@ -2,6 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
+import Chip from "@mui/material/Chip";
 import Dialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
@@ -17,7 +18,7 @@ import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import { UnauthorizedError } from "../../api/client";
 import { type ImportProvider, type ProviderSetting, settingsApi } from "../../api/settings";
 import { useConfirm } from "../../components/ConfirmProvider";
-import { ProviderLogo } from "../../components/Layout/ConfigurationDialog/providerLogos";
+import { COMING_SOON_PROVIDERS, ProviderLogo } from "../../components/Layout/ConfigurationDialog/providerLogos";
 import SectionHeader from "../../components/SectionHeader";
 import { publishProviders } from "../../hooks/useDisabledProviders";
 import ProviderKeySection, { type KeyedProvider } from "./ProviderKeySection";
@@ -166,6 +167,24 @@ export default function ProvidersPage({ onUnauthorized }: Props) {
             </Stack>
           );
         })}
+        {COMING_SOON_PROVIDERS.map(({ id, name }) => (
+          <Stack
+            key={id}
+            direction="row"
+            spacing={2}
+            alignItems="center"
+            aria-disabled="true"
+            sx={{ px: 2, py: 1.5, "&:not(:last-of-type)": { borderBottom: 1, borderColor: "divider" } }}
+          >
+            <Box sx={{ flexShrink: 0, lineHeight: 0, opacity: 0.45, filter: "grayscale(1)" }}>
+              <ProviderLogo id={id} size={32} />
+            </Box>
+            <Typography variant="body1" fontWeight={600} color="text.disabled" sx={{ flex: 1, minWidth: 0 }}>
+              {name}
+            </Typography>
+            <Chip size="small" variant="outlined" label={t("providers.comingSoon")} sx={{ color: "text.secondary" }} />
+          </Stack>
+        ))}
       </Paper>
 
       <Dialog open={Boolean(keyOpen)} onClose={() => setKeyOpen(null)} fullWidth maxWidth="sm">

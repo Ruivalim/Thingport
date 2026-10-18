@@ -20,18 +20,18 @@ import type { MakerWorldSettings } from "../../../utils/settings";
 import { useConfirm } from "../../ConfirmProvider";
 import { AppGrid, AppTile, menuPosition, reopenContextMenuBelow, TileMenuHeader } from "./AppTiles";
 import { PanelHeader } from "./parts";
-import { ProviderLogo, type ProviderId } from "./providerLogos";
+import { COMING_SOON_PROVIDERS, ProviderLogo, type ProviderId } from "./providerLogos";
 import { useDisabledProviders } from "../../../hooks/useDisabledProviders";
 import type { ImportProvider } from "../../../api/settings";
 
-const PROVIDERS: { id: ProviderId; name: string; comingSoon?: boolean }[] = [
+const PROVIDERS: { id: ProviderId; name: string }[] = [
   { id: "makerworld", name: "MakerWorld" },
   { id: "thingiverse", name: "Thingiverse" },
   { id: "printables", name: "Printables" },
   { id: "myminifactory", name: "MyMiniFactory" },
-  { id: "thangs", name: "Thangs", comingSoon: true },
+  ...COMING_SOON_PROVIDERS,
 ];
-const isComingSoon = (id: ProviderId) => PROVIDERS.some((provider) => provider.id === id && provider.comingSoon);
+const isComingSoon = (id: ProviderId) => COMING_SOON_PROVIDERS.some((provider) => provider.id === id);
 // Connected with one key for the whole instance, which only an admin sets.
 const SHARED = new Set<ProviderId>(["thingiverse"]);
 // Connected with the user's own sign-in, which the site can turn down once it expires. MyMiniFactory's also has
@@ -60,6 +60,11 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
     printables: true,
     myminifactory: null,
     thangs: false,
+    cults3d: false,
+    makeronline: false,
+    crealitycloud: false,
+    nexprint: false,
+    snapmakerspace: false,
   });
   const [menu, setMenu] = React.useState<{ id: ProviderId; top: number; left: number } | null>(null);
   const [expired, setExpired] = React.useState<Record<SessionProvider, boolean>>({
