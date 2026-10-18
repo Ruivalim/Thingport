@@ -181,6 +181,20 @@ export const importsApi = {
     return res.json();
   },
 
+  /** fromMakerworldProfiles for a Snapmaker Space model. */
+  fromSnapmakerProfiles: async (
+    payload: ImportLinkPayload & { scope: Exclude<MakerworldProfileScope, "url"> },
+  ): Promise<{ job_id: string }> => {
+    const res = await fetch(`${apiBase()}/import/snapmaker-profiles`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Import failed"));
+    return res.json();
+  },
+
   /** Returns immediately; ImportJobContext polls the job. A pasted list of links, imported one at
    *  a time; what fails can be rerun with retryImportJob. */
   fromLinks: async (
@@ -359,6 +373,30 @@ export const importsApi = {
       const message = await readErrorMessage(res, "MyMiniFactory collection import failed");
       throw new Error(message);
     }
+    return res.json();
+  },
+
+  /** The user's own Snapmaker Space likes or bookmarks, read with their sign-in. */
+  listSnapmakerListEntries: async (payload: ImportLinkPayload): Promise<ImportCollectionEntriesResult> => {
+    const res = await fetch(`${apiBase()}/import/snapmaker-list/entries`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Could not load this collection"));
+    return res.json();
+  },
+
+  /** Returns immediately; ImportJobContext polls the job. */
+  fromSnapmakerList: async (payload: ImportLinkPayload & { model_ids: string[] }): Promise<{ job_id: string }> => {
+    const res = await fetch(`${apiBase()}/import/snapmaker-list`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Snapmaker Space import failed"));
     return res.json();
   },
 

@@ -146,7 +146,7 @@ export type DatabaseCredentialsInput = {
   password: string;
 };
 
-export type ImportProvider = "makerworld" | "printables" | "thingiverse" | "myminifactory";
+export type ImportProvider = "makerworld" | "printables" | "thingiverse" | "myminifactory" | "snapmaker";
 /** An admin can turn a provider off for the whole instance; menus hide it then. */
 export type ProviderSetting = { id: ImportProvider; enabled: boolean };
 
@@ -369,6 +369,25 @@ export const settingsApi = {
     });
     if (res.status === 401) throw new UnauthorizedError();
     if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to update MyMiniFactory settings"));
+    return res.json();
+  },
+
+  // The user's own Snapmaker Space sign-in (its access token), which Thingport Grab keeps fresh. Write-only.
+  getSnapmakerSession: async (): Promise<{ configured: boolean; expired: boolean }> => {
+    const res = await fetch(`${apiBase()}/settings/snapmaker-session`, { headers: authHeaders() });
+    assertOk(res, "Failed to load Snapmaker Space settings");
+    return res.json();
+  },
+
+  /** Checked with Snapmaker before it's saved. */
+  updateSnapmakerSession: async (token: string | null): Promise<{ configured: boolean }> => {
+    const res = await fetch(`${apiBase()}/settings/snapmaker-session`, {
+      method: "PATCH",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ token, verify: true }),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to update Snapmaker Space settings"));
     return res.json();
   },
 

@@ -18,12 +18,13 @@ import { resolvePrintablesModel } from "./printablesApi";
 import { getMyminifactoryApiKey, getThingiverseAccessToken } from "./settingsService";
 import { MyminifactoryAuthError, MyminifactoryRateLimitError, resolveMyminifactoryObject } from "./myminifactoryApi";
 import { resolveThingiverseThing, ThingiverseAuthError, ThingiverseRateLimitError } from "./thingiverseApi";
+import { resolveSnapmakerModel } from "./snapmakerApi";
 import { getDisabledProviders } from "./providerSettingsService";
 
 // Links models that only know their author by name: first by name matching, then by looking the
 // rest up on their site once per distinct creator. Only metadata is fetched.
 
-const LOOKUP_PROVIDERS = ["makerworld", "thingiverse", "printables", "myminifactory"] as const;
+const LOOKUP_PROVIDERS = ["makerworld", "thingiverse", "printables", "myminifactory", "snapmaker"] as const;
 type LookupProvider = (typeof LOOKUP_PROVIDERS)[number];
 
 export type LookupProblem =
@@ -184,6 +185,10 @@ async function lookUpAuthor(
     case "printables": {
       await maybeSleep(IMPORT_COLLECTION_DELAY_MS);
       return (await resolvePrintablesModel(candidate.externalId))?.meta.author ?? null;
+    }
+    case "snapmaker": {
+      await maybeSleep(IMPORT_COLLECTION_DELAY_MS);
+      return (await resolveSnapmakerModel(candidate.externalId))?.meta.author ?? null;
     }
     case "makerworld": {
       const cookie = await getUserMakerworldCookie(candidate.userId);

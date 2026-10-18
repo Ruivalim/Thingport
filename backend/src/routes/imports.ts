@@ -12,6 +12,7 @@ import { asyncHandler } from "../utils/asyncHandler";
 import { requireCaptcha } from "../services/captchaService";
 import {
   assertCanImportUrl,
+  SNAPMAKER_SESSION_CODE,
   checkImportStatus,
   downloadImportToTemp,
   findImportedExternalIds,
@@ -48,6 +49,18 @@ import {
   parseMyminifactoryCollectionUrl,
 } from "../services/myminifactoryApi";
 import { getUserMakerworldCookie } from "../services/makerworldCookieService";
+import {
+  fetchSnapmakerList,
+  parseSnapmakerListUrl,
+  parseSnapmakerModelUrl,
+  SnapmakerAuthError,
+  snapmakerListName,
+} from "../services/snapmakerApi";
+import {
+  getUserSnapmakerToken,
+  markSnapmakerTokenRejected,
+  SNAPMAKER_CONNECT,
+} from "../services/snapmakerSessionService";
 import { listZipEntries } from "../services/zipService";
 import { createJob, createJobItems, getActiveJob, getJob, listJobItems } from "../services/importJobService";
 import { queueLink, startLinksJob } from "../services/importQueueService";
@@ -58,6 +71,8 @@ import {
   runMakerworldProfilesImportJob,
   runMyminifactoryCollectionImportJob,
   runPrintablesCollectionImportJob,
+  runSnapmakerListImportJob,
+  runSnapmakerProfilesImportJob,
   runThingiverseCollectionImportJob,
   runThingiverseLikesImportJob,
   runZipImportJob,
@@ -209,7 +224,7 @@ router.get(
 );
 
 const statusBatchSchema = z.object({
-  provider: z.enum(["makerworld", "thingiverse", "printables", "myminifactory"]),
+  provider: z.enum(["makerworld", "thingiverse", "printables", "myminifactory", "snapmaker"]),
   external_ids: z.array(z.string().max(64)).max(10_000),
 });
 
@@ -444,6 +459,54 @@ router.post(
   }),
 );
 
+/** The user's likes or bookmarks, from a link Thingport Grab or the app made (`?tab=interactions&list=...`). */
+function snapmakerListOf(url: string) {
+  const parsed = parseSnapmakerListUrl(url);
+  if (!parsed?.list) throw new HttpError(400, "Not a link to your Snapmaker Space likes or bookmarks");
+  return { ...parsed, list: parsed.list };
+}
+
+router.post(
+  "/import/snapmaker-list/entries",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(importRequestSchema, req.body);
+    const url = await enabledImportUrl(body.url);
+    const { list } = snapmakerListOf(url);
+    const token = await getUserSnapmakerToken(req.userId!);
+    if (!token) throw new HttpError(400, SNAPMAKER_CONNECT, SNAPMAKER_SESSION_CODE);
+
+    let listing: Awaited<ReturnType<typeof fetchSnapmakerList>>;
+    try {
+      listing = await fetchSnapmakerList(list, token);
+    } catch (err) {
+      if (err instanceof SnapmakerAuthError) {
+        await markSnapmakerTokenRejected(req.userId!);
+        // 400, not 401: the frontend treats any 401 as an expired Thingport session.
+        throw new HttpError(400, err.message, SNAPMAKER_SESSION_CODE);
+      }
+      throw err;
+    }
+    if (!listing.entries.length) throw new HttpError(400, `Your ${snapmakerListName(list)} are empty`);
+
+    const alreadyImported = await findImportedExternalIds(
+      req.userId!,
+      "snapmaker",
+      listing.entries.map((e) => e.modelId),
+    );
+    res.json({
+      title: snapmakerListName(list),
+      total: listing.total,
+      truncated: listing.truncated,
+      entries: listing.entries.map((e) => ({
+        design_id: e.modelId,
+        title: e.title,
+        cover: e.cover,
+        already_imported: alreadyImported.has(e.modelId),
+      })),
+    });
+  }),
+);
+
 // Batch imports run in the background and are polled via GET /import/jobs/:id. One RUNNING job
 // per user doubles as the "already in progress" lock.
 
@@ -467,6 +530,20 @@ router.post(
     if (!parseMakerworldModelUrl(url)) throw new HttpError(400, "Not a MakerWorld model link");
     const job = await createJob(req.userId!, "PROFILES", { sourceUrl: url, provider: "makerworld" });
     void runMakerworldProfilesImportJob(job.id, req.userId!, { ...body, url });
+    res.status(202).json({ job_id: job.id });
+  }),
+);
+
+router.post(
+  "/import/snapmaker-profiles",
+  requireCaptcha("import"),
+  asyncHandler(async (req, res) => {
+    const body = parseBody(makerworldProfilesImportRequestSchema, req.body);
+    await assertNoActiveJob(req.userId!);
+    const url = await enabledImportUrl(body.url);
+    if (!parseSnapmakerModelUrl(url)) throw new HttpError(400, "Not a Snapmaker model link");
+    const job = await createJob(req.userId!, "PROFILES", { sourceUrl: url, provider: "snapmaker" });
+    void runSnapmakerProfilesImportJob(job.id, req.userId!, { ...body, url });
     res.status(202).json({ job_id: job.id });
   }),
 );
@@ -574,6 +651,26 @@ router.post(
       total: body.object_ids.length,
     });
     void runMyminifactoryCollectionImportJob(job.id, req.userId!, { ...body, url, ...parsed });
+    res.status(202).json({ job_id: job.id });
+  }),
+);
+
+const snapmakerListImportRequestSchema = importRequestSchema.extend({ model_ids: z.array(z.string()).min(1) });
+
+router.post(
+  "/import/snapmaker-list",
+  requireCaptcha("import"),
+  asyncHandler(async (req, res) => {
+    const body = parseBody(snapmakerListImportRequestSchema, req.body);
+    await assertNoActiveJob(req.userId!);
+    const url = await enabledImportUrl(body.url);
+    const { list } = snapmakerListOf(url);
+    const job = await createJob(req.userId!, "COLLECTION", {
+      sourceUrl: url,
+      provider: "snapmaker",
+      total: body.model_ids.length,
+    });
+    void runSnapmakerListImportJob(job.id, req.userId!, { ...body, url, list });
     res.status(202).json({ job_id: job.id });
   }),
 );

@@ -7,7 +7,8 @@ import { clearError, els, showError } from "./dom";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
-type Logo = { path: string; color: string };
+/** `viewBox` defaults to 0 0 24 24, Simple Icons' box. */
+type Logo = { path: string; color: string; viewBox?: string; fillRule?: "evenodd" };
 
 // Same glyphs as the web app's providerLogos.tsx.
 const LOGOS: Record<"makerworld" | "printables" | "thingiverse" | OptionalSite["id"], Logo> = {
@@ -27,6 +28,13 @@ const LOGOS: Record<"makerworld" | "printables" | "thingiverse" | OptionalSite["
     color: "#00C4A6",
     path: "M24 0.241V23.759a0.241 0.241 0 0 1 -0.241 0.241H14.4V19.201h4.801V7.2H14.4V14.4H9.6V7.2H4.799v12.001H9.6v4.799H0.481A0.481 0.481 0 0 1 0 23.519V0.241A0.241 0.241 0 0 1 0.241 0H23.759A0.241 0.241 0 0 1 24 0.241Z",
   },
+  // A black-and-white mark, so it takes the text colour to show in both themes; the S is cut out of the disc.
+  snapmaker: {
+    color: "currentColor",
+    viewBox: "0 0 36 36",
+    fillRule: "evenodd",
+    path: "M18 0a18 18 0 1 0 0 36a18 18 0 1 0 0-36ZM23.2899 9.13976C21.7574 8.82421 20.5055 9.02036 19.5311 9.72254C18.5567 10.4247 17.8864 11.6016 17.5232 13.2505L16.3835 18.396H16.3864L15.3677 22.9928C15.1758 23.8627 14.8864 24.4711 14.5026 24.8207C14.1187 25.1704 13.5842 25.2727 12.9022 25.1334C12.4593 25.0425 11.9868 24.8776 11.4789 24.6388L10.9238 27.1291C11.414 27.3792 12.0104 27.5754 12.7132 27.7175C14.2457 28.0331 15.4976 27.8369 16.472 27.1348C17.4464 26.4326 18.1167 25.2557 18.4799 23.6068L19.6197 18.4613H19.6167L20.6354 13.8645C20.8273 12.9946 21.1167 12.3863 21.5006 12.0366C21.8844 11.6869 22.4189 11.5846 23.1009 11.7239C23.5439 11.8148 24.0163 11.9797 24.5242 12.2185L25.0763 9.72538C24.5891 9.4809 23.9927 9.28475 23.2899 9.13976Z",
+  },
 };
 
 type Site = { name: string; logo: Logo; optional?: OptionalSite };
@@ -38,9 +46,9 @@ const SITES: Site[] = [
   ...OPTIONAL_SITES.map((site) => ({ name: site.name, logo: LOGOS[site.id], optional: site })),
 ];
 
-function svg(path: string, attrs: Record<string, string>): SVGSVGElement {
+function svg(path: string, attrs: Record<string, string>, viewBox = "0 0 24 24"): SVGSVGElement {
   const el = document.createElementNS(SVG_NS, "svg");
-  el.setAttribute("viewBox", "0 0 24 24");
+  el.setAttribute("viewBox", viewBox);
   el.setAttribute("aria-hidden", "true");
   el.setAttribute("focusable", "false");
   const p = document.createElementNS(SVG_NS, "path");
@@ -103,7 +111,8 @@ export async function loadSites(): Promise<void> {
       name.className = "site__name";
       name.textContent = site.name;
       const status = enabled[index] || !site.optional ? tick(site) : enableButton(site, site.optional);
-      row.append(svg(site.logo.path, { fill: site.logo.color }), name, status);
+      const { path, color, viewBox, fillRule } = site.logo;
+      row.append(svg(path, { fill: color, ...(fillRule ? { "fill-rule": fillRule } : {}) }, viewBox), name, status);
       return row;
     }),
   );

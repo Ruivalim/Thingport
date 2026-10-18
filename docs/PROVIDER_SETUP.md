@@ -1,6 +1,6 @@
 # Provider setup
 
-Importing from **Printables** works out of the box (its public API needs no credential). **MakerWorld** needs each user's own session cookie, and **Thingiverse** an App Token an admin sets once for the whole instance. **MyMiniFactory** needs an API key an admin sets once for free models; each user connects their own MyMiniFactory session only to import paid or sign-in-only models from their library.
+Importing from **Printables** works out of the box (its public API needs no credential). **MakerWorld** needs each user's own session cookie, and **Thingiverse** an App Token an admin sets once for the whole instance. **MyMiniFactory** needs an API key an admin sets once for free models; each user connects their own MyMiniFactory session only to import paid or sign-in-only models from their library. **Snapmaker Space** needs each user's own sign-in, which [Thingport Grab](../extension/README.md) keeps fresh.
 
 Connect them under **Configuration → Providers**: open the user menu (your avatar, top right) and choose **Configuration**, or click one of the provider chips at the bottom of that menu. Right-click a provider to connect or disconnect it, or double-click one that isn't connected yet. A green tick means it's connected. A provider your admin has [turned off](#turning-a-provider-off) isn't listed.
 
@@ -46,6 +46,36 @@ With [Thingport Grab](../extension/README.md) allowed on MyMiniFactory, opening 
 
 This is your own MyMiniFactory login session -- don't share it. It expires once you sign out of MyMiniFactory, or after a while; Thingport then says so, and opening MyMiniFactory with Thingport Grab connects it again. A paid model you haven't bought can't be imported: Thingport Grab says so on its page.
 
+## Snapmaker Space sign-in
+
+Per-user (Configuration > Providers > Snapmaker Space). Snapmaker gives its files only to signed-in users, so every
+Snapmaker import, and reading your likes and bookmarks, runs as you. A model comes in like a MakerWorld one: its print
+profile's 3MF, as a file tagged with the profile, and importing it again with another profile (or picking the
+designer's or all profiles) adds more; a model without print profiles brings its model files instead.
+
+Snapmaker's sign-in lasts a day, and its renewal can be used only once: whoever renews it signs out anyone else still
+holding the old one. So Thingport never renews it itself.
+
+### Easiest: Thingport Grab
+
+With [Thingport Grab](../extension/README.md) allowed on Snapmaker Space, opening space.snapmaker.com while you're
+signed in connects your account. From then on Grab renews the sign-in for your browser and Thingport together, every
+few hours while the browser is open, so imports and synced likes and bookmarks keep working without another visit.
+If the browser stays closed for a day, Thingport says the sign-in ran out, and the next visit connects it again.
+
+### Manual: copy it from your browser
+
+1. Sign in at [space.snapmaker.com](https://space.snapmaker.com).
+2. Open DevTools (`F12`, or `Cmd+Option+I` on macOS).
+3. Chrome/Edge: **Application** tab > **Cookies** > `https://space.snapmaker.com`. Firefox: **Storage** tab > **Cookies**.
+4. Copy the value of the cookie named `login_access_token`. (Pasting the whole `Cookie` header, or an
+   `Authorization: Bearer` value, works too.)
+5. Right-click **Snapmaker Space** in Thingport's **Configuration > Providers**, choose **Connect** and paste it.
+   Thingport checks it with Snapmaker before storing it.
+
+A sign-in pasted by hand lasts a day; only Grab renews it. Don't copy `login_refresh_token`: renewing with it would sign
+your browser out of Snapmaker.
+
 ## MakerWorld cookie
 
 Per-user (Configuration > Providers > MakerWorld) -- MakerWorld has no developer API, so importing from it runs as _your own_ logged-in MakerWorld session, captured as a cookie value.
@@ -68,7 +98,7 @@ This is your own MakerWorld login session -- don't share it, and expect to redo 
 
 ## Turning a provider off
 
-Admins choose which providers this Thingport imports from, under **Administration → Providers**. All four are on by
+Admins choose which providers this Thingport imports from, under **Administration → Providers**. All five are on by
 default. Turn one off and nothing new comes from it for anyone: links to it, Thingport Grab and the import queue are
 refused, its synced collections pause, and background jobs skip it. It also disappears from everyone's
 **Configuration → Providers**. Models already imported from it stay as they are, and turning it back on picks up where

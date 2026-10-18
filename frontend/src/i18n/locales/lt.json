@@ -269,6 +269,7 @@
       "makerworldDisabledReason": "MakerWorld: neprijungta",
       "thingiverseDisabledReason": "Thingiverse: administratorius dar nesukonfigūravo API rakto",
       "myminifactoryDisabledReason": "MyMiniFactory: administratorius dar nesukonfigūravo API rakto",
+      "snapmakerDisabledReason": "Snapmaker Space: prijunkite paskyrą skiltyje Konfigūracija → Šaltiniai",
       "myModels": "Mano modeliai"
     },
     "notifications": {
@@ -531,7 +532,8 @@
           "makerworld": "Bambu Lab modelių svetainė: importai su spausdinimo profiliais ir kolekcijų sinchronizavimas.",
           "printables": "Prusa modelių svetainė: importai bei viešų ir privačių kolekcijų sinchronizavimas.",
           "thingiverse": "Importai, kolekcijos ir patikę modeliai, naudojant šio Thingport programėlės raktą.",
-          "myminifactory": "Modeliai ir viešos kolekcijos, naudojant šio Thingport API raktą; nusipirkti modeliai – per kiekvieno naudotojo MyMiniFactory paskyrą."
+          "myminifactory": "Modeliai ir viešos kolekcijos, naudojant šio Thingport API raktą; nusipirkti modeliai – per kiekvieno naudotojo MyMiniFactory paskyrą.",
+          "snapmaker": "Modeliai su spausdinimo profiliais bei kiekvieno naudotojo pamėgti ir pažymėti modeliai, per kiekvieno naudotojo Snapmaker paskyrą."
         },
         "keyStatus": {
           "thingiverse": {
@@ -1661,6 +1663,17 @@
         "expired": "Prisijungimo galiojimas baigėsi. Atverkite myminifactory.com su Thingport Grab arba vėl prijunkite MyMiniFactory skiltyje Konfigūracija → Šaltiniai.",
         "expiredStatus": "Prisijungimas nebegalioja"
       },
+      "snapmaker": {
+        "placeholder": "login_access_token reikšmė arba visa Cookie antraštė",
+        "steps": [
+          "Paprasčiausia: su Thingport Grab tiesiog atverkite space.snapmaker.com prisijungę. Jis prijungs jūsų paskyrą ir palaikys prisijungimą galiojantį, nes Snapmaker prisijungimas galioja tik parą.",
+          "Arba rankiniu būdu: prisijunkite prie space.snapmaker.com ir atverkite naršyklės kūrėjo įrankius (F12).",
+          "Skiltyje Application (Chrome, Edge) arba Storage (Firefox) → Cookies → space.snapmaker.com nukopijuokite login_access_token reikšmę ir įklijuokite ją žemiau. Įklijuotas rankiniu būdu, jis galioja parą."
+        ],
+        "notConnected": "Snapmaker failus duoda tik prisijungusiems naudotojams. Prijunkite paskyrą, kad galėtumėte importuoti jo modelius bei savo pamėgtus ir pažymėtus modelius.",
+        "expired": "Prisijungimo galiojimas baigėsi. Atverkite space.snapmaker.com su Thingport Grab arba vėl prijunkite Snapmaker Space skiltyje Konfigūracija → Šaltiniai.",
+        "expiredStatus": "Prisijungimas nebegalioja"
+      },
       "printables": {
         "alwaysConnected": "Printables prijungta iš karto: nereikia paskyros ar rakto."
       },
@@ -2626,14 +2639,15 @@
           "takenBy": "Sinchronizuojama su „{{name}}“",
           "loadFailed": "Nepavyko įkelti kolekcijų.",
           "lookupFailed": "Nepavyko rasti šios kolekcijos.",
-          "notALink": "Įklijuokite MakerWorld, Printables, Thingiverse arba MyMiniFactory kolekcijos nuorodą.",
+          "notALink": "Įklijuokite MakerWorld, Printables, Thingiverse, MyMiniFactory arba Snapmaker Space kolekcijos nuorodą.",
           "usernameFailed": "Nepavyko išsaugoti vartotojo vardo.",
           "openProviders": "Atidaryti tiekėjus",
           "notConnected": {
             "makerworld": "Prijunkite MakerWorld per Konfigūracija > Šaltiniai, kad čia matytumėte savo kolekcijas. Pagal slapuką Thingport žino, kas jūs ten esate.",
             "printables": "Printables šiuo metu nepasiekiamas.",
             "thingiverse": "Thingiverse šiame Thingport dar neprijungtas. Administratorius gali jį prijungti per Konfigūracija > Tiekėjai.",
-            "myminifactory": "MyMiniFactory šiame Thingport dar neprijungtas. Administratorius gali jį prijungti per Konfigūracija > Tiekėjai."
+            "myminifactory": "MyMiniFactory šiame Thingport dar neprijungtas. Administratorius gali jį prijungti per Konfigūracija > Tiekėjai.",
+            "snapmaker": "Prijunkite Snapmaker Space per Konfigūracija > Šaltiniai arba atverkite jį su Thingport Grab, kad čia matytumėte savo pamėgtus ir pažymėtus modelius."
           },
           "usernameLabel": "Jūsų {{provider}} vartotojo vardas",
           "usernameHint": {
@@ -2664,6 +2678,7 @@
           "startedImporting": "„{{name}}“ dabar sinchronizuojama su {{provider}} kolekcija. Jos modeliai importuojami; gausite pranešimą.",
           "yoursLabel": "Jūsų {{provider}} kolekcijos",
           "likes": "Pamėgti modeliai",
+          "bookmarks": "Pažymėti modeliai",
           "startedWaiting": "„{{name}}“ dabar sinchronizuojama su „{{source}}“. Jos modeliai pateks, kai kitą kartą atidarysite {{provider}} su Thingport Grab.",
           "pickPrompt": "Pasirinkite kolekciją aukščiau arba įklijuokite nuorodą.",
           "startNothing": "Sinchronizuoti",
@@ -2752,6 +2767,7 @@
         "thingiverseCatIdLabel": "Thingiverse kategorijų ID",
         "printablesCatIdLabel": "Printables kategorijų ID",
         "myminifactoryCatIdLabel": "MyMiniFactory kategorijų ID",
+        "snapmakerCatIdLabel": "Snapmaker Space kategorijų ID",
         "catIdsPlaceholder": "pvz. 800;71;1001",
         "catIdsHelp": "Kelis ID atskirkite „;“ -- atitiks, jei importo kategorija sutampa su bet kuriuo iš jų",
         "dragToMove": "Vilkite, kad perkeltumėte"

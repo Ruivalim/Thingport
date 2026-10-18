@@ -1,25 +1,25 @@
-# Import from MakerWorld, Printables, Thingiverse and MyMiniFactory
+# Import from MakerWorld, Printables, Thingiverse, MyMiniFactory and Snapmaker Space
 
 Thingport keeps a real copy of every model you import: its files, photos, title, description, tags, author and a link
 back to where it came from. If the original page disappears, the model is still in your library.
 
 ## Ways to import
 
-- **Paste a link.** Click **Add → Import** and paste a model link from MakerWorld, Printables, Thingiverse or
-  MyMiniFactory, or any direct link to a model file. Paste several links, one per line, and they're imported one after
+- **Paste a link.** Click **Add → Import** and paste a model link from MakerWorld, Printables, Thingiverse,
+  MyMiniFactory or Snapmaker Space, or any direct link to a model file. Paste several links, one per line, and they're imported one after
   another as a background job. You can also paste a link straight into the search bar.
 - **Use Thingport Grab.** The [browser extension](../../extension/README.md) adds a Thingport button to model pages on
-  all four sites (MyMiniFactory once you allow it, with a single click in its popup), so you can import without leaving
-  the page, file the model into a collection, and import whole collections.
+  all five sites (MyMiniFactory and Snapmaker Space once you allow them, with a single click in its popup), so you can
+  import without leaving the page, file the model into a collection, and import whole collections.
 - **Import a collection or your likes.** Paste a collection link, or your Thingiverse likes, and pick which models to
-  bring in. MakerWorld collections are imported with Thingport Grab.
+  bring in. Your Snapmaker Space likes and bookmarks import from your profile's Interactions tab with Thingport Grab. MakerWorld collections are imported with Thingport Grab.
 - **Keep a collection in sync.** A [synced collection](../guides/synced-collections.md) imports models added to it on
   the provider later, on its own.
 
 ## What comes with a model
 
-- Every file, and on MakerWorld, its print profiles: the one the link points to, all of the designer's, or the
-  community's too. Each profile becomes its own file on the model.
+- Every file, and on MakerWorld and Snapmaker Space, its print profiles: the one the link points to, all of the
+  designer's, or the community's too. Each profile becomes its own file on the model.
 - The photo gallery, the formatted description, tags and the source site's category, which Thingport maps to your own
   [categories](organize-and-search.md).
 - The author, with their avatar and profile, linked to an [author page](authors.md).
@@ -37,7 +37,8 @@ from Thingport Grab wait in **Administration → Import queue** until they're st
 ## Before you start
 
 Printables works with no setup. MakerWorld needs your session cookie, and Thingiverse and MyMiniFactory a key set by an
-admin; MyMiniFactory models you bought come in once you connect your MyMiniFactory account. See
+admin; MyMiniFactory models you bought come in once you connect your MyMiniFactory account. Snapmaker Space needs your
+own sign-in, which Thingport Grab keeps fresh. See
 [provider setup](../PROVIDER_SETUP.md). Admins can also
 [turn a provider off](../PROVIDER_SETUP.md#turning-a-provider-off) for the whole instance, and then nothing is imported
 from it.

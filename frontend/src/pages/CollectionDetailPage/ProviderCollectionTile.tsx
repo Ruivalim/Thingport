@@ -15,6 +15,8 @@ export const PROVIDER_ACCENTS: Record<BrowsableProvider, string> = {
   printables: "#FA6831",
   thingiverse: "#5575FE",
   myminifactory: "#00C4A6",
+  // Snapmaker's own blue: its mark is black, which a dark theme would lose.
+  snapmaker: "#2563EB",
 };
 
 type Props = {
@@ -242,20 +244,60 @@ function MyMiniFactoryTile({ collection }: { collection: ProviderCollection }) {
   );
 }
 
+// Snapmaker Space's model card: the newest model large, a row of three more, then name and count.
+function SnapmakerTile({ collection }: { collection: ProviderCollection }) {
+  const [cover, ...rest] = collection.thumbnails;
+  return (
+    <Box
+      sx={{
+        borderRadius: "12px",
+        border: 1,
+        borderColor: "divider",
+        bgcolor: "background.paper",
+        overflow: "hidden",
+      }}
+    >
+      <Thumb src={cover} sx={{ aspectRatio: "4 / 3" }} />
+      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "2px", mt: "2px" }}>
+        {[0, 1, 2].map((i) => (
+          <Thumb key={i} src={rest[i]} sx={{ aspectRatio: "1 / 1" }} />
+        ))}
+      </Box>
+      <Box sx={{ px: 1.25, py: 1 }}>
+        <Typography noWrap sx={{ fontWeight: 600, fontSize: "0.875rem" }}>
+          {collection.name}
+        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", fontSize: "0.8rem", color: "text.secondary" }}>
+          <ModelCount count={collection.model_count} provider="snapmaker" />
+          {collection.private && <LockOutlinedIcon sx={{ fontSize: 14, ml: "auto" }} />}
+        </Box>
+      </Box>
+    </Box>
+  );
+}
+
 const TILES: Record<BrowsableProvider, (props: { collection: ProviderCollection }) => JSX.Element> = {
   makerworld: MakerWorldTile,
   printables: PrintablesTile,
   thingiverse: ThingiverseTile,
   myminifactory: MyMiniFactoryTile,
+  snapmaker: SnapmakerTile,
 };
+
+/** The name to show: a user's likes, and Snapmaker's likes and bookmarks, come named in English by the instance. */
+function displayName(provider: BrowsableProvider, collection: ProviderCollection, t: (key: string) => string): string {
+  if (collection.likes) return t("collections.sync.browse.likes");
+  if (provider === "snapmaker" && collection.id.startsWith("likes-")) return t("collections.sync.browse.likes");
+  if (provider === "snapmaker" && collection.id.startsWith("bookmarks-")) return t("collections.sync.browse.bookmarks");
+  return collection.name;
+}
 
 /** A provider's collection to pick, drawn in that provider's colours and manner. One already synced
  *  with another Thingport collection can't be picked, and says with which. */
 export default function ProviderCollectionTile({ provider, collection: given, selected, onSelect }: Props) {
   const { t } = useTranslation("models");
   const Tile = TILES[provider];
-  // A user's likes come as a collection the instance names in English.
-  const collection = given.likes ? { ...given, name: t("collections.sync.browse.likes") } : given;
+  const collection = { ...given, name: displayName(provider, given, t) };
   const taken = collection.synced !== null;
   return (
     <Box>
@@ -346,6 +388,19 @@ export function ProviderCollectionTileSkeleton({ provider }: { provider: Browsab
           ))}
         </Box>
         {lines}
+      </Box>
+    );
+  }
+  if (provider === "snapmaker") {
+    return (
+      <Box aria-hidden sx={{ borderRadius: "12px", border: 1, borderColor: "divider", overflow: "hidden" }}>
+        <Skeleton variant="rectangular" sx={{ width: "100%", height: "auto", aspectRatio: "4 / 3" }} />
+        <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "2px", mt: "2px" }}>
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} variant="rectangular" sx={{ width: "100%", height: "auto", aspectRatio: "1 / 1" }} />
+          ))}
+        </Box>
+        <Box sx={{ px: 1.25, py: 1 }}>{lines}</Box>
       </Box>
     );
   }

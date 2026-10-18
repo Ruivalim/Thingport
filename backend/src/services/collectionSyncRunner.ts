@@ -16,7 +16,7 @@ import {
 import { COLLECTION_SYNC_ITEM_DELAY_MS, IMPORT_COLLECTION_DELAY_MS, IMPORT_MAKERWORLD_CALL_DELAY_MS } from "../config";
 import { sleep } from "../utils/concurrency";
 import { addPrintsToCollection } from "./collectionService";
-import { findLibraryPrints, modelUrlFor, providerName, sourceDescription } from "./collectionSyncService";
+import { findLibraryPrints, hasProfiles, modelUrlFor, providerName, sourceDescription } from "./collectionSyncService";
 import {
   PRINTABLES_FORGOTTEN,
   printablesPushIsOff,
@@ -35,6 +35,8 @@ import {
   markMakerworldCookieRejected,
 } from "./makerworldCookieService";
 import { checkPrintablesCollection, fetchPrintablesCollectionEntries } from "./printablesApi";
+import { fetchSnapmakerList, SnapmakerAuthError } from "./snapmakerApi";
+import { getSnapmakerConnection, getUserSnapmakerToken, markSnapmakerTokenRejected } from "./snapmakerSessionService";
 import {
   checkThingiverseCollection,
   checkThingiverseUser,
@@ -103,6 +105,13 @@ export async function fetchListing(
     const listing = await fetchMyminifactoryCollectionObjects(username, slug, apiKey);
     return listing ? listing.entries.map((e) => e.objectId) : null;
   }
+  if (sync.provider === "snapmaker") {
+    // The user's own likes or bookmarks ("likes-<id>"), read as them: they're never gone.
+    const token = await getUserSnapmakerToken(sync.userId);
+    if (!token) throw new SnapmakerAuthError();
+    const { entries } = await fetchSnapmakerList(id.startsWith("likes-") ? "likes" : "bookmarks", token);
+    return entries.map((e) => e.modelId);
+  }
   throw new Error(`Unknown provider "${sync.provider}"`);
 }
 
@@ -168,6 +177,16 @@ const CONNECTION_PROBLEMS = {
     reason: "MyMiniFactory isn't connected on this Thingport.",
     fix: "an admin connects it again",
   },
+  snapmakerDisconnected: {
+    error: "Snapmaker Space isn't connected",
+    reason: "Snapmaker Space isn't connected.",
+    fix: "you connect it",
+  },
+  snapmakerExpired: {
+    error: "Snapmaker Space sign-in ran out",
+    reason: "Your Snapmaker Space sign-in ran out; Thingport Grab renews it while the browser it's in is open.",
+    fix: "you open space.snapmaker.com with Thingport Grab, or connect it again",
+  },
 } satisfies Record<string, ConnectionProblem>;
 
 /** `"A"`, `"A" and "B"`, or the first few and how many more. */
@@ -211,6 +230,11 @@ async function connectionProblem(sync: Pick<CollectionSync, "userId" | "provider
   }
   if (sync.provider === "myminifactory" && !(await getMyminifactoryApiKey())) {
     return CONNECTION_PROBLEMS.myminifactoryDisconnected;
+  }
+  if (sync.provider === "snapmaker") {
+    const connection = await getSnapmakerConnection(sync.userId);
+    if (connection === "disconnected") return CONNECTION_PROBLEMS.snapmakerDisconnected;
+    if (connection === "expired") return CONNECTION_PROBLEMS.snapmakerExpired;
   }
   return null;
 }
@@ -272,6 +296,11 @@ async function runSync(syncId: string): Promise<SyncOutcome> {
       await holdProvider(userId, sync.provider, CONNECTION_PROBLEMS.makerworldExpired);
       return "disconnected";
     }
+    if (err instanceof SnapmakerAuthError) {
+      await markSnapmakerTokenRejected(userId);
+      await holdProvider(userId, sync.provider, CONNECTION_PROBLEMS.snapmakerExpired);
+      return "disconnected";
+    }
     const message = err instanceof Error && err.message.trim() ? err.message.trim() : "Sync failed";
     console.warn(`[sync] "${sync.collection.name}" (${sync.provider} ${sync.externalId}): ${message}`);
     await prisma.collectionSync
@@ -315,7 +344,7 @@ async function runSync(syncId: string): Promise<SyncOutcome> {
   const toImport = fresh.filter((id) => !inLibrary.has(id));
   const itemPayload: Prisma.InputJsonValue = {
     collection_id: sync.collectionId,
-    scope: sync.provider === "makerworld" ? sync.profileScope : "url",
+    scope: hasProfiles(sync.provider) ? sync.profileScope : "url",
     title: null,
   };
 

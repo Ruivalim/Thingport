@@ -35,6 +35,8 @@ import {
   isMakerworldModelUrl,
   isMyminifactoryCollectionUrl,
   isPrintablesCollectionUrl,
+  isSnapmakerListUrl,
+  isSnapmakerModelUrl,
   isThingiverseCollectionUrl,
   isThingiverseLikesUrl,
   type ImportProviderKey,
@@ -42,7 +44,7 @@ import {
 import type { MakerworldProfileScope } from "../../api/imports";
 import { allProvidersOff, useDisabledProviders } from "../../hooks/useDisabledProviders";
 
-const IMPORT_PROVIDERS: ImportProviderKey[] = ["makerworld", "thingiverse", "printables", "myminifactory"];
+const IMPORT_PROVIDERS: ImportProviderKey[] = ["makerworld", "thingiverse", "printables", "myminifactory", "snapmaker"];
 
 /** What the search palette's !import command calls. */
 export type AddMenuHandle = {
@@ -106,10 +108,12 @@ const AddMenu = React.forwardRef<AddMenuHandle, Props>(function AddMenu(
           isThingiverseLikesUrl(link) ||
           isThingiverseCollectionUrl(link) ||
           isPrintablesCollectionUrl(link) ||
-          isMyminifactoryCollectionUrl(link),
+          isMyminifactoryCollectionUrl(link) ||
+          isSnapmakerListUrl(link),
       )
     : isMakerworldCollectionUrl(linkValue);
-  const isMakerworldModel = links.some((link) => isMakerworldModelUrl(link));
+  // Models with print profiles to pick between.
+  const hasProfiles = links.some((link) => isMakerworldModelUrl(link) || isSnapmakerModelUrl(link));
 
   const closeMenu = () => setAnchorEl(null);
 
@@ -156,11 +160,11 @@ const AddMenu = React.forwardRef<AddMenuHandle, Props>(function AddMenu(
     if (needsCaptcha && !captcha?.captcha_answer.trim()) return;
     // Each captcha works once; reopening shows a fresh one.
     if (isBatch) {
-      await upload.submitImportMany(links, needsCaptcha ? captcha : null, isMakerworldModel ? profileScope : "url");
+      await upload.submitImportMany(links, needsCaptcha ? captcha : null, hasProfiles ? profileScope : "url");
       setImportOpen(false);
       return;
     }
-    await upload.submitImport(linkValue, needsCaptcha ? captcha : null, isMakerworldModel ? profileScope : "url");
+    await upload.submitImport(linkValue, needsCaptcha ? captcha : null, hasProfiles ? profileScope : "url");
     setImportOpen(false);
   };
 
@@ -270,7 +274,7 @@ const AddMenu = React.forwardRef<AddMenuHandle, Props>(function AddMenu(
               {t("addMenu.linksDetected", { count: links.length })}
             </Typography>
           )}
-          {isMakerworldModel && (
+          {hasProfiles && (
             <TextField
               select
               fullWidth

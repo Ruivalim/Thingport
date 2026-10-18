@@ -14,6 +14,14 @@ import {
   myminifactoryCollectionUrl,
   parseMyminifactoryCollectionUrl,
 } from "./myminifactoryApi";
+import {
+  parseSnapmakerListUrl,
+  snapmakerListKey,
+  snapmakerListName,
+  snapmakerListUrl,
+  snapmakerModelUrl,
+} from "./snapmakerApi";
+import { getUserSnapmakerId } from "./snapmakerSessionService";
 import { createLog } from "./auditLog";
 import { pushedLikes } from "./providerListingsService";
 import { createNotification } from "./notificationService";
@@ -26,7 +34,7 @@ import {
   type SyncProfileScope,
 } from "../dto";
 
-export type SyncProvider = "makerworld" | "printables" | "thingiverse" | "myminifactory";
+export type SyncProvider = "makerworld" | "printables" | "thingiverse" | "myminifactory" | "snapmaker";
 
 /** `likesOf` is set for a user's likes (on Thingiverse, or the user's own on Printables), which a
  *  sync follows like a collection. */
@@ -37,7 +45,13 @@ const PROVIDER_NAMES: Record<SyncProvider, string> = {
   printables: "Printables",
   thingiverse: "Thingiverse",
   myminifactory: "MyMiniFactory",
+  snapmaker: "Snapmaker Space",
 };
+
+/** Providers whose models come with print profiles a sync can pick between. */
+export function hasProfiles(provider: string): boolean {
+  return provider === "makerworld" || provider === "snapmaker";
+}
 
 export function providerName(provider: string): string {
   return PROVIDER_NAMES[provider as SyncProvider] ?? provider;
@@ -83,6 +97,15 @@ export function parseSyncSource(url: string): SyncSource | null {
       url: myminifactoryCollectionUrl(username, slug),
     };
   }
+  const snapmaker = parseSnapmakerListUrl(url);
+  if (snapmaker?.list) {
+    // The user's own likes or bookmarks; Snapmaker shows them to their owner only.
+    return {
+      provider: "snapmaker",
+      externalId: snapmakerListKey(snapmaker.userId, snapmaker.list),
+      url: snapmakerListUrl(snapmaker.userId, snapmaker.list),
+    };
+  }
   const printablesLikes = parsePrintablesLikesUrl(url);
   if (printablesLikes) {
     // Only Thingport Grab can read these, as their owner (see providerListingsService.ts).
@@ -111,6 +134,7 @@ export function modelUrlFor(provider: string, externalId: string): string {
   if (provider === "makerworld") return `https://makerworld.com/en/models/${externalId}`;
   if (provider === "printables") return `https://www.printables.com/model/${externalId}`;
   if (provider === "myminifactory") return `https://www.myminifactory.com/object/3d-print-${externalId}`;
+  if (provider === "snapmaker") return snapmakerModelUrl(externalId);
   return `https://www.thingiverse.com/thing:${externalId}`;
 }
 
@@ -120,6 +144,7 @@ export function modelIdFromUrl(provider: string, url: string): string | null {
     makerworld: /\/models\/(\d+)/,
     printables: /\/model\/(\d+)/,
     myminifactory: /\/object\/(?:[^/]*-)?(\d+)/,
+    snapmaker: /\/model\/(\d+)/,
   };
   const pattern = patterns[provider] ?? /thing:(\d+)/;
   return url.match(pattern)?.[1] ?? null;
@@ -191,9 +216,10 @@ export async function enableSync(userId: string, input: EnableSyncInput): Promis
   if (!source)
     throw new HttpError(
       400,
-      "Only MakerWorld, Printables, Thingiverse and MyMiniFactory collections, and Thingiverse or your own Printables likes, can be synced",
+      "Only MakerWorld, Printables, Thingiverse and MyMiniFactory collections, Thingiverse or your own Printables likes, and your own Snapmaker Space likes and bookmarks, can be synced",
     );
   if (source.provider === "printables" && source.likesOf) await assertOwnPrintablesLikes(userId, source.likesOf);
+  if (source.provider === "snapmaker") await assertOwnSnapmakerList(userId, source.url);
   const knownIds = [...new Set(input.knownIds.map((id) => id.trim()).filter(Boolean))];
 
   const existing = await findSyncForSource(userId, source);
@@ -227,9 +253,12 @@ export async function enableSync(userId: string, input: EnableSyncInput): Promis
     if ("link" in result) return result.link;
     created = result.created;
   } else {
+    const snapmakerList = source.provider === "snapmaker" ? parseSnapmakerListUrl(source.url)?.list : null;
     const title = source.likesOf
       ? likesCollectionName(source.likesOf, source.provider)
-      : input.title?.trim() || `${providerName(source.provider)} Collection ${source.externalId}`;
+      : snapmakerList
+        ? snapmakerListName(snapmakerList)
+        : input.title?.trim() || `${providerName(source.provider)} Collection ${source.externalId}`;
     let found: (CollectionSync & { collection: Collection }) | null = null;
     for (const name of collectionNamesFor(title, source.provider)) {
       const collection = await findOrCreateCollectionByName(userId, name);
@@ -268,7 +297,7 @@ async function notifySyncEnabled(sync: CollectionSync & { collection: Collection
   const name = sync.collection.name;
   const interval = INTERVAL_PHRASES[sync.intervalHours] ?? `every ${sync.intervalHours} hours`;
   const profiles =
-    sync.provider === "makerworld" && PROFILE_SCOPE_PHRASES[sync.profileScope]
+    hasProfiles(sync.provider) && PROFILE_SCOPE_PHRASES[sync.profileScope]
       ? `, each with ${PROFILE_SCOPE_PHRASES[sync.profileScope]}`
       : "";
   await createNotification(sync.userId, {
@@ -295,6 +324,18 @@ async function assertOwnPrintablesLikes(userId: string, handle: string): Promise
   }
 }
 
+/** Snapmaker shows likes and bookmarks to their owner only, and a sync reads them with the user's own sign-in: one
+ *  of someone else's would be fed the user's own under the other's name. */
+async function assertOwnSnapmakerList(userId: string, url: string): Promise<void> {
+  const own = await getUserSnapmakerId(userId);
+  if (!own || own !== parseSnapmakerListUrl(url)?.userId) {
+    throw new HttpError(
+      400,
+      "Snapmaker Space shows likes and bookmarks to their owner only, so only your own can be synced, once Snapmaker is connected",
+    );
+  }
+}
+
 // How many "Things (MakerWorld 2)"-style names to try before giving up.
 const MAX_NAME_SUFFIX = 20;
 
@@ -309,7 +350,7 @@ function* collectionNamesFor(title: string, provider: string): Generator<string>
 }
 
 // A synced collection follows what the designer publishes, so new models bring all of their profiles.
-const NEW_MAKERWORLD_SYNC_PROFILE_SCOPE: SyncProfileScope = "designer";
+const NEW_SYNC_PROFILE_SCOPE: SyncProfileScope = "designer";
 
 /** Links `collection` to `source`. `takenBy` names the provider when the collection already follows
  *  another source; `link` is the existing one when another request just made this same link. */
@@ -330,7 +371,7 @@ async function createSync(
         externalId: source.externalId,
         sourceUrl: source.url,
         knownIds,
-        ...(source.provider === "makerworld" ? { profileScope: NEW_MAKERWORLD_SYNC_PROFILE_SCOPE } : {}),
+        ...(hasProfiles(source.provider) ? { profileScope: NEW_SYNC_PROFILE_SCOPE } : {}),
       },
       include: { collection: true },
     });
@@ -383,15 +424,15 @@ export async function disableSync(userId: string, collectionId: string): Promise
 }
 
 /** Applies to checks and models found from now on; models already waiting in the import queue
- *  keep the profile scope they were queued with. Only MakerWorld models have print profiles. */
+ *  keep the profile scope they were queued with. Only MakerWorld and Snapmaker models have print profiles. */
 export async function updateSyncSettings(
   userId: string,
   collectionId: string,
   settings: { profileScope?: SyncProfileScope; intervalHours?: SyncIntervalHours },
 ): Promise<CollectionSyncOut> {
   const sync = await ownedSync(userId, collectionId);
-  if (settings.profileScope && sync.provider !== "makerworld") {
-    throw new HttpError(400, "Only MakerWorld models have print profiles to pick");
+  if (settings.profileScope && !hasProfiles(sync.provider)) {
+    throw new HttpError(400, "Only MakerWorld and Snapmaker Space models have print profiles to pick");
   }
   const updated = await prisma.collectionSync.update({
     where: { id: sync.id },

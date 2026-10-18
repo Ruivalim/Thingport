@@ -23,8 +23,18 @@ import {
   downloadImportToTemp,
   fetchMakerworldDesignForImport,
   importPrintFromUrl,
+  SNAPMAKER_SESSION_CODE,
   type ImportRequestBody,
 } from "./importService";
+import {
+  parseSnapmakerModelUrl,
+  resolveSnapmakerModel,
+  selectSnapmakerProfiles,
+  snapmakerListName,
+  snapmakerModelUrl,
+  type SnapmakerList,
+} from "./snapmakerApi";
+import { getUserSnapmakerToken, SNAPMAKER_CONNECT } from "./snapmakerSessionService";
 import { upsertAuthorFromImport } from "./authorService";
 import { extractZipEntriesToPrints } from "./zipService";
 import { fetchThingiverseCollectionTitle } from "./thingiverseApi";
@@ -61,6 +71,7 @@ type PrintablesCollectionImportJobBody = ImportRequestBody & {
   collection_title?: string | null;
 };
 type MakerworldProfilesImportJobBody = ImportRequestBody & { scope: Exclude<MakerworldProfileScope, "url"> };
+type SnapmakerListImportJobBody = ImportRequestBody & { model_ids: string[]; list: SnapmakerList };
 
 // Why a design failed, so a batch reads as one clear cause instead of "N failed". Once a CAPTCHA
 // ("rateLimited"), the daily download limit, an auth failure or a Cloudflare block ("blocked")
@@ -77,7 +88,7 @@ const PROVIDER_OFF_TEXT = (name: string) =>
 function classifyImportFailure(err: unknown): ImportFailureReason {
   if (err instanceof MakerworldAuthError) return "auth";
   if (err instanceof HttpError) {
-    if (err.code === MAKERWORLD_AUTH_CODE) return "auth";
+    if (err.code === MAKERWORLD_AUTH_CODE || err.code === SNAPMAKER_SESSION_CODE) return "auth";
     if (err.code === CLOUDFLARE_BLOCKED_CODE) return "blocked";
     if (err.code === PROVIDER_DISABLED_CODE) return "disabled";
     if (err.status === 403 || err.status === 404) return "unavailable";
@@ -239,6 +250,80 @@ export async function runMakerworldProfilesImportJob(
   }
 }
 
+/** The print profiles a scope picks from a Snapmaker model, as links that each name one. */
+async function snapmakerProfileUrls(
+  url: string,
+  scope: Exclude<MakerworldProfileScope, "url">,
+): Promise<{ title: string | null; urls: string[] }> {
+  const parsed = parseSnapmakerModelUrl(url);
+  if (!parsed) throw new HttpError(400, "Not a Snapmaker model link");
+  const resolved = await resolveSnapmakerModel(parsed.modelId);
+  if (!resolved) throw new HttpError(404, "This Snapmaker model could not be found, or isn't public.");
+  const profileIds = selectSnapmakerProfiles(resolved, scope, parsed.requestedProfileId);
+  if (!profileIds.length) throw new HttpError(400, "This model has no print profiles to import");
+  return {
+    title: resolved.meta.title ?? null,
+    urls: profileIds.map((profileId) => snapmakerModelUrl(parsed.modelId, profileId)),
+  };
+}
+
+/** Imports several print profiles of one Snapmaker model as one model with a file per profile. */
+export async function runSnapmakerProfilesImportJob(
+  jobId: string,
+  userId: string,
+  body: MakerworldProfilesImportJobBody,
+): Promise<void> {
+  try {
+    const { title, urls } = await snapmakerProfileUrls(body.url, body.scope);
+    await updateJob(jobId, { total: urls.length, sourceLabel: title });
+    log.info("snapmaker profiles job started", { job: jobId, url: body.url, profiles: urls.length });
+    const totals = await importProfileUrlsSequentially(
+      userId,
+      urls,
+      body,
+      (t) =>
+        void updateJob(jobId, {
+          processed: t.processed,
+          imported: t.imported,
+          alreadyInLibrary: t.alreadyInLibrary,
+          failedCount: t.failed,
+        }).catch(() => undefined),
+    );
+    const { imported, alreadyInLibrary, failed, stopReason, printId } = totals;
+    await updateJob(jobId, {
+      status: "DONE",
+      resultPrintId: printId,
+      processed: totals.processed,
+      imported,
+      alreadyInLibrary,
+      failedCount: failed,
+    });
+    void createLog({
+      userId,
+      action: "import_completed",
+      targetId: printId,
+      details: { provider: "snapmaker", sourceLabel: title, imported, alreadyInLibrary, failed },
+    });
+    const bodyParts: string[] = [];
+    if (alreadyInLibrary) bodyParts.push(`${alreadyInLibrary} already on the model`);
+    if (stopReason === "auth") bodyParts.push(`the rest failed because ${SNAPMAKER_AUTH_TEXT}`);
+    else if (failed) bodyParts.push(`${failed} failed`);
+    const label = title ? `"${title}"` : "a Snapmaker model";
+    await createNotification(userId, {
+      type: "import",
+      title: `Imported ${imported} of ${urls.length} print profiles from Snapmaker Space`,
+      body: bodyParts.length ? `Of ${label} — ${bodyParts.join(", ")}.` : `Of ${label}.`,
+      externalUrl: body.url,
+      internalPath: printId ? `/models/${printId}` : null,
+    });
+  } catch (err) {
+    await markJobFailed(jobId, err);
+  }
+}
+
+const SNAPMAKER_AUTH_TEXT =
+  "your Snapmaker sign-in ran out — visit space.snapmaker.com with Thingport Grab, then retry";
+
 export async function runCollectionImportJob(
   jobId: string,
   userId: string,
@@ -383,9 +468,10 @@ export async function runCollectionImportJob(
   }
 }
 
-/** A provider whose models import one by one with an instance-wide token: Thingiverse, MyMiniFactory. */
+/** A provider whose models import one by one with a token: Thingiverse's and MyMiniFactory's instance-wide one, or
+ *  the user's own Snapmaker sign-in. */
 type TokenBatchProvider = {
-  provider: "thingiverse" | "myminifactory";
+  provider: "thingiverse" | "myminifactory" | "snapmaker";
   getToken: () => Promise<string | null>;
   notConfigured: string;
   modelUrl: (id: string) => string;
@@ -414,7 +500,19 @@ const MYMINIFACTORY_BATCH: TokenBatchProvider = {
   authText: "failed because the configured API key was rejected",
 };
 
-/** Shared by the Thingiverse Likes and Collection imports and MyMiniFactory's collections.
+function snapmakerBatch(userId: string): TokenBatchProvider {
+  return {
+    provider: "snapmaker",
+    getToken: () => getUserSnapmakerToken(userId),
+    notConfigured: SNAPMAKER_CONNECT,
+    modelUrl: (id) => snapmakerModelUrl(id),
+    rateLimitText: "blocked by Snapmaker's rate limit — wait a while, then retry",
+    authText: `failed because ${SNAPMAKER_AUTH_TEXT}`,
+  };
+}
+
+/** Shared by the Thingiverse Likes and Collection imports, MyMiniFactory's collections and Snapmaker's likes and
+ *  bookmarks.
  * Successful imports are filed into the collection named by `resolveCollectionTitle`, which runs
  * afterwards so it costs no API call when nothing was imported. */
 async function runTokenBatchImportJob(
@@ -581,6 +679,23 @@ export async function runMyminifactoryCollectionImportJob(
       (await fetchMyminifactoryCollectionObjects(body.username, body.slug, apiKey, 1).catch(() => null))?.title ??
       `MyMiniFactory Collection ${body.slug}`,
     (collectionTitle) => `"${collectionTitle}"`,
+  );
+}
+
+export async function runSnapmakerListImportJob(
+  jobId: string,
+  userId: string,
+  body: SnapmakerListImportJobBody,
+): Promise<void> {
+  const name = snapmakerListName(body.list);
+  await runTokenBatchImportJob(
+    jobId,
+    userId,
+    snapmakerBatch(userId),
+    body,
+    body.model_ids,
+    async () => name,
+    () => `your ${name}`,
   );
 }
 
@@ -789,6 +904,13 @@ export function runnerSettled(jobId: string): Promise<void> {
 const LINKS_MAX_ATTEMPTS = 3;
 const LINKS_RETRY_DELAY_MS = 2000;
 
+/** Why a link's sign-in failed, by its provider. */
+function authStopText(url: string): string {
+  return parseSnapmakerModelUrl(url)
+    ? SNAPMAKER_AUTH_TEXT
+    : "the MakerWorld session expired — update the cookie in Settings, then retry";
+}
+
 function isTransientImportFailure(err: unknown): boolean {
   if (err instanceof MakerworldAuthError) return false;
   return !(err instanceof HttpError) || err.transient === true;
@@ -798,7 +920,7 @@ function failureMessage(err: unknown): string {
   return err instanceof Error && err.message.trim() ? err.message.trim() : "Import failed";
 }
 
-/** One queued link. A MakerWorld model with a multi-profile scope imports each wanted profile onto
+/** One queued link. A MakerWorld or Snapmaker model with a multi-profile scope imports each wanted profile onto
  *  one print, like the PROFILES job; anything else is a plain single import. `profiles` marks the
  *  former, whose totals count print profiles rather than models. */
 async function importOneLink(
@@ -822,6 +944,10 @@ async function importOneLink(
       { ...body, url },
     );
     return { ...totals, profiles: true };
+  }
+  if (parseSnapmakerModelUrl(url) && body.scope && body.scope !== "url") {
+    const { urls } = await snapmakerProfileUrls(url, body.scope);
+    return { ...(await importProfileUrlsSequentially(userId, urls, { ...body, url })), profiles: true };
   }
   const result = await importPrintFromUrl(userId, url, { ...body, url });
   return {
@@ -897,7 +1023,7 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
           itemError = {
             rateLimited: "blocked by a MakerWorld CAPTCHA challenge — retry once it clears (usually 1-4 hours)",
             downloadLimit: "MakerWorld's daily download limit was reached — retry tomorrow",
-            auth: "the MakerWorld session expired — update the cookie in Settings, then retry",
+            auth: authStopText(stopUrl ?? item.url),
             blocked: BLOCKED_RETRY_TEXT,
           }[stopReason];
           settled = true;
@@ -927,7 +1053,7 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
               itemError += {
                 rateLimited: " (MakerWorld CAPTCHA challenge — retry once it clears)",
                 downloadLimit: " (MakerWorld's daily download limit — retry tomorrow)",
-                auth: " (the MakerWorld session expired — update the cookie in Settings, then retry)",
+                auth: ` (${authStopText(item.url)})`,
                 blocked: ` (${BLOCKED_RETRY_TEXT})`,
               }[result.stopReason];
             }
@@ -1039,9 +1165,7 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
         `the rest not downloaded — MakerWorld's daily download limit was reached, retry the failed links tomorrow`,
       );
     } else if (stopReason === "auth") {
-      bodyParts.push(
-        `the rest failed because your MakerWorld session expired — update the cookie in Settings, then retry`,
-      );
+      bodyParts.push(`the rest failed because ${authStopText(stopUrl ?? job.sourceUrl)}`);
     } else if (stopReason === "blocked") {
       bodyParts.push(`the rest failed: ${BLOCKED_RETRY_TEXT}`);
     } else if (failedCount) {

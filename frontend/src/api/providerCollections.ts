@@ -2,7 +2,7 @@ import { authHeaders } from "../utils/auth";
 import { apiBase, readErrorMessage, UnauthorizedError } from "./client";
 
 /** The providers a collection can be synced with from the app. */
-export const BROWSABLE_PROVIDERS = ["makerworld", "printables", "thingiverse", "myminifactory"] as const;
+export const BROWSABLE_PROVIDERS = ["makerworld", "printables", "thingiverse", "myminifactory", "snapmaker"] as const;
 export type BrowsableProvider = (typeof BROWSABLE_PROVIDERS)[number];
 
 /** `connected`: the instance can reach the provider for this user. `account`: who they are there,

@@ -45,7 +45,11 @@ const PASTE_EXAMPLES: Record<BrowsableProvider, string> = {
   printables: "https://www.printables.com/@…/collections/…",
   thingiverse: "https://www.thingiverse.com/…/collections/…",
   myminifactory: "https://www.myminifactory.com/users/…/collection/…",
+  snapmaker: "https://space.snapmaker.com/en/creator/…?tab=interactions&list=likes",
 };
+
+// Listed with the user's own sign-in, which already says who they are, so no username is asked for.
+const SIGNED_IN = new Set<BrowsableProvider>(["makerworld", "snapmaker"]);
 
 /** The one the user's slicer goes with, unless it isn't connected; then the first that is. Only from `available`,
  *  the ones an admin hasn't turned off. */
@@ -121,8 +125,9 @@ export default function SyncBrowse({ provider, onProviderChange, picked, onPick,
   }, [accounts, provider, slicer, onProviderChange, available]);
 
   const account = provider && accounts ? accounts[provider] : null;
-  const needsAccount = provider !== null && provider !== "makerworld" && account?.connected && !account.account;
-  const canList = Boolean(account?.connected && (provider === "makerworld" || account.account));
+  const signedIn = provider !== null && SIGNED_IN.has(provider);
+  const needsAccount = provider !== null && !signedIn && account?.connected && !account.account;
+  const canList = Boolean(account?.connected && (signedIn || account.account));
 
   useEffect(() => {
     if (!provider || !canList || collections[provider]) return;
@@ -350,7 +355,7 @@ export default function SyncBrowse({ provider, onProviderChange, picked, onPick,
       {canList && !editingAccount && (
         <Box>
           <SectionLabel>{t("models:collections.sync.browse.yoursLabel", { provider: name })}</SectionLabel>
-          {provider !== "makerworld" && account?.account && (
+          {!signedIn && account?.account && (
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
               {t(`models:collections.sync.browse.showing.${provider}`, { user: account.account })}
               {provider === "printables" && (

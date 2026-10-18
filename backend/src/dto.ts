@@ -179,6 +179,7 @@ export type CategoryOut = {
   thingiverse_cat_ids: string;
   printables_cat_ids: string;
   myminifactory_cat_ids: string;
+  snapmaker_cat_ids: string;
 };
 
 function plateThumbUrl(plateId: string): string | null {
@@ -473,6 +474,7 @@ export function toCategoryOut(category: Category): CategoryOut {
     thingiverse_cat_ids: formatCatIds(category.thingiverseCatIds),
     printables_cat_ids: formatCatIds(category.printablesCatIds),
     myminifactory_cat_ids: formatCatIds(category.myminifactoryCatIds),
+    snapmaker_cat_ids: formatCatIds(category.snapmakerCatIds),
   };
 }
 

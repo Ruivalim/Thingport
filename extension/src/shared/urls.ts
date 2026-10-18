@@ -1,16 +1,20 @@
 // Provider URL recognition, duplicated from the frontend and backend parsers. Keep in sync by hand.
 
-export type Provider = "makerworld" | "thingiverse" | "printables" | "myminifactory";
+export type Provider = "makerworld" | "thingiverse" | "printables" | "myminifactory" | "snapmaker";
 
 export type Classification =
   | { kind: "single"; provider: "makerworld"; type: "model" }
   | { kind: "single"; provider: "thingiverse"; type: "thing" }
   | { kind: "single"; provider: "printables"; type: "model" }
   | { kind: "single"; provider: "myminifactory"; type: "object" }
+  | { kind: "single"; provider: "snapmaker"; type: "model" }
   | { kind: "batch"; provider: "makerworld"; type: "collection" }
   | { kind: "batch"; provider: "thingiverse"; type: "likes" | "collection" }
   | { kind: "batch"; provider: "printables"; type: "collection" }
-  | { kind: "batch"; provider: "myminifactory"; type: "collection" };
+  | { kind: "batch"; provider: "myminifactory"; type: "collection" }
+  | { kind: "batch"; provider: "snapmaker"; type: SnapmakerList };
+
+export type SnapmakerList = "likes" | "bookmarks";
 
 function parse(url: string): URL | null {
   try {
@@ -96,6 +100,34 @@ export function isMyminifactoryCollectionUrl(url: string): boolean {
   );
 }
 
+function isSnapmaker(parsed: URL): boolean {
+  return parsed.hostname.toLowerCase() === "space.snapmaker.com";
+}
+
+/** `/en/model/<id>-<slug>`; `#profileId-<id>` picks a print profile. */
+export function parseSnapmakerModelUrl(url: string): { modelId: string; requestedProfileId: string | null } | null {
+  const parsed = parse(url);
+  if (!parsed || !isSnapmaker(parsed)) return null;
+  const m = parsed.pathname.match(/^\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?model\/(\d+)(?:-[^/]*)?\/?$/i);
+  if (!m) return null;
+  return { modelId: m[1], requestedProfileId: parsed.hash.match(/profileId-(\d+)/i)?.[1] ?? null };
+}
+
+/** The user's likes and bookmarks share one page, `/creator/<id>?tab=interactions`, whose address stays the same
+ *  whichever is shown; `list` in the address tells them apart where Thingport keeps it. */
+export function parseSnapmakerListUrl(url: string): { userId: string; list: SnapmakerList } | null {
+  const parsed = parse(url);
+  if (!parsed || !isSnapmaker(parsed) || parsed.searchParams.get("tab") !== "interactions") return null;
+  const m = parsed.pathname.match(/^\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?creator\/(\d+)\/?$/i);
+  if (!m) return null;
+  return { userId: m[1], list: parsed.searchParams.get("list") === "bookmarks" ? "bookmarks" : "likes" };
+}
+
+/** Mirrors the backend's snapmakerListUrl. */
+export function snapmakerListUrl(userId: string, list: SnapmakerList): string {
+  return `https://space.snapmaker.com/en/creator/${userId}?tab=interactions&list=${list}`;
+}
+
 /** Null keeps the icon hidden. "single" pages get a dedup check; "batch" pages always show it. */
 export function classifyUrl(url: string): Classification | null {
   if (isMakerworldCollectionUrl(url)) return { kind: "batch", provider: "makerworld", type: "collection" };
@@ -103,9 +135,12 @@ export function classifyUrl(url: string): Classification | null {
   if (isThingiverseCollectionUrl(url)) return { kind: "batch", provider: "thingiverse", type: "collection" };
   if (isPrintablesCollectionUrl(url)) return { kind: "batch", provider: "printables", type: "collection" };
   if (isMyminifactoryCollectionUrl(url)) return { kind: "batch", provider: "myminifactory", type: "collection" };
+  const snapmakerList = parseSnapmakerListUrl(url);
+  if (snapmakerList) return { kind: "batch", provider: "snapmaker", type: snapmakerList.list };
   if (parseMakerworldModelUrl(url)) return { kind: "single", provider: "makerworld", type: "model" };
   if (parseThingiverseThingUrl(url)) return { kind: "single", provider: "thingiverse", type: "thing" };
   if (parsePrintablesModelUrl(url)) return { kind: "single", provider: "printables", type: "model" };
   if (parseMyminifactoryObjectUrl(url)) return { kind: "single", provider: "myminifactory", type: "object" };
+  if (parseSnapmakerModelUrl(url)) return { kind: "single", provider: "snapmaker", type: "model" };
   return null;
 }
