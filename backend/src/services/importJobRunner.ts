@@ -28,7 +28,8 @@ import {
 import { upsertAuthorFromImport } from "./authorService";
 import { extractZipEntriesToPrints } from "./zipService";
 import { fetchThingiverseCollectionTitle } from "./thingiverseApi";
-import { getThingiverseAccessToken } from "./settingsService";
+import { getMyminifactoryApiKey, getThingiverseAccessToken } from "./settingsService";
+import { fetchMyminifactoryCollectionObjects } from "./myminifactoryApi";
 import { fetchPrintablesCollectionTitle } from "./printablesApi";
 import { createLog } from "./auditLog";
 import { MAKERWORLD_REJECTED_ERROR, markMakerworldCookieRejected } from "./makerworldCookieService";
@@ -49,6 +50,11 @@ type CollectionImportJobBody = ImportRequestBody & { design_ids: string[] };
 type ZipImportJobBody = ImportRequestBody & { entries: string[] };
 type ThingiverseLikesImportJobBody = ImportRequestBody & { thing_ids: string[]; username: string };
 type ThingiverseCollectionImportJobBody = ImportRequestBody & { thing_ids: string[]; collectionId: string };
+type MyminifactoryCollectionImportJobBody = ImportRequestBody & {
+  object_ids: string[];
+  username: string;
+  slug: string;
+};
 type PrintablesCollectionImportJobBody = ImportRequestBody & {
   model_ids: string[];
   collectionId: string;
@@ -377,24 +383,53 @@ export async function runCollectionImportJob(
   }
 }
 
-/** Shared by the Thingiverse Likes and Collection imports. Successful imports are filed into the
- * collection named by `resolveCollectionTitle`, which runs afterwards so it costs no API call
- * when nothing was imported. */
-async function runThingiverseThingsImportJob(
+/** A provider whose models import one by one with an instance-wide token: Thingiverse, MyMiniFactory. */
+type TokenBatchProvider = {
+  provider: "thingiverse" | "myminifactory";
+  getToken: () => Promise<string | null>;
+  notConfigured: string;
+  modelUrl: (id: string) => string;
+  rateLimitText: string;
+  authText: string;
+};
+
+const THINGIVERSE_BATCH: TokenBatchProvider = {
+  provider: "thingiverse",
+  getToken: getThingiverseAccessToken,
+  notConfigured:
+    "Thingiverse import isn't configured for this instance yet -- ask an admin to add an App Token in Administration > Providers.",
+  modelUrl: (id) => `https://www.thingiverse.com/thing:${id}`,
+  rateLimitText:
+    "blocked by Thingiverse's rate-limit protection (too many requests at once) — wait a while, then retry",
+  authText: "failed because the configured App Token was rejected",
+};
+
+const MYMINIFACTORY_BATCH: TokenBatchProvider = {
+  provider: "myminifactory",
+  getToken: getMyminifactoryApiKey,
+  notConfigured:
+    "MyMiniFactory import isn't configured for this instance yet -- ask an admin to add an API key in Administration > Providers.",
+  modelUrl: (id) => `https://www.myminifactory.com/object/3d-print-${id}`,
+  rateLimitText: "blocked by MyMiniFactory's rate-limit protection — wait a while, then retry",
+  authText: "failed because the configured API key was rejected",
+};
+
+/** Shared by the Thingiverse Likes and Collection imports and MyMiniFactory's collections.
+ * Successful imports are filed into the collection named by `resolveCollectionTitle`, which runs
+ * afterwards so it costs no API call when nothing was imported. */
+async function runTokenBatchImportJob(
   jobId: string,
   userId: string,
-  body: ImportRequestBody & { thing_ids: string[] },
+  source: TokenBatchProvider,
+  body: ImportRequestBody,
+  ids: string[],
   resolveCollectionTitle: (accessToken: string) => Promise<string>,
   sourceLabel: (collectionTitle: string) => string,
 ): Promise<void> {
+  const name = providerName(source.provider);
   try {
-    const accessToken = await getThingiverseAccessToken();
-    if (!accessToken) {
-      throw new HttpError(
-        503,
-        "Thingiverse import isn't configured for this instance yet -- ask an admin to add an App Token in Administration > Providers.",
-      );
-    }
+    const accessToken = await source.getToken();
+    if (!accessToken) throw new HttpError(503, source.notConfigured);
 
     let imported = 0;
     let alreadyInLibrary = 0;
@@ -405,10 +440,10 @@ async function runThingiverseThingsImportJob(
     let authFailed = 0;
     const failed: string[] = [];
     const successPrintIds: string[] = [];
-    log.info("thingiverse job started", { job: jobId, url: body.url, models: body.thing_ids.length });
+    log.info(`${source.provider} job started`, { job: jobId, url: body.url, models: ids.length });
 
-    await mapWithConcurrency(body.thing_ids, COLLECTION_IMPORT_CONCURRENCY, async (thingId, index) => {
-      const thingUrl = `https://www.thingiverse.com/thing:${thingId}`;
+    await mapWithConcurrency(ids, COLLECTION_IMPORT_CONCURRENCY, async (thingId, index) => {
+      const thingUrl = source.modelUrl(thingId);
       const itemBody: ImportRequestBody = {
         url: thingUrl,
         notes: body.notes ?? null,
@@ -434,7 +469,7 @@ async function runThingiverseThingsImportJob(
           () => undefined,
         );
       }
-      if (index < body.thing_ids.length - 1) await sleep(IMPORT_COLLECTION_DELAY_MS);
+      if (index < ids.length - 1) await sleep(IMPORT_COLLECTION_DELAY_MS);
     });
 
     let resultCollectionId: string | null = null;
@@ -468,7 +503,7 @@ async function runThingiverseThingsImportJob(
       action: "import_completed",
       targetId: resultCollectionId,
       details: {
-        provider: "thingiverse",
+        provider: source.provider,
         sourceLabel: collectionTitle,
         imported,
         alreadyInLibrary,
@@ -480,18 +515,14 @@ async function runThingiverseThingsImportJob(
     if (alreadyInLibrary) bodyParts.push(`${alreadyInLibrary} already in your library`);
     const otherFailed = failed.length - unavailable - rateLimited - authFailed - providerOff;
     if (unavailable) bodyParts.push(`${unavailable} unavailable (private, deleted, or hidden)`);
-    if (providerOff) bodyParts.push(`${providerOff} skipped — ${PROVIDER_OFF_TEXT("Thingiverse")}`);
-    if (rateLimited) {
-      bodyParts.push(
-        `${rateLimited} blocked by Thingiverse's rate-limit protection (too many requests at once) — wait a while, then retry`,
-      );
-    }
-    if (authFailed) bodyParts.push(`${authFailed} failed because the configured App Token was rejected`);
+    if (providerOff) bodyParts.push(`${providerOff} skipped — ${PROVIDER_OFF_TEXT(name)}`);
+    if (rateLimited) bodyParts.push(`${rateLimited} ${source.rateLimitText}`);
+    if (authFailed) bodyParts.push(`${authFailed} ${source.authText}`);
     if (otherFailed) bodyParts.push(`${otherFailed} failed`);
     const label = sourceLabel(collectionTitle);
     await createNotification(userId, {
       type: "import",
-      title: `Imported ${imported} of ${body.thing_ids.length} models from Thingiverse`,
+      title: `Imported ${imported} of ${ids.length} models from ${name}`,
       body: bodyParts.length ? `From ${label} — ${bodyParts.join(", ")}.` : `From ${label}.`,
       externalUrl: body.url,
       internalPath: resultCollectionId ? `/models/collections/${resultCollectionId}` : null,
@@ -506,10 +537,12 @@ export async function runThingiverseLikesImportJob(
   userId: string,
   body: ThingiverseLikesImportJobBody,
 ): Promise<void> {
-  await runThingiverseThingsImportJob(
+  await runTokenBatchImportJob(
     jobId,
     userId,
+    THINGIVERSE_BATCH,
     body,
+    body.thing_ids,
     async () => likesCollectionName(body.username),
     () => `@${body.username}'s Likes`,
   );
@@ -520,13 +553,33 @@ export async function runThingiverseCollectionImportJob(
   userId: string,
   body: ThingiverseCollectionImportJobBody,
 ): Promise<void> {
-  await runThingiverseThingsImportJob(
+  await runTokenBatchImportJob(
     jobId,
     userId,
+    THINGIVERSE_BATCH,
     body,
+    body.thing_ids,
     async (accessToken) =>
       (await fetchThingiverseCollectionTitle(body.collectionId, accessToken)) ??
       `Thingiverse Collection ${body.collectionId}`,
+    (collectionTitle) => `"${collectionTitle}"`,
+  );
+}
+
+export async function runMyminifactoryCollectionImportJob(
+  jobId: string,
+  userId: string,
+  body: MyminifactoryCollectionImportJobBody,
+): Promise<void> {
+  await runTokenBatchImportJob(
+    jobId,
+    userId,
+    MYMINIFACTORY_BATCH,
+    body,
+    body.object_ids,
+    async (apiKey) =>
+      (await fetchMyminifactoryCollectionObjects(body.username, body.slug, apiKey, 1).catch(() => null))?.title ??
+      `MyMiniFactory Collection ${body.slug}`,
     (collectionTitle) => `"${collectionTitle}"`,
   );
 }

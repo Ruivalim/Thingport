@@ -18,8 +18,8 @@ Manage both from **Manage categories & folders** on the Models page. Deleting on
 ## Collections and tags
 
 - **Collections** group models however you like, and a model can be in as many as you want. Give a collection a
-  description and tags, or [sync it](../guides/synced-collections.md) with a collection on MakerWorld, Printables or
-  Thingiverse.
+  description and tags, or [sync it](../guides/synced-collections.md) with a collection on MakerWorld, Printables,
+  Thingiverse or MyMiniFactory.
 - **Tags** come with imported models, and you can add your own. Browse every tag with a picture made from its models,
   hide tags used only once, or delete a tag from every model at once.
 - **Favourites** and your **Browsing history** are kept as collections of their own.

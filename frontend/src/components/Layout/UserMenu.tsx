@@ -25,7 +25,7 @@ import { settingsApi } from "../../api/settings";
 import { useDisabledProviders } from "../../hooks/useDisabledProviders";
 
 type ServiceChipDef = {
-  key: "makerworld" | "thingiverse" | "printables";
+  key: "makerworld" | "thingiverse" | "printables" | "myminifactory";
   label: string;
   color: string;
   connected: boolean;
@@ -50,6 +50,7 @@ export function UserMenu({ user, onOpenConfiguration, onOpenProfile, onLogout }:
   const [makerworldConfigured, setMakerworldConfigured] = React.useState(false);
   const [makerworldExpired, setMakerworldExpired] = React.useState(false);
   const [thingiverseConfigured, setThingiverseConfigured] = React.useState(false);
+  const [myminifactoryConfigured, setMyminifactoryConfigured] = React.useState(false);
 
   const menuOpen = Boolean(anchorEl);
   // Checked on every open: the cookie can change in Configuration while the menu stays mounted.
@@ -68,6 +69,12 @@ export function UserMenu({ user, onOpenConfiguration, onOpenProfile, onLogout }:
       .getThingiverse()
       .then((res) => {
         if (active) setThingiverseConfigured(res.configured);
+      })
+      .catch(() => undefined);
+    settingsApi
+      .getMyminifactory()
+      .then((res) => {
+        if (active) setMyminifactoryConfigured(res.configured);
       })
       .catch(() => undefined);
     return () => {
@@ -93,6 +100,12 @@ export function UserMenu({ user, onOpenConfiguration, onOpenProfile, onLogout }:
     },
     // Printables' public API needs no configuration.
     { key: "printables", ...IMPORT_PROVIDER_INFO.printables, connected: true },
+    {
+      key: "myminifactory",
+      ...IMPORT_PROVIDER_INFO.myminifactory,
+      connected: myminifactoryConfigured,
+      disabledReason: t("userMenu.myminifactoryDisabledReason"),
+    },
   ];
   // Turned off by an admin: no chip, and with none left, no row.
   const services = allServices.filter((service) => !disabledProviders.has(service.key));

@@ -4,6 +4,7 @@ import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
+import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
@@ -29,6 +30,7 @@ export default function CategoryMetaDialog({ category, showSiteCatIds, onClose, 
   const [makerworldCatIds, setMakerworldCatIds] = useState(category.makerworld_cat_ids);
   const [thingiverseCatIds, setThingiverseCatIds] = useState(category.thingiverse_cat_ids);
   const [printablesCatIds, setPrintablesCatIds] = useState(category.printables_cat_ids);
+  const [myminifactoryCatIds, setMyminifactoryCatIds] = useState(category.myminifactory_cat_ids);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,6 +44,7 @@ export default function CategoryMetaDialog({ category, showSiteCatIds, onClose, 
         makerworldCatIds,
         thingiverseCatIds,
         printablesCatIds,
+        myminifactoryCatIds,
       });
       onClose();
     } catch (err) {
@@ -77,7 +80,8 @@ export default function CategoryMetaDialog({ category, showSiteCatIds, onClose, 
             disabled={saving}
           />
           {showSiteCatIds && (
-            <Stack direction="row" spacing={2}>
+            // Two by two, one column on a phone.
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2 }}>
               <TextField
                 label={t("models:categories.manager.makerworldCatIdLabel")}
                 placeholder={t("models:categories.manager.catIdsPlaceholder") ?? undefined}
@@ -105,7 +109,16 @@ export default function CategoryMetaDialog({ category, showSiteCatIds, onClose, 
                 onChange={(e) => setPrintablesCatIds(e.target.value)}
                 disabled={saving}
               />
-            </Stack>
+              <TextField
+                label={t("models:categories.manager.myminifactoryCatIdLabel")}
+                placeholder={t("models:categories.manager.catIdsPlaceholder") ?? undefined}
+                helperText={t("models:categories.manager.catIdsHelp")}
+                fullWidth
+                value={myminifactoryCatIds}
+                onChange={(e) => setMyminifactoryCatIds(e.target.value)}
+                disabled={saving}
+              />
+            </Box>
           )}
           {error && <Alert severity="error">{error}</Alert>}
         </Stack>

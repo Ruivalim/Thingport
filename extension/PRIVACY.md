@@ -1,9 +1,9 @@
 # Thingport Grab privacy policy
 
-_Effective 12 October 2026._
+_Effective 18 October 2026._
 
-Thingport Grab is a browser extension that imports 3D-printing models from MakerWorld, Printables
-and Thingiverse into **your own self-hosted Thingport instance**, and converts MakerWorld files for
+Thingport Grab is a browser extension that imports 3D-printing models from MakerWorld, Printables,
+Thingiverse and, once you allow it, MyMiniFactory into **your own self-hosted Thingport instance**, and converts MakerWorld files for
 other slicers in your browser. It has no servers of its own: the
 extension's developer never receives any of your data, and nothing is shared with anyone else.
 
@@ -16,7 +16,8 @@ the list of recent imports, which is synced between your browsers as described b
   you sign in to it with. They're stored as you entered them, so the extension can sign in again
   when its session expires.
 - **A session token** your Thingport instance issues when the extension signs in.
-- **Your settings:** whether the extension is switched on.
+- **Your settings:** whether the extension is switched on. Which optional sites you turned on is kept by your browser,
+  as the access you granted.
 - **Recent imports:** the title and a link for the last five models you imported through the
   extension, shown in its toolbar popup. This list is kept in your browser's sync storage, so it
   appears in the extension on your other browsers and devices where you're signed in to the same
@@ -25,7 +26,7 @@ the list of recent imports, which is synced between your browsers as described b
   password: entries are tied to your Thingport account by a one-way hash of your instance address
   and email. Each model's thumbnail is fetched from your Thingport instance and kept in local
   storage on each device; it isn't synced.
-- **Your Printables and Thingiverse usernames,** as last sent to your Thingport instance, so they're
+- **Your Printables, Thingiverse and MyMiniFactory usernames,** as last sent to your Thingport instance, so they're
   only sent again when they change, and when it last read your Printables collections and likes.
 - **Collection import progress:** while a MakerWorld collection import is running, the list of
   model pages still to visit, so it can carry on across page loads. It's deleted when the import
@@ -39,7 +40,7 @@ the **provider site you're on**.
 **To your Thingport instance:**
 
 - Your email and password, to sign in.
-- The address of each model page you open on MakerWorld, Printables or Thingiverse, to check
+- The address of each model page you open on MakerWorld, Printables, Thingiverse or MyMiniFactory, to check
   whether you've already imported that model. This happens when the page opens, so the extension
   knows whether to show its button. On a MakerWorld collection page, the same check runs for each
   model in the collection when you open the extension's panel there.
@@ -52,7 +53,10 @@ the **provider site you're on**.
 - If you're logged into MakerWorld in this browser: your MakerWorld session cookie, when you import
   from MakerWorld. MakerWorld requires it to download files. The extension also saves it to your
   Thingport account's MakerWorld setting, so imports made from Thingport's own web app work too.
-- If you're logged into Printables or Thingiverse in this browser: your username there, when it
+- If you're logged into MyMiniFactory in this browser, and have allowed the extension there: your MyMiniFactory
+  session cookie (`PHPSESSID`), when you open a MyMiniFactory page and it changed since last sent. Your Thingport
+  instance uses it to download the models in your MyMiniFactory library, such as ones you bought.
+- If you're logged into Printables, Thingiverse or MyMiniFactory in this browser: your username there, when it
   first sees it or it changes, so Thingport's web app can list your collections on that site when
   you pick one to sync with.
 - If you're logged into Printables in this browser, at most once an hour while you're on its pages:
@@ -60,7 +64,7 @@ the **provider site you're on**.
   included), the models you liked there, and the models in the private collections you sync. Only
   you can see these on Printables, so this is how Thingport can sync them.
 
-**To MakerWorld, Printables and Thingiverse:**
+**To MakerWorld, Printables, Thingiverse and MyMiniFactory:**
 
 - On MakerWorld, to find a model's download link, the extension asks MakerWorld's own website for
   it, the same way the page does when you click Download, using your existing MakerWorld session.
@@ -78,7 +82,7 @@ the **provider site you're on**.
   the private collections you sync.
 
 **The extension reads, on supported pages only:** the model's title, MakerWorld's page data for the
-model, the model links listed on collection pages, and, on Thingiverse, your username from the
+model, the model links listed on collection pages, and, on Thingiverse and MyMiniFactory, your username from the
 page's header. It doesn't read any other websites.
 
 ## What the extension doesn't do
@@ -91,13 +95,15 @@ page's header. It doesn't read any other websites.
 
 ## Permissions
 
-| Permission                                       | Why                                                                                            |
-| ------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
-| Storage                                          | Keeps the settings and data listed under "What the extension stores".                          |
-| Cookies                                          | Reads MakerWorld's and Printables' session cookies, only on their sites (see above).           |
-| Downloads                                        | Reads the link from the MakerWorld download it starts, then cancels and removes that download. |
-| Access to MakerWorld, Printables and Thingiverse | Shows the import button, and MakerWorld's Download normalized button, on their pages.          |
-| Access to your Thingport instance                | Requested for that one address when you set the extension up, so it can talk to your instance. |
+| Permission                                       | Why                                                                                                                                                                                                                             |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Storage                                          | Keeps the settings and data listed under "What the extension stores".                                                                                                                                                           |
+| Cookies                                          | Reads MakerWorld's, Printables' and MyMiniFactory's session cookies, only on their sites (see above).                                                                                                                           |
+| Downloads                                        | Reads the link from the MakerWorld download it starts, then cancels and removes that download.                                                                                                                                  |
+| Scripting                                        | Adds the import button to MyMiniFactory's pages, and those of sites added later, once you allow them.                                                                                                                           |
+| Access to MakerWorld, Printables and Thingiverse | Shows the import button, and MakerWorld's Download normalized button, on their pages.                                                                                                                                           |
+| Access to newer model sites (optional)           | Asked for one site at a time, only when you click **Enable** next to it under **Providers** in the popup (MyMiniFactory, and sites added in later updates). You can take this access back in your browser's extension settings. |
+| Access to your Thingport instance                | Requested for that one address when you set the extension up, so it can talk to your instance.                                                                                                                                  |
 
 ## Your control over your data
 

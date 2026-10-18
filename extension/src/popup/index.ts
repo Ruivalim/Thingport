@@ -6,6 +6,7 @@ import { send, type Connection, type ExtensionState } from "../shared/messages";
 import { STORAGE_KEYS, apiUrl, normalizeInstanceUrl } from "../shared/storage";
 import { clearError, els, showError } from "./dom";
 import { loadRecentImports } from "./recentImports";
+import { loadSites } from "./sites";
 import "./styles/popup.scss";
 
 // When opened as a tab from a page's setup dialog, return there once saved.
@@ -29,6 +30,7 @@ function showConfiguredView(state: ExtensionState): void {
   els.enabledSwitch.checked = !state.disabled;
   clearError(els.configuredError);
   void loadRecentImports();
+  void loadSites();
 }
 
 function showSetupForm(prefillUrl = "", prefillEmail = ""): void {

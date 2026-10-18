@@ -27,7 +27,7 @@ export type Connection =
 
 /** Providers whose signed-in user the extension tells the instance, for its Browse tab. MakerWorld
  *  needs none: the instance has its session cookie. */
-export type AccountProvider = "printables" | "thingiverse";
+export type AccountProvider = "printables" | "thingiverse" | "myminifactory";
 
 /** `wanted`: the private collections whose models the instance asked for. `likes`: whether to read
  *  every page of the user's likes this time. */
@@ -108,6 +108,8 @@ export type BackgroundMessages = {
   GET_PRINTABLES_TOKEN: { payload: void; result: string | null };
   /** Who the user is signed in as on a provider, read from its pages. */
   REPORT_PROVIDER_ACCOUNT: { payload: { provider: AccountProvider; value: string }; result: null };
+  /** On a MyMiniFactory page while signed in: send the session on, if it changed. */
+  SYNC_MYMINIFACTORY_SESSION: { payload: void; result: null };
   /** What to read on Printables now, or null when it isn't time to read anything. */
   /** `now`: skip the hourly wait, e.g. right after a private collection's sync was turned on. */
   PRINTABLES_PUSH_DUE: { payload: { now?: boolean }; result: PrintablesPushPlan | null };

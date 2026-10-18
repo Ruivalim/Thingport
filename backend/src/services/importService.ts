@@ -71,7 +71,23 @@ import {
   resolvePrintablesModel,
   type PrintablesPlateFile,
 } from "./printablesApi";
-import { getThingiverseAccessToken } from "./settingsService";
+import {
+  isMyminifactoryFileHost,
+  listMyminifactoryLibraryFiles,
+  MyminifactoryAuthError,
+  MyminifactoryRateLimitError,
+  MyminifactorySessionExpiredError,
+  parseMyminifactoryObjectUrl,
+  resolveMyminifactoryDownload,
+  resolveMyminifactoryLibraryDownload,
+  resolveMyminifactoryObject,
+} from "./myminifactoryApi";
+import { getUserMyminifactoryCookie, markMyminifactoryCookieRejected } from "./myminifactorySessionService";
+
+/** An import refused because the user's MyMiniFactory session has expired. */
+export const MYMINIFACTORY_SESSION_CODE = "myminifactory_session";
+import { listZipEntries, readZipEntry } from "../utils/zipReader";
+import { getMyminifactoryApiKey, getThingiverseAccessToken } from "./settingsService";
 import { upsertAuthorFromImport } from "./authorService";
 import {
   addPlatesToPrint,
@@ -553,10 +569,13 @@ const CATEGORY_SITE_CAT_IDS_FIELD = {
   makerworld: "makerworldCatIds",
   thingiverse: "thingiverseCatIds",
   printables: "printablesCatIds",
+  myminifactory: "myminifactoryCatIds",
 } as const;
 
 /** Auto-categorizes an import when a category's `*CatIds` for this site overlap the model's own
- * category ids. Best-effort. */
+ * category ids. Those come most specific first (a model's own category, then its parent), and the
+ * category matching the earliest one wins, so a subcategory beats the category its parent maps to.
+ * Best-effort. */
 export async function resolveCategoryIdByCategory(
   userId: string,
   categorySite: ImportedPageMetadata["categorySite"],
@@ -564,12 +583,18 @@ export async function resolveCategoryIdByCategory(
 ): Promise<string | null> {
   if (!categorySite || !siteCategoryIds.length) return null;
   const field = CATEGORY_SITE_CAT_IDS_FIELD[categorySite];
-  const category = await prisma.category.findFirst({
+  const candidates = await prisma.category.findMany({
     // Folders are the user's own tree; only categories take imports by site category id.
     where: { userId, kind: "category", [field]: { hasSome: siteCategoryIds } },
     orderBy: { position: "asc" },
   });
-  return category?.id ?? null;
+  const rank = (category: (typeof candidates)[number]) => {
+    const ids = category[field];
+    const index = siteCategoryIds.findIndex((id) => ids.includes(id));
+    return index === -1 ? siteCategoryIds.length : index;
+  };
+  // Stable, so equally specific matches keep their position order.
+  return candidates.toSorted((a, b) => rank(a) - rank(b))[0]?.id ?? null;
 }
 
 /** Provider + stable external id for a model URL, used to dedupe imports. Null if unknown. */
@@ -580,6 +605,8 @@ export function identifySourceModel(url: string): { provider: string; externalId
   if (thingiverse) return { provider: "thingiverse", externalId: thingiverse.thingId };
   const printables = parsePrintablesModelUrl(url);
   if (printables) return { provider: "printables", externalId: printables.modelId };
+  const myminifactory = parseMyminifactoryObjectUrl(url);
+  if (myminifactory) return { provider: "myminifactory", externalId: myminifactory.objectId };
   return null;
 }
 
@@ -623,6 +650,8 @@ export function buildImportSourceUrl(provider: string | null, externalId: string
   if (provider === "makerworld") return `https://makerworld.com/en/models/${externalId}`;
   if (provider === "thingiverse") return `https://www.thingiverse.com/thing:${externalId}`;
   if (provider === "printables") return `https://www.printables.com/model/${externalId}`;
+  // MyMiniFactory redirects an object id with any slug, or none, to its page.
+  if (provider === "myminifactory") return `https://www.myminifactory.com/object/3d-print-${externalId}`;
   return null;
 }
 
@@ -978,6 +1007,203 @@ async function importPrintablesModel(
   }
 }
 
+const MYMINIFACTORY_NOT_CONFIGURED =
+  "MyMiniFactory import isn't configured for this instance yet -- ask an admin to add an API key in Administration > Providers.";
+
+/** The model files in a downloaded zip, each as its own plate; the zip itself is left for the caller. */
+async function modelFilesFromZip(zipPath: string): Promise<NewPlateInput[]> {
+  const inputs: NewPlateInput[] = [];
+  try {
+    for (const entry of await listZipEntries(zipPath)) {
+      if (entry.isDirectory) continue;
+      const filename = sanitizeFilename(path.basename(entry.name.replace(/\\/g, "/")));
+      if (!MULTI_FILE_PLATE_EXTS.has(path.extname(filename).toLowerCase())) continue;
+      const buffer = await readZipEntry(zipPath, entry.name, IMPORT_MAX_BYTES);
+      if (!buffer) continue;
+      const tempFilePath = path.join(
+        os.tmpdir(),
+        `thingport-mmf-${crypto.randomBytes(8).toString("hex")}${path.extname(filename)}`,
+      );
+      await fs.writeFile(tempFilePath, buffer);
+      inputs.push({ filename, mime: guessMimeFromPath(filename), tempFilePath });
+    }
+  } catch (err) {
+    await Promise.all(inputs.map((input) => fs.rm(input.tempFilePath!, { force: true }).catch(() => undefined)));
+    throw err;
+  }
+  return inputs;
+}
+
+const MYMINIFACTORY_BLOCKED =
+  "MyMiniFactory blocked the file download (rate limit or Cloudflare challenge). This usually clears after a while -- wait, then retry the same import.";
+
+/** One signed MyMiniFactory download, unpacked into model files when it's a zip. */
+async function downloadMyminifactoryFile(url: string, suggestedName?: string): Promise<NewPlateInput[]> {
+  const fileUrl = new URL(url);
+  if (!isMyminifactoryFileHost(fileUrl.hostname)) return [];
+  const name = suggestedName ?? decodeURIComponent(fileUrl.pathname.split("/").pop() || "myminifactory-file");
+  const result = await downloadPlainFileToTemp(url, name);
+  if (result && "rateLimited" in result) throw new HttpError(429, MYMINIFACTORY_BLOCKED);
+  if (!result) return [];
+  const ext = path.extname(result.input.filename).toLowerCase();
+  if (ext === ".zip") {
+    try {
+      return await modelFilesFromZip(result.input.tempFilePath!);
+    } finally {
+      await fs.rm(result.input.tempFilePath!, { force: true }).catch(() => undefined);
+    }
+  }
+  if (MULTI_FILE_PLATE_EXTS.has(ext)) return [result.input];
+  await fs.rm(result.input.tempFilePath!, { force: true }).catch(() => undefined);
+  return [];
+}
+
+const MYMINIFACTORY_CONNECT =
+  "Connect your MyMiniFactory account in Configuration > Providers (or visit myminifactory.com with Thingport Grab), then import it again.";
+
+/** As the user, from their MyMiniFactory library: what Thingport can't download anonymously. */
+async function downloadMyminifactoryFromLibrary(
+  userId: string,
+  objectId: string,
+  paid: boolean,
+): Promise<NewPlateInput[]> {
+  const cookie = await getUserMyminifactoryCookie(userId);
+  if (!cookie) {
+    throw new HttpError(
+      403,
+      paid
+        ? `This is a paid MyMiniFactory model, so it downloads only from the account that bought it. ${MYMINIFACTORY_CONNECT}`
+        : `This MyMiniFactory model downloads only when signed in. ${MYMINIFACTORY_CONNECT}`,
+    );
+  }
+  const isModel = (name: string) =>
+    MULTI_FILE_PLATE_EXTS.has(path.extname(name).toLowerCase()) || path.extname(name).toLowerCase() === ".zip";
+  const downloaded: NewPlateInput[] = [];
+  try {
+    const files = await listMyminifactoryLibraryFiles(objectId, cookie, isModel);
+    if (!files) {
+      throw new HttpError(
+        403,
+        paid
+          ? "This paid MyMiniFactory model isn't in your library: buy it on MyMiniFactory first, with the account connected to Thingport."
+          : "MyMiniFactory doesn't let your account download this model.",
+      );
+    }
+    for (const file of files) {
+      await maybeSleep(MYMINIFACTORY_FILE_DELAY_MS);
+      const url = await resolveMyminifactoryLibraryDownload(file.path, cookie);
+      if (url) downloaded.push(...(await downloadMyminifactoryFile(url, file.name)));
+    }
+    if (!downloaded.length && files.length) {
+      throw new HttpError(
+        400,
+        files.every((file) => !isModel(file.name))
+          ? "This model's files are in an archive Thingport can't open (such as RAR), and MyMiniFactory hasn't unpacked it."
+          : "Couldn't download this model's files from your MyMiniFactory library. Try again later.",
+      );
+    }
+    return downloaded;
+  } catch (err) {
+    await Promise.all(downloaded.map((input) => fs.rm(input.tempFilePath!, { force: true }).catch(() => undefined)));
+    if (err instanceof MyminifactorySessionExpiredError) {
+      await markMyminifactoryCookieRejected(userId);
+      throw new HttpError(400, err.message, MYMINIFACTORY_SESSION_CODE);
+    }
+    throw err;
+  }
+}
+
+/** Every model file is its own request; spaced out a little, as the site's own pages would be. */
+const MYMINIFACTORY_FILE_DELAY_MS = 500;
+
+/** Metadata from the API (the instance's key). Files from /download when anyone may have them: one file, or a zip
+ *  whose model files each become a plate; else, paid and login-only ones, from the user's own library. */
+async function importMyminifactoryObject(
+  userId: string,
+  source: { provider: string; externalId: string },
+  body: ImportRequestBody,
+): Promise<{
+  print: Print;
+  plates: Plate[];
+  author: Author | null;
+  previewImages: PreviewImage[];
+  alreadyImported: boolean;
+}> {
+  const apiKey = await getMyminifactoryApiKey();
+  if (!apiKey) throw new HttpError(503, MYMINIFACTORY_NOT_CONFIGURED);
+
+  let resolved;
+  let downloaded: NewPlateInput[];
+  try {
+    resolved = await resolveMyminifactoryObject(source.externalId, apiKey);
+    if (!resolved) throw new HttpError(404, "This MyMiniFactory object could not be found, or isn't public.");
+    // Paid models, and free ones whose files are archives, only download as the user, from their library.
+    const anonymous = resolved.paid || resolved.archives ? null : await resolveMyminifactoryDownload(source.externalId);
+    if (anonymous?.kind === "missing") {
+      throw new HttpError(404, "This MyMiniFactory object could not be found, or isn't public.");
+    }
+    downloaded =
+      anonymous?.kind === "file"
+        ? await downloadMyminifactoryFile(anonymous.url)
+        : await downloadMyminifactoryFromLibrary(userId, source.externalId, resolved.paid);
+  } catch (err) {
+    if (err instanceof MyminifactoryRateLimitError) throw new HttpError(429, err.message);
+    // 400, not 401: see tryMakerworldCloudApi.
+    if (err instanceof MyminifactoryAuthError) throw new HttpError(400, err.message);
+    throw err;
+  }
+  const { meta, galleryImages } = resolved;
+  if (!downloaded.length)
+    throw new HttpError(400, "This MyMiniFactory object has no model files Thingport can import.");
+
+  try {
+    const author = await upsertAuthorFromImport(meta.author ?? null);
+    const categoryId =
+      body.category_id ??
+      (await resolveCategoryIdByCategory(userId, meta.categorySite ?? null, meta.siteCategoryIds ?? []));
+    const printMeta: PrintMetaInput = {
+      title: body.title ?? meta.title ?? null,
+      notes: body.notes ?? meta.description ?? null,
+      tags: body.tags && body.tags.length ? body.tags : (meta.tags ?? []),
+      categoryId,
+      categorySource: body.category_id ? "MANUAL" : categoryId ? "RULE" : null,
+      creator: meta.creator ?? null,
+      authorId: author?.id ?? null,
+      sourceProvider: source.provider,
+      sourceExternalId: source.externalId,
+    };
+    let created: { print: Print; plates: Plate[] };
+    try {
+      created = await createPrint(userId, printMeta, meta.title || `myminifactory-${source.externalId}`, downloaded);
+    } catch (err) {
+      // Race guard: a concurrent import of the same source model won.
+      if (isUniqueConstraintError(err)) {
+        const existing = await findExistingImportedPrint(userId, source);
+        if (existing) return { ...existing, alreadyImported: true };
+      }
+      throw err;
+    }
+    await attachImportedPreviewImages(
+      created.print.id,
+      created.plates[0]?.id,
+      meta.previewImageUrl ?? null,
+      galleryImages,
+    );
+    await localizeDescriptionImages(created.print.id);
+    const previewImages = await prisma.previewImage.findMany({
+      where: { printId: created.print.id },
+      orderBy: { position: "asc" },
+    });
+    return { ...created, author, previewImages, alreadyImported: false };
+  } finally {
+    for (const input of downloaded) {
+      if (input.tempFilePath && fsSync.existsSync(input.tempFilePath)) {
+        await fs.rm(input.tempFilePath, { force: true }).catch(() => undefined);
+      }
+    }
+  }
+}
+
 type ImportResult = {
   print: Print;
   plates: Plate[];
@@ -1020,6 +1246,9 @@ async function importNewOrExisting(userId: string, url: string, body: ImportRequ
   }
   if (source?.provider === "printables") {
     return importPrintablesModel(userId, source, body);
+  }
+  if (source?.provider === "myminifactory") {
+    return importMyminifactoryObject(userId, source, body);
   }
 
   const { tempPath, filename, mime, meta } = await downloadImportToTemp(url, body);

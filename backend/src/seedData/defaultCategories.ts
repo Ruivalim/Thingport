@@ -1,4 +1,4 @@
-/** Starter category tree modeled on MakerWorld's, with matching Thingiverse and Printables ids so
+/** Starter category tree modeled on MakerWorld's, with matching Thingiverse, Printables and MyMiniFactory ids so
  * imports are auto-categorized from the start. */
 export type DefaultCategoryNode = {
   name: string;
@@ -8,6 +8,7 @@ export type DefaultCategoryNode = {
   makerworldCatIds?: number[];
   thingiverseCatIds?: number[];
   printablesCatIds?: number[];
+  myminifactoryCatIds?: number[];
   children?: DefaultCategoryNode[];
 };
 
@@ -20,6 +21,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     makerworldCatIds: [900],
     thingiverseCatIds: [73],
     printablesCatIds: [1],
+    myminifactoryCatIds: [366],
     children: [
       {
         name: "3D Printer Accessories",
@@ -29,6 +31,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [901],
         thingiverseCatIds: [127],
         printablesCatIds: [40],
+        myminifactoryCatIds: [1001, 1000],
       },
       {
         name: "3D Printer Parts",
@@ -38,6 +41,10 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [902],
         thingiverseCatIds: [128, 152, 126],
         printablesCatIds: [134, 138, 136, 135, 2, 137],
+        myminifactoryCatIds: [
+          493, 494, 495, 588, 590, 591, 592, 593, 594, 595, 596, 597, 598, 599, 600, 601, 602, 603, 604, 605, 606, 607,
+          608, 672, 949, 1271,
+        ],
       },
       {
         name: "Test Models",
@@ -47,6 +54,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [903],
         thingiverseCatIds: [129],
         printablesCatIds: [12],
+        myminifactoryCatIds: [960],
       },
     ],
   },
@@ -83,6 +91,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           "Elevate your branding and signage with our collection of impactful 3D printed signs and logos. Create custom signage for businesses, events, or home décor that stands out from the crowd.",
         makerworldCatIds: [102],
         thingiverseCatIds: [76],
+        myminifactoryCatIds: [105],
       },
       {
         name: "Sculptures",
@@ -92,6 +101,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [104],
         thingiverseCatIds: [80],
         printablesCatIds: [14],
+        myminifactoryCatIds: [112, 355],
       },
       {
         name: "Other Art Models",
@@ -112,6 +122,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     makerworldCatIds: [500],
     thingiverseCatIds: [69],
     printablesCatIds: [90],
+    myminifactoryCatIds: [86],
     children: [
       {
         name: "Biology",
@@ -120,6 +131,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           "Explore the intricate world of life with our meticulously crafted 3D printed biology models, visualizing and understanding anatomy, molecular structures, and biological processes.",
         makerworldCatIds: [503],
         thingiverseCatIds: [106],
+        myminifactoryCatIds: [154, 373, 997, 1045],
       },
       {
         name: "Chemistry",
@@ -128,6 +140,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           "Unravel the mysteries of matter with our captivating 3D printed chemistry models, visualizing and understanding molecular structures, chemical compounds, and complex reactions.",
         makerworldCatIds: [505],
         printablesCatIds: [92],
+        myminifactoryCatIds: [162],
       },
       {
         name: "Engineering",
@@ -137,6 +150,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [501],
         thingiverseCatIds: [104],
         printablesCatIds: [93],
+        myminifactoryCatIds: [953, 241, 374, 1042],
       },
       {
         name: "Geography",
@@ -145,6 +159,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           "Embark on a geographical journey around the world with our captivating 3D printed models, visualizing mountain ranges, continents, oceans, rivers, and climate patterns.",
         makerworldCatIds: [506],
         printablesCatIds: [98],
+        myminifactoryCatIds: [164],
       },
       {
         name: "Mathematics",
@@ -154,6 +169,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [502],
         thingiverseCatIds: [105],
         printablesCatIds: [94],
+        myminifactoryCatIds: [163, 1035],
       },
       {
         name: "Physics & Astronomy",
@@ -163,6 +179,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [504],
         thingiverseCatIds: [148],
         printablesCatIds: [91],
+        myminifactoryCatIds: [165, 558, 1036],
       },
       {
         name: "Other Education Models",
@@ -171,6 +188,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           "Discover a world of endless learning possibilities with our diverse collection of 3D printed educational models, exploring history, social studies, art, design, language, and literature.",
         makerworldCatIds: [507],
         printablesCatIds: [96],
+        myminifactoryCatIds: [344, 166, 109, 1034, 969, 970, 971, 972, 973],
       },
     ],
   },
@@ -182,6 +200,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     makerworldCatIds: [200],
     thingiverseCatIds: [64],
     printablesCatIds: [17],
+    myminifactoryCatIds: [58],
     children: [
       {
         name: "Bags",
@@ -189,6 +208,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         metaDescription:
           "Embrace a unique blend of functionality and fashion-forward design with our durable and eco-friendly 3D printed bags, ranging from trendy handbags to practical backpacks.",
         makerworldCatIds: [201],
+        myminifactoryCatIds: [143],
       },
       {
         name: "Clothes",
@@ -197,6 +217,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           "Elevate your style with our eye-catching and personalized 3D printed clothes accessories, from statement-making necklaces and bracelets to bold earrings and scarves.",
         makerworldCatIds: [202],
         thingiverseCatIds: [142],
+        myminifactoryCatIds: [169],
       },
       {
         name: "Earrings",
@@ -205,6 +226,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           "Make a statement with our collection of exquisite and unique 3D printed earrings, featuring a wide variety of designs from delicate and feminine to bold and geometric.",
         makerworldCatIds: [206],
         thingiverseCatIds: [139],
+        myminifactoryCatIds: [405],
       },
       {
         name: "Footwear",
@@ -212,6 +234,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         metaDescription:
           "Experience the ultimate in comfort and style with our innovative and customizable 3D printed footwear, designed to provide exceptional support and make a fashion statement.",
         makerworldCatIds: [204],
+        myminifactoryCatIds: [140],
       },
       {
         name: "Glasses",
@@ -220,6 +243,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           "See the world in a new light with our stylish and functional 3D printed glasses, offering a variety of frames and lenses to create both fashionable and practical eyewear.",
         makerworldCatIds: [203],
         thingiverseCatIds: [83],
+        myminifactoryCatIds: [147],
       },
       {
         name: "Jewelry",
@@ -228,6 +252,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           "Make one-of-a-kind pieces of jewelry with our amazing 3D printed jewelry, featuring a wide range of designs from delicate and intricate to bold and statement-making.",
         makerworldCatIds: [208],
         thingiverseCatIds: [84, 82],
+        myminifactoryCatIds: [291, 148, 426, 359, 430, 145, 439],
       },
       {
         name: "Rings",
@@ -236,6 +261,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           "Find the perfect ring to symbolize your love or commitment with our unique and personalized 3D printed rings, including classic wedding bands, modern statement rings, and personalized rings with custom engravings.",
         makerworldCatIds: [205],
         thingiverseCatIds: [85],
+        myminifactoryCatIds: [406],
       },
       {
         name: "Other Fashion Models",
@@ -245,6 +271,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [207],
         thingiverseCatIds: [81, 130],
         printablesCatIds: [18, 20, 42],
+        myminifactoryCatIds: [357],
       },
     ],
   },
@@ -265,6 +292,9 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [301],
         thingiverseCatIds: [92],
         printablesCatIds: [52],
+        myminifactoryCatIds: [
+          59, 943, 328, 378, 329, 941, 275, 113, 326, 647, 375, 488, 489, 490, 491, 492, 648, 507, 633, 670,
+        ],
       },
       {
         name: "Music",
@@ -274,6 +304,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [303],
         thingiverseCatIds: [94],
         printablesCatIds: [95],
+        myminifactoryCatIds: [68],
       },
       {
         name: "RC",
@@ -282,6 +313,10 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           "Experience the thrill of crafting and controlling your own 3D printed RC vehicles, drones, and airplanes.",
         makerworldCatIds: [304],
         thingiverseCatIds: [95],
+        myminifactoryCatIds: [
+          120, 1273, 1274, 1275, 1276, 1277, 1278, 1279, 1280, 1281, 1282, 1283, 1291, 1292, 1299, 360, 975, 983, 984,
+          985, 987, 976, 988, 992, 977, 990, 991,
+        ],
       },
       {
         name: "Robotics",
@@ -291,6 +326,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [305],
         thingiverseCatIds: [96],
         printablesCatIds: [64],
+        myminifactoryCatIds: [393, 429, 999],
       },
       {
         name: "Sport & Outdoors",
@@ -300,6 +336,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [306],
         thingiverseCatIds: [140],
         printablesCatIds: [9, 83, 74, 85, 84],
+        myminifactoryCatIds: [56, 69, 71, 966, 967, 968, 114, 342, 550, 551, 962],
       },
       {
         name: "Vehicles",
@@ -329,6 +366,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     makerworldCatIds: [400],
     thingiverseCatIds: [67],
     printablesCatIds: [3],
+    myminifactoryCatIds: [57],
     children: [
       {
         name: "Decor",
@@ -338,6 +376,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [401],
         thingiverseCatIds: [97],
         printablesCatIds: [44],
+        myminifactoryCatIds: [335, 389, 399, 372, 398, 362, 336],
       },
       {
         name: "Festivities",
@@ -346,6 +385,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           "Celebrate special occasions and holidays with our festive 3D printed decorations, ornaments, and figurines.",
         makerworldCatIds: [403],
         printablesCatIds: [65, 69, 68, 70],
+        myminifactoryCatIds: [385, 384, 634, 635, 636],
       },
       {
         name: "Garden",
@@ -355,6 +395,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [402],
         thingiverseCatIds: [98],
         printablesCatIds: [53, 71],
+        myminifactoryCatIds: [150],
       },
       {
         name: "Office",
@@ -364,6 +405,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [404],
         thingiverseCatIds: [101],
         printablesCatIds: [29],
+        myminifactoryCatIds: [382, 377],
       },
       {
         name: "Pets",
@@ -382,6 +424,10 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [406],
         thingiverseCatIds: [99, 147, 146, 100, 153],
         printablesCatIds: [5, 6, 139, 4, 7, 45],
+        myminifactoryCatIds: [
+          370, 381, 371, 369, 397, 88, 445, 452, 502, 823, 824, 825, 826, 827, 833, 942, 828, 829, 830, 831, 832, 902,
+          944, 947, 948, 775,
+        ],
       },
     ],
   },
@@ -393,6 +439,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     makerworldCatIds: [600],
     thingiverseCatIds: [70],
     printablesCatIds: [101],
+    myminifactoryCatIds: [1015],
     children: [
       {
         name: "Animals",
@@ -411,6 +458,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [602],
         thingiverseCatIds: [108],
         printablesCatIds: [103, 62],
+        myminifactoryCatIds: [787, 1153, 1158, 913],
       },
       {
         name: "Creatures",
@@ -429,6 +477,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [604],
         thingiverseCatIds: [112],
         printablesCatIds: [60],
+        myminifactoryCatIds: [785, 780, 782, 783, 784, 1145],
       },
       {
         name: "Other Miniatures",
@@ -438,6 +487,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [605],
         thingiverseCatIds: [110, 111, 115, 116],
         printablesCatIds: [104, 105, 75],
+        myminifactoryCatIds: [617, 786, 1306, 1310, 1311, 1312, 1313, 1304, 1319, 1325, 1324],
       },
     ],
   },
@@ -448,6 +498,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       "Even if it's not Halloween, there's always time for printing a cool mask, helmet or other cosplay-related prints. Don't wait until it's too late, and start printing your awesome new outfit!",
     makerworldCatIds: [1000],
     printablesCatIds: [76],
+    myminifactoryCatIds: [119],
     children: [
       {
         name: "Costumes",
@@ -456,6 +507,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           "Create stunning and authentic 3D printed costumes, from superhero suits to fantasy armor, for your next cosplay event or Halloween.",
         makerworldCatIds: [1003],
         printablesCatIds: [77],
+        myminifactoryCatIds: [340],
       },
       {
         name: "Masks & Helmets",
@@ -464,6 +516,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           "Elevate your cosplay with our detailed and realistic 3D printed masks, helmets, and other facial accessories.",
         makerworldCatIds: [1001],
         printablesCatIds: [78],
+        myminifactoryCatIds: [155],
       },
       {
         name: "Cosplay Weapons",
@@ -471,6 +524,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         metaDescription:
           "Dive into the amazing cosplay world with our 3D printed props! We've got finely designed swords and shields, ideal for you to embody your favorite characters. Unleash their power and enjoy immersive role-playing!",
         makerworldCatIds: [1002],
+        myminifactoryCatIds: [542, 156, 304],
       },
       {
         name: "Other Props & Cosplays",
@@ -490,6 +544,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
       "There's never enough tools to have, or a way to organize those tools in an efficient manner. But this section is the perfect location to find the files you need to print a specific jig or an organizer for your latest gadget.",
     makerworldCatIds: [700],
     thingiverseCatIds: [71],
+    myminifactoryCatIds: [252],
     children: [
       {
         name: "Gadgets",
@@ -499,6 +554,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [705],
         thingiverseCatIds: [65],
         printablesCatIds: [21, 25, 27, 26, 28, 100, 140, 43],
+        myminifactoryCatIds: [94, 330, 368, 388],
       },
       {
         name: "Hand Tools",
@@ -530,6 +586,9 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           "Experience the future of medicine with our innovative 3D printed medical tools, surgical guides, and implants.",
         makerworldCatIds: [707],
         printablesCatIds: [87, 88, 99],
+        myminifactoryCatIds: [
+          288, 110, 1259, 1004, 1022, 1023, 1024, 1006, 1005, 1007, 1008, 1025, 1028, 1029, 1031, 1032, 1033, 1091,
+        ],
       },
       {
         name: "Organizers",
@@ -539,6 +598,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [701],
         thingiverseCatIds: [102, 120],
         printablesCatIds: [50],
+        myminifactoryCatIds: [149],
       },
       {
         name: "Other Tools",
@@ -559,6 +619,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     makerworldCatIds: [800],
     thingiverseCatIds: [72],
     printablesCatIds: [30],
+    myminifactoryCatIds: [60],
     children: [
       {
         name: "Board Games",
@@ -568,6 +629,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [802],
         thingiverseCatIds: [122, 113, 151],
         printablesCatIds: [31],
+        myminifactoryCatIds: [1014, 523, 1016],
       },
       {
         name: "Characters",
@@ -576,6 +638,9 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           "Create your own personalized 3D printed characters, action figures, and dolls for imaginative play and storytelling.",
         makerworldCatIds: [801],
         printablesCatIds: [36],
+        myminifactoryCatIds: [
+          104, 67, 435, 442, 496, 532, 533, 436, 536, 537, 538, 539, 540, 541, 543, 544, 733, 927, 957, 1159, 1309,
+        ],
       },
       {
         name: "Outdoor Toys",
@@ -593,6 +658,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [804],
         thingiverseCatIds: [125],
         printablesCatIds: [33],
+        myminifactoryCatIds: [100],
       },
       {
         name: "Construction Sets",
@@ -611,6 +677,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [805],
         thingiverseCatIds: [149, 124, 123],
         printablesCatIds: [38, 47],
+        myminifactoryCatIds: [462, 1308, 1307, 529],
       },
     ],
   },

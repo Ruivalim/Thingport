@@ -64,6 +64,12 @@ model User {
   // private collections and likes are refused until they give one again.
   printablesPushOff        Boolean           @default(false)
   thingiverseUsername      String?
+  myminifactoryUsername    String?
+  // Per-user, beside the instance-wide API key: the MyMiniFactory session (PHPSESSID) that downloads
+  // paid and login-only models from the user's own library.
+  myminifactoryCookie      String?
+  // When MyMiniFactory last turned the session down.
+  myminifactoryRejectedAt  DateTime?
   slicer                   String?
   // "light" | "dark" | "system"; null means never set.
   themePreference          String?
@@ -114,35 +120,37 @@ model Invitation {
 }
 
 model Category {
-  id                String     @id @default(cuid())
-  userId            String
-  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name              String
-  tags              String[]   @default([])
+  id                  String     @id @default(cuid())
+  userId              String
+  user                User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name                String
+  tags                String[]   @default([])
   // "category" (the starter categories imports sort into) or "folder" (the user's own tree, e.g.
   // from uploading folders). Always the same as the top-level ancestor's.
-  kind              String     @default("folder")
-  parentId          String?
-  parent            Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
-  children          Category[] @relation("CategoryTree")
+  kind                String     @default("folder")
+  parentId            String?
+  parent              Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children            Category[] @relation("CategoryTree")
   // Order among siblings. No unique index: Postgres treats NULL parentIds as distinct.
-  position          Int        @default(0)
-  metaTitle         String?
-  metaDescription   String?
+  position            Int        @default(0)
+  metaTitle           String?
+  metaDescription     String?
   // Imports whose site category id matches any of these land in this category. Each site has its
   // own id namespace.
-  makerworldCatIds  Int[]      @default([])
-  thingiverseCatIds Int[]      @default([])
-  printablesCatIds  Int[]      @default([])
-  prints            Print[]
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
+  makerworldCatIds    Int[]      @default([])
+  thingiverseCatIds   Int[]      @default([])
+  printablesCatIds    Int[]      @default([])
+  myminifactoryCatIds Int[]      @default([])
+  prints              Print[]
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
 
   @@index([userId, parentId, position])
   @@index([tags], type: Gin)
   @@index([makerworldCatIds], type: Gin)
   @@index([thingiverseCatIds], type: Gin)
   @@index([printablesCatIds], type: Gin)
+  @@index([myminifactoryCatIds], type: Gin)
 }
 
 model Print {

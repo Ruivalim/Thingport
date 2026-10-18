@@ -1,16 +1,16 @@
-# Import from MakerWorld, Printables and Thingiverse
+# Import from MakerWorld, Printables, Thingiverse and MyMiniFactory
 
 Thingport keeps a real copy of every model you import: its files, photos, title, description, tags, author and a link
 back to where it came from. If the original page disappears, the model is still in your library.
 
 ## Ways to import
 
-- **Paste a link.** Click **Add → Import** and paste a model link from MakerWorld, Printables or Thingiverse, or any
-  direct link to a model file. Paste several links, one per line, and they're imported one after another as a
-  background job. You can also paste a link straight into the search bar.
+- **Paste a link.** Click **Add → Import** and paste a model link from MakerWorld, Printables, Thingiverse or
+  MyMiniFactory, or any direct link to a model file. Paste several links, one per line, and they're imported one after
+  another as a background job. You can also paste a link straight into the search bar.
 - **Use Thingport Grab.** The [browser extension](../../extension/README.md) adds a Thingport button to model pages on
-  all three sites, so you can import without leaving the page, file the model into a collection, and import whole
-  collections.
+  all four sites (MyMiniFactory once you allow it, with a single click in its popup), so you can import without leaving
+  the page, file the model into a collection, and import whole collections.
 - **Import a collection or your likes.** Paste a collection link, or your Thingiverse likes, and pick which models to
   bring in. MakerWorld collections are imported with Thingport Grab.
 - **Keep a collection in sync.** A [synced collection](../guides/synced-collections.md) imports models added to it on
@@ -36,9 +36,11 @@ from Thingport Grab wait in **Administration → Import queue** until they're st
 
 ## Before you start
 
-Printables works with no setup. MakerWorld needs your session cookie, and Thingiverse an App Token set by an admin.
-See [provider setup](../PROVIDER_SETUP.md). Admins can also [turn a provider off](../PROVIDER_SETUP.md#turning-a-provider-off)
-for the whole instance, and then nothing is imported from it.
+Printables works with no setup. MakerWorld needs your session cookie, and Thingiverse and MyMiniFactory a key set by an
+admin; MyMiniFactory models you bought come in once you connect your MyMiniFactory account. See
+[provider setup](../PROVIDER_SETUP.md). Admins can also
+[turn a provider off](../PROVIDER_SETUP.md#turning-a-provider-off) for the whole instance, and then nothing is imported
+from it.
 
 Imported models can be categorized and their descriptions cleaned up on the way in with the optional
 [AI features](../guides/ai.md).

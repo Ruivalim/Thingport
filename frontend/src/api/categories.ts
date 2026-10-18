@@ -18,6 +18,7 @@ export type Category = {
   makerworld_cat_ids: string;
   thingiverse_cat_ids: string;
   printables_cat_ids: string;
+  myminifactory_cat_ids: string;
 };
 
 export type CategoryMetaInput = {
@@ -26,6 +27,7 @@ export type CategoryMetaInput = {
   makerworldCatIds: string;
   thingiverseCatIds: string;
   printablesCatIds: string;
+  myminifactoryCatIds: string;
 };
 
 export const categoriesApi = {
@@ -72,6 +74,7 @@ export const categoriesApi = {
         makerworld_cat_ids: meta.makerworldCatIds,
         thingiverse_cat_ids: meta.thingiverseCatIds,
         printables_cat_ids: meta.printablesCatIds,
+        myminifactory_cat_ids: meta.myminifactoryCatIds,
       }),
     });
     if (res.status === 401) throw new UnauthorizedError();

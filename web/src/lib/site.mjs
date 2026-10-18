@@ -7,7 +7,7 @@ export const BRANCH = "main";
 export const SITE_NAME = "Thingport";
 export const TAGLINE = "Your personal 3D model library";
 export const SITE_DESCRIPTION =
-  "Thingport is a free, open-source, self-hosted library for your 3D printing models. Import from MakerWorld, Printables and Thingiverse, preview STL, 3MF, STEP and OBJ files in your browser, and keep everything organized in one place.";
+  "Thingport is a free, open-source, self-hosted library for your 3D printing models. Import from MakerWorld, Printables, Thingiverse and MyMiniFactory, preview STL, 3MF, STEP and OBJ files in your browser, and keep everything organized in one place.";
 
 export const LINKS = {
   github: REPO_URL,
@@ -36,7 +36,8 @@ export const DOCS = [
     group: "Getting started",
     title: "Provider setup",
     nav: "Provider setup",
-    description: "Connect MakerWorld and Thingiverse so Thingport can import from them. Printables needs no setup.",
+    description:
+      "Connect MakerWorld, Thingiverse and MyMiniFactory so Thingport can import from them. Printables needs no setup.",
   },
   {
     slug: "guides/existing-library",
@@ -80,13 +81,13 @@ export const DOCS = [
     title: "Synced collections",
     nav: "Synced collections",
     description:
-      "Link a MakerWorld, Printables or Thingiverse collection to Thingport, and models added to it later are imported on their own.",
+      "Link a MakerWorld, Printables, Thingiverse or MyMiniFactory collection to Thingport, and models added to it later are imported on their own.",
   },
   {
     slug: "features/importing",
     source: "docs/features/importing.md",
     group: "Features",
-    title: "Import from MakerWorld, Printables and Thingiverse",
+    title: "Import from MakerWorld, Printables, Thingiverse and MyMiniFactory",
     nav: "Importing",
     description:
       "Import models, collections and likes with their files, photos, description, tags and author, by link or with Thingport Grab.",
@@ -207,7 +208,7 @@ export const DOCS = [
     title: "System Health",
     nav: "System Health",
     description:
-      "Check that the database, storage, memory, FlareSolverr, Thingiverse, AI and email all work, and fix what doesn't.",
+      "Check that the database, storage, memory, FlareSolverr, Thingiverse, MyMiniFactory, AI and email all work, and fix what doesn't.",
   },
   {
     slug: "guides/ai",
@@ -257,7 +258,7 @@ export const DOCS = [
     group: "Companion apps",
     title: "Thingport Grab browser extension",
     nav: "Thingport Grab",
-    description: "Import MakerWorld, Printables and Thingiverse models straight from their own pages.",
+    description: "Import MakerWorld, Printables, Thingiverse and MyMiniFactory models straight from their own pages.",
   },
   {
     slug: "grab/privacy",

@@ -17,9 +17,11 @@ import {
 } from "./makerworldJob";
 import { getPrintablesToken, printablesPushDue, pushPrintables, reportProviderAccount } from "./providerAccounts";
 import { getRecentImports } from "./recentImports";
+import { syncMyminifactorySession } from "./myminifactorySession";
 import { onPairingTabClosed, onPairingTabUrl, startPairing } from "./pairing";
 import { openSetup } from "./setup";
 import { setTabIconState } from "./tabIcon";
+import { injectIntoOpenTabs, OPTIONAL_SITES, siteEnabled, syncSiteScripts } from "../shared/optionalSites";
 
 function senderTabId(sender: chrome.runtime.MessageSender): number {
   if (!sender.tab?.id) throw new Error("This action is only available from a page");
@@ -35,6 +37,7 @@ listen<BackgroundMessages>({
   CHECK_CONNECTION: () => checkConnection(),
   GET_PRINTABLES_TOKEN: () => getPrintablesToken(),
   REPORT_PROVIDER_ACCOUNT: ({ provider, value }) => reportProviderAccount(provider, value),
+  SYNC_MYMINIFACTORY_SESSION: () => syncMyminifactorySession(),
   PRINTABLES_PUSH_DUE: ({ now }) => printablesPushDue({ now }),
   PUSH_PRINTABLES: (push) => pushPrintables(push),
   OPEN_SETUP: (_payload, sender) => openSetup(sender.tab?.id),
@@ -70,6 +73,17 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 // Before the user reaches a provider page, so the toolbar badge already shows a broken connection.
 chrome.runtime.onStartup.addListener(() => void checkConnection());
 chrome.runtime.onInstalled.addListener(() => void checkConnection());
+
+// Optional sites: on every wake (a Firefox event page loses its registrations with the browser session), and
+// whenever access is granted or taken back, from the popup or the browser's own settings. Tabs already open on a
+// site get Grab straight away; it doesn't run twice in one.
+void syncSiteScripts();
+chrome.permissions.onAdded.addListener(() => {
+  void syncSiteScripts().then(async () => {
+    for (const site of OPTIONAL_SITES) if (await siteEnabled(site)) await injectIntoOpenTabs(site);
+  });
+});
+chrome.permissions.onRemoved.addListener(() => void syncSiteScripts());
 
 chrome.tabs.onRemoved.addListener((tabId) => {
   void dropJobIfForTab(tabId);

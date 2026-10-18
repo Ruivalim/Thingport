@@ -23,6 +23,8 @@ import { useToast } from "../ToastProvider";
 import {
   isMakerworldModelUrl,
   isMakerworldCollectionUrl,
+  isMyminifactoryCollectionUrl,
+  isMyminifactoryObjectUrl,
   isPrintablesCollectionUrl,
   isPrintablesModelUrl,
   isThingiverseCollectionUrl,
@@ -60,6 +62,7 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
     startThingiverseLikesImport,
     startThingiverseCollectionImport,
     startPrintablesCollectionImport,
+    startMyminifactoryCollectionImport,
     startMakerworldProfilesImport,
     startLinksImport,
   } = useImportJob();
@@ -358,7 +361,34 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
         return;
       }
 
-      if (isThingiverseThingUrl(url) || isPrintablesModelUrl(url)) {
+      if (isMyminifactoryCollectionUrl(url)) {
+        setImporting(false);
+        await collectionPrompt.prompt({
+          label: url,
+          loadEntries: async () => {
+            try {
+              return await importsApi.listMyminifactoryCollectionEntries(payload);
+            } catch (err) {
+              if (err instanceof UnauthorizedError) onUnauthorized?.();
+              throw err;
+            }
+          },
+          onImportSelected: async (objectIds: string[]) => {
+            try {
+              await startMyminifactoryCollectionImport({ ...payload, object_ids: objectIds });
+            } catch (err) {
+              if (err instanceof UnauthorizedError) {
+                onUnauthorized?.();
+                return;
+              }
+              throw err;
+            }
+          },
+        });
+        return;
+      }
+
+      if (isThingiverseThingUrl(url) || isPrintablesModelUrl(url) || isMyminifactoryObjectUrl(url)) {
         // The backend splits these into plates itself.
         const imported = await importsApi.fromLink(payload);
         showImportedToast(imported);

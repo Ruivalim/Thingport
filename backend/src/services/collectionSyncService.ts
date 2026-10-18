@@ -9,6 +9,11 @@ import { addPrintsToCollection, findOrCreateCollectionByName, isSystemCollection
 import { parseMakerworldCollectionUrl } from "./makerworldCollections";
 import { parsePrintablesCollectionUrl, parsePrintablesLikesUrl } from "./printablesApi";
 import { parseThingiverseCollectionUrl, parseThingiverseLikesUrl } from "./thingiverseApi";
+import {
+  myminifactoryCollectionKey,
+  myminifactoryCollectionUrl,
+  parseMyminifactoryCollectionUrl,
+} from "./myminifactoryApi";
 import { createLog } from "./auditLog";
 import { pushedLikes } from "./providerListingsService";
 import { createNotification } from "./notificationService";
@@ -21,7 +26,7 @@ import {
   type SyncProfileScope,
 } from "../dto";
 
-export type SyncProvider = "makerworld" | "printables" | "thingiverse";
+export type SyncProvider = "makerworld" | "printables" | "thingiverse" | "myminifactory";
 
 /** `likesOf` is set for a user's likes (on Thingiverse, or the user's own on Printables), which a
  *  sync follows like a collection. */
@@ -31,6 +36,7 @@ const PROVIDER_NAMES: Record<SyncProvider, string> = {
   makerworld: "MakerWorld",
   printables: "Printables",
   thingiverse: "Thingiverse",
+  myminifactory: "MyMiniFactory",
 };
 
 export function providerName(provider: string): string {
@@ -67,6 +73,16 @@ export function parseSyncSource(url: string): SyncSource | null {
     const id = thingiverse.collectionId;
     return { provider: "thingiverse", externalId: id, url: `https://www.thingiverse.com/collections/${id}` };
   }
+  const myminifactory = parseMyminifactoryCollectionUrl(url);
+  if (myminifactory) {
+    // Addressed by owner and slug: MyMiniFactory's collection pages carry no id.
+    const { username, slug } = myminifactory;
+    return {
+      provider: "myminifactory",
+      externalId: myminifactoryCollectionKey(username, slug),
+      url: myminifactoryCollectionUrl(username, slug),
+    };
+  }
   const printablesLikes = parsePrintablesLikesUrl(url);
   if (printablesLikes) {
     // Only Thingport Grab can read these, as their owner (see providerListingsService.ts).
@@ -94,13 +110,18 @@ export function parseSyncSource(url: string): SyncSource | null {
 export function modelUrlFor(provider: string, externalId: string): string {
   if (provider === "makerworld") return `https://makerworld.com/en/models/${externalId}`;
   if (provider === "printables") return `https://www.printables.com/model/${externalId}`;
+  if (provider === "myminifactory") return `https://www.myminifactory.com/object/3d-print-${externalId}`;
   return `https://www.thingiverse.com/thing:${externalId}`;
 }
 
 /** The model id in a link modelUrlFor made. */
 export function modelIdFromUrl(provider: string, url: string): string | null {
-  const pattern =
-    provider === "makerworld" ? /\/models\/(\d+)/ : provider === "printables" ? /\/model\/(\d+)/ : /thing:(\d+)/;
+  const patterns: Record<string, RegExp> = {
+    makerworld: /\/models\/(\d+)/,
+    printables: /\/model\/(\d+)/,
+    myminifactory: /\/object\/(?:[^/]*-)?(\d+)/,
+  };
+  const pattern = patterns[provider] ?? /thing:(\d+)/;
   return url.match(pattern)?.[1] ?? null;
 }
 
@@ -170,7 +191,7 @@ export async function enableSync(userId: string, input: EnableSyncInput): Promis
   if (!source)
     throw new HttpError(
       400,
-      "Only MakerWorld, Printables and Thingiverse collections, and Thingiverse or your own Printables likes, can be synced",
+      "Only MakerWorld, Printables, Thingiverse and MyMiniFactory collections, and Thingiverse or your own Printables likes, can be synced",
     );
   if (source.provider === "printables" && source.likesOf) await assertOwnPrintablesLikes(userId, source.likesOf);
   const knownIds = [...new Set(input.knownIds.map((id) => id.trim()).filter(Boolean))];

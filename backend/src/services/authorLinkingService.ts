@@ -15,20 +15,24 @@ import {
   MakerworldCaptchaError,
 } from "./makerworldCloudApi";
 import { resolvePrintablesModel } from "./printablesApi";
-import { getThingiverseAccessToken } from "./settingsService";
+import { getMyminifactoryApiKey, getThingiverseAccessToken } from "./settingsService";
+import { MyminifactoryAuthError, MyminifactoryRateLimitError, resolveMyminifactoryObject } from "./myminifactoryApi";
 import { resolveThingiverseThing, ThingiverseAuthError, ThingiverseRateLimitError } from "./thingiverseApi";
 import { getDisabledProviders } from "./providerSettingsService";
 
 // Links models that only know their author by name: first by name matching, then by looking the
 // rest up on their site once per distinct creator. Only metadata is fetched.
 
-const LOOKUP_PROVIDERS = ["makerworld", "thingiverse", "printables"] as const;
+const LOOKUP_PROVIDERS = ["makerworld", "thingiverse", "printables", "myminifactory"] as const;
 type LookupProvider = (typeof LOOKUP_PROVIDERS)[number];
 
 export type LookupProblem =
   | "thingiverse_no_token"
   | "thingiverse_token_rejected"
   | "thingiverse_rate_limited"
+  | "myminifactory_no_key"
+  | "myminifactory_key_rejected"
+  | "myminifactory_rate_limited"
   | "makerworld_captcha"
   | "makerworld_login_rejected";
 
@@ -126,6 +130,8 @@ export async function runAuthorLinking(run: AuthorLinkingRun): Promise<void> {
   const thingiverseToken = await getThingiverseAccessToken();
   // Only for providers still on: one turned off isn't missing a token or held by a captcha.
   if (!skipped.has("thingiverse") && !thingiverseToken) skip("thingiverse", "thingiverse_no_token");
+  const myminifactoryKey = await getMyminifactoryApiKey();
+  if (!skipped.has("myminifactory") && !myminifactoryKey) skip("myminifactory", "myminifactory_no_key");
   if (!skipped.has("makerworld") && makerworldCaptchaCooloffActive()) skip("makerworld", "makerworld_captcha");
 
   for (const candidate of candidates) {
@@ -135,12 +141,14 @@ export async function runAuthorLinking(run: AuthorLinkingRun): Promise<void> {
     }
     let author: ImportedAuthorInfo | null = null;
     try {
-      author = await lookUpAuthor(candidate, thingiverseToken);
+      author = await lookUpAuthor(candidate, { thingiverseToken, myminifactoryKey });
     } catch (err) {
       if (err instanceof MakerworldCaptchaError) skip("makerworld", "makerworld_captcha");
       else if (err instanceof MakerworldAuthError) skip("makerworld", "makerworld_login_rejected");
       else if (err instanceof ThingiverseAuthError) skip("thingiverse", "thingiverse_token_rejected");
       else if (err instanceof ThingiverseRateLimitError) skip("thingiverse", "thingiverse_rate_limited");
+      else if (err instanceof MyminifactoryAuthError) skip("myminifactory", "myminifactory_key_rejected");
+      else if (err instanceof MyminifactoryRateLimitError) skip("myminifactory", "myminifactory_rate_limited");
       else console.warn(`Couldn't look up the author of model ${candidate.printId}`, err);
     }
     const saved = author ? await upsertAuthorFromImport(author) : null;
@@ -160,11 +168,18 @@ export async function runAuthorLinking(run: AuthorLinkingRun): Promise<void> {
   }
 }
 
-async function lookUpAuthor(candidate: Candidate, thingiverseToken: string | null): Promise<ImportedAuthorInfo | null> {
+async function lookUpAuthor(
+  candidate: Candidate,
+  keys: { thingiverseToken: string | null; myminifactoryKey: string | null },
+): Promise<ImportedAuthorInfo | null> {
   switch (candidate.provider) {
     case "thingiverse": {
       await maybeSleep(IMPORT_COLLECTION_DELAY_MS);
-      return (await resolveThingiverseThing(candidate.externalId, thingiverseToken!))?.meta.author ?? null;
+      return (await resolveThingiverseThing(candidate.externalId, keys.thingiverseToken!))?.meta.author ?? null;
+    }
+    case "myminifactory": {
+      await maybeSleep(IMPORT_COLLECTION_DELAY_MS);
+      return (await resolveMyminifactoryObject(candidate.externalId, keys.myminifactoryKey!))?.meta.author ?? null;
     }
     case "printables": {
       await maybeSleep(IMPORT_COLLECTION_DELAY_MS);

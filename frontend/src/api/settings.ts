@@ -146,7 +146,7 @@ export type DatabaseCredentialsInput = {
   password: string;
 };
 
-export type ImportProvider = "makerworld" | "printables" | "thingiverse";
+export type ImportProvider = "makerworld" | "printables" | "thingiverse" | "myminifactory";
 /** An admin can turn a provider off for the whole instance; menus hide it then. */
 export type ProviderSetting = { id: ImportProvider; enabled: boolean };
 
@@ -330,6 +330,45 @@ export const settingsApi = {
     if (!res.ok) {
       throw new Error(await readErrorMessage(res, "Failed to update Thingiverse settings"));
     }
+    return res.json();
+  },
+
+  // Write-only, like Thingiverse's token: GET only reports whether a key is configured.
+  getMyminifactory: async (): Promise<{ configured: boolean }> => {
+    const res = await fetch(`${apiBase()}/settings/myminifactory`, { headers: authHeaders() });
+    assertOk(res, "Failed to load MyMiniFactory settings");
+    return res.json();
+  },
+
+  updateMyminifactory: async (apiKey: string | null): Promise<{ configured: boolean }> => {
+    const res = await fetch(`${apiBase()}/settings/myminifactory`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ api_key: apiKey }),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) {
+      throw new Error(await readErrorMessage(res, "Failed to update MyMiniFactory settings"));
+    }
+    return res.json();
+  },
+
+  // The user's own MyMiniFactory sign-in, for paid and login-only models. Write-only, like MakerWorld's cookie.
+  getMyminifactorySession: async (): Promise<{ configured: boolean; expired: boolean }> => {
+    const res = await fetch(`${apiBase()}/settings/myminifactory-session`, { headers: authHeaders() });
+    assertOk(res, "Failed to load MyMiniFactory settings");
+    return res.json();
+  },
+
+  /** Checked with MyMiniFactory before it's saved. */
+  updateMyminifactorySession: async (cookie: string | null): Promise<{ configured: boolean }> => {
+    const res = await fetch(`${apiBase()}/settings/myminifactory-session`, {
+      method: "PATCH",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ cookie, verify: true }),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to update MyMiniFactory settings"));
     return res.json();
   },
 

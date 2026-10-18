@@ -11,6 +11,13 @@ const BADGE = 16;
 
 const hoverBg = (theme: Theme) => (theme.palette.mode === "dark" ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)");
 
+/** A one-word name like "MyMiniFactory" may break between its capitalised parts, so it wraps onto the second line
+ *  rather than being cut short. */
+function breakableName(name: string): React.ReactNode {
+  const parts = name.split(/(?<=[a-z])(?=[A-Z])/);
+  return parts.length < 2 ? name : parts.flatMap((part, i) => (i ? [<wbr key={`before-${part}`} />, part] : [part]));
+}
+
 export function AppGrid({ children }: { children: React.ReactNode }) {
   return <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, 76px)", gap: 1 }}>{children}</Box>;
 }
@@ -107,7 +114,7 @@ export function AppTile({
             color: on ? "text.primary" : "text.secondary",
           }}
         >
-          {name}
+          {breakableName(name)}
         </Typography>
         {subtitle && (
           <Typography

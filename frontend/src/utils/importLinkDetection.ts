@@ -1,6 +1,6 @@
 /** URL-shape detection shared by useUploadImport and AddMenu so they can't drift apart. */
 
-export type ImportProviderKey = "makerworld" | "thingiverse" | "printables";
+export type ImportProviderKey = "makerworld" | "thingiverse" | "printables" | "myminifactory";
 
 function parseUrl(url: string): URL | null {
   try {
@@ -17,6 +17,7 @@ export function detectImportProvider(url: string): ImportProviderKey | null {
   if (host.endsWith("makerworld.com")) return "makerworld";
   if (host === "thingiverse.com" || host === "www.thingiverse.com") return "thingiverse";
   if (host === "printables.com" || host === "www.printables.com") return "printables";
+  if (host === "myminifactory.com" || host === "www.myminifactory.com") return "myminifactory";
   return null;
 }
 
@@ -78,6 +79,23 @@ export function isPrintablesModelUrl(url: string): boolean {
   return /\/model\/\d+/i.test(parsed.pathname);
 }
 
+/** See isThingiverseThingUrl. A language prefix ("/it/object/...") is allowed. */
+export function isMyminifactoryObjectUrl(url: string): boolean {
+  const parsed = parseUrl(url);
+  if (!parsed) return false;
+  const host = parsed.hostname.toLowerCase();
+  if (host !== "myminifactory.com" && host !== "www.myminifactory.com") return false;
+  return /^\/(?:[a-z]{2}\/)?object\/(?:[^/]*-)?\d+\/?$/i.test(parsed.pathname);
+}
+
+export function isMyminifactoryCollectionUrl(url: string): boolean {
+  const parsed = parseUrl(url);
+  if (!parsed) return false;
+  const host = parsed.hostname.toLowerCase();
+  if (host !== "myminifactory.com" && host !== "www.myminifactory.com") return false;
+  return /^\/(?:[a-z]{2}\/)?users\/[^/]+\/collection\/[^/]+\/?$/i.test(parsed.pathname);
+}
+
 export const IMPORT_LINK_EXAMPLES: Record<ImportProviderKey, { model: string; collection: string }> = {
   makerworld: {
     model: "https://makerworld.com/en/models/123456-example-model",
@@ -90,5 +108,9 @@ export const IMPORT_LINK_EXAMPLES: Record<ImportProviderKey, { model: string; co
   printables: {
     model: "https://www.printables.com/model/123456-example-model",
     collection: "https://www.printables.com/@username/collections/12345-example-collection",
+  },
+  myminifactory: {
+    model: "https://www.myminifactory.com/object/3d-print-example-model-123456",
+    collection: "https://www.myminifactory.com/users/username/collection/example-collection",
   },
 };

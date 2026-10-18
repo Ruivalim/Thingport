@@ -1,4 +1,4 @@
-// Content script entry point (MakerWorld, Thingiverse, Printables). Network calls go through the
+// Content script entry point (MakerWorld, Thingiverse, Printables, and MyMiniFactory once turned on). Network calls go through the
 // background (see runtime.ts).
 
 import type { ImportStatus } from "../shared/api";

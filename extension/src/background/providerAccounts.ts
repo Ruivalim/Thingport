@@ -1,4 +1,4 @@
-// Who the user is signed in as on Printables and Thingiverse, read on their pages, so the web app's
+// Who the user is signed in as on Printables, Thingiverse and MyMiniFactory, read on their pages, so the web app's
 // Browse tab lists their collections without asking. Sent only when it changes; the signed-in
 // account replaces a username typed into the app.
 
@@ -16,7 +16,7 @@ export async function getPrintablesToken(): Promise<string | null> {
   }
 }
 
-/** Best-effort: an instance without the endpoint, or without Thingiverse connected, just says no. */
+/** Best-effort: an instance without the endpoint, or without Thingiverse or MyMiniFactory connected, just says no. */
 export async function reportProviderAccount(provider: AccountProvider, value: string): Promise<null> {
   const config = await requireConfig().catch(() => null);
   if (!config) return null;
