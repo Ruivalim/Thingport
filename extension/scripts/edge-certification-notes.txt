@@ -14,6 +14,6 @@ PERMISSIONS
 - cookies: reads the MakerWorld session cookie, on makerworld.com only, which MakerWorld requires for downloads, and the MyMiniFactory session cookie, on myminifactory.com only, which downloads the user's bought models from their own library. Both are sent only to the user's own server.
 - downloads: reads the link from a download MakerWorld's page starts, then cancels it.
 - scripting: registers the content script on MyMiniFactory, and on model sites added in later versions, once the user allows them.
-- host access: the three model sites; the user's own server address (requested at setup); and, optionally, all websites, requested only when the user clicks "Turn on" under More sites in the popup, so model sites added in later versions need no new permission. The content script is only ever registered on supported model sites.
+- host access: the three model sites; the user's own server address (requested at setup); and, optionally, newer model sites (such as MyMiniFactory), each requested only when the user clicks "Enable" next to it under Sites in the popup, so model sites added in later versions need no new required permission. The content script is only ever registered on supported model sites.
 
 The code isn't minified or obfuscated. Documentation: https://thingport.net/docs/grab/ Privacy policy: https://github.com/TautvydasDerzinskas/Thingport/blob/main/extension/PRIVACY.md

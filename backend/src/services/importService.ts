@@ -1097,7 +1097,9 @@ async function downloadMyminifactoryFromLibrary(
     if (!downloaded.length && files.length) {
       throw new HttpError(
         400,
-        "This model's files are in an archive Thingport can't open (such as RAR), and MyMiniFactory hasn't unpacked it.",
+        files.every((file) => !isModel(file.name))
+          ? "This model's files are in an archive Thingport can't open (such as RAR), and MyMiniFactory hasn't unpacked it."
+          : "Couldn't download this model's files from your MyMiniFactory library. Try again later.",
       );
     }
     return downloaded;

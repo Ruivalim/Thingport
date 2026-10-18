@@ -1,7 +1,7 @@
 // Sites Grab works on only once the user allows it. A new provider every week, each added to the manifest, would
-// have the browser disable Grab for everyone after every update until they approved it again. So access to these is
-// asked for once, at runtime, for all sites (the manifest's optional_host_permissions), and each release just
-// registers the content script for its new site. It only ever runs on the sites listed here.
+// have the browser disable Grab for everyone after every update until they approved it again. So access to each is
+// asked for at runtime, when the user enables it in the popup (within the manifest's optional_host_permissions), and
+// the background registers the content script there. It only ever runs on the sites listed here.
 
 export type OptionalSite = { id: "myminifactory"; name: string; origins: string[] };
 
@@ -9,19 +9,10 @@ export const OPTIONAL_SITES: readonly OptionalSite[] = [
   { id: "myminifactory", name: "MyMiniFactory", origins: ["*://*.myminifactory.com/*"] },
 ];
 
-/** What the popup's one-time button asks for: every site, so sites added in later updates need no new prompt. */
-export const ALL_SITES_ORIGINS = ["*://*/*"];
-
 const scriptId = (site: OptionalSite) => `site-${site.id}`;
 
 export function siteEnabled(site: OptionalSite): Promise<boolean> {
   return chrome.permissions.contains({ origins: site.origins });
-}
-
-/** The sites Grab can't run on yet: none once all-sites access is granted, or after only some were. */
-export async function sitesWithoutAccess(): Promise<OptionalSite[]> {
-  const access = await Promise.all(OPTIONAL_SITES.map(siteEnabled));
-  return OPTIONAL_SITES.filter((_, index) => !access[index]);
 }
 
 /** Registers the content script for every site whose access is granted, and drops it for the rest. Safe to run

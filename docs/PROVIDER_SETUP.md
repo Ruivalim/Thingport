@@ -1,6 +1,6 @@
 # Provider setup
 
-Importing from **Printables** works out of the box (its public API needs no credential). **MakerWorld**, **Thingiverse** and **MyMiniFactory** each need a credential from your own account before Thingport can import from them.
+Importing from **Printables** works out of the box (its public API needs no credential). **MakerWorld** needs each user's own session cookie, and **Thingiverse** an App Token an admin sets once for the whole instance. **MyMiniFactory** needs an API key an admin sets once for free models; each user connects their own MyMiniFactory session only to import paid or sign-in-only models from their library.
 
 Connect them under **Configuration → Providers**: open the user menu (your avatar, top right) and choose **Configuration**, or click one of the provider chips at the bottom of that menu. Right-click a provider to connect or disconnect it, or double-click one that isn't connected yet. A green tick means it's connected. A provider your admin has [turned off](#turning-a-provider-off) isn't listed.
 

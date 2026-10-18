@@ -57,6 +57,7 @@ describe("MyMiniFactory URLs", () => {
       parseMyminifactoryCollectionUrl("https://www.myminifactory.com/users/schmick101/collection/steampunk"),
     ).toEqual({ username: "schmick101", slug: "steampunk" });
     expect(parseMyminifactoryCollectionUrl("https://www.myminifactory.com/users/schmick101")).toBeNull();
+    expect(parseMyminifactoryCollectionUrl("https://www.myminifactory.com/users/%zz/collection/x")).toBeNull();
   });
 
   it("round-trips a model id through the import and sync links", () => {

@@ -62,6 +62,15 @@ function parseUrl(url: string): URL | null {
   }
 }
 
+/** Null for malformed percent-encoding (`%zz`), which decodeURIComponent throws on. */
+function safeDecode(value: string): string | null {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+}
+
 /** `/object/3d-print-<slug>-<id>`, optionally behind a language prefix (`/it/object/...`). */
 export function parseMyminifactoryObjectUrl(url: string): { objectId: string } | null {
   const parsed = parseUrl(url);
@@ -74,7 +83,9 @@ export function parseMyminifactoryCollectionUrl(url: string): { username: string
   const parsed = parseUrl(url);
   const m = parsed?.pathname.match(/^\/(?:[a-z]{2}\/)?users\/([^/]+)\/collection\/([^/]+)\/?$/i);
   if (!m) return null;
-  return { username: decodeURIComponent(m[1]), slug: decodeURIComponent(m[2]).toLowerCase() };
+  const username = safeDecode(m[1]);
+  const slug = safeDecode(m[2]);
+  return username && slug ? { username, slug: slug.toLowerCase() } : null;
 }
 
 /** The id a sync keeps for a collection: usernames aren't case-sensitive, so one collection syncs once. */
@@ -548,7 +559,7 @@ export async function resolveMyminifactoryUser(input: string, apiKey: string): P
   if (parsed) value = parsed.pathname.match(/^\/(?:[a-z]{2}\/)?users\/([^/]+)/i)?.[1] ?? "";
   else if (/^https?:\/\//i.test(value)) return null;
   // Usernames can have spaces ("Scan The World").
-  value = decodeURIComponent(value).replace(/^@/, "").trim();
+  value = (safeDecode(value) ?? "").replace(/^@/, "").trim();
   if (!value || !/^[\w. -]+$/.test(value)) return null;
   const { ok, status, data } = await fetchApi(`/users/${encodeURIComponent(value)}`, apiKey);
   if (status === 404) return null;

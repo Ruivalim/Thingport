@@ -107,22 +107,78 @@ body {
   }
 }
 
-// Gone for good once access is granted, fading out as it goes.
 .sites {
-  transition: opacity 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
 
-  &--leaving {
-    opacity: 0;
+.site {
+  display: flex;
+  align-items: center;
+  gap: t.$space-2;
+  min-height: 24px;
+
+  > svg {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
   }
 
-  &__text {
-    margin: 0;
-    font-size: t.$font-size-sm;
-    line-height: 1.4;
+  &__name {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__tick {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: t.c("accent");
+    color: t.c("on-accent");
+
+    svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    // Just enabled: pops in where the button was.
+    &--new {
+      animation: site-tick-in 0.25s ease-out;
+    }
+  }
+
+  &__enable {
+    @include m.button-base;
+    @include m.button-primary;
+    width: auto;
+    padding: 3px 10px;
+    border-radius: t.$radius-sm;
+    font-size: t.$font-size-xs;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    transition: none;
+    &__tick--new {
+      animation: none;
+    }
+  }
+}
+
+@keyframes site-tick-in {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 

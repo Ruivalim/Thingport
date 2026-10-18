@@ -132,7 +132,7 @@ function wanted(...files: string[]): boolean {
   return !ONLY.length || files.some((file) => ONLY.includes(file.replace(/\.\w+$/, "")));
 }
 
-/** dist/chrome with access to all sites already granted, as the popup's "More sites" button leaves it: Playwright
+/** dist/chrome with the optional sites already granted, as the popup's Enable buttons leave it: Playwright
  *  can't click the browser's permission prompt. Grab still registers its content script on the optional sites itself. */
 async function extensionWithOptionalSites(): Promise<string> {
   const dir = path.join(os.tmpdir(), `thingport-grab-screenshots-ext-${process.pid}`);

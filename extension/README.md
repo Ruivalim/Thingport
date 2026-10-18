@@ -172,12 +172,11 @@ from the extension.
 
 ### MyMiniFactory and newer sites: allow them once
 
-Sites added after MakerWorld, Printables and Thingiverse, starting with MyMiniFactory, need one click first: **Turn
-on** under **More sites** in the popup. Your browser then asks once for access to all websites, so every site added in
-a later update works straight away, with no new prompt. The extension still only runs on the model sites it supports.
-(An update that added each site to the extension itself would have the browser switch the extension off for everyone
-until they approved it, every time.) The button is gone once allowed, and only comes back if you take the access back
-in your browser's extension settings.
+Sites added after MakerWorld, Printables and Thingiverse, starting with MyMiniFactory, need one click first. The
+popup lists every site Grab supports under **Sites**: a green tick means it already runs there, and **Enable** next to a
+newer site asks your browser for access to that site alone. (An update that added each site to the extension itself
+would have the browser switch the extension off for everyone until they approved it, every time.) The button comes
+back only if you take the access back in your browser's extension settings.
 
 Opening MyMiniFactory while signed in also connects your MyMiniFactory account to Thingport, so the models you
 bought, and free ones that only download when signed in, import from your library. On a paid model you haven't
