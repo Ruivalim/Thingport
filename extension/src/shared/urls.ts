@@ -1,7 +1,14 @@
 // Provider URL recognition, duplicated from the frontend and backend parsers. Keep in sync by hand.
 
 export type Provider =
-  "makerworld" | "thingiverse" | "printables" | "myminifactory" | "snapmaker" | "makeronline" | "crealitycloud";
+  | "makerworld"
+  | "thingiverse"
+  | "printables"
+  | "myminifactory"
+  | "snapmaker"
+  | "makeronline"
+  | "crealitycloud"
+  | "nexprint";
 
 export type Classification =
   | { kind: "single"; provider: "makerworld"; type: "model" }
@@ -11,13 +18,15 @@ export type Classification =
   | { kind: "single"; provider: "snapmaker"; type: "model" }
   | { kind: "single"; provider: "makeronline"; type: "model" }
   | { kind: "single"; provider: "crealitycloud"; type: "model" }
+  | { kind: "single"; provider: "nexprint"; type: "model" }
   | { kind: "batch"; provider: "makerworld"; type: "collection" }
   | { kind: "batch"; provider: "thingiverse"; type: "likes" | "collection" }
   | { kind: "batch"; provider: "printables"; type: "collection" }
   | { kind: "batch"; provider: "myminifactory"; type: "collection" }
   | { kind: "batch"; provider: "snapmaker"; type: SnapmakerList }
   | { kind: "batch"; provider: "makeronline"; type: "collection" | "likes" }
-  | { kind: "batch"; provider: "crealitycloud"; type: "collection" | "likes" };
+  | { kind: "batch"; provider: "crealitycloud"; type: "collection" | "likes" }
+  | { kind: "batch"; provider: "nexprint"; type: "collection" };
 
 export type SnapmakerList = "likes" | "bookmarks";
 
@@ -209,6 +218,36 @@ export function parseCrealitycloudLikesUrl(url: string): { userId: string } | nu
   return m ? { userId: m[1] } : null;
 }
 
+function isNexprint(parsed: URL): boolean {
+  return /^(www\.)?nexprint\.com$/i.test(parsed.hostname);
+}
+
+const NEXPRINT_LANG = String.raw`(?:[a-z]{2}(?:-[a-z]{2,4})?/)?`;
+
+/** `/en/models/<id>`; `?printConfigId=<id>` names a print profile, as do Thingport's own `#profileId-<id>` links. */
+export function parseNexprintModelUrl(url: string): { modelId: string; requestedProfileId: string | null } | null {
+  const parsed = parse(url);
+  if (!parsed || !isNexprint(parsed)) return null;
+  const m = parsed.pathname.match(new RegExp(String.raw`^/${NEXPRINT_LANG}models/(G\d+)/?$`, "i"));
+  if (!m) return null;
+  const profile = parsed.hash.match(/profileId-(G\d+)/i)?.[1] ?? parsed.searchParams.get("printConfigId");
+  return {
+    modelId: m[1].toUpperCase(),
+    requestedProfileId: profile && /^G\d+$/i.test(profile) ? profile.toUpperCase() : null,
+  };
+}
+
+/** A collection: `/en/collection/<id>`, or open on its owner's page (`/en/<user>/home?...&collectionId=<id>`). */
+export function isNexprintCollectionUrl(url: string): boolean {
+  const parsed = parse(url);
+  if (!parsed || !isNexprint(parsed)) return false;
+  if (new RegExp(String.raw`^/${NEXPRINT_LANG}collection/G\d+/?$`, "i").test(parsed.pathname)) return true;
+  return (
+    new RegExp(String.raw`^/${NEXPRINT_LANG}U\d+/home/?$`, "i").test(parsed.pathname) &&
+    /^G\d+$/i.test(parsed.searchParams.get("collectionId") ?? "")
+  );
+}
+
 /** Null keeps the icon hidden. "single" pages get a dedup check; "batch" pages always show it. */
 export function classifyUrl(url: string): Classification | null {
   if (isMakerworldCollectionUrl(url)) return { kind: "batch", provider: "makerworld", type: "collection" };
@@ -222,6 +261,7 @@ export function classifyUrl(url: string): Classification | null {
   if (isMakeronlineLikesUrl(url)) return { kind: "batch", provider: "makeronline", type: "likes" };
   if (isCrealitycloudCollectionUrl(url)) return { kind: "batch", provider: "crealitycloud", type: "collection" };
   if (parseCrealitycloudLikesUrl(url)) return { kind: "batch", provider: "crealitycloud", type: "likes" };
+  if (isNexprintCollectionUrl(url)) return { kind: "batch", provider: "nexprint", type: "collection" };
   if (parseMakerworldModelUrl(url)) return { kind: "single", provider: "makerworld", type: "model" };
   if (parseThingiverseThingUrl(url)) return { kind: "single", provider: "thingiverse", type: "thing" };
   if (parsePrintablesModelUrl(url)) return { kind: "single", provider: "printables", type: "model" };
@@ -229,5 +269,6 @@ export function classifyUrl(url: string): Classification | null {
   if (parseSnapmakerModelUrl(url)) return { kind: "single", provider: "snapmaker", type: "model" };
   if (parseMakeronlineModelUrl(url)) return { kind: "single", provider: "makeronline", type: "model" };
   if (parseCrealitycloudModelUrl(url)) return { kind: "single", provider: "crealitycloud", type: "model" };
+  if (parseNexprintModelUrl(url)) return { kind: "single", provider: "nexprint", type: "model" };
   return null;
 }

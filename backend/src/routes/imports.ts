@@ -14,6 +14,7 @@ import {
   assertCanImportUrl,
   SNAPMAKER_SESSION_CODE,
   CREALITYCLOUD_SESSION_CODE,
+  NEXPRINT_SESSION_CODE,
   checkImportStatus,
   downloadImportToTemp,
   findImportedExternalIds,
@@ -102,6 +103,13 @@ import {
   getUserCrealitycloudAuth,
   markCrealitycloudSessionRejected,
 } from "../services/crealitycloudSessionService";
+import {
+  fetchNexprintCollection,
+  NexprintAuthError,
+  parseNexprintCollectionUrl,
+  parseNexprintModelUrl,
+} from "../services/nexprintApi";
+import { markNexprintSessionRejected } from "../services/nexprintSessionService";
 import { addPrintsToCollection, findOrCreateCollectionByName } from "../services/collectionService";
 import { listZipEntries } from "../services/zipService";
 import { createJob, createJobItems, getActiveJob, getJob, listJobItems } from "../services/importJobService";
@@ -111,6 +119,8 @@ import {
   runCollectionImportJob,
   runCrealitycloudListImportJob,
   runCrealitycloudProfilesImportJob,
+  runNexprintCollectionImportJob,
+  runNexprintProfilesImportJob,
   runLinksImportJob,
   runMakerworldProfilesImportJob,
   runMyminifactoryCollectionImportJob,
@@ -287,6 +297,7 @@ const statusBatchSchema = z.object({
     "snapmaker",
     "makeronline",
     "crealitycloud",
+    "nexprint",
   ]),
   // Creality Cloud's ids are its models' aliases, made of their titles.
   external_ids: z.array(z.string().max(200)).max(10_000),
@@ -628,6 +639,51 @@ router.post(
   }),
 );
 
+/** A NexPrint collection from its link; even private ones read without a sign-in. */
+async function nexprintCollectionOf(userId: string, url: string) {
+  const parsed = parseNexprintCollectionUrl(url);
+  if (!parsed) throw new HttpError(400, "Not a link to a NexPrint collection");
+  try {
+    const collection = await fetchNexprintCollection(parsed.collectionId);
+    if (!collection) throw new HttpError(404, "That collection can't be found. It may have been deleted.");
+    return collection;
+  } catch (err) {
+    if (err instanceof NexprintAuthError) {
+      await markNexprintSessionRejected(userId);
+      // 400, not 401: the frontend treats any 401 as an expired Thingport session.
+      throw new HttpError(400, err.message, NEXPRINT_SESSION_CODE);
+    }
+    throw err;
+  }
+}
+
+router.post(
+  "/import/nexprint-collection/entries",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(importRequestSchema, req.body);
+    const url = await enabledImportUrl(body.url);
+    const collection = await nexprintCollectionOf(req.userId!, url);
+    const title = collection.info.name;
+    if (!collection.entries.length) throw new HttpError(400, `"${title}" is empty`);
+    const alreadyImported = await findImportedExternalIds(
+      req.userId!,
+      "nexprint",
+      collection.entries.map((e) => e.modelId),
+    );
+    res.json({
+      title,
+      total: collection.total,
+      truncated: collection.truncated,
+      entries: collection.entries.map((e) => ({
+        design_id: e.modelId,
+        title: e.title,
+        cover: e.cover,
+        already_imported: alreadyImported.has(e.modelId),
+      })),
+    });
+  }),
+);
+
 // ---- MakerOnline: files only through Thingport Grab ----
 // MakerOnline signs its download links only for a page its own anti-bot script runs on. Grab asks what a model needs
 // (plan), gets it signed on makeronline.com, and imports with the signed links; imports started anywhere else wait
@@ -870,6 +926,20 @@ router.post(
   }),
 );
 
+router.post(
+  "/import/nexprint-profiles",
+  requireCaptcha("import"),
+  asyncHandler(async (req, res) => {
+    const body = parseBody(makerworldProfilesImportRequestSchema, req.body);
+    await assertNoActiveJob(req.userId!);
+    const url = await enabledImportUrl(body.url);
+    if (!parseNexprintModelUrl(url)) throw new HttpError(400, "Not a NexPrint model link");
+    const job = await createJob(req.userId!, "PROFILES", { sourceUrl: url, provider: "nexprint" });
+    void runNexprintProfilesImportJob(job.id, req.userId!, { ...body, url });
+    res.status(202).json({ job_id: job.id });
+  }),
+);
+
 const collectionImportRequestSchema = importRequestSchema.extend({ design_ids: z.array(z.string()).min(1) });
 
 router.post(
@@ -1023,6 +1093,41 @@ router.post(
       total: body.model_ids.length,
     });
     void runCrealitycloudListImportJob(job.id, req.userId!, { ...body, url, title });
+    res.status(202).json({ job_id: job.id });
+  }),
+);
+
+const nexprintCollectionImportRequestSchema = importRequestSchema.extend({
+  model_ids: z
+    .array(
+      z
+        .string()
+        .regex(/^G\d+$/i)
+        .max(32),
+    )
+    .min(1)
+    .max(1000),
+});
+
+router.post(
+  "/import/nexprint-collection",
+  requireCaptcha("import"),
+  asyncHandler(async (req, res) => {
+    const body = parseBody(nexprintCollectionImportRequestSchema, req.body);
+    await assertNoActiveJob(req.userId!);
+    const url = await enabledImportUrl(body.url);
+    const { info } = await nexprintCollectionOf(req.userId!, url);
+    const job = await createJob(req.userId!, "COLLECTION", {
+      sourceUrl: url,
+      provider: "nexprint",
+      total: body.model_ids.length,
+    });
+    void runNexprintCollectionImportJob(job.id, req.userId!, {
+      ...body,
+      model_ids: body.model_ids.map((id) => id.toUpperCase()),
+      url,
+      title: info.name,
+    });
     res.status(202).json({ job_id: job.id });
   }),
 );

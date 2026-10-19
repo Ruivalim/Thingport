@@ -33,6 +33,8 @@ import {
   isMakeronlineModelUrl,
   isCrealitycloudListUrl,
   isCrealitycloudModelUrl,
+  isNexprintCollectionUrl,
+  isNexprintModelUrl,
   isThingiverseCollectionUrl,
   isThingiverseLikesUrl,
   isThingiverseThingUrl,
@@ -74,6 +76,8 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
     startSnapmakerListImport,
     startCrealitycloudProfilesImport,
     startCrealitycloudListImport,
+    startNexprintProfilesImport,
+    startNexprintCollectionImport,
     startLinksImport,
   } = useImportJob();
   const isBusy = uploading || importing || zipPrompt.isOpen || collectionPrompt.isOpen || importModePrompt.isOpen;
@@ -261,8 +265,8 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
     showToast({ message: t(key, { name }) });
   };
 
-  /** `profileScope`: which MakerWorld, Snapmaker, MakerOnline or Creality Cloud print profiles to import; more than
-   *  the link's runs as a job, and MakerOnline's wait for Thingport Grab. */
+  /** `profileScope`: which MakerWorld, Snapmaker, MakerOnline, Creality Cloud or NexPrint print profiles to import;
+   *  more than the link's runs as a job, and MakerOnline's wait for Thingport Grab. */
   const submitImport = async (
     rawUrl: string,
     captcha?: CaptchaAnswer | null,
@@ -298,6 +302,11 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
 
       if (profileScope !== "url" && isCrealitycloudModelUrl(url)) {
         await startCrealitycloudProfilesImport({ ...payload, scope: profileScope });
+        return;
+      }
+
+      if (profileScope !== "url" && isNexprintModelUrl(url)) {
+        await startNexprintProfilesImport({ ...payload, scope: profileScope });
         return;
       }
 
@@ -471,6 +480,33 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
         return;
       }
 
+      if (isNexprintCollectionUrl(url)) {
+        setImporting(false);
+        await collectionPrompt.prompt({
+          label: url,
+          loadEntries: async () => {
+            try {
+              return await importsApi.listNexprintCollectionEntries(payload);
+            } catch (err) {
+              if (err instanceof UnauthorizedError) onUnauthorized?.();
+              throw err;
+            }
+          },
+          onImportSelected: async (modelIds: string[]) => {
+            try {
+              await startNexprintCollectionImport({ ...payload, model_ids: modelIds });
+            } catch (err) {
+              if (err instanceof UnauthorizedError) {
+                onUnauthorized?.();
+                return;
+              }
+              throw err;
+            }
+          },
+        });
+        return;
+      }
+
       if (isSnapmakerListUrl(url)) {
         setImporting(false);
         await collectionPrompt.prompt({
@@ -503,7 +539,8 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
         isPrintablesModelUrl(url) ||
         isMyminifactoryObjectUrl(url) ||
         isSnapmakerModelUrl(url) ||
-        isCrealitycloudModelUrl(url)
+        isCrealitycloudModelUrl(url) ||
+        isNexprintModelUrl(url)
       ) {
         // The backend splits these into plates itself.
         const imported = await importsApi.fromLink(payload);

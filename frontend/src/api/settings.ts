@@ -147,7 +147,14 @@ export type DatabaseCredentialsInput = {
 };
 
 export type ImportProvider =
-  "makerworld" | "printables" | "thingiverse" | "myminifactory" | "snapmaker" | "makeronline" | "crealitycloud";
+  | "makerworld"
+  | "printables"
+  | "thingiverse"
+  | "myminifactory"
+  | "snapmaker"
+  | "makeronline"
+  | "crealitycloud"
+  | "nexprint";
 /** An admin can turn a provider off for the whole instance; menus hide it then. */
 export type ProviderSetting = { id: ImportProvider; enabled: boolean };
 
@@ -428,6 +435,25 @@ export const settingsApi = {
     });
     if (res.status === 401) throw new UnauthorizedError();
     if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to update Creality Cloud settings"));
+    return res.json();
+  },
+
+  // The user's own NexPrint sign-in (its auth_token cookie), which Thingport Grab sends on. Write-only.
+  getNexprintSession: async (): Promise<{ configured: boolean; expired: boolean }> => {
+    const res = await fetch(`${apiBase()}/settings/nexprint-session`, { headers: authHeaders() });
+    assertOk(res, "Failed to load NexPrint settings");
+    return res.json();
+  },
+
+  /** Checked with NexPrint before it's saved. */
+  updateNexprintSession: async (token: string | null): Promise<{ configured: boolean }> => {
+    const res = await fetch(`${apiBase()}/settings/nexprint-session`, {
+      method: "PATCH",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ token, verify: true }),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to update NexPrint settings"));
     return res.json();
   },
 

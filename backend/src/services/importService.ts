@@ -112,6 +112,18 @@ import {
   getUserCrealitycloudAuth,
   markCrealitycloudSessionRejected,
 } from "./crealitycloudSessionService";
+import {
+  fetchNexprintModelFiles,
+  fetchNexprintProfileFile,
+  isNexprintFileHost,
+  NexprintAuthError,
+  type NexprintFile,
+  type NexprintModelResolution,
+  parseNexprintModelUrl,
+  resolveNexprintModel,
+  selectNexprintProfiles,
+} from "./nexprintApi";
+import { getUserNexprintToken, markNexprintSessionRejected, NEXPRINT_CONNECT } from "./nexprintSessionService";
 
 /** An import refused because the user's MyMiniFactory session has expired. */
 export const MYMINIFACTORY_SESSION_CODE = "myminifactory_session";
@@ -119,6 +131,8 @@ export const MYMINIFACTORY_SESSION_CODE = "myminifactory_session";
 export const SNAPMAKER_SESSION_CODE = "snapmaker_session";
 /** An import refused because the user hasn't connected Creality Cloud, or it turned their sign-in down. */
 export const CREALITYCLOUD_SESSION_CODE = "crealitycloud_session";
+/** An import refused because the user hasn't connected NexPrint, or it turned their sign-in down. */
+export const NEXPRINT_SESSION_CODE = "nexprint_session";
 /** A MakerOnline import that came without the signed file links only Thingport Grab can get. */
 export const MAKERONLINE_GRAB_CODE = "makeronline_grab";
 export const MAKERONLINE_NEEDS_GRAB =
@@ -613,6 +627,7 @@ const CATEGORY_SITE_CAT_IDS_FIELD = {
   snapmaker: "snapmakerCatIds",
   makeronline: "makeronlineCatIds",
   crealitycloud: "crealitycloudCatIds",
+  nexprint: "nexprintCatIds",
 } as const;
 
 /** Auto-categorizes an import when a category's `*CatIds` for this site overlap the model's own
@@ -626,15 +641,21 @@ export async function resolveCategoryIdByCategory(
 ): Promise<string | null> {
   if (!categorySite || !siteCategoryIds.length) return null;
   const field = CATEGORY_SITE_CAT_IDS_FIELD[categorySite];
+  // NexPrint's column holds text (its ids are past Int); compare everything as text so one path serves all.
+  const wanted = siteCategoryIds.map(String);
   const candidates = await prisma.category.findMany({
     // Folders are the user's own tree; only categories take imports by site category id.
-    where: { userId, kind: "category", [field]: { hasSome: siteCategoryIds } },
+    where: {
+      userId,
+      kind: "category",
+      [field]: { hasSome: field === "nexprintCatIds" ? wanted : siteCategoryIds },
+    },
     orderBy: { position: "asc" },
   });
   const rank = (category: (typeof candidates)[number]) => {
-    const ids = category[field];
-    const index = siteCategoryIds.findIndex((id) => ids.includes(id));
-    return index === -1 ? siteCategoryIds.length : index;
+    const ids = new Set((category[field] as (number | string)[]).map(String));
+    const index = wanted.findIndex((id) => ids.has(id));
+    return index === -1 ? wanted.length : index;
   };
   // Stable, so equally specific matches keep their position order.
   return candidates.toSorted((a, b) => rank(a) - rank(b))[0]?.id ?? null;
@@ -656,15 +677,18 @@ export function identifySourceModel(url: string): { provider: string; externalId
   if (makeronline) return { provider: "makeronline", externalId: makeronline.modelId };
   const crealitycloud = parseCrealitycloudModelUrl(url);
   if (crealitycloud) return { provider: "crealitycloud", externalId: crealitycloud.modelId };
+  const nexprint = parseNexprintModelUrl(url);
+  if (nexprint) return { provider: "nexprint", externalId: nexprint.modelId };
   return null;
 }
 
-/** The print profile a MakerWorld, Snapmaker, MakerOnline or Creality Cloud link names, if any. */
+/** The print profile a MakerWorld, Snapmaker, MakerOnline, Creality Cloud or NexPrint link names, if any. */
 function requestedProfileOf(provider: string, url: string): string | null {
   if (provider === "makerworld") return parseMakerworldModelUrl(url)?.requestedInstanceId ?? null;
   if (provider === "snapmaker") return parseSnapmakerModelUrl(url)?.requestedProfileId ?? null;
   if (provider === "makeronline") return parseMakeronlineModelUrl(url)?.requestedProfileId ?? null;
   if (provider === "crealitycloud") return parseCrealitycloudModelUrl(url)?.requestedProfileId ?? null;
+  if (provider === "nexprint") return parseNexprintModelUrl(url)?.requestedProfileId ?? null;
   return null;
 }
 
@@ -712,6 +736,7 @@ export function buildImportSourceUrl(provider: string | null, externalId: string
   if (provider === "snapmaker") return `https://space.snapmaker.com/en/model/${externalId}`;
   if (provider === "makeronline") return `https://www.makeronline.com/en/model/${externalId}`;
   if (provider === "crealitycloud") return `https://www.crealitycloud.com/model-detail/${externalId}`;
+  if (provider === "nexprint") return `https://www.nexprint.com/en/models/${externalId}`;
   return null;
 }
 
@@ -1580,6 +1605,111 @@ async function addCrealitycloudProfileToPrint(
   return addProfilePlate(existing, profile, wanted);
 }
 
+const NEXPRINT_BLOCKED =
+  "NexPrint blocked the file download (rate limit). This usually clears after a while -- wait, then retry the same import.";
+const NEXPRINT_MISSING = "This NexPrint model could not be found, or isn't public.";
+
+function downloadNexprintFile(file: NexprintFile): Promise<NewPlateInput[] | null> {
+  return downloadSignedFile(file, isNexprintFileHost, NEXPRINT_BLOCKED);
+}
+
+/** The user's token, or the HttpError that says to connect NexPrint. */
+async function requireNexprintToken(userId: string): Promise<string> {
+  const token = await getUserNexprintToken(userId);
+  if (!token) throw new HttpError(400, NEXPRINT_CONNECT, NEXPRINT_SESSION_CODE);
+  return token;
+}
+
+/** NexPrint's errors as the HttpErrors an import reports; a rejected sign-in is remembered, so the app can say so. */
+async function nexprintFailure(userId: string, err: unknown): Promise<unknown> {
+  if (err instanceof NexprintAuthError) {
+    await markNexprintSessionRejected(userId);
+    // 400, not 401: see tryMakerworldCloudApi.
+    return new HttpError(400, err.message, NEXPRINT_SESSION_CODE);
+  }
+  return err;
+}
+
+/** Downloads one print profile's 3MF, tagged with the profile; null when the model has no such profile. */
+async function downloadNexprintProfile(
+  resolved: NexprintModelResolution,
+  profileId: string,
+  token: string,
+): Promise<NewPlateInput | null> {
+  const profile = resolved.profiles.find((p) => p.id === profileId);
+  const file = profile ? await fetchNexprintProfileFile(profile, token) : null;
+  if (!file) return null;
+  const inputs = await downloadNexprintFile(file);
+  if (!inputs?.length) throw new HttpError(400, "Couldn't download this print profile from NexPrint. Try again later.");
+  // A profile is one 3MF; anything else it unpacked to is dropped.
+  await Promise.all(inputs.slice(1).map((input) => fs.rm(input.tempFilePath!, { force: true }).catch(() => undefined)));
+  return { ...inputs[0], sourceInstanceId: profileId };
+}
+
+/** Like Creality Cloud: a model is one print, and each print profile its 3MF on a plate of its own, tagged with the
+ *  profile. An import brings the profile the link names, else the designer's first; a model without profiles brings
+ *  its model files instead. Files only download as the user, so everything needs their NexPrint sign-in. */
+async function importNexprintModel(
+  userId: string,
+  source: { provider: string; externalId: string },
+  url: string,
+  body: ImportRequestBody,
+): Promise<ImportResult> {
+  const token = await requireNexprintToken(userId);
+  let resolved: NexprintModelResolution | null;
+  try {
+    resolved = await resolveNexprintModel(source.externalId);
+  } catch (err) {
+    throw await nexprintFailure(userId, err);
+  }
+  if (!resolved) throw new HttpError(404, NEXPRINT_MISSING);
+  const downloaded: NewPlateInput[] = [];
+  try {
+    const requested = body.resolved_instance_id ?? parseNexprintModelUrl(url)?.requestedProfileId ?? null;
+    const [profileId] = selectNexprintProfiles(resolved, "url", requested);
+    if (profileId) {
+      const profile = await downloadNexprintProfile(resolved, profileId, token);
+      if (profile) downloaded.push(profile);
+    }
+    if (!downloaded.length) {
+      for (const file of await fetchNexprintModelFiles(resolved, token)) {
+        downloaded.push(...((await downloadNexprintFile(file)) ?? []));
+      }
+    }
+  } catch (err) {
+    await Promise.all(downloaded.map((input) => fs.rm(input.tempFilePath!, { force: true }).catch(() => undefined)));
+    throw await nexprintFailure(userId, err);
+  }
+  if (!downloaded.length) throw new HttpError(400, "This NexPrint model has no files Thingport can import.");
+
+  return createSourcedPrint(userId, source, body, resolved, downloaded, `nexprint-${source.externalId}`);
+}
+
+/** Re-import of a NexPrint model naming a profile it doesn't have yet: that profile's 3MF becomes another plate. A
+ *  link without a profile, or with one already there, needs no download. */
+async function addNexprintProfileToPrint(
+  existing: ExistingImportedPrint,
+  url: string,
+  body: ImportRequestBody,
+): Promise<ImportResult> {
+  const wanted = body.resolved_instance_id ?? parseNexprintModelUrl(url)?.requestedProfileId ?? null;
+  if (!wanted || existing.plates.some((plate) => plate.sourceInstanceId === wanted)) {
+    return { ...existing, alreadyImported: true };
+  }
+  const userId = existing.print.userId;
+  const token = await requireNexprintToken(userId);
+  let profile: NewPlateInput | null;
+  try {
+    const model = await resolveNexprintModel(existing.print.sourceExternalId!);
+    if (!model) throw new HttpError(404, NEXPRINT_MISSING);
+    profile = await downloadNexprintProfile(model, wanted, token);
+  } catch (err) {
+    throw await nexprintFailure(userId, err);
+  }
+  if (!profile) throw new HttpError(404, "This NexPrint model has no such print profile.");
+  return addProfilePlate(existing, profile, wanted);
+}
+
 const MAKERONLINE_BLOCKED =
   "MakerOnline blocked the file download (rate limit). This usually clears after a while -- wait, then try again.";
 
@@ -1689,10 +1819,10 @@ export async function importPrintFromUrl(
 }
 
 /** Providers whose re-import of a model may add a print profile, so fetches. */
-const PROFILE_PROVIDERS = new Set(["makerworld", "snapmaker", "makeronline", "crealitycloud"]);
+const PROFILE_PROVIDERS = new Set(["makerworld", "snapmaker", "makeronline", "crealitycloud", "nexprint"]);
 
 /** Refuses a link from a provider an admin turned off, unless it's a model the user already has (MakerWorld, Snapmaker,
- *  MakerOnline and Creality Cloud add a profile, so fetch). */
+ *  MakerOnline, Creality Cloud and NexPrint add a profile, so fetch). */
 export async function assertCanImportUrl(userId: string, url: string): Promise<void> {
   const source = identifySourceModel(url);
   if (source && !PROFILE_PROVIDERS.has(source.provider) && (await findExistingImportedPrint(userId, source))) return;
@@ -1709,6 +1839,7 @@ async function importNewOrExisting(userId: string, url: string, body: ImportRequ
   if (existing && source?.provider === "snapmaker") return addSnapmakerProfileToPrint(existing, url, body);
   if (existing && source?.provider === "makeronline") return addMakeronlineProfilesToPrint(existing, body);
   if (existing && source?.provider === "crealitycloud") return addCrealitycloudProfileToPrint(existing, url, body);
+  if (existing && source?.provider === "nexprint") return addNexprintProfileToPrint(existing, url, body);
   if (existing) return addMakerworldProfileToPrint(existing, url, body);
 
   if (source?.provider === "thingiverse") {
@@ -1728,6 +1859,9 @@ async function importNewOrExisting(userId: string, url: string, body: ImportRequ
   }
   if (source?.provider === "crealitycloud") {
     return importCrealitycloudModel(userId, source, url, body);
+  }
+  if (source?.provider === "nexprint") {
+    return importNexprintModel(userId, source, url, body);
   }
 
   const { tempPath, filename, mime, meta } = await downloadImportToTemp(url, body);

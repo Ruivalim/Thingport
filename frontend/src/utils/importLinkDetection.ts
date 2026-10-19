@@ -1,7 +1,14 @@
 /** URL-shape detection shared by useUploadImport and AddMenu so they can't drift apart. */
 
 export type ImportProviderKey =
-  "makerworld" | "thingiverse" | "printables" | "myminifactory" | "snapmaker" | "makeronline" | "crealitycloud";
+  | "makerworld"
+  | "thingiverse"
+  | "printables"
+  | "myminifactory"
+  | "snapmaker"
+  | "makeronline"
+  | "crealitycloud"
+  | "nexprint";
 
 function parseUrl(url: string): URL | null {
   try {
@@ -22,6 +29,7 @@ export function detectImportProvider(url: string): ImportProviderKey | null {
   if (host === "space.snapmaker.com") return "snapmaker";
   if (host === "makeronline.com" || host === "www.makeronline.com") return "makeronline";
   if (host === "crealitycloud.com" || host === "www.crealitycloud.com") return "crealitycloud";
+  if (host === "nexprint.com" || host === "www.nexprint.com") return "nexprint";
   return null;
 }
 
@@ -160,6 +168,30 @@ export function isCrealitycloudListUrl(url: string): boolean {
   );
 }
 
+function isNexprintHost(parsed: URL): boolean {
+  return /^(www\.)?nexprint\.com$/i.test(parsed.hostname);
+}
+
+const NEXPRINT_LANG = String.raw`(?:[a-z]{2}(?:-[a-z]{2,4})?/)?`;
+
+/** See isThingiverseThingUrl. `/en/models/<id>`; `?printConfigId=<id>` may pick a print profile. */
+export function isNexprintModelUrl(url: string): boolean {
+  const parsed = parseUrl(url);
+  if (!parsed || !isNexprintHost(parsed)) return false;
+  return new RegExp(String.raw`^/${NEXPRINT_LANG}models/G\d+/?$`, "i").test(parsed.pathname);
+}
+
+/** A NexPrint collection: `/en/collection/<id>`, or open on its owner's page (`/en/<user>/home?...&collectionId=`). */
+export function isNexprintCollectionUrl(url: string): boolean {
+  const parsed = parseUrl(url);
+  if (!parsed || !isNexprintHost(parsed)) return false;
+  if (new RegExp(String.raw`^/${NEXPRINT_LANG}collection/G\d+/?$`, "i").test(parsed.pathname)) return true;
+  return (
+    new RegExp(String.raw`^/${NEXPRINT_LANG}U\d+/home/?$`, "i").test(parsed.pathname) &&
+    /^G\d+$/i.test(parsed.searchParams.get("collectionId") ?? "")
+  );
+}
+
 export const IMPORT_LINK_EXAMPLES: Record<ImportProviderKey, { model: string; collection: string }> = {
   makerworld: {
     model: "https://makerworld.com/en/models/123456-example-model",
@@ -188,5 +220,9 @@ export const IMPORT_LINK_EXAMPLES: Record<ImportProviderKey, { model: string; co
   crealitycloud: {
     model: "https://www.crealitycloud.com/model-detail/example-model",
     collection: "https://www.crealitycloud.com/collection/3d-model-collection-AbCdEf",
+  },
+  nexprint: {
+    model: "https://www.nexprint.com/en/models/G1234567",
+    collection: "https://www.nexprint.com/en/collection/G12345678",
   },
 };

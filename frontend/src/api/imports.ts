@@ -209,6 +209,20 @@ export const importsApi = {
     return res.json();
   },
 
+  /** fromMakerworldProfiles for a NexPrint model. */
+  fromNexprintProfiles: async (
+    payload: ImportLinkPayload & { scope: Exclude<MakerworldProfileScope, "url"> },
+  ): Promise<{ job_id: string }> => {
+    const res = await fetch(`${apiBase()}/import/nexprint-profiles`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Import failed"));
+    return res.json();
+  },
+
   /** Returns immediately; ImportJobContext polls the job. A pasted list of links, imported one at
    *  a time; what fails can be rerun with retryImportJob. */
   fromLinks: async (
@@ -435,6 +449,30 @@ export const importsApi = {
     });
     if (res.status === 401) throw new UnauthorizedError();
     if (!res.ok) throw new Error(await readErrorMessage(res, "Creality Cloud import failed"));
+    return res.json();
+  },
+
+  /** A NexPrint collection, private ones too. */
+  listNexprintCollectionEntries: async (payload: ImportLinkPayload): Promise<ImportCollectionEntriesResult> => {
+    const res = await fetch(`${apiBase()}/import/nexprint-collection/entries`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Could not load this collection"));
+    return res.json();
+  },
+
+  /** Returns immediately; ImportJobContext polls the job. */
+  fromNexprintCollection: async (payload: ImportLinkPayload & { model_ids: string[] }): Promise<{ job_id: string }> => {
+    const res = await fetch(`${apiBase()}/import/nexprint-collection`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "NexPrint import failed"));
     return res.json();
   },
 

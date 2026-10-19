@@ -32,6 +32,7 @@ const PROVIDERS: { id: ProviderId; name: string }[] = [
   { id: "snapmaker", name: "Snapmaker Space" },
   { id: "makeronline", name: "MakerOnline" },
   { id: "crealitycloud", name: "Creality Cloud" },
+  { id: "nexprint", name: "NexPrint" },
   ...COMING_SOON_PROVIDERS,
 ];
 const isComingSoon = (id: ProviderId) => COMING_SOON_PROVIDERS.some((provider) => provider.id === id);
@@ -40,14 +41,16 @@ const SHARED = new Set<ProviderId>(["thingiverse"]);
 // Connected with the user's own sign-in, which the site can turn down once it expires. MyMiniFactory's also has
 // the instance's API key, set in Administration; the user's sign-in adds paid and login-only models. Snapmaker's
 // lasts a day; Thingport Grab keeps renewing it. MakerOnline's reads the user's likes and private collections; its
-// files only ever come through Thingport Grab. Creality Cloud's lasts a week from signing in there.
-type SessionProvider = "makerworld" | "myminifactory" | "snapmaker" | "makeronline" | "crealitycloud";
+// files only ever come through Thingport Grab. Creality Cloud's lasts a week from signing in there; NexPrint's is
+// renewed by the site as the user visits it.
+type SessionProvider = "makerworld" | "myminifactory" | "snapmaker" | "makeronline" | "crealitycloud" | "nexprint";
 const SESSION_PROVIDERS = new Set<ProviderId>([
   "makerworld",
   "myminifactory",
   "snapmaker",
   "makeronline",
   "crealitycloud",
+  "nexprint",
 ]);
 const isSessionProvider = (id: ProviderId): id is SessionProvider => SESSION_PROVIDERS.has(id);
 
@@ -75,7 +78,7 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
     cults3d: false,
     makeronline: null,
     crealitycloud: null,
-    nexprint: false,
+    nexprint: null,
     snapmaker: null,
   });
   const [menu, setMenu] = React.useState<{ id: ProviderId; top: number; left: number } | null>(null);
@@ -85,6 +88,7 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
     snapmaker: false,
     makeronline: false,
     crealitycloud: false,
+    nexprint: false,
   });
   const isExpired = (id: ProviderId) => isSessionProvider(id) && Boolean(connected[id]) && expired[id];
   const [connecting, setConnecting] = React.useState<ProviderId | null>(null);
@@ -137,6 +141,14 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
         setExpired((current) => ({ ...current, crealitycloud: res.expired }));
       })
       .catch(() => undefined);
+    settingsApi
+      .getNexprintSession()
+      .then((res) => {
+        if (!active) return;
+        setConnected((current) => ({ ...current, nexprint: res.configured }));
+        setExpired((current) => ({ ...current, nexprint: res.expired }));
+      })
+      .catch(() => undefined);
     return () => {
       active = false;
     };
@@ -177,6 +189,10 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
       const result = await settingsApi.updateCrealitycloudSession(value);
       setConnected((current) => ({ ...current, crealitycloud: result.configured }));
       setExpired((current) => ({ ...current, crealitycloud: false }));
+    } else if (id === "nexprint") {
+      const result = await settingsApi.updateNexprintSession(value);
+      setConnected((current) => ({ ...current, nexprint: result.configured }));
+      setExpired((current) => ({ ...current, nexprint: false }));
     }
   };
 

@@ -22,6 +22,7 @@ import { MyminifactoryAuthError, MyminifactoryRateLimitError, resolveMyminifacto
 import { resolveSnapmakerModel } from "./snapmakerApi";
 import { resolveMakeronlineModel } from "./makeronlineApi";
 import { resolveCrealitycloudModel } from "./crealitycloudApi";
+import { resolveNexprintModel } from "./nexprintApi";
 import { getUserMakerworldCookie } from "./makerworldCookieService";
 import { upsertAuthorFromImport } from "./authorService";
 import { emptyGaps, openSourceGaps, type SourceGap } from "./sourceGaps";
@@ -114,6 +115,12 @@ export async function fetchSourceMeta(userId: string, print: Print, sourceUrl: s
   if (provider === "crealitycloud") {
     const resolved = await resolveCrealitycloudModel(externalId);
     if (!resolved) throw new HttpError(404, "This Creality Cloud model could not be found, or isn't public.");
+    return { ...emptyImportedPageMetadata(), ...resolved.meta, galleryImages: resolved.galleryImages };
+  }
+
+  if (provider === "nexprint") {
+    const resolved = await resolveNexprintModel(externalId);
+    if (!resolved) throw new HttpError(404, "This NexPrint model could not be found, or isn't public.");
     return { ...emptyImportedPageMetadata(), ...resolved.meta, galleryImages: resolved.galleryImages };
   }
 

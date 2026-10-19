@@ -25,7 +25,15 @@ import { settingsApi } from "../../api/settings";
 import { useDisabledProviders } from "../../hooks/useDisabledProviders";
 
 type ServiceChipDef = {
-  key: "makerworld" | "thingiverse" | "printables" | "myminifactory" | "snapmaker" | "makeronline" | "crealitycloud";
+  key:
+    | "makerworld"
+    | "thingiverse"
+    | "printables"
+    | "myminifactory"
+    | "snapmaker"
+    | "makeronline"
+    | "crealitycloud"
+    | "nexprint";
   label: string;
   connected: boolean;
   /** Explains what's missing when not connected. */
@@ -56,6 +64,8 @@ export function UserMenu({ user, onOpenConfiguration, onOpenProfile, onLogout }:
   const [makeronlineExpired, setMakeronlineExpired] = React.useState(false);
   const [crealitycloudConfigured, setCrealitycloudConfigured] = React.useState(false);
   const [crealitycloudExpired, setCrealitycloudExpired] = React.useState(false);
+  const [nexprintConfigured, setNexprintConfigured] = React.useState(false);
+  const [nexprintExpired, setNexprintExpired] = React.useState(false);
 
   const menuOpen = Boolean(anchorEl);
   // Checked on every open: the cookie can change in Configuration while the menu stays mounted.
@@ -106,6 +116,14 @@ export function UserMenu({ user, onOpenConfiguration, onOpenProfile, onLogout }:
         setCrealitycloudExpired(res.expired);
       })
       .catch(() => undefined);
+    settingsApi
+      .getNexprintSession()
+      .then((res) => {
+        if (!active) return;
+        setNexprintConfigured(res.configured);
+        setNexprintExpired(res.expired);
+      })
+      .catch(() => undefined);
     return () => {
       active = false;
     };
@@ -154,6 +172,12 @@ export function UserMenu({ user, onOpenConfiguration, onOpenProfile, onLogout }:
       disabledReason: crealitycloudExpired
         ? t("providers.crealitycloud.expired")
         : t("userMenu.crealitycloudDisabledReason"),
+    },
+    {
+      key: "nexprint",
+      ...IMPORT_PROVIDER_INFO.nexprint,
+      connected: nexprintConfigured && !nexprintExpired,
+      disabledReason: nexprintExpired ? t("providers.nexprint.expired") : t("userMenu.nexprintDisabledReason"),
     },
   ];
   // Turned off by an admin: no icon. Coming-soon sites follow the live ones.

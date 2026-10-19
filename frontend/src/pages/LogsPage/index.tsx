@@ -165,6 +165,7 @@ export default function LogsPage({ onUnauthorized }: Props) {
           snapmaker: "Snapmaker Space",
           makeronline: "MakerOnline",
           crealitycloud: "Creality Cloud",
+          nexprint: "NexPrint",
         };
         const provider = typeof d.provider === "string" ? (names[d.provider] ?? d.provider) : "";
         return t(d.enabled ? "adminSettings.logs.providerOn" : "adminSettings.logs.providerOff", { provider });

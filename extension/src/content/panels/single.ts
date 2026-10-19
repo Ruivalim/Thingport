@@ -1,4 +1,4 @@
-// Thingiverse, Printables, MyMiniFactory, Snapmaker Space, MakerOnline and Creality Cloud import directly; other links go through
+// Thingiverse, Printables, MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud and NexPrint import directly; other links go through
 // /import/inspect first, like the web app's useUploadImport.tsx. MakerOnline's files are signed on its own page first
 // (see background/makeronline.ts).
 
@@ -20,6 +20,7 @@ import { api, escapeHtml } from "../runtime";
 import { loadSnapmakerProfiles } from "../snapmaker";
 import { loadMakeronlineProfiles } from "../makeronline";
 import { loadCrealitycloudProfiles } from "../crealitycloud";
+import { loadNexprintProfiles } from "../nexprint";
 import { onPanelAction, panelQuery, panelQueryAll, renderPanel } from "../shell";
 import { collectionIdFor, collectionPickerHtml, readCollectionChoice, wireCollectionPicker } from "./collectionPicker";
 import { errorHtml, statusHtml, successHtml } from "./results";
@@ -52,7 +53,7 @@ function isPaidMyminifactoryObject(): boolean {
 const PROFILE_GAP_MS = 2000;
 
 /** The print profile ids a scope brings, the page's own first: MakerWorld's from its page data, Snapmaker's,
- *  MakerOnline's and Creality Cloud's from their APIs. Null on other sites, or when they can't be read. */
+ *  MakerOnline's, Creality Cloud's and NexPrint's from their APIs. Null on other sites, or when they can't be read. */
 async function profileIdsFor(): Promise<((scope: MakerworldProfileScope) => string[]) | null> {
   const { url, classification } = ctx();
   if (classification.provider === "snapmaker" && classification.type === "model") return loadSnapmakerProfiles(url);
@@ -60,6 +61,7 @@ async function profileIdsFor(): Promise<((scope: MakerworldProfileScope) => stri
   if (classification.provider === "crealitycloud" && classification.type === "model") {
     return loadCrealitycloudProfiles(url);
   }
+  if (classification.provider === "nexprint" && classification.type === "model") return loadNexprintProfiles(url);
   if (classification.provider !== "makerworld" || classification.type !== "model") return null;
   const page = await loadMakerworldDesignForPage(url);
   return page ? (scope) => makerworldProfileIds(page.design, scope, page.requestedInstanceId) : null;
@@ -87,6 +89,13 @@ function selectedProfileScope(): MakerworldProfileScope {
 }
 
 function profileUrl(url: string, instanceId: string): string {
+  // NexPrint's own links name a profile in their query.
+  if (ctx().classification.provider === "nexprint") {
+    const named = new URL(url);
+    named.hash = "";
+    named.searchParams.set("printConfigId", instanceId);
+    return named.toString();
+  }
   return `${url.split("#")[0]}#profileId-${instanceId}`;
 }
 
@@ -144,7 +153,8 @@ export async function loadSingleItem(): Promise<void> {
     (provider === "myminifactory" && type === "object") ||
     (provider === "snapmaker" && type === "model") ||
     (provider === "makeronline" && type === "model") ||
-    (provider === "crealitycloud" && type === "model");
+    (provider === "crealitycloud" && type === "model") ||
+    (provider === "nexprint" && type === "model");
 
   let zipFilename: string | null = null;
   if (skipInspect) {

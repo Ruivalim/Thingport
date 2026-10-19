@@ -74,6 +74,12 @@ import {
   normalizeCrealitycloudSession,
   setUserCrealitycloudSession,
 } from "../services/crealitycloudSessionService";
+import { checkNexprintAuth } from "../services/nexprintApi";
+import {
+  getNexprintConnection,
+  normalizeNexprintSession,
+  setUserNexprintSession,
+} from "../services/nexprintSessionService";
 import { SLICER_IDS, getUserSlicer, setUserSlicer } from "../services/slicerPreferenceService";
 import { CATEGORIES_VIEWS, getCategoriesView, setCategoriesView } from "../services/categoriesViewService";
 import {
@@ -758,6 +764,49 @@ router.patch(
         throw new HttpError(503, "Couldn't reach Creality Cloud to check this sign-in. Try again in a moment.");
     }
     const configured = await setUserCrealitycloudSession(req.userId!, session);
+    res.json({ configured });
+  }),
+);
+
+// Per-user: the NexPrint sign-in, which Thingport Grab sends whenever the browser's changes.
+router.get(
+  "/settings/nexprint-session",
+  asyncHandler(async (req, res) => {
+    const connection = await getNexprintConnection(req.userId!);
+    res.json({ configured: connection !== "disconnected", expired: connection === "expired" });
+  }),
+);
+
+// `expires_at`: the auth_token cookie's own expiry, which Grab can read; it's only shown, as the token may outlive it.
+const nexprintSessionSchema = z.object({
+  token: z.string().max(10_000).nullable(),
+  expires_at: z.string().datetime().nullable().optional(),
+  verify: z.boolean().optional(),
+});
+router.patch(
+  "/settings/nexprint-session",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(nexprintSessionSchema, req.body);
+    const session = normalizeNexprintSession(body.token, body.expires_at ? new Date(body.expires_at) : null);
+    if ((body.token ?? "").trim() && !session) {
+      throw new HttpError(
+        422,
+        "That doesn't look like a NexPrint sign-in: paste the auth_token cookie, or the Authorization header of a signed-in nexprint.com request.",
+      );
+    }
+    if (body.verify && session) {
+      const check = await checkNexprintAuth(session.token);
+      if (check === "rejected") {
+        throw new HttpError(
+          422,
+          "NexPrint didn't accept this sign-in -- it may have expired. Copy it again from a signed-in nexprint.com tab and try again.",
+        );
+      }
+      // 503, not 422: nothing is known to be wrong with the sign-in.
+      if (check === "unreachable")
+        throw new HttpError(503, "Couldn't reach NexPrint to check this sign-in. Try again in a moment.");
+    }
+    const configured = await setUserNexprintSession(req.userId!, session);
     res.json({ configured });
   }),
 );

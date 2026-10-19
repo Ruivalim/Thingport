@@ -74,7 +74,8 @@ function hasMeta(category: Category): boolean {
     category.myminifactory_cat_ids ||
     category.snapmaker_cat_ids ||
     category.makeronline_cat_ids ||
-    category.crealitycloud_cat_ids,
+    category.crealitycloud_cat_ids ||
+    category.nexprint_cat_ids,
   );
 }
 

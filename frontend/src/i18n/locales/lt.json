@@ -276,6 +276,7 @@
       "snapmakerDisabledReason": "Snapmaker Space: prijunkite paskyrą skiltyje Konfigūracija → Šaltiniai",
       "makeronlineDisabledReason": "MakerOnline: prijunkite paskyrą skiltyje Konfigūracija → Šaltiniai",
       "crealitycloudDisabledReason": "Creality Cloud: prijunkite paskyrą skiltyje Konfigūracija → Šaltiniai",
+      "nexprintDisabledReason": "NexPrint: prijunkite paskyrą skiltyje Konfigūracija → Šaltiniai",
       "myModels": "Mano modeliai"
     },
     "notifications": {
@@ -541,7 +542,8 @@
           "myminifactory": "Modeliai ir viešos kolekcijos, naudojant šio Thingport API raktą; nusipirkti modeliai – per kiekvieno naudotojo MyMiniFactory paskyrą.",
           "snapmaker": "Modeliai su spausdinimo profiliais bei kiekvieno naudotojo pamėgti ir pažymėti modeliai, per kiekvieno naudotojo Snapmaker paskyrą.",
           "makeronline": "Modeliai su spausdinimo profiliais, kolekcijos ir kiekvieno naudotojo pamėgti modeliai. Failai atkeliauja per Thingport Grab: MakerOnline juos duoda tik savo puslapiams.",
-          "crealitycloud": "Modeliai su spausdinimo profiliais, kolekcijos ir kiekvieno naudotojo pamėgti modeliai, per kiekvieno naudotojo Creality Cloud paskyrą."
+          "crealitycloud": "Modeliai su spausdinimo profiliais, kolekcijos ir kiekvieno naudotojo pamėgti modeliai, per kiekvieno naudotojo Creality Cloud paskyrą.",
+          "nexprint": "Modeliai su spausdinimo profiliais ir kolekcijos, per kiekvieno naudotojo NexPrint paskyrą."
         },
         "keyStatus": {
           "thingiverse": {
@@ -1704,6 +1706,17 @@
         "expired": "Prisijungimo galiojimas baigėsi. Prisijunkite crealitycloud.com su Thingport Grab arba vėl prijunkite Creality Cloud skiltyje Konfigūracija → Šaltiniai.",
         "expiredStatus": "Prisijungimas nebegalioja"
       },
+      "nexprint": {
+        "placeholder": "Slapukas auth_token arba Authorization antraštė",
+        "steps": [
+          "Paprasčiausia: su Thingport Grab tiesiog atverkite nexprint.com prisijungę. Jis prijungs jūsų paskyrą ir palaikys ją prijungtą, kol lankotės ten.",
+          "Arba rankiniu būdu: prisijunkite prie nexprint.com, atverkite naršyklės kūrėjo įrankius (F12) ir perkraukite puslapį.",
+          "Skiltyje Network pasirinkite bet kurią užklausą į nexprint.com/gateway, nukopijuokite jos Authorization antraštę (arba slapuką auth_token) ir įklijuokite ją žemiau."
+        ],
+        "notConnected": "NexPrint failus duoda tik prisijungusiems naudotojams. Prijunkite paskyrą, kad galėtumėte importuoti jo modelius.",
+        "expired": "Prisijungimo galiojimas baigėsi. Prisijunkite nexprint.com su Thingport Grab arba vėl prijunkite NexPrint skiltyje Konfigūracija → Šaltiniai.",
+        "expiredStatus": "Prisijungimas nebegalioja"
+      },
       "printables": {
         "alwaysConnected": "Printables prijungta iš karto: nereikia paskyros ar rakto."
       },
@@ -2669,7 +2682,7 @@
           "takenBy": "Sinchronizuojama su „{{name}}“",
           "loadFailed": "Nepavyko įkelti kolekcijų.",
           "lookupFailed": "Nepavyko rasti šios kolekcijos.",
-          "notALink": "Įklijuokite MakerWorld, Printables, Thingiverse, MyMiniFactory, Snapmaker Space, MakerOnline arba Creality Cloud kolekcijos nuorodą.",
+          "notALink": "Įklijuokite MakerWorld, Printables, Thingiverse, MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud arba NexPrint kolekcijos nuorodą.",
           "usernameFailed": "Nepavyko išsaugoti vartotojo vardo.",
           "openProviders": "Atidaryti tiekėjus",
           "notConnected": {
@@ -2679,7 +2692,8 @@
             "myminifactory": "MyMiniFactory šiame Thingport dar neprijungtas. Administratorius gali jį prijungti per Konfigūracija > Tiekėjai.",
             "snapmaker": "Prijunkite Snapmaker Space per Konfigūracija > Šaltiniai arba atverkite jį su Thingport Grab, kad čia matytumėte savo pamėgtus ir pažymėtus modelius.",
             "makeronline": "Prijunkite MakerOnline per Konfigūracija > Šaltiniai arba atverkite jį su Thingport Grab, kad čia matytumėte savo pamėgtus modelius ir kolekcijas.",
-            "crealitycloud": "Prijunkite Creality Cloud per Konfigūracija > Šaltiniai arba atverkite jį su Thingport Grab, kad čia matytumėte savo pamėgtus modelius ir kolekcijas."
+            "crealitycloud": "Prijunkite Creality Cloud per Konfigūracija > Šaltiniai arba atverkite jį su Thingport Grab, kad čia matytumėte savo pamėgtus modelius ir kolekcijas.",
+            "nexprint": "Prijunkite NexPrint per Konfigūracija > Šaltiniai arba atverkite jį su Thingport Grab, kad čia matytumėte savo kolekcijas."
           },
           "usernameLabel": "Jūsų {{provider}} vartotojo vardas",
           "usernameHint": {
@@ -2802,6 +2816,7 @@
         "snapmakerCatIdLabel": "Snapmaker Space kategorijų ID",
         "makeronlineCatIdLabel": "MakerOnline kategorijų ID",
         "crealitycloudCatIdLabel": "Creality Cloud kategorijų ID",
+        "nexprintCatIdLabel": "NexPrint kategorijų ID",
         "catIdsPlaceholder": "pvz. 800;71;1001",
         "catIdsHelp": "Kelis ID atskirkite „;“ -- atitiks, jei importo kategorija sutampa su bet kuriuo iš jų",
         "dragToMove": "Vilkite, kad perkeltumėte"

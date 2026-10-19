@@ -28,6 +28,7 @@ const ALL: readonly ImportProvider[] = [
   "snapmaker",
   "makeronline",
   "crealitycloud",
+  "nexprint",
 ];
 
 /** With every provider off there's nothing to import from or connect to, so those parts of the app hide. */

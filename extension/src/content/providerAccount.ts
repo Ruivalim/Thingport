@@ -93,6 +93,12 @@ export function captureProviderAccount(hostname: string): void {
     void send("SYNC_CREALITYCLOUD_SESSION");
     return;
   }
+  if (/(^|\.)nexprint\.com$/i.test(hostname)) {
+    captured = true;
+    // Its sign-in downloads the files; the site renews it as it refreshes the token, and each new one is sent on.
+    void send("SYNC_NEXPRINT_SESSION");
+    return;
+  }
   if (hostname === "space.snapmaker.com") {
     captured = true;
     // Its sign-in downloads the files, and lasts a day: kept fresh by the background, and sent on.

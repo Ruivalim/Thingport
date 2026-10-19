@@ -10,6 +10,7 @@ export const BROWSABLE_PROVIDERS = [
   "snapmaker",
   "makeronline",
   "crealitycloud",
+  "nexprint",
 ] as const;
 export type BrowsableProvider = (typeof BROWSABLE_PROVIDERS)[number];
 
