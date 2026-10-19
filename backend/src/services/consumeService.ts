@@ -10,8 +10,7 @@ import { listZipEntries, readZipEntry } from "../utils/zipReader";
 import { normalizeZipEntryPath, resolveZipCategoryId } from "./zipService";
 import { createPrint, type NewPlateInput } from "./printCreation";
 import { saveFileFromTemp } from "./printFileService";
-import { addPreviewImage } from "./previewImageService";
-import { plateThumbExists, saveThumbFromBytes } from "./printService";
+import { addPreviewImage, preferImageOverRenders } from "./previewImageService";
 import { createNotification } from "./notificationService";
 
 export const CONSUME_MODES = ["separate", "folder"] as const;
@@ -273,13 +272,16 @@ export async function consumeFolder(dir = CONSUME_DIR): Promise<ConsumeSummary |
     summary.files += plates.length;
     summary.printIds.push(printId);
 
-    let thumbSeeded = !firstPlateId || plateThumbExists(firstPlateId);
+    let preferred = false;
     for (const item of rest) {
       try {
         if (PREVIEW_IMAGE_EXTS.has(extOf(item.rel)) && item.size <= PREVIEW_IMAGE_MAX_BYTES) {
           const buffer = await fs.readFile(item.path);
           if (await addPreviewImage(printId, buffer)) {
-            if (!thumbSeeded) thumbSeeded = await saveThumbFromBytes(firstPlateId!, buffer);
+            if (!preferred) {
+              preferred = true;
+              await preferImageOverRenders(printId, firstPlateId, buffer);
+            }
             await fs.rm(item.path, { force: true });
             summary.files += 1;
             continue;

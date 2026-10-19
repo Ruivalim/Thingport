@@ -60,6 +60,31 @@ describe("preview images", () => {
   });
 });
 
+describe("a 3D render saved before uploaded images land", () => {
+  it("gives way to the first image, as thumbnail and cover", async () => {
+    const print = await uploadStl();
+    const plate = (await prisma.plate.findFirst({ where: { printId: print.id } }))!;
+    await request(app)
+      .post(`/api/plate/${plate.id}/thumbnail-generated`)
+      .set(auth())
+      .attach("file", await png(10), "render.png");
+
+    const res = await request(app)
+      .post(`/api/print/${print.id}/preview-images`)
+      .set(auth())
+      .attach("files", await png(200), "a.png")
+      .attach("files", await png(120), "b.png");
+    expect(res.status).toBe(200);
+    const previews = await prisma.previewImage.findMany({ where: { printId: print.id }, orderBy: { position: "asc" } });
+    expect(previews.map((img) => [img.position, img.generated])).toEqual([
+      [0, false],
+      [1, false],
+    ]);
+    expect(await redOf(previewImagePath(previews[0].id))).toBeGreaterThan(180);
+    expect(await redOf(plateThumbPath(plate.id))).toBeGreaterThan(180);
+  });
+});
+
 describe("a 3D render made while an import runs", () => {
   const originalFetch = global.fetch;
   afterEach(() => {
