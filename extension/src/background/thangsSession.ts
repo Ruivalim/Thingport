@@ -10,17 +10,12 @@ const JWT = /^eyJ[\w-]+\.eyJ[\w-]+\.[\w-]+$/;
 
 /** The cookie's token, "" when there is none, or undefined when it couldn't be read. */
 async function cookieValue(name: string): Promise<string | undefined> {
-  let raw: string | undefined;
   try {
-    raw = (await chrome.cookies.get({ url: SITE, name }))?.value;
-  } catch {
-    return undefined; // Not readable: no reason to think the user signed out.
-  }
-  try {
-    const value = raw ? decodeURIComponent(raw) : "";
+    const cookie = await chrome.cookies.get({ url: SITE, name });
+    const value = cookie?.value ? decodeURIComponent(cookie.value) : "";
     return JWT.test(value) ? value : "";
   } catch {
-    return ""; // Malformed percent-encoding: not a token.
+    return undefined; // Unreadable, or malformed percent-encoding: no reason to think the user signed out.
   }
 }
 
