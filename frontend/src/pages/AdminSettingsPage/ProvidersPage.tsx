@@ -34,6 +34,7 @@ const NAMES: Record<ImportProvider, string> = {
   myminifactory: "MyMiniFactory",
   snapmaker: "Snapmaker Space",
   makeronline: "MakerOnline",
+  crealitycloud: "Creality Cloud",
 };
 
 const KEYED = new Set<ImportProvider>(["thingiverse", "myminifactory"]);
@@ -116,12 +117,20 @@ export default function ProvidersPage({ onUnauthorized }: Props) {
       <Paper variant="outlined" sx={{ borderRadius: "12px", overflow: "hidden" }}>
         {(
           providers ??
-          (["makerworld", "printables", "thingiverse", "myminifactory", "snapmaker", "makeronline"] as const).map(
-            (id) => ({
-              id,
-              enabled: true,
-            }),
-          )
+          (
+            [
+              "makerworld",
+              "printables",
+              "thingiverse",
+              "myminifactory",
+              "snapmaker",
+              "makeronline",
+              "crealitycloud",
+            ] as const
+          ).map((id) => ({
+            id,
+            enabled: true,
+          }))
         ).map(({ id, enabled }) => {
           const keySetHere = isKeyed(id) ? keySet[id] : undefined;
           return (

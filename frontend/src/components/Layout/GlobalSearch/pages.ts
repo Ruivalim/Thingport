@@ -86,6 +86,7 @@ export const SEARCH_PAGES: SearchPage[] = [
     "myminifactory",
     "snapmaker",
     "makeronline",
+    "creality cloud",
     "app token",
     "api key",
     "access token",

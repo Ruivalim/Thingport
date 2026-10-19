@@ -1,10 +1,10 @@
-// Content script entry point (MakerWorld, Thingiverse, Printables, and MyMiniFactory and Snapmaker Space once turned
-// on). Network calls go through the background (see runtime.ts).
+// Content script entry point (MakerWorld, Thingiverse, Printables, and the optional sites in optionalSites.ts once
+// turned on). Network calls go through the background (see runtime.ts).
 
 import type { ImportStatus } from "../shared/api";
 import { listen, send, type ContentMessages } from "../shared/messages";
 import { CONFIG_CHANGE_KEYS } from "../shared/storage";
-import { classifyUrl, parseSnapmakerListUrl, snapmakerListUrl } from "../shared/urls";
+import { classifyUrl, parseCrealitycloudLikesUrl, parseSnapmakerListUrl, snapmakerListUrl } from "../shared/urls";
 import { setContext, type LibraryState } from "./context";
 import { isMakerworldBlockingError, resolveMakerworldDownloadUrl } from "./makerworld/downloadResolver";
 import { offerNormalizedDownload, unmountNormalizedDownload } from "./makerworld/normalizedDownload";
@@ -12,6 +12,7 @@ import { mountJobOverlay, mountPausedJobOverlay } from "./overlays";
 import { loadPanel } from "./panels";
 import { captureProviderAccount } from "./providerAccount";
 import { snapmakerUserId } from "./snapmaker";
+import { crealitycloudUserId } from "./crealitycloud";
 import { providerEnabled } from "./providerSettings";
 import { errorHtml } from "./panels/results";
 import { api } from "./runtime";
@@ -131,6 +132,15 @@ async function init(): Promise<void> {
       return;
     }
     pageUrl = snapmakerListUrl(own, classification.type);
+  }
+  // Creality Cloud's likes too: anyone can open the address, but only the owner sees them.
+  if (classification.provider === "crealitycloud" && classification.type === "likes") {
+    const own = await crealitycloudUserId();
+    if (isStale()) return;
+    if (!own || own !== parseCrealitycloudLikesUrl(url)?.userId) {
+      reportTabIconState(false);
+      return;
+    }
   }
 
   let library: LibraryState | null = null;

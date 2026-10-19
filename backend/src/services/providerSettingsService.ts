@@ -13,6 +13,7 @@ export const PROVIDERS = [
   "myminifactory",
   "snapmaker",
   "makeronline",
+  "crealitycloud",
 ] as const;
 export type Provider = (typeof PROVIDERS)[number];
 
@@ -23,6 +24,7 @@ const PROVIDER_NAMES: Record<Provider, string> = {
   myminifactory: "MyMiniFactory",
   snapmaker: "Snapmaker Space",
   makeronline: "MakerOnline",
+  crealitycloud: "Creality Cloud",
 };
 
 const SETTING_KEY = "disabled_providers";

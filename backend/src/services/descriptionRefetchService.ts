@@ -22,6 +22,7 @@ const SOURCE_PROVIDERS = [
   "myminifactory",
   "snapmaker",
   "makeronline",
+  "crealitycloud",
 ] as const;
 type SourceProvider = (typeof SOURCE_PROVIDERS)[number];
 

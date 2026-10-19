@@ -47,6 +47,17 @@ import {
   getUserMakeronlineToken,
   markMakeronlineTokenRejected,
 } from "./makeronlineSessionService";
+import {
+  CrealitycloudAuthError,
+  crealitycloudLikesKey,
+  fetchCrealitycloudCollection,
+  fetchCrealitycloudLikes,
+} from "./crealitycloudApi";
+import {
+  getCrealitycloudConnection,
+  getUserCrealitycloudAuth,
+  markCrealitycloudSessionRejected,
+} from "./crealitycloudSessionService";
 import { notifyGrabImportsQueued, queueGrabImport } from "./grabImportService";
 import { getSnapmakerConnection, getUserSnapmakerToken, markSnapmakerTokenRejected } from "./snapmakerSessionService";
 import {
@@ -67,11 +78,18 @@ const MISSING_CHECKS_TO_UNSYNC = 2;
 
 type SyncWithCollection = CollectionSync & { collection: Collection };
 
-/** The user's MakerOnline likes can't be read without their sign-in; unlike a rejected one, it holds the likes only. */
-class MakeronlineLikesUnreadableError extends Error {}
+/** The user's MakerOnline or Creality Cloud likes can't be read without their sign-in; unlike a rejected one, it holds
+ *  the likes only. */
+class LikesUnreadableError extends Error {
+  constructor(readonly problem: ConnectionProblem) {
+    super(problem.error);
+  }
+}
 
-const isMakeronlineLikes = (sync: Pick<CollectionSync, "provider" | "externalId">) =>
-  sync.provider === "makeronline" && sync.externalId === MAKERONLINE_LIKES_KEY;
+/** Likes on a provider whose collections read without a sign-in: only they wait for one. */
+const isSignInLikes = (sync: Pick<CollectionSync, "provider" | "externalId">) =>
+  (sync.provider === "makeronline" && sync.externalId === MAKERONLINE_LIKES_KEY) ||
+  (sync.provider === "crealitycloud" && sync.externalId.startsWith("likes-"));
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
@@ -134,10 +152,24 @@ export async function fetchListing(
     // Public collections list without a sign-in; the user's likes and private collections need theirs.
     const token = await getUserMakeronlineToken(sync.userId);
     if (id === MAKERONLINE_LIKES_KEY) {
-      if (!token) throw new MakeronlineLikesUnreadableError();
+      if (!token) throw new LikesUnreadableError(CONNECTION_PROBLEMS.makeronlineLikesDisconnected);
       return (await fetchMakeronlineLikes(token)).entries.map((e) => e.modelId);
     }
     const listing = await fetchMakeronlineCollection(id, token);
+    return listing ? listing.entries.map((e) => e.modelId) : null;
+  }
+  if (sync.provider === "crealitycloud") {
+    // Collections, the private ones too, list without a sign-in; the user's likes ("likes-<id>") need theirs.
+    if (isSignInLikes(sync)) {
+      const auth = await getUserCrealitycloudAuth(sync.userId);
+      if (!auth) throw new LikesUnreadableError(CONNECTION_PROBLEMS.crealitycloudLikesDisconnected);
+      // The sign-in may since be another account's, whose likes aren't this sync's.
+      if (crealitycloudLikesKey(auth.userId) !== id) {
+        throw new LikesUnreadableError(CONNECTION_PROBLEMS.crealitycloudLikesOtherAccount);
+      }
+      return (await fetchCrealitycloudLikes(auth)).entries.map((e) => e.modelId);
+    }
+    const listing = await fetchCrealitycloudCollection(id);
     return listing ? listing.entries.map((e) => e.modelId) : null;
   }
   throw new Error(`Unknown provider "${sync.provider}"`);
@@ -199,6 +231,21 @@ const CONNECTION_PROBLEMS = {
     error: "MakerOnline sign-in ran out",
     reason: "Your MakerOnline sign-in ran out.",
     fix: "you open makeronline.com with Thingport Grab, or connect it again",
+  },
+  crealitycloudLikesDisconnected: {
+    error: "Creality Cloud isn't connected",
+    reason: "Creality Cloud shows likes to their owner only, and it isn't connected.",
+    fix: "you open crealitycloud.com with Thingport Grab, or connect it",
+  },
+  crealitycloudLikesOtherAccount: {
+    error: "Creality Cloud is connected to another account",
+    reason: "These likes are another Creality Cloud account's than the one connected now.",
+    fix: "you connect the account the likes are from again",
+  },
+  crealitycloudExpired: {
+    error: "Creality Cloud sign-in ran out",
+    reason: "Creality Cloud turned your sign-in down; it lasts a week from when you signed in there.",
+    fix: "you sign in on crealitycloud.com with Thingport Grab, or connect it again",
   },
   makerworldExpired: {
     error: MAKERWORLD_REJECTED_ERROR,
@@ -276,11 +323,16 @@ async function connectionProblem(
     if (connection === "disconnected") return CONNECTION_PROBLEMS.snapmakerDisconnected;
     if (connection === "expired") return CONNECTION_PROBLEMS.snapmakerExpired;
   }
-  if (isMakeronlineLikes(sync)) {
+  if (isSignInLikes(sync) && sync.provider === "makeronline") {
     // Public collections read without a sign-in, so only the likes wait for one.
     const connection = await getMakeronlineConnection(sync.userId);
     if (connection === "disconnected") return CONNECTION_PROBLEMS.makeronlineLikesDisconnected;
     if (connection === "expired") return CONNECTION_PROBLEMS.makeronlineExpired;
+  }
+  if (isSignInLikes(sync) && sync.provider === "crealitycloud") {
+    const connection = await getCrealitycloudConnection(sync.userId);
+    if (connection === "disconnected") return CONNECTION_PROBLEMS.crealitycloudLikesDisconnected;
+    if (connection === "expired") return CONNECTION_PROBLEMS.crealitycloudExpired;
   }
   return null;
 }
@@ -314,7 +366,7 @@ async function runSync(syncId: string): Promise<SyncOutcome> {
   const { userId } = sync;
   const problem = await connectionProblem(sync);
   if (problem) {
-    await holdProvider(userId, sync.provider, problem, isMakeronlineLikes(sync) ? sync.externalId : undefined);
+    await holdProvider(userId, sync.provider, problem, isSignInLikes(sync) ? sync.externalId : undefined);
     return "disconnected";
   }
 
@@ -352,13 +404,19 @@ async function runSync(syncId: string): Promise<SyncOutcome> {
       await holdProvider(userId, sync.provider, CONNECTION_PROBLEMS.snapmakerExpired);
       return "disconnected";
     }
-    if (err instanceof MakeronlineLikesUnreadableError) {
-      await holdProvider(userId, sync.provider, CONNECTION_PROBLEMS.makeronlineLikesDisconnected, sync.externalId);
+    if (err instanceof LikesUnreadableError) {
+      await holdProvider(userId, sync.provider, err.problem, sync.externalId);
       return "disconnected";
     }
     if (err instanceof MakeronlineAuthError) {
       await markMakeronlineTokenRejected(userId);
       await holdProvider(userId, sync.provider, CONNECTION_PROBLEMS.makeronlineExpired);
+      return "disconnected";
+    }
+    if (err instanceof CrealitycloudAuthError) {
+      // Only the likes are read with the sign-in, so only they wait for a new one.
+      await markCrealitycloudSessionRejected(userId);
+      await holdProvider(userId, sync.provider, CONNECTION_PROBLEMS.crealitycloudExpired, sync.externalId);
       return "disconnected";
     }
     const message = err instanceof Error && err.message.trim() ? err.message.trim() : "Sync failed";
@@ -614,7 +672,7 @@ export function runSyncRound(): Promise<void> {
     // Each user's connection to each provider, looked up once a round.
     const problems = new Map<string, ConnectionProblem | null>();
     for (const sync of syncs.filter((s) => isSyncDue(s) && !disabled.has(s.provider as Provider))) {
-      const key = `${sync.userId} ${sync.provider}${isMakeronlineLikes(sync) ? " likes" : ""}`;
+      const key = `${sync.userId} ${sync.provider}${isSignInLikes(sync) ? " likes" : ""}`;
       if (problems.has(key)) {
         if (!problems.get(key)) due.push(sync.id);
         continue;
@@ -626,7 +684,7 @@ export function runSyncRound(): Promise<void> {
         continue;
       }
       // Held here rather than in the lane: there's no provider call to pace.
-      const only = isMakeronlineLikes(sync) ? sync.externalId : undefined;
+      const only = isSignInLikes(sync) ? sync.externalId : undefined;
       await holdProvider(sync.userId, sync.provider, problem, only).catch((err) =>
         console.error(`[sync] holding ${key} failed:`, err),
       );

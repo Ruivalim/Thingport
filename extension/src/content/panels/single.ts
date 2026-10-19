@@ -1,4 +1,4 @@
-// Thingiverse, Printables, MyMiniFactory, Snapmaker Space and MakerOnline import directly; other links go through
+// Thingiverse, Printables, MyMiniFactory, Snapmaker Space, MakerOnline and Creality Cloud import directly; other links go through
 // /import/inspect first, like the web app's useUploadImport.tsx. MakerOnline's files are signed on its own page first
 // (see background/makeronline.ts).
 
@@ -19,6 +19,7 @@ import {
 import { api, escapeHtml } from "../runtime";
 import { loadSnapmakerProfiles } from "../snapmaker";
 import { loadMakeronlineProfiles } from "../makeronline";
+import { loadCrealitycloudProfiles } from "../crealitycloud";
 import { onPanelAction, panelQuery, panelQueryAll, renderPanel } from "../shell";
 import { collectionIdFor, collectionPickerHtml, readCollectionChoice, wireCollectionPicker } from "./collectionPicker";
 import { errorHtml, statusHtml, successHtml } from "./results";
@@ -50,12 +51,15 @@ function isPaidMyminifactoryObject(): boolean {
 // Several profile resolutions in a quick burst still look automated to MakerWorld.
 const PROFILE_GAP_MS = 2000;
 
-/** The print profile ids a scope brings, the page's own first: MakerWorld's from its page data, Snapmaker's and
- *  MakerOnline's from their APIs. Null on other sites, or when they can't be read. */
+/** The print profile ids a scope brings, the page's own first: MakerWorld's from its page data, Snapmaker's,
+ *  MakerOnline's and Creality Cloud's from their APIs. Null on other sites, or when they can't be read. */
 async function profileIdsFor(): Promise<((scope: MakerworldProfileScope) => string[]) | null> {
   const { url, classification } = ctx();
   if (classification.provider === "snapmaker" && classification.type === "model") return loadSnapmakerProfiles(url);
   if (classification.provider === "makeronline" && classification.type === "model") return loadMakeronlineProfiles(url);
+  if (classification.provider === "crealitycloud" && classification.type === "model") {
+    return loadCrealitycloudProfiles(url);
+  }
   if (classification.provider !== "makerworld" || classification.type !== "model") return null;
   const page = await loadMakerworldDesignForPage(url);
   return page ? (scope) => makerworldProfileIds(page.design, scope, page.requestedInstanceId) : null;
@@ -139,7 +143,8 @@ export async function loadSingleItem(): Promise<void> {
     (provider === "printables" && type === "model") ||
     (provider === "myminifactory" && type === "object") ||
     (provider === "snapmaker" && type === "model") ||
-    (provider === "makeronline" && type === "model");
+    (provider === "makeronline" && type === "model") ||
+    (provider === "crealitycloud" && type === "model");
 
   let zipFilename: string | null = null;
   if (skipInspect) {
@@ -398,7 +403,8 @@ async function runProfilesImport(scope: MakerworldProfileScope, collectionId: st
   for (const [index, instanceId] of ids.entries()) {
     renderPanel(statusHtml(`Importing print profile ${index + 1} of ${ids.length}…`));
     if (index > 0) await new Promise((resolve) => setTimeout(resolve, PROFILE_GAP_MS));
-    // The page's Download button gives exactly the link's profile. Snapmaker's the instance fetches itself.
+    // The page's Download button gives exactly the link's profile. Snapmaker's and Creality Cloud's the instance
+    // fetches itself.
     try {
       const resolved = !makerworld
         ? null
@@ -406,7 +412,7 @@ async function runProfilesImport(scope: MakerworldProfileScope, collectionId: st
           ? await resolveMakerworldDownloadUrl(url).catch(nullUnlessBlocking)
           : await resolveMakerworldProfileDownload(url, instanceId).catch(nullUnlessBlocking);
       const print = await request("IMPORT_SINGLE", {
-        // MakerWorld's page link carries its profile; Snapmaker's is named, so a model already in the library gets it.
+        // MakerWorld's page link carries its profile; the others' is named, so a model already in the library gets it.
         url: index === 0 && makerworld ? url : profileUrl(url, instanceId),
         collectionId,
         resolved,

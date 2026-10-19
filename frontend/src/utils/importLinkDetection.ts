@@ -1,7 +1,7 @@
 /** URL-shape detection shared by useUploadImport and AddMenu so they can't drift apart. */
 
 export type ImportProviderKey =
-  "makerworld" | "thingiverse" | "printables" | "myminifactory" | "snapmaker" | "makeronline";
+  "makerworld" | "thingiverse" | "printables" | "myminifactory" | "snapmaker" | "makeronline" | "crealitycloud";
 
 function parseUrl(url: string): URL | null {
   try {
@@ -21,6 +21,7 @@ export function detectImportProvider(url: string): ImportProviderKey | null {
   if (host === "myminifactory.com" || host === "www.myminifactory.com") return "myminifactory";
   if (host === "space.snapmaker.com") return "snapmaker";
   if (host === "makeronline.com" || host === "www.makeronline.com") return "makeronline";
+  if (host === "crealitycloud.com" || host === "www.crealitycloud.com") return "crealitycloud";
   return null;
 }
 
@@ -137,6 +138,28 @@ export function isMakeronlineListUrl(url: string): boolean {
   );
 }
 
+function isCrealitycloudHost(parsed: URL): boolean {
+  return /^(www\.)?crealitycloud\.com$/i.test(parsed.hostname);
+}
+
+const CREALITYCLOUD_LANG = String.raw`(?:[a-z]{2}(?:-[a-z]{2,4})?/)?`;
+
+/** See isThingiverseThingUrl. `/model-detail/<alias>`; `#profileId-<id>` may pick a print profile. */
+export function isCrealitycloudModelUrl(url: string): boolean {
+  const parsed = parseUrl(url);
+  if (!parsed || !isCrealitycloudHost(parsed)) return false;
+  return new RegExp(String.raw`^/${CREALITYCLOUD_LANG}model-detail/[\w-]+/?$`, "i").test(parsed.pathname);
+}
+
+/** A Creality Cloud collection (`/collection/<alias>`), or the user's likes (`/user/<id>/likes`). */
+export function isCrealitycloudListUrl(url: string): boolean {
+  const parsed = parseUrl(url);
+  if (!parsed || !isCrealitycloudHost(parsed)) return false;
+  return new RegExp(String.raw`^/${CREALITYCLOUD_LANG}(?:collection/[\w-]+|user/\d+/likes)/?$`, "i").test(
+    parsed.pathname,
+  );
+}
+
 export const IMPORT_LINK_EXAMPLES: Record<ImportProviderKey, { model: string; collection: string }> = {
   makerworld: {
     model: "https://makerworld.com/en/models/123456-example-model",
@@ -161,5 +184,9 @@ export const IMPORT_LINK_EXAMPLES: Record<ImportProviderKey, { model: string; co
   makeronline: {
     model: "https://www.makeronline.com/en/model/Example-Model/123456.html",
     collection: "https://www.makeronline.com/en/user/collectionDetail/…/123456.html",
+  },
+  crealitycloud: {
+    model: "https://www.crealitycloud.com/model-detail/example-model",
+    collection: "https://www.crealitycloud.com/collection/3d-model-collection-AbCdEf",
   },
 };

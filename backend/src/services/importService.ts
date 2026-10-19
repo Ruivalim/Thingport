@@ -95,11 +95,30 @@ import {
 import { getUserSnapmakerToken, markSnapmakerTokenRejected, SNAPMAKER_CONNECT } from "./snapmakerSessionService";
 import { isMakeronlineFileHost, parseMakeronlineModelUrl, resolveMakeronlineModel } from "./makeronlineApi";
 import { clearGrabImports } from "./grabImportService";
+import {
+  CrealitycloudAuthError,
+  type CrealitycloudFile,
+  type CrealitycloudModelResolution,
+  fetchCrealitycloudModelFiles,
+  fetchCrealitycloudProfileFile,
+  isCrealitycloudFileHost,
+  parseCrealitycloudModelUrl,
+  resolveCrealitycloudModel,
+  selectCrealitycloudProfiles,
+  type CrealitycloudAuth,
+} from "./crealitycloudApi";
+import {
+  CREALITYCLOUD_CONNECT,
+  getUserCrealitycloudAuth,
+  markCrealitycloudSessionRejected,
+} from "./crealitycloudSessionService";
 
 /** An import refused because the user's MyMiniFactory session has expired. */
 export const MYMINIFACTORY_SESSION_CODE = "myminifactory_session";
 /** An import refused because the user hasn't connected Snapmaker, or their sign-in has run out. */
 export const SNAPMAKER_SESSION_CODE = "snapmaker_session";
+/** An import refused because the user hasn't connected Creality Cloud, or it turned their sign-in down. */
+export const CREALITYCLOUD_SESSION_CODE = "crealitycloud_session";
 /** A MakerOnline import that came without the signed file links only Thingport Grab can get. */
 export const MAKERONLINE_GRAB_CODE = "makeronline_grab";
 export const MAKERONLINE_NEEDS_GRAB =
@@ -593,6 +612,7 @@ const CATEGORY_SITE_CAT_IDS_FIELD = {
   myminifactory: "myminifactoryCatIds",
   snapmaker: "snapmakerCatIds",
   makeronline: "makeronlineCatIds",
+  crealitycloud: "crealitycloudCatIds",
 } as const;
 
 /** Auto-categorizes an import when a category's `*CatIds` for this site overlap the model's own
@@ -634,14 +654,17 @@ export function identifySourceModel(url: string): { provider: string; externalId
   if (snapmaker) return { provider: "snapmaker", externalId: snapmaker.modelId };
   const makeronline = parseMakeronlineModelUrl(url);
   if (makeronline) return { provider: "makeronline", externalId: makeronline.modelId };
+  const crealitycloud = parseCrealitycloudModelUrl(url);
+  if (crealitycloud) return { provider: "crealitycloud", externalId: crealitycloud.modelId };
   return null;
 }
 
-/** The print profile a MakerWorld, Snapmaker or MakerOnline link names, if any. */
+/** The print profile a MakerWorld, Snapmaker, MakerOnline or Creality Cloud link names, if any. */
 function requestedProfileOf(provider: string, url: string): string | null {
   if (provider === "makerworld") return parseMakerworldModelUrl(url)?.requestedInstanceId ?? null;
   if (provider === "snapmaker") return parseSnapmakerModelUrl(url)?.requestedProfileId ?? null;
   if (provider === "makeronline") return parseMakeronlineModelUrl(url)?.requestedProfileId ?? null;
+  if (provider === "crealitycloud") return parseCrealitycloudModelUrl(url)?.requestedProfileId ?? null;
   return null;
 }
 
@@ -688,6 +711,7 @@ export function buildImportSourceUrl(provider: string | null, externalId: string
   if (provider === "myminifactory") return `https://www.myminifactory.com/object/3d-print-${externalId}`;
   if (provider === "snapmaker") return `https://space.snapmaker.com/en/model/${externalId}`;
   if (provider === "makeronline") return `https://www.makeronline.com/en/model/${externalId}`;
+  if (provider === "crealitycloud") return `https://www.crealitycloud.com/model-detail/${externalId}`;
   return null;
 }
 
@@ -1441,6 +1465,121 @@ async function addSnapmakerProfileToPrint(
   return addProfilePlate(existing, profile, wanted);
 }
 
+const CREALITYCLOUD_BLOCKED =
+  "Creality Cloud blocked the file download (rate limit). This usually clears after a while -- wait, then retry the same import.";
+const CREALITYCLOUD_MISSING = "This Creality Cloud model could not be found, or isn't public.";
+
+function downloadCrealitycloudFile(file: CrealitycloudFile): Promise<NewPlateInput[] | null> {
+  return downloadSignedFile(file, isCrealitycloudFileHost, CREALITYCLOUD_BLOCKED);
+}
+
+/** The user's sign-in, or the HttpError that says to connect Creality Cloud. */
+async function requireCrealitycloudAuth(userId: string): Promise<CrealitycloudAuth> {
+  const auth = await getUserCrealitycloudAuth(userId);
+  if (!auth) throw new HttpError(400, CREALITYCLOUD_CONNECT, CREALITYCLOUD_SESSION_CODE);
+  return auth;
+}
+
+/** Creality Cloud's errors as the HttpErrors an import reports; a rejected sign-in is remembered, so the app can say
+ *  so. */
+async function crealitycloudFailure(userId: string, err: unknown): Promise<unknown> {
+  if (err instanceof CrealitycloudAuthError) {
+    await markCrealitycloudSessionRejected(userId);
+    // 400, not 401: see tryMakerworldCloudApi.
+    return new HttpError(400, err.message, CREALITYCLOUD_SESSION_CODE);
+  }
+  return err;
+}
+
+/** Downloads one print profile's 3MF, tagged with the profile; null when the model has no such profile. */
+async function downloadCrealitycloudProfile(
+  resolved: CrealitycloudModelResolution,
+  profileId: string,
+  auth: CrealitycloudAuth,
+): Promise<NewPlateInput | null> {
+  const profile = resolved.profiles.find((p) => p.id === profileId);
+  const file = profile ? await fetchCrealitycloudProfileFile(profile, auth) : null;
+  if (!file) return null;
+  const inputs = await downloadCrealitycloudFile(file);
+  if (!inputs?.length) {
+    throw new HttpError(400, "Couldn't download this print profile from Creality Cloud. Try again later.");
+  }
+  // A profile is one 3MF; anything else it unpacked to is dropped.
+  await Promise.all(inputs.slice(1).map((input) => fs.rm(input.tempFilePath!, { force: true }).catch(() => undefined)));
+  return { ...inputs[0], sourceInstanceId: profileId };
+}
+
+/** Like Snapmaker: a model is one print, and each print profile its 3MF on a plate of its own, tagged with the
+ *  profile. An import brings the profile the link names, else the designer's first; a model without profiles brings
+ *  its model files instead. Files only download as the user, so everything needs their Creality Cloud sign-in. A link
+ *  by id is kept under the model's alias, the id the site's own links have. */
+async function importCrealitycloudModel(
+  userId: string,
+  linked: { provider: string; externalId: string },
+  url: string,
+  body: ImportRequestBody,
+): Promise<ImportResult> {
+  const auth = await requireCrealitycloudAuth(userId);
+  let resolved: CrealitycloudModelResolution | null;
+  try {
+    resolved = await resolveCrealitycloudModel(linked.externalId);
+  } catch (err) {
+    throw await crealitycloudFailure(userId, err);
+  }
+  if (!resolved) throw new HttpError(404, CREALITYCLOUD_MISSING);
+  const source = { provider: linked.provider, externalId: resolved.alias };
+  if (source.externalId !== linked.externalId) {
+    const existing = await findExistingImportedPrint(userId, source);
+    if (existing) return addCrealitycloudProfileToPrint(existing, url, body, resolved);
+  }
+  const downloaded: NewPlateInput[] = [];
+  try {
+    const requested = body.resolved_instance_id ?? parseCrealitycloudModelUrl(url)?.requestedProfileId ?? null;
+    const [profileId] = selectCrealitycloudProfiles(resolved, "url", requested);
+    if (profileId) {
+      const profile = await downloadCrealitycloudProfile(resolved, profileId, auth);
+      if (profile) downloaded.push(profile);
+    }
+    if (!downloaded.length) {
+      const files = await fetchCrealitycloudModelFiles(resolved.groupId, auth);
+      if (!files) throw new HttpError(404, CREALITYCLOUD_MISSING);
+      for (const file of files) downloaded.push(...((await downloadCrealitycloudFile(file)) ?? []));
+    }
+  } catch (err) {
+    await Promise.all(downloaded.map((input) => fs.rm(input.tempFilePath!, { force: true }).catch(() => undefined)));
+    throw await crealitycloudFailure(userId, err);
+  }
+  if (!downloaded.length) throw new HttpError(400, "This Creality Cloud model has no files Thingport can import.");
+
+  return createSourcedPrint(userId, source, body, resolved, downloaded, `crealitycloud-${source.externalId}`);
+}
+
+/** Re-import of a Creality Cloud model naming a profile it doesn't have yet: that profile's 3MF becomes another plate.
+ *  A link without a profile, or with one already there, needs no download. */
+async function addCrealitycloudProfileToPrint(
+  existing: ExistingImportedPrint,
+  url: string,
+  body: ImportRequestBody,
+  resolved: CrealitycloudModelResolution | null = null,
+): Promise<ImportResult> {
+  const wanted = body.resolved_instance_id ?? parseCrealitycloudModelUrl(url)?.requestedProfileId ?? null;
+  if (!wanted || existing.plates.some((plate) => plate.sourceInstanceId === wanted)) {
+    return { ...existing, alreadyImported: true };
+  }
+  const userId = existing.print.userId;
+  const auth = await requireCrealitycloudAuth(userId);
+  let profile: NewPlateInput | null;
+  try {
+    const model = resolved ?? (await resolveCrealitycloudModel(existing.print.sourceExternalId!));
+    if (!model) throw new HttpError(404, CREALITYCLOUD_MISSING);
+    profile = await downloadCrealitycloudProfile(model, wanted, auth);
+  } catch (err) {
+    throw await crealitycloudFailure(userId, err);
+  }
+  if (!profile) throw new HttpError(404, "This Creality Cloud model has no such print profile.");
+  return addProfilePlate(existing, profile, wanted);
+}
+
 const MAKERONLINE_BLOCKED =
   "MakerOnline blocked the file download (rate limit). This usually clears after a while -- wait, then try again.";
 
@@ -1550,10 +1689,10 @@ export async function importPrintFromUrl(
 }
 
 /** Providers whose re-import of a model may add a print profile, so fetches. */
-const PROFILE_PROVIDERS = new Set(["makerworld", "snapmaker", "makeronline"]);
+const PROFILE_PROVIDERS = new Set(["makerworld", "snapmaker", "makeronline", "crealitycloud"]);
 
-/** Refuses a link from a provider an admin turned off, unless it's a model the user already has (MakerWorld, Snapmaker
- *  and MakerOnline add a profile, so fetch). */
+/** Refuses a link from a provider an admin turned off, unless it's a model the user already has (MakerWorld, Snapmaker,
+ *  MakerOnline and Creality Cloud add a profile, so fetch). */
 export async function assertCanImportUrl(userId: string, url: string): Promise<void> {
   const source = identifySourceModel(url);
   if (source && !PROFILE_PROVIDERS.has(source.provider) && (await findExistingImportedPrint(userId, source))) return;
@@ -1569,6 +1708,7 @@ async function importNewOrExisting(userId: string, url: string, body: ImportRequ
   await assertUrlProviderEnabled(url);
   if (existing && source?.provider === "snapmaker") return addSnapmakerProfileToPrint(existing, url, body);
   if (existing && source?.provider === "makeronline") return addMakeronlineProfilesToPrint(existing, body);
+  if (existing && source?.provider === "crealitycloud") return addCrealitycloudProfileToPrint(existing, url, body);
   if (existing) return addMakerworldProfileToPrint(existing, url, body);
 
   if (source?.provider === "thingiverse") {
@@ -1585,6 +1725,9 @@ async function importNewOrExisting(userId: string, url: string, body: ImportRequ
   }
   if (source?.provider === "makeronline") {
     return importMakeronlineModel(userId, source, body);
+  }
+  if (source?.provider === "crealitycloud") {
+    return importCrealitycloudModel(userId, source, url, body);
   }
 
   const { tempPath, filename, mime, meta } = await downloadImportToTemp(url, body);

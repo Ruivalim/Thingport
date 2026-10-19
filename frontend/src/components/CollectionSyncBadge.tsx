@@ -17,6 +17,7 @@ const LOGO_PROVIDERS = new Set<string>([
   "myminifactory",
   "snapmaker",
   "makeronline",
+  "crealitycloud",
 ]);
 
 type Props = {

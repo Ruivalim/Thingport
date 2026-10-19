@@ -21,6 +21,7 @@ import { getMyminifactoryApiKey, getThingiverseAccessToken } from "./settingsSer
 import { MyminifactoryAuthError, MyminifactoryRateLimitError, resolveMyminifactoryObject } from "./myminifactoryApi";
 import { resolveSnapmakerModel } from "./snapmakerApi";
 import { resolveMakeronlineModel } from "./makeronlineApi";
+import { resolveCrealitycloudModel } from "./crealitycloudApi";
 import { getUserMakerworldCookie } from "./makerworldCookieService";
 import { upsertAuthorFromImport } from "./authorService";
 import { emptyGaps, openSourceGaps, type SourceGap } from "./sourceGaps";
@@ -107,6 +108,12 @@ export async function fetchSourceMeta(userId: string, print: Print, sourceUrl: s
   if (provider === "makeronline") {
     const resolved = await resolveMakeronlineModel(externalId);
     if (!resolved) throw new HttpError(404, "This MakerOnline model could not be found, or isn't public.");
+    return { ...emptyImportedPageMetadata(), ...resolved.meta, galleryImages: resolved.galleryImages };
+  }
+
+  if (provider === "crealitycloud") {
+    const resolved = await resolveCrealitycloudModel(externalId);
+    if (!resolved) throw new HttpError(404, "This Creality Cloud model could not be found, or isn't public.");
     return { ...emptyImportedPageMetadata(), ...resolved.meta, galleryImages: resolved.galleryImages };
   }
 

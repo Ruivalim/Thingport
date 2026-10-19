@@ -25,6 +25,13 @@ import {
   MAKERONLINE_LIKES_KEY,
 } from "./makeronlineApi";
 import { getMakeronlineConnection, getUserMakeronlineId, getUserMakeronlineToken } from "./makeronlineSessionService";
+import {
+  CrealitycloudAuthError,
+  crealitycloudCollectionUrl,
+  fetchCrealitycloudCollection,
+  listCrealitycloudCollections,
+} from "./crealitycloudApi";
+import { getCrealitycloudConnection, getUserCrealitycloudAuth } from "./crealitycloudSessionService";
 import { MakerworldAuthError, MakerworldCaptchaError, extractMakerworldBearerToken } from "./makerworldCloudApi";
 import { fetchMakerworldCollectionCard, listMakerworldOwnCollections } from "./makerworldCollections";
 import { getUserMakerworldCookie } from "./makerworldCookieService";
@@ -66,6 +73,7 @@ export const BROWSABLE_PROVIDERS = [
   "myminifactory",
   "snapmaker",
   "makeronline",
+  "crealitycloud",
 ] as const;
 export type BrowsableProvider = (typeof BROWSABLE_PROVIDERS)[number];
 
@@ -89,7 +97,7 @@ export type ProviderCollectionOut = {
 };
 
 export async function getProviderAccounts(userId: string): Promise<ProviderAccountsOut> {
-  const [user, thingiverseToken, myminifactoryKey, snapmaker, makeronline] = await Promise.all([
+  const [user, thingiverseToken, myminifactoryKey, snapmaker, makeronline, crealitycloud] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -103,6 +111,7 @@ export async function getProviderAccounts(userId: string): Promise<ProviderAccou
     getMyminifactoryApiKey(),
     getSnapmakerConnection(userId),
     getMakeronlineConnection(userId),
+    getCrealitycloudConnection(userId),
   ]);
   return {
     makerworld: { connected: Boolean(extractMakerworldBearerToken(user?.makerworldCookie)), account: null },
@@ -111,6 +120,7 @@ export async function getProviderAccounts(userId: string): Promise<ProviderAccou
     myminifactory: { connected: Boolean(myminifactoryKey), account: user?.myminifactoryUsername ?? null },
     snapmaker: { connected: snapmaker === "connected", account: null },
     makeronline: { connected: makeronline === "connected", account: null },
+    crealitycloud: { connected: crealitycloud === "connected", account: null },
   };
 }
 
@@ -157,6 +167,8 @@ export async function setProviderAccount(
     throw new HttpError(400, "Snapmaker Space is linked through its sign-in in Configuration > Providers");
   } else if (provider === "makeronline") {
     throw new HttpError(400, "MakerOnline is linked through its sign-in in Configuration > Providers");
+  } else if (provider === "crealitycloud") {
+    throw new HttpError(400, "Creality Cloud is linked through its sign-in in Configuration > Providers");
   } else {
     throw new HttpError(400, "MakerWorld is linked through its cookie in Configuration > Providers");
   }
@@ -194,6 +206,7 @@ async function providerCall<T>(call: () => Promise<T>): Promise<T> {
     if (err instanceof MyminifactoryAuthError) throw new HttpError(400, err.message);
     if (err instanceof SnapmakerAuthError) throw new HttpError(400, err.message);
     if (err instanceof MakeronlineAuthError) throw new HttpError(400, err.message);
+    if (err instanceof CrealitycloudAuthError) throw new HttpError(400, err.message);
     throw err;
   }
 }
@@ -230,6 +243,32 @@ async function makeronlineCollectionCard(userId: string, collectionId: string): 
       modelCount: info.modelCount,
       thumbnails: listing.entries.flatMap((entry) => (entry.cover ? [entry.cover] : [])),
       private: info.private,
+      owner: null,
+    };
+  });
+}
+
+/** The user's likes and their own collections, read with their sign-in. */
+async function crealitycloudCards(userId: string): Promise<ProviderCollectionCard[]> {
+  const auth = await getUserCrealitycloudAuth(userId);
+  if (!auth) {
+    throw new HttpError(409, "Connect Creality Cloud in Configuration > Providers, or visit it with Thingport Grab");
+  }
+  return providerCall(() => listCrealitycloudCollections(auth));
+}
+
+/** Any collection, by its alias: Creality Cloud lists even private ones without a sign-in. */
+async function crealitycloudCollectionCard(collectionId: string): Promise<ProviderCollectionCard | null> {
+  return providerCall(async () => {
+    const collection = await fetchCrealitycloudCollection(collectionId, 4);
+    if (!collection) return null;
+    return {
+      id: collectionId,
+      name: collection.info.name,
+      url: crealitycloudCollectionUrl(collectionId),
+      modelCount: collection.info.modelCount,
+      thumbnails: collection.entries.flatMap((entry) => (entry.cover ? [entry.cover] : [])),
+      private: collection.info.private,
       owner: null,
     };
   });
@@ -289,6 +328,8 @@ export async function listProviderCollections(
     cards = await snapmakerCards(userId);
   } else if (provider === "makeronline") {
     cards = await makeronlineCards(userId);
+  } else if (provider === "crealitycloud") {
+    cards = await crealitycloudCards(userId);
   } else if (provider === "myminifactory") {
     const key = await requireMyminifactoryKey();
     if (!user?.myminifactoryUsername) throw new HttpError(409, "Tell Thingport your MyMiniFactory username first");
@@ -316,7 +357,7 @@ export async function lookupProviderCollection(userId: string, url: string): Pro
   if (!source)
     throw new HttpError(
       400,
-      "That isn't a MakerWorld, Printables, Thingiverse, MyMiniFactory, Snapmaker Space or MakerOnline collection link",
+      "That isn't a MakerWorld, Printables, Thingiverse, MyMiniFactory, Snapmaker Space, MakerOnline or Creality Cloud collection link",
     );
   await assertProviderEnabled(source.provider);
   let card: ProviderCollectionCard | null;
@@ -346,6 +387,10 @@ export async function lookupProviderCollection(userId: string, url: string): Pro
       source.externalId === MAKERONLINE_LIKES_KEY
         ? ((await makeronlineCards(userId)).find((own) => own.id === MAKERONLINE_LIKES_KEY) ?? null)
         : await makeronlineCollectionCard(userId, source.externalId);
+  } else if (source.provider === "crealitycloud") {
+    card = source.externalId.startsWith("likes-")
+      ? ((await crealitycloudCards(userId)).find((own) => own.id === source.externalId) ?? null)
+      : await crealitycloudCollectionCard(source.externalId);
   } else if (source.provider === "snapmaker") {
     // Only the user's own likes and bookmarks are there to find.
     card = (await snapmakerCards(userId)).find((own) => own.id === source.externalId) ?? null;
@@ -379,11 +424,14 @@ export async function enableSyncFromApp(
   if (!source)
     throw new HttpError(
       400,
-      "That isn't a MakerWorld, Printables, Thingiverse, MyMiniFactory, Snapmaker Space or MakerOnline collection link",
+      "That isn't a MakerWorld, Printables, Thingiverse, MyMiniFactory, Snapmaker Space, MakerOnline or Creality Cloud collection link",
     );
   await assertProviderEnabled(source.provider);
   if (input.profileScope && !hasProfiles(source.provider)) {
-    throw new HttpError(400, "Only MakerWorld, Snapmaker Space and MakerOnline models have print profiles to pick");
+    throw new HttpError(
+      400,
+      "Only MakerWorld, Snapmaker Space, MakerOnline and Creality Cloud models have print profiles to pick",
+    );
   }
 
   let knownIds: string[] = [];

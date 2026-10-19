@@ -15,10 +15,10 @@ export const PROVIDER_ACCENTS: Record<BrowsableProvider, string> = {
   printables: "#FA6831",
   thingiverse: "#5575FE",
   myminifactory: "#00C4A6",
-  // Snapmaker's own blue: its mark is black, which a dark theme would lose.
-  snapmaker: "#2563EB",
+  snapmaker: "#0C63E2",
   // Anycubic's blue, for the same reason: MakerOnline's own mark is black and white.
   makeronline: "#1F7AE0",
+  crealitycloud: "#1AC686",
 };
 
 type Props = {
@@ -308,6 +308,37 @@ function MakeronlineTile({ collection }: { collection: ProviderCollection }) {
   );
 }
 
+// Creality Cloud's collection card: one large cover beside two stacked ones, under its green.
+function CrealitycloudTile({ collection }: { collection: ProviderCollection }) {
+  return (
+    <Box
+      sx={{
+        borderRadius: "12px",
+        border: 1,
+        borderColor: "divider",
+        borderTop: `3px solid ${PROVIDER_ACCENTS.crealitycloud}`,
+        bgcolor: "background.paper",
+        overflow: "hidden",
+      }}
+    >
+      <Box sx={{ display: "grid", gridTemplateColumns: "2fr 1fr", gridTemplateRows: "1fr 1fr", gap: "2px" }}>
+        <Thumb src={collection.thumbnails[0]} sx={{ gridRow: "span 2", height: "100%", aspectRatio: "1 / 1" }} />
+        <Thumb src={collection.thumbnails[1]} sx={{ height: "100%" }} />
+        <Thumb src={collection.thumbnails[2]} sx={{ height: "100%" }} />
+      </Box>
+      <Box sx={{ px: 1.25, py: 1 }}>
+        <Typography noWrap sx={{ fontWeight: 600, fontSize: "0.875rem" }}>
+          {collection.name}
+        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", fontSize: "0.8rem", color: "text.secondary" }}>
+          <ModelCount count={collection.model_count} provider="crealitycloud" />
+          {collection.private && <LockOutlinedIcon sx={{ fontSize: 14, ml: "auto" }} />}
+        </Box>
+      </Box>
+    </Box>
+  );
+}
+
 const TILES: Record<BrowsableProvider, (props: { collection: ProviderCollection }) => JSX.Element> = {
   makerworld: MakerWorldTile,
   printables: PrintablesTile,
@@ -315,14 +346,17 @@ const TILES: Record<BrowsableProvider, (props: { collection: ProviderCollection 
   myminifactory: MyMiniFactoryTile,
   snapmaker: SnapmakerTile,
   makeronline: MakeronlineTile,
+  crealitycloud: CrealitycloudTile,
 };
 
-/** The name to show: a user's likes, and Snapmaker's likes and bookmarks, come named in English by the instance. */
+/** The name to show: a user's likes, and Snapmaker's likes and bookmarks, come named in English by the instance, as
+ *  do MakerOnline's and Creality Cloud's likes. */
 function displayName(provider: BrowsableProvider, collection: ProviderCollection, t: (key: string) => string): string {
   if (collection.likes) return t("collections.sync.browse.likes");
   if (provider === "snapmaker" && collection.id.startsWith("likes-")) return t("collections.sync.browse.likes");
   if (provider === "snapmaker" && collection.id.startsWith("bookmarks-")) return t("collections.sync.browse.bookmarks");
   if (provider === "makeronline" && collection.id === "likes") return t("collections.sync.browse.likes");
+  if (provider === "crealitycloud" && collection.id.startsWith("likes-")) return t("collections.sync.browse.likes");
   return collection.name;
 }
 
@@ -432,6 +466,21 @@ export function ProviderCollectionTileSkeleton({ provider }: { provider: Browsab
           {[0, 1, 2, 3].map((i) => (
             <Skeleton key={i} variant="rectangular" sx={{ width: "100%", height: "auto", aspectRatio: "1 / 1" }} />
           ))}
+        </Box>
+        <Box sx={{ px: 1.25, py: 1 }}>{lines}</Box>
+      </Box>
+    );
+  }
+  if (provider === "crealitycloud") {
+    return (
+      <Box aria-hidden sx={{ borderRadius: "12px", border: 1, borderColor: "divider", overflow: "hidden" }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: "2fr 1fr", gridTemplateRows: "1fr 1fr", gap: "2px" }}>
+          <Skeleton
+            variant="rectangular"
+            sx={{ gridRow: "span 2", width: "100%", height: "100%", aspectRatio: "1 / 1" }}
+          />
+          <Skeleton variant="rectangular" sx={{ width: "100%", height: "100%" }} />
+          <Skeleton variant="rectangular" sx={{ width: "100%", height: "100%" }} />
         </Box>
         <Box sx={{ px: 1.25, py: 1 }}>{lines}</Box>
       </Box>

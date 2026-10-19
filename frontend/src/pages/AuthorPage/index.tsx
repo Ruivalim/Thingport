@@ -20,7 +20,7 @@ import { useInfiniteScroll } from "../../hooks/useInfiniteScroll";
 import { useGravatarUrl } from "../../hooks/useGravatarUrl";
 import { useConfirm } from "../../components/ConfirmProvider";
 import { useToast } from "../../components/ToastProvider";
-import { importProviderInfo, printProviderInfo } from "../../constants/importProviders";
+import { importProviderInfo, printProviderInfo, providerChipSx } from "../../constants/importProviders";
 import { authorProfileUrl } from "../../utils/authorProfileUrl";
 import { SELF_AUTHOR_ID } from "../../constants/selfAuthor";
 import ModelCard from "../ModelsPage/ModelCard";
@@ -268,7 +268,7 @@ export default function AuthorPage({ theme, previewMode, onUnauthorized, viewer,
                           size="small"
                           clickable
                           onClick={() => navigate(`/authors/${linked.id}`)}
-                          sx={{ bgcolor: info.color, color: info.textColor ?? "#fff", fontWeight: 600 }}
+                          sx={{ ...providerChipSx(info), fontWeight: 600 }}
                         />
                       );
                     })}
@@ -291,9 +291,8 @@ export default function AuthorPage({ theme, previewMode, onUnauthorized, viewer,
                           fontSize: 12,
                           fontWeight: 600,
                           lineHeight: 1.6,
-                          color: "#fff",
                           textDecoration: "none",
-                          bgcolor: providerInfo.color,
+                          ...providerChipSx(providerInfo),
                         }}
                       >
                         {providerInfo.label}

@@ -20,6 +20,7 @@ import { getRecentImports } from "./recentImports";
 import { syncMyminifactorySession } from "./myminifactorySession";
 import { scheduleSnapmakerRenewal, SNAPMAKER_ALARM, syncSnapmakerSession } from "./snapmakerSession";
 import { importMakeronlineModel, runWaitingImports, syncMakeronlineSession } from "./makeronline";
+import { syncCrealitycloudSession } from "./crealitycloudSession";
 import { onPairingTabClosed, onPairingTabUrl, startPairing } from "./pairing";
 import { openSetup } from "./setup";
 import { setTabIconState } from "./tabIcon";
@@ -42,6 +43,7 @@ listen<BackgroundMessages>({
   SYNC_MYMINIFACTORY_SESSION: () => syncMyminifactorySession(),
   SYNC_SNAPMAKER_SESSION: () => syncSnapmakerSession(),
   SYNC_MAKERONLINE_SESSION: () => syncMakeronlineSession(),
+  SYNC_CREALITYCLOUD_SESSION: () => syncCrealitycloudSession(),
   IMPORT_MAKERONLINE_MODEL: (payload, sender) => importMakeronlineModel(senderTabId(sender), payload),
   RUN_MAKERONLINE_WAITING: (_payload, sender) => runWaitingImports(senderTabId(sender)),
   PRINTABLES_PUSH_DUE: ({ now }) => printablesPushDue({ now }),

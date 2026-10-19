@@ -20,6 +20,7 @@ import { MyminifactoryAuthError, MyminifactoryRateLimitError, resolveMyminifacto
 import { resolveThingiverseThing, ThingiverseAuthError, ThingiverseRateLimitError } from "./thingiverseApi";
 import { resolveSnapmakerModel } from "./snapmakerApi";
 import { resolveMakeronlineModel } from "./makeronlineApi";
+import { resolveCrealitycloudModel } from "./crealitycloudApi";
 import { getDisabledProviders } from "./providerSettingsService";
 
 // Links models that only know their author by name: first by name matching, then by looking the
@@ -32,6 +33,7 @@ const LOOKUP_PROVIDERS = [
   "myminifactory",
   "snapmaker",
   "makeronline",
+  "crealitycloud",
 ] as const;
 type LookupProvider = (typeof LOOKUP_PROVIDERS)[number];
 
@@ -201,6 +203,10 @@ async function lookUpAuthor(
     case "makeronline": {
       await maybeSleep(IMPORT_COLLECTION_DELAY_MS);
       return (await resolveMakeronlineModel(candidate.externalId))?.meta.author ?? null;
+    }
+    case "crealitycloud": {
+      await maybeSleep(IMPORT_COLLECTION_DELAY_MS);
+      return (await resolveCrealitycloudModel(candidate.externalId))?.meta.author ?? null;
     }
     case "makerworld": {
       const cookie = await getUserMakerworldCookie(candidate.userId);

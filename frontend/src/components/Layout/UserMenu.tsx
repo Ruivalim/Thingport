@@ -25,7 +25,7 @@ import { settingsApi } from "../../api/settings";
 import { useDisabledProviders } from "../../hooks/useDisabledProviders";
 
 type ServiceChipDef = {
-  key: "makerworld" | "thingiverse" | "printables" | "myminifactory" | "snapmaker" | "makeronline";
+  key: "makerworld" | "thingiverse" | "printables" | "myminifactory" | "snapmaker" | "makeronline" | "crealitycloud";
   label: string;
   connected: boolean;
   /** Explains what's missing when not connected. */
@@ -54,6 +54,8 @@ export function UserMenu({ user, onOpenConfiguration, onOpenProfile, onLogout }:
   const [snapmakerExpired, setSnapmakerExpired] = React.useState(false);
   const [makeronlineConfigured, setMakeronlineConfigured] = React.useState(false);
   const [makeronlineExpired, setMakeronlineExpired] = React.useState(false);
+  const [crealitycloudConfigured, setCrealitycloudConfigured] = React.useState(false);
+  const [crealitycloudExpired, setCrealitycloudExpired] = React.useState(false);
 
   const menuOpen = Boolean(anchorEl);
   // Checked on every open: the cookie can change in Configuration while the menu stays mounted.
@@ -96,6 +98,14 @@ export function UserMenu({ user, onOpenConfiguration, onOpenProfile, onLogout }:
         setMakeronlineExpired(res.expired);
       })
       .catch(() => undefined);
+    settingsApi
+      .getCrealitycloudSession()
+      .then((res) => {
+        if (!active) return;
+        setCrealitycloudConfigured(res.configured);
+        setCrealitycloudExpired(res.expired);
+      })
+      .catch(() => undefined);
     return () => {
       active = false;
     };
@@ -136,6 +146,14 @@ export function UserMenu({ user, onOpenConfiguration, onOpenProfile, onLogout }:
       ...IMPORT_PROVIDER_INFO.makeronline,
       connected: makeronlineConfigured && !makeronlineExpired,
       disabledReason: makeronlineExpired ? t("providers.makeronline.expired") : t("userMenu.makeronlineDisabledReason"),
+    },
+    {
+      key: "crealitycloud",
+      ...IMPORT_PROVIDER_INFO.crealitycloud,
+      connected: crealitycloudConfigured && !crealitycloudExpired,
+      disabledReason: crealitycloudExpired
+        ? t("providers.crealitycloud.expired")
+        : t("userMenu.crealitycloudDisabledReason"),
     },
   ];
   // Turned off by an admin: no icon. Coming-soon sites follow the live ones.

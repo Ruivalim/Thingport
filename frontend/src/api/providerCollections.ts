@@ -9,6 +9,7 @@ export const BROWSABLE_PROVIDERS = [
   "myminifactory",
   "snapmaker",
   "makeronline",
+  "crealitycloud",
 ] as const;
 export type BrowsableProvider = (typeof BROWSABLE_PROVIDERS)[number];
 

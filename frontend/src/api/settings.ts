@@ -147,7 +147,7 @@ export type DatabaseCredentialsInput = {
 };
 
 export type ImportProvider =
-  "makerworld" | "printables" | "thingiverse" | "myminifactory" | "snapmaker" | "makeronline";
+  "makerworld" | "printables" | "thingiverse" | "myminifactory" | "snapmaker" | "makeronline" | "crealitycloud";
 /** An admin can turn a provider off for the whole instance; menus hide it then. */
 export type ProviderSetting = { id: ImportProvider; enabled: boolean };
 
@@ -408,6 +408,26 @@ export const settingsApi = {
     });
     if (res.status === 401) throw new UnauthorizedError();
     if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to update MakerOnline settings"));
+    return res.json();
+  },
+
+  // The user's own Creality Cloud sign-in (its model_token and model_user_id cookies), which Thingport Grab sends on.
+  // Write-only.
+  getCrealitycloudSession: async (): Promise<{ configured: boolean; expired: boolean }> => {
+    const res = await fetch(`${apiBase()}/settings/crealitycloud-session`, { headers: authHeaders() });
+    assertOk(res, "Failed to load Creality Cloud settings");
+    return res.json();
+  },
+
+  /** Checked with Creality Cloud before it's saved. */
+  updateCrealitycloudSession: async (token: string | null): Promise<{ configured: boolean }> => {
+    const res = await fetch(`${apiBase()}/settings/crealitycloud-session`, {
+      method: "PATCH",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ token, verify: true }),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to update Creality Cloud settings"));
     return res.json();
   },
 

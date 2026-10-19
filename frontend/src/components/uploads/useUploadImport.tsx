@@ -31,6 +31,8 @@ import {
   isSnapmakerModelUrl,
   isMakeronlineListUrl,
   isMakeronlineModelUrl,
+  isCrealitycloudListUrl,
+  isCrealitycloudModelUrl,
   isThingiverseCollectionUrl,
   isThingiverseLikesUrl,
   isThingiverseThingUrl,
@@ -70,6 +72,8 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
     startMakerworldProfilesImport,
     startSnapmakerProfilesImport,
     startSnapmakerListImport,
+    startCrealitycloudProfilesImport,
+    startCrealitycloudListImport,
     startLinksImport,
   } = useImportJob();
   const isBusy = uploading || importing || zipPrompt.isOpen || collectionPrompt.isOpen || importModePrompt.isOpen;
@@ -257,8 +261,8 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
     showToast({ message: t(key, { name }) });
   };
 
-  /** `profileScope`: which MakerWorld, Snapmaker or MakerOnline print profiles to import; more than the link's runs as
-   *  a job, and MakerOnline's wait for Thingport Grab. */
+  /** `profileScope`: which MakerWorld, Snapmaker, MakerOnline or Creality Cloud print profiles to import; more than
+   *  the link's runs as a job, and MakerOnline's wait for Thingport Grab. */
   const submitImport = async (
     rawUrl: string,
     captcha?: CaptchaAnswer | null,
@@ -289,6 +293,11 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
 
       if (profileScope !== "url" && isSnapmakerModelUrl(url)) {
         await startSnapmakerProfilesImport({ ...payload, scope: profileScope });
+        return;
+      }
+
+      if (profileScope !== "url" && isCrealitycloudModelUrl(url)) {
+        await startCrealitycloudProfilesImport({ ...payload, scope: profileScope });
         return;
       }
 
@@ -435,6 +444,33 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
         return;
       }
 
+      if (isCrealitycloudListUrl(url)) {
+        setImporting(false);
+        await collectionPrompt.prompt({
+          label: url,
+          loadEntries: async () => {
+            try {
+              return await importsApi.listCrealitycloudListEntries(payload);
+            } catch (err) {
+              if (err instanceof UnauthorizedError) onUnauthorized?.();
+              throw err;
+            }
+          },
+          onImportSelected: async (modelIds: string[]) => {
+            try {
+              await startCrealitycloudListImport({ ...payload, model_ids: modelIds });
+            } catch (err) {
+              if (err instanceof UnauthorizedError) {
+                onUnauthorized?.();
+                return;
+              }
+              throw err;
+            }
+          },
+        });
+        return;
+      }
+
       if (isSnapmakerListUrl(url)) {
         setImporting(false);
         await collectionPrompt.prompt({
@@ -466,7 +502,8 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
         isThingiverseThingUrl(url) ||
         isPrintablesModelUrl(url) ||
         isMyminifactoryObjectUrl(url) ||
-        isSnapmakerModelUrl(url)
+        isSnapmakerModelUrl(url) ||
+        isCrealitycloudModelUrl(url)
       ) {
         // The backend splits these into plates itself.
         const imported = await importsApi.fromLink(payload);
