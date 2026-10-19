@@ -92,6 +92,11 @@ const LOGOS: Record<ProviderId, Logo> = {
   },
 };
 
+/** Whether a provider name, such as a model's source, is one there's a logo for. */
+export function hasProviderLogo(id: string | null | undefined): id is ProviderId {
+  return !!id && Object.hasOwn(LOGOS, id);
+}
+
 export function ProviderLogo({ id, size }: { id: ProviderId; size: number }) {
   const { viewBox = "0 0 24 24", color, path, fillRule, layers } = LOGOS[id];
   return (

@@ -1,0 +1,97 @@
+import { useTranslation } from "react-i18next";
+import Box from "@mui/material/Box";
+import Tooltip from "@mui/material/Tooltip";
+import { useTheme, type SxProps, type Theme } from "@mui/material/styles";
+import markColor from "../assets/logos/thingport-mark-color.svg";
+import markOnDark from "../assets/logos/thingport-mark-on-dark.svg";
+import { printProviderInfo, providerChipSx } from "../constants/importProviders";
+import { hasProviderLogo, ProviderLogo } from "./Layout/ConfigurationDialog/providerLogos";
+
+// Read by screen readers, not shown.
+const visuallyHidden = {
+  position: "absolute",
+  width: "1px",
+  height: "1px",
+  overflow: "hidden",
+  clip: "rect(0 0 0 0)",
+  whiteSpace: "nowrap",
+} as const;
+
+type Props = {
+  /** The model's source provider; null for a direct upload, shown with Thingport's own mark. */
+  provider: string | null | undefined;
+  /** The badge's width and height, in px. */
+  size?: number;
+  sx?: SxProps<Theme>;
+};
+
+/** Where a model came from, as the provider's logo on a round badge; its chip shows on hover or focus. */
+export default function ProviderBadge({ provider, size = 28, sx }: Props) {
+  const { t } = useTranslation("models");
+  const theme = useTheme();
+  const info = printProviderInfo(provider);
+  const label = provider ? t("card.importedFrom", { provider: info.label }) : t("card.uploadedDirectly");
+  const logoSize = Math.round(size * 0.6);
+  return (
+    <Tooltip
+      title={
+        <Box
+          sx={{
+            px: 1,
+            py: 0.375,
+            borderRadius: 1,
+            fontSize: 11,
+            fontWeight: 600,
+            lineHeight: 1.4,
+            ...providerChipSx(info),
+          }}
+        >
+          {info.label}
+        </Box>
+      }
+      // The chip is the whole tooltip, so the tooltip's own box stays out of sight.
+      slotProps={{ tooltip: { sx: { bgcolor: "transparent", p: 0, boxShadow: 3, borderRadius: 1 } } }}
+    >
+      <Box
+        tabIndex={0}
+        sx={[
+          {
+            width: size,
+            height: size,
+            display: "grid",
+            placeItems: "center",
+            borderRadius: "50%",
+            bgcolor: "background.paper",
+            color: "text.primary",
+            border: 1,
+            borderColor: "divider",
+            boxShadow: 2,
+            transition: "transform 150ms ease",
+            "&:hover, &:focus-visible": { transform: "scale(1.08)" },
+            "&:focus-visible": { outline: `2px solid ${theme.palette.primary.main}`, outlineOffset: 2 },
+            "@media (prefers-reduced-motion: reduce)": {
+              transition: "none",
+              "&:hover, &:focus-visible": { transform: "none" },
+            },
+          },
+          ...(Array.isArray(sx) ? sx : [sx]),
+        ]}
+      >
+        <Box component="span" sx={visuallyHidden}>
+          {label}
+        </Box>
+        {hasProviderLogo(provider) ? (
+          <ProviderLogo id={provider} size={logoSize} />
+        ) : (
+          <Box
+            component="img"
+            src={theme.palette.mode === "dark" ? markOnDark : markColor}
+            alt=""
+            aria-hidden="true"
+            sx={{ width: logoSize, height: logoSize, objectFit: "contain", display: "block" }}
+          />
+        )}
+      </Box>
+    </Tooltip>
+  );
+}

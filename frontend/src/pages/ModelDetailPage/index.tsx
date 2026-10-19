@@ -19,6 +19,7 @@ import { type ResolvedTheme } from "../../constants/settingsOptions";
 import { dividerBorderColor } from "../../theme";
 import { MODEL_EXTS } from "../../constants/fileTypes";
 import { extOf } from "../../utils/fileExtensions";
+import ProviderBadge from "../../components/ProviderBadge";
 import { renderPreviewContent } from "../../components/media/renderPreviewContent";
 import { ModelSnapshot } from "../../components/media/ModelViewer/ModelSnapshot";
 import { usePageHeader } from "../../components/Layout/PageHeaderContext";
@@ -167,7 +168,7 @@ export default function ModelDetailPage({ theme, onSelectCategory, onUnauthorize
             with huge intrinsic pixel dimensions could still force this column wider than its "2fr"
             share (and skew the whole two-column layout) even though the image itself is capped
             below. */}
-        <Box sx={{ minWidth: 0 }}>
+        <Box sx={{ minWidth: 0, position: "relative" }}>
           <Box
             sx={{
               position: "relative",
@@ -273,6 +274,11 @@ export default function ModelDetailPage({ theme, onSelectCategory, onUnauthorize
               </Button>
             )}
           </Box>
+          <ProviderBadge
+            provider={print.source_provider}
+            size={40}
+            sx={{ position: "absolute", top: 12, left: 12, zIndex: 1 }}
+          />
 
           {images.length > 1 && (
             <Stack direction="row" spacing={1} sx={{ mt: 1.5, overflowX: "auto", pb: 0.5 }}>
