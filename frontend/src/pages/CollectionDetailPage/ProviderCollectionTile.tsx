@@ -20,6 +20,7 @@ export const PROVIDER_ACCENTS: Record<BrowsableProvider, string> = {
   makeronline: "#1F7AE0",
   crealitycloud: "#1AC686",
   nexprint: "#7A55E3",
+  thangs: "#FFBC00",
 };
 
 type Props = {
@@ -381,6 +382,48 @@ function NexprintTile({ collection }: { collection: ProviderCollection }) {
   );
 }
 
+/** Thangs: its one cover, the count in a pill of its yellow over the corner, the name below. */
+function ThangsTile({ collection }: { collection: ProviderCollection }) {
+  return (
+    <Box
+      sx={{
+        borderRadius: "8px",
+        border: 1,
+        borderColor: "divider",
+        bgcolor: "background.paper",
+        overflow: "hidden",
+      }}
+    >
+      <Box sx={{ position: "relative" }}>
+        <Thumb src={collection.thumbnails[0]} sx={{ aspectRatio: "4 / 3" }} />
+        <Box
+          sx={{
+            position: "absolute",
+            top: 8,
+            left: 8,
+            px: 1,
+            py: 0.25,
+            borderRadius: "999px",
+            bgcolor: PROVIDER_ACCENTS.thangs,
+            // Its yellow is light in both themes.
+            color: "common.black",
+            fontSize: "0.7rem",
+            fontWeight: 700,
+          }}
+        >
+          <ModelCount count={collection.model_count} provider="thangs" />
+        </Box>
+      </Box>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, px: 1.25, py: 1 }}>
+        <Typography noWrap sx={{ flex: 1, fontWeight: 700, fontSize: "0.875rem" }}>
+          {collection.name}
+        </Typography>
+        {collection.private && <LockOutlinedIcon sx={{ fontSize: 14, color: "text.secondary" }} />}
+      </Box>
+    </Box>
+  );
+}
+
 const TILES: Record<BrowsableProvider, (props: { collection: ProviderCollection }) => JSX.Element> = {
   makerworld: MakerWorldTile,
   printables: PrintablesTile,
@@ -390,16 +433,18 @@ const TILES: Record<BrowsableProvider, (props: { collection: ProviderCollection 
   makeronline: MakeronlineTile,
   crealitycloud: CrealitycloudTile,
   nexprint: NexprintTile,
+  thangs: ThangsTile,
 };
 
 /** The name to show: a user's likes, and Snapmaker's likes and bookmarks, come named in English by the instance, as
- *  do MakerOnline's and Creality Cloud's likes. */
+ *  do MakerOnline's, Creality Cloud's and Thangs' likes. */
 function displayName(provider: BrowsableProvider, collection: ProviderCollection, t: (key: string) => string): string {
   if (collection.likes) return t("collections.sync.browse.likes");
   if (provider === "snapmaker" && collection.id.startsWith("likes-")) return t("collections.sync.browse.likes");
   if (provider === "snapmaker" && collection.id.startsWith("bookmarks-")) return t("collections.sync.browse.bookmarks");
   if (provider === "makeronline" && collection.id === "likes") return t("collections.sync.browse.likes");
   if (provider === "crealitycloud" && collection.id.startsWith("likes-")) return t("collections.sync.browse.likes");
+  if (provider === "thangs" && collection.id === "likes") return t("collections.sync.browse.likes");
   return collection.name;
 }
 
@@ -511,6 +556,16 @@ export function ProviderCollectionTileSkeleton({ provider }: { provider: Browsab
           ))}
         </Box>
         <Box sx={{ px: 1.25, py: 1 }}>{lines}</Box>
+      </Box>
+    );
+  }
+  if (provider === "thangs") {
+    return (
+      <Box aria-hidden sx={{ borderRadius: "8px", border: 1, borderColor: "divider", overflow: "hidden" }}>
+        <Skeleton variant="rectangular" sx={{ width: "100%", height: "auto", aspectRatio: "4 / 3" }} />
+        <Box sx={{ px: 1.25, py: 1 }}>
+          <Skeleton variant="text" sx={{ fontSize: "0.875rem", width: "70%" }} />
+        </Box>
       </Box>
     );
   }

@@ -1,6 +1,6 @@
 /** Starter category tree modeled on MakerWorld's, with matching Thingiverse, Printables, MyMiniFactory, Snapmaker,
- * MakerOnline, Creality Cloud and NexPrint ids so imports are auto-categorized from the start. NexPrint's are text:
- * they're 16 digits long. */
+ * MakerOnline, Creality Cloud, NexPrint and Thangs ids so imports are auto-categorized from the start. NexPrint's are
+ * text: they're 16 digits long. Thangs has no ids, so its are category paths ("Parent/Child"). */
 export type DefaultCategoryNode = {
   name: string;
   tags?: string[];
@@ -14,6 +14,7 @@ export type DefaultCategoryNode = {
   makeronlineCatIds?: number[];
   crealitycloudCatIds?: number[];
   nexprintCatIds?: string[];
+  thangsCatIds?: string[];
   children?: DefaultCategoryNode[];
 };
 
@@ -31,6 +32,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     makeronlineCatIds: [33],
     crealitycloudCatIds: [1731, 6006],
     nexprintCatIds: ["1422473859022863"],
+    thangsCatIds: ["3D Printer Parts & Accessories"],
     children: [
       {
         name: "3D Printer Accessories",
@@ -45,6 +47,12 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makeronlineCatIds: [34],
         crealitycloudCatIds: [1904],
         nexprintCatIds: ["1422473859022858"],
+        thangsCatIds: [
+          "3D Printer Parts & Accessories/Enclosures & Racks",
+          "3D Printer Parts & Accessories/Filament Management",
+          "3D Printer Parts & Accessories/Maintenance Tools",
+          "3D Printer Parts & Accessories/Print Bed Accessories",
+        ],
       },
       {
         name: "3D Printer Parts",
@@ -61,6 +69,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makeronlineCatIds: [35],
         crealitycloudCatIds: [1316],
         nexprintCatIds: ["2"],
+        thangsCatIds: ["3D Printer Parts & Accessories/Printer Upgrades"],
       },
       {
         name: "Test Models",
@@ -75,6 +84,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makeronlineCatIds: [36],
         crealitycloudCatIds: [1645],
         nexprintCatIds: ["1422473859022859"],
+        thangsCatIds: ["3D Printer Parts & Accessories/Test Prints & Calibration"],
       },
     ],
   },
@@ -90,6 +100,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     makeronlineCatIds: [70],
     crealitycloudCatIds: [1670],
     nexprintCatIds: ["1422473858908165"],
+    thangsCatIds: ["Art & Decor"],
     children: [
       {
         name: "2D Art",
@@ -103,6 +114,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makeronlineCatIds: [75],
         crealitycloudCatIds: [1662],
         nexprintCatIds: ["1422473859022850"],
+        thangsCatIds: ["Art & Decor/Wall Art"],
       },
       {
         name: "Coin & Badges",
@@ -114,6 +126,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makeronlineCatIds: [72],
         crealitycloudCatIds: [1341],
         nexprintCatIds: ["1422473859022853"],
+        thangsCatIds: ["Art & Decor/Trophies & Awards"],
       },
       {
         name: "Signs & Logos",
@@ -139,6 +152,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makeronlineCatIds: [74],
         crealitycloudCatIds: [1584],
         nexprintCatIds: ["1422473859022854"],
+        thangsCatIds: ["Art & Decor/Sculptures & Statues", "Art & Decor/Busts"],
       },
       {
         name: "Other Art Models",
@@ -152,6 +166,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makeronlineCatIds: [71, 105],
         crealitycloudCatIds: [1997, 6005],
         nexprintCatIds: ["1422473859022851", "1422473859022852", "1422473859022857"],
+        thangsCatIds: ["Art & Decor/Textured & Patterned"],
       },
     ],
   },
@@ -167,6 +182,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     snapmakerCatIds: [106],
     makeronlineCatIds: [82],
     crealitycloudCatIds: [1501],
+    thangsCatIds: ["Educational & Scientific"],
     children: [
       {
         name: "Biology",
@@ -178,6 +194,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         myminifactoryCatIds: [154, 373, 997, 1045],
         snapmakerCatIds: [129],
         makeronlineCatIds: [89],
+        thangsCatIds: ["Educational & Scientific/Biology", "Educational & Scientific/Human Anatomy & Medical"],
       },
       {
         name: "Chemistry",
@@ -189,6 +206,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         myminifactoryCatIds: [162],
         snapmakerCatIds: [128],
         makeronlineCatIds: [88],
+        thangsCatIds: ["Educational & Scientific/Chemistry"],
       },
       {
         name: "Engineering",
@@ -212,6 +230,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         myminifactoryCatIds: [164],
         snapmakerCatIds: [130],
         makeronlineCatIds: [87],
+        thangsCatIds: ["Educational & Scientific/Geology"],
       },
       {
         name: "Mathematics",
@@ -236,6 +255,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         myminifactoryCatIds: [165, 558, 1036],
         snapmakerCatIds: [131, 127],
         makeronlineCatIds: [85],
+        thangsCatIds: ["Educational & Scientific/Physics", "Educational & Scientific/Astronomy"],
       },
       {
         name: "Other Education Models",
@@ -265,6 +285,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     makeronlineCatIds: [76],
     crealitycloudCatIds: [1175],
     nexprintCatIds: ["1422473858908164"],
+    thangsCatIds: ["Fashion & Jewelry"],
     children: [
       {
         name: "Bags",
@@ -289,6 +310,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makeronlineCatIds: [79],
         crealitycloudCatIds: [1598],
         nexprintCatIds: ["1422473859014674"],
+        thangsCatIds: ["Fashion & Jewelry/Clothing"],
       },
       {
         name: "Earrings",
@@ -298,6 +320,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [206],
         thingiverseCatIds: [139],
         myminifactoryCatIds: [405],
+        thangsCatIds: ["Fashion & Jewelry/Earrings"],
       },
       {
         name: "Footwear",
@@ -329,6 +352,11 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         snapmakerCatIds: [134],
         makeronlineCatIds: [78],
         crealitycloudCatIds: [1693],
+        thangsCatIds: [
+          "Fashion & Jewelry/Necklaces",
+          "Fashion & Jewelry/Bracelets",
+          "Fashion & Jewelry/Jewelry Storage",
+        ],
       },
       {
         name: "Rings",
@@ -338,6 +366,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [205],
         thingiverseCatIds: [85],
         myminifactoryCatIds: [406],
+        thangsCatIds: ["Fashion & Jewelry/Rings"],
       },
       {
         name: "Other Fashion Models",
@@ -352,6 +381,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makeronlineCatIds: [77, 81],
         crealitycloudCatIds: [1647, 6002],
         nexprintCatIds: ["1422473859014675", "1422473859022849"],
+        thangsCatIds: ["Fashion & Jewelry/Accessories"],
       },
     ],
   },
@@ -367,6 +397,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     makeronlineCatIds: [46],
     crealitycloudCatIds: [1519],
     nexprintCatIds: ["1422473858908163"],
+    thangsCatIds: ["Hobby & DIY"],
     children: [
       {
         name: "Electronics",
@@ -390,6 +421,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           "1422473859014659",
           "1422473859014660",
         ],
+        thangsCatIds: ["Hobby & DIY/Electronics"],
       },
       {
         name: "Music",
@@ -404,6 +436,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makeronlineCatIds: [49],
         crealitycloudCatIds: [1420],
         nexprintCatIds: ["1422473859022856"],
+        thangsCatIds: ["Hobby & DIY/Music & Audio"],
       },
       {
         name: "RC",
@@ -419,6 +452,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         snapmakerCatIds: [150],
         makeronlineCatIds: [51],
         nexprintCatIds: ["1422473859014656"],
+        thangsCatIds: ["Hobby & DIY/RC"],
       },
       {
         name: "Robotics",
@@ -432,6 +466,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         snapmakerCatIds: [149],
         makeronlineCatIds: [52],
         crealitycloudCatIds: [1648],
+        thangsCatIds: ["Hobby & DIY/Robotics"],
       },
       {
         name: "Sport & Outdoors",
@@ -446,6 +481,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makeronlineCatIds: [50],
         crealitycloudCatIds: [1246],
         nexprintCatIds: ["1422473859014671"],
+        thangsCatIds: ["Hobby & DIY/Outdoor", "Health & Fitness/Sports"],
       },
       {
         name: "Vehicles",
@@ -459,6 +495,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makeronlineCatIds: [47],
         crealitycloudCatIds: [1194],
         nexprintCatIds: ["1422473859014672"],
+        thangsCatIds: ["Hobby & DIY/Automotive"],
       },
       {
         name: "Other Hobby & DIY",
@@ -472,6 +509,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makeronlineCatIds: [54, 53],
         crealitycloudCatIds: [6004],
         nexprintCatIds: ["1422473859014673"],
+        thangsCatIds: ["Hobby & DIY/Baking and Cooking", "Hobby & DIY/Photography & Video"],
       },
     ],
   },
@@ -488,6 +526,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     makeronlineCatIds: [37],
     crealitycloudCatIds: [1010],
     nexprintCatIds: ["1422473858908162"],
+    thangsCatIds: ["Home & Garden"],
     children: [
       {
         name: "Decor",
@@ -502,6 +541,13 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makeronlineCatIds: [38, 43],
         crealitycloudCatIds: [1150, 1096],
         nexprintCatIds: ["1422473859014662"],
+        thangsCatIds: [
+          "Home & Garden/Home Decor & Accessories",
+          "Home & Garden/Living Room",
+          "Home & Garden/Bedroom",
+          "Art & Decor/Lamps & Lighting",
+          "Art & Decor/Vases & Planters",
+        ],
       },
       {
         name: "Festivities",
@@ -513,6 +559,13 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         myminifactoryCatIds: [385, 384, 634, 635, 636],
         snapmakerCatIds: [140],
         makeronlineCatIds: [42],
+        thangsCatIds: [
+          "Seasonal",
+          "Seasonal/Beach & Summer",
+          "Seasonal/Easter & Spring",
+          "Seasonal/Halloween & Fall",
+          "Seasonal/Holidays & Winter",
+        ],
       },
       {
         name: "Garden",
@@ -526,6 +579,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         snapmakerCatIds: [146],
         makeronlineCatIds: [39],
         nexprintCatIds: ["1422473859014668"],
+        thangsCatIds: ["Home & Garden/Outdoor & Garden"],
       },
       {
         name: "Office",
@@ -539,6 +593,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         snapmakerCatIds: [143],
         makeronlineCatIds: [41],
         nexprintCatIds: ["1422473859014664"],
+        thangsCatIds: ["Tools & Organizers/Office & Desk"],
       },
       {
         name: "Pets",
@@ -552,6 +607,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makeronlineCatIds: [44],
         crealitycloudCatIds: [1151],
         nexprintCatIds: ["1422473859014669"],
+        thangsCatIds: ["Home & Garden/Pet Accessories"],
       },
       {
         name: "Other Household Models",
@@ -569,6 +625,13 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makeronlineCatIds: [45, 40],
         crealitycloudCatIds: [1775, 6000],
         nexprintCatIds: ["1422473859014663", "1422473859014666", "1422473859014667", "1422473859014670"],
+        thangsCatIds: [
+          "Home & Garden/Bathroom",
+          "Home & Garden/Kitchen & Dining",
+          "Health & Fitness",
+          "Health & Fitness/Wellness",
+          "Health & Fitness/Accessibility",
+        ],
       },
     ],
   },
@@ -585,6 +648,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     makeronlineCatIds: [95],
     crealitycloudCatIds: [1952],
     nexprintCatIds: ["1422473859006464"],
+    thangsCatIds: ["Miniatures & Tabletop"],
     children: [
       {
         name: "Animals",
@@ -608,6 +672,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         snapmakerCatIds: [158],
         makeronlineCatIds: [100],
         crealitycloudCatIds: [1846],
+        thangsCatIds: ["Miniatures & Tabletop/Dioramas & Scenery"],
       },
       {
         name: "Creatures",
@@ -620,6 +685,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         snapmakerCatIds: [159],
         makeronlineCatIds: [99],
         crealitycloudCatIds: [1025],
+        thangsCatIds: ["Miniatures & Tabletop/Fantasy Miniatures"],
       },
       {
         name: "People",
@@ -645,6 +711,15 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         snapmakerCatIds: [160],
         makeronlineCatIds: [96, 97, 98],
         crealitycloudCatIds: [1888, 1982, 6008],
+        thangsCatIds: [
+          "Miniatures & Tabletop/Sci-Fi Miniatures",
+          "Miniatures & Tabletop/War & Tactics",
+          "Miniatures & Tabletop/Naval",
+          "Miniatures & Tabletop/Airplanes",
+          "Miniatures & Tabletop/Trains",
+          "Miniatures & Tabletop/Vehicles",
+          "Miniatures & Tabletop/Accessories",
+        ],
       },
     ],
   },
@@ -660,6 +735,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     makeronlineCatIds: [90],
     crealitycloudCatIds: [1966],
     nexprintCatIds: ["1422473859006467"],
+    thangsCatIds: ["Costumes & Cosplay"],
     children: [
       {
         name: "Costumes",
@@ -671,6 +747,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         myminifactoryCatIds: [340],
         snapmakerCatIds: [123],
         makeronlineCatIds: [94],
+        thangsCatIds: ["Costumes & Cosplay/Full Outfits", "Costumes & Cosplay/Character Specific"],
       },
       {
         name: "Masks & Helmets",
@@ -682,6 +759,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         myminifactoryCatIds: [155],
         snapmakerCatIds: [122],
         makeronlineCatIds: [93],
+        thangsCatIds: ["Costumes & Cosplay/Masks & Helmets"],
       },
       {
         name: "Cosplay Weapons",
@@ -691,6 +769,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [1002],
         myminifactoryCatIds: [542, 156, 304],
         snapmakerCatIds: [124],
+        thangsCatIds: ["Costumes & Cosplay/Armor & Props"],
       },
       {
         name: "Other Props & Cosplays",
@@ -702,6 +781,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         printablesCatIds: [81, 80],
         snapmakerCatIds: [125],
         makeronlineCatIds: [92, 91],
+        thangsCatIds: ["Costumes & Cosplay/Accessories"],
       },
     ],
   },
@@ -717,6 +797,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     makeronlineCatIds: [55],
     crealitycloudCatIds: [1671],
     nexprintCatIds: ["1422473858908166"],
+    thangsCatIds: ["Tools & Organizers", "Functional Prints"],
     children: [
       {
         name: "Gadgets",
@@ -738,6 +819,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         thingiverseCatIds: [118],
         snapmakerCatIds: [161],
         makeronlineCatIds: [60],
+        thangsCatIds: ["Tools & Organizers/Utility & Tools", "Functional Prints/Tools"],
       },
       {
         name: "Machine Tools",
@@ -748,6 +830,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         thingiverseCatIds: [117],
         snapmakerCatIds: [165],
         makeronlineCatIds: [59],
+        thangsCatIds: ["Functional Prints/Jigs & Fixtures"],
       },
       {
         name: "Measure Tools",
@@ -782,6 +865,12 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         snapmakerCatIds: [141, 163],
         makeronlineCatIds: [61],
         nexprintCatIds: ["1422473859014661"],
+        thangsCatIds: [
+          "Tools & Organizers/Gridfinity",
+          "Tools & Organizers/Multiboard",
+          "Tools & Organizers/Storage Solutions",
+          "Tools & Organizers/Shop & Garage",
+        ],
       },
       {
         name: "Other Tools",
@@ -794,6 +883,11 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         snapmakerCatIds: [164, 166],
         makeronlineCatIds: [57],
         nexprintCatIds: ["1422473859022860", "1422473859022861", "1422473859022862"],
+        thangsCatIds: [
+          "Functional Prints/Mechanical Parts",
+          "Functional Prints/Replacement Parts",
+          "Functional Prints/Customizable",
+        ],
       },
     ],
   },
@@ -810,6 +904,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     makeronlineCatIds: [62],
     crealitycloudCatIds: [1809],
     nexprintCatIds: ["1422473858908160"],
+    thangsCatIds: ["Toys & Games"],
     children: [
       {
         name: "Board Games",
@@ -824,6 +919,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makeronlineCatIds: [68],
         crealitycloudCatIds: [1575],
         nexprintCatIds: ["1422473859006466"],
+        thangsCatIds: ["Toys & Games/Board Game Accessories"],
       },
       {
         name: "Characters",
@@ -837,6 +933,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         ],
         snapmakerCatIds: [171],
         makeronlineCatIds: [104, 69, 110],
+        thangsCatIds: ["Toys & Games/Action Figures & Collectibles", "Toys & Games/Articulated"],
       },
       {
         name: "Outdoor Toys",
@@ -847,6 +944,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         printablesCatIds: [34],
         snapmakerCatIds: [173],
         makeronlineCatIds: [66],
+        thangsCatIds: ["Toys & Games/Outdoor Toys"],
       },
       {
         name: "Puzzles",
@@ -859,6 +957,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         myminifactoryCatIds: [100],
         snapmakerCatIds: [169],
         makeronlineCatIds: [65],
+        thangsCatIds: ["Toys & Games/Puzzles"],
       },
       {
         name: "Construction Sets",
@@ -886,6 +985,12 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makeronlineCatIds: [63, 64],
         crealitycloudCatIds: [1793, 6007],
         nexprintCatIds: ["1422473859006468"],
+        thangsCatIds: [
+          "Toys & Games/Educational Toys",
+          "Toys & Games/Fidget Toys",
+          "Toys & Games/Keychains",
+          "Toys & Games/Video Games",
+        ],
       },
     ],
   },
@@ -904,6 +1009,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         metaDescription:
           "Transform your favorite images into stunning 3D art pieces with Hueforge and create mesmerizing lithophanes that glow with light.",
         makerworldCatIds: [2001],
+        thangsCatIds: ["Art & Decor/Hueforge", "Art & Decor/Lithophanes"],
       },
       {
         name: "Make My Sign",

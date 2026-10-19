@@ -43,6 +43,15 @@ import {
 } from "./crealitycloudApi";
 import { getUserCrealitycloudId } from "./crealitycloudSessionService";
 import { nexprintCollectionUrl, nexprintModelUrl, parseNexprintCollectionUrl } from "./nexprintApi";
+import {
+  isThangsLikesUrl,
+  parseThangsCollectionUrl,
+  THANGS_LIKES_KEY,
+  THANGS_LIKES_NAME,
+  THANGS_LIKES_URL,
+  thangsModelUrl,
+} from "./thangsApi";
+import { getThangsConnection } from "./thangsSessionService";
 import { createLog } from "./auditLog";
 import { pushedLikes } from "./providerListingsService";
 import { createNotification } from "./notificationService";
@@ -63,7 +72,8 @@ export type SyncProvider =
   | "snapmaker"
   | "makeronline"
   | "crealitycloud"
-  | "nexprint";
+  | "nexprint"
+  | "thangs";
 
 /** `likesOf` is set for a user's likes (on Thingiverse, or the user's own on Printables), which a
  *  sync follows like a collection. */
@@ -78,6 +88,7 @@ const PROVIDER_NAMES: Record<SyncProvider, string> = {
   makeronline: "MakerOnline",
   crealitycloud: "Creality Cloud",
   nexprint: "NexPrint",
+  thangs: "Thangs",
 };
 
 /** Providers whose models come with print profiles a sync can pick between. */
@@ -169,6 +180,12 @@ export function parseSyncSource(url: string): SyncSource | null {
     const { collectionId, ownerId } = nexprint;
     return { provider: "nexprint", externalId: collectionId, url: nexprintCollectionUrl(collectionId, ownerId) };
   }
+  const thangs = parseThangsCollectionUrl(url);
+  if (thangs) return { provider: "thangs", externalId: thangs.collectionId, url: thangs.url };
+  if (isThangsLikesUrl(url)) {
+    // The page names no user: it's always the signed-in one's, read as the account Thingport has.
+    return { provider: "thangs", externalId: THANGS_LIKES_KEY, url: THANGS_LIKES_URL };
+  }
   const printablesLikes = parsePrintablesLikesUrl(url);
   if (printablesLikes) {
     // Only Thingport Grab can read these, as their owner (see providerListingsService.ts).
@@ -201,6 +218,7 @@ export function modelUrlFor(provider: string, externalId: string): string {
   if (provider === "makeronline") return makeronlineModelUrl(externalId);
   if (provider === "crealitycloud") return crealitycloudModelUrl(externalId);
   if (provider === "nexprint") return nexprintModelUrl(externalId);
+  if (provider === "thangs") return thangsModelUrl(externalId);
   return `https://www.thingiverse.com/thing:${externalId}`;
 }
 
@@ -214,6 +232,7 @@ export function modelIdFromUrl(provider: string, url: string): string | null {
     makeronline: /\/model\/(?:[^/#]+\/)?(\d+)/,
     crealitycloud: /\/model-detail\/([\w-]+)/,
     nexprint: /\/models\/(G\d+)/i,
+    thangs: /\/m\/(\d+)/,
   };
   const pattern = patterns[provider] ?? /thing:(\d+)/;
   return url.match(pattern)?.[1] ?? null;
@@ -285,13 +304,14 @@ export async function enableSync(userId: string, input: EnableSyncInput): Promis
   if (!source)
     throw new HttpError(
       400,
-      "Only MakerWorld, Printables, Thingiverse, MyMiniFactory, MakerOnline, Creality Cloud and NexPrint collections, Thingiverse or your own Printables, MakerOnline and Creality Cloud likes, and your own Snapmaker Space likes and bookmarks, can be synced",
+      "Only MakerWorld, Printables, Thingiverse, MyMiniFactory, MakerOnline, Creality Cloud, NexPrint and Thangs collections, Thingiverse or your own Printables, MakerOnline, Creality Cloud and Thangs likes, and your own Snapmaker Space likes and bookmarks, can be synced",
     );
   if (source.provider === "printables" && source.likesOf) await assertOwnPrintablesLikes(userId, source.likesOf);
   if (source.provider === "snapmaker") await assertOwnSnapmakerList(userId, source.url);
   if (source.provider === "makeronline" && source.externalId === MAKERONLINE_LIKES_KEY) {
     await assertMakeronlineConnected(userId);
   }
+  if (source.provider === "thangs") await assertThangsConnected(userId);
   const crealitycloudLikes = source.provider === "crealitycloud" ? parseCrealitycloudLikesUrl(source.url) : null;
   if (crealitycloudLikes) await assertOwnCrealitycloudLikes(userId, crealitycloudLikes.userId);
   const knownIds = [...new Set(input.knownIds.map((id) => id.trim()).filter(Boolean))];
@@ -336,7 +356,9 @@ export async function enableSync(userId: string, input: EnableSyncInput): Promis
           ? MAKERONLINE_LIKES_NAME
           : crealitycloudLikes
             ? CREALITYCLOUD_LIKES_NAME
-            : input.title?.trim() || `${providerName(source.provider)} Collection ${source.externalId}`;
+            : source.provider === "thangs" && source.externalId === THANGS_LIKES_KEY
+              ? THANGS_LIKES_NAME
+              : input.title?.trim() || `${providerName(source.provider)} Collection ${source.externalId}`;
     let found: (CollectionSync & { collection: Collection }) | null = null;
     for (const name of collectionNamesFor(title, source.provider)) {
       const collection = await findOrCreateCollectionByName(userId, name);
@@ -420,6 +442,16 @@ async function assertMakeronlineConnected(userId: string): Promise<void> {
     throw new HttpError(
       400,
       "MakerOnline shows likes to their owner only: connect MakerOnline first, or visit it with Thingport Grab",
+    );
+  }
+}
+
+/** Every Thangs download is the user's, and its likes page names no user: a sync needs their sign-in either way. */
+async function assertThangsConnected(userId: string): Promise<void> {
+  if ((await getThangsConnection(userId)) !== "connected") {
+    throw new HttpError(
+      400,
+      "Thangs gives its files to a signed-in user only: connect Thangs first, or visit it with Thingport Grab",
     );
   }
 }

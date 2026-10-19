@@ -1,7 +1,7 @@
 # Synced collections
 
 A synced collection follows a collection on MakerWorld, Printables, Thingiverse, MyMiniFactory, MakerOnline, Creality
-Cloud or NexPrint, your MakerOnline or Creality Cloud likes, or your likes or bookmarks on Snapmaker Space. When a model is added
+Cloud, NexPrint or Thangs, your MakerOnline, Creality Cloud or Thangs likes, or your likes or bookmarks on Snapmaker Space. When a model is added
 to it there, Thingport imports that model into the matching Thingport collection on its own, without you visiting the
 page again.
 
@@ -35,7 +35,9 @@ page again.
   your sign-in, and its new models always wait for Thingport Grab (see below). Creality Cloud reads collections with
   nothing, but its files and your likes need your sign-in, which lasts a week from when you signed in there; Grab
   sends the new one on your next visit. NexPrint reads collections, private ones too, with nothing, but its files need
-  your sign-in, which Grab sends on as you visit nexprint.com.
+  your sign-in, which Grab sends on as you visit nexprint.com. Every Thangs sync needs your sign-in, which Thingport keeps
+  renewed; its paid models you don't own and its print-only ones are left out, and once your account's daily
+  downloads are used up, the rest come in on a later check.
 
 ## Turn sync on in Thingport
 
@@ -43,13 +45,13 @@ page again.
 2. Choose **⋮ → Sync configuration**. A collection that isn't synced yet opens on **Browse**.
 3. Pick the provider. Your own collections there are listed: on MakerWorld through your cookie, private ones included;
    on Printables, Thingiverse and MyMiniFactory, the public ones of the username you give the first time; on Snapmaker
-   Space, your likes and bookmarks; on MakerOnline and Creality Cloud, your likes and your collections; on NexPrint, your collections. Or paste any
+   Space, your likes and bookmarks; on MakerOnline, Creality Cloud and Thangs, your likes and your collections; on NexPrint, your collections. Or paste any
    collection's link, yours or someone else's.
 4. Pick a collection and click **Sync with "…"**. **Settings** sets how often it's checked, and for MakerWorld,
    Snapmaker Space, MakerOnline, Creality Cloud and NexPrint which print profiles each new model brings, before you do.
 
 What happens to the models already in the provider's collection depends on the provider. On Printables, Thingiverse,
-MyMiniFactory, Snapmaker Space, Creality Cloud and NexPrint they're imported now, one at a time. MakerWorld rate-limits bulk imports quickly, so there only models
+MyMiniFactory, Snapmaker Space, Creality Cloud, NexPrint and Thangs they're imported now, one at a time. MakerWorld rate-limits bulk imports quickly, so there only models
 added from now on come in; ones already in your library are added to the collection either way. A provider collection
 syncs with one Thingport collection at most, so one that's taken shows which collection follows it.
 
@@ -72,7 +74,7 @@ read it, and its models come in on that next visit.
 1. Open the collection's page on MakerWorld, Printables, Thingiverse or MyMiniFactory (allowed once from Thingport
    Grab's popup first). A Thingiverse user's **Likes** page works too, and so does your own **Interactions** tab on
    Snapmaker Space, where the panel's switch picks your likes or bookmarks. On MakerOnline and Creality Cloud, a
-   collection page or your own **Likes** page; on NexPrint, a collection open on its owner's page.
+   collection page or your own **Likes** page; on NexPrint, a collection open on its owner's page; on Thangs, a collection page or your own **Liked** page.
 2. Click the Thingport Grab button in the bottom-right corner. The panel lists the models in the collection.
 3. Tick **Keep this collection in sync** (**Keep these likes in sync** on a Likes page). It's off by default.
 4. Pick the models to import now and click **Import selected** (**Start import** on MakerWorld).

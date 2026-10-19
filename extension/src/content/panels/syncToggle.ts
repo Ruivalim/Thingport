@@ -16,6 +16,7 @@ const PROVIDER_NAMES: Record<string, string> = {
   makeronline: "MakerOnline",
   crealitycloud: "Creality Cloud",
   nexprint: "NexPrint",
+  thangs: "Thangs",
 };
 
 /** A Thingiverse user's Likes page, which a sync follows like a collection. */

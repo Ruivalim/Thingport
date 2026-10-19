@@ -1,7 +1,7 @@
 # Thingport Grab
 
 A browser extension for Chrome, Edge and Firefox that imports MakerWorld, Thingiverse, Printables
-MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud and NexPrint models into your self-hosted Thingport instance without leaving the provider's site.
+MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud, NexPrint and Thangs models into your self-hosted Thingport instance without leaving the provider's site.
 Visiting a model, collection, or Thingiverse Likes page shows a floating Thingport icon; clicking it
 opens a small panel to pick what to import (and, for a single model, an optional destination
 collection), then imports it the same way Thingport's own "+ Add > Import" does.
@@ -213,12 +213,20 @@ NexPrint gives its files only to a signed-in user. Opening nexprint.com signed i
 and sends the new token whenever the site renews it. On a collection, open on its owner's page, the panel imports the
 listed models and can keep them in sync; NexPrint has no page of liked models, so there are no likes to import.
 
+### Thangs: a sign-in Thingport keeps renewed
+
+Thangs gives its files only to a signed-in user. Opening thangs.com signed in connects your account to Thingport, which
+renews the sign-in itself for about a year. On a model page the panel first asks Thangs whether your account may
+download it, which costs none of your daily downloads, and says so up front for a model sold only as a print, or a paid
+one you don't own. On your own **Liked** page, or any collection page, the panel imports the listed models and can keep
+them in sync.
+
 ## What counts as "importable"
 
 - A single model page (MakerWorld, a Thingiverse Thing, a Printables Model, a MyMiniFactory object, a Snapmaker Space,
-  MakerOnline, Creality Cloud or NexPrint model) -- hidden automatically once you've already imported that exact page.
+  MakerOnline, Creality Cloud, NexPrint or Thangs model) -- hidden automatically once you've already imported that exact page.
 - A MakerWorld collection, a Thingiverse Collection or Likes page, a Printables, MyMiniFactory, MakerOnline, Creality
-  Cloud or NexPrint collection, your MakerOnline or Creality Cloud likes, or your own Snapmaker Space likes and bookmarks -- lets you import the listed designs in one go.
+  Cloud, NexPrint or Thangs collection, your MakerOnline, Creality Cloud or Thangs likes, or your own Snapmaker Space likes and bookmarks -- lets you import the listed designs in one go.
 
 Picking a destination collection is only offered for a single-model import; a batch import instead
 lands in Thingport's own auto-named collection for that batch (e.g. "Thingiverse likes (@username)"), matching

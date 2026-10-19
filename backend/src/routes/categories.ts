@@ -184,7 +184,37 @@ function parseCatIdsInput(raw: string | null | undefined): number[] {
   return ids;
 }
 
+/** Thangs' category paths, "Parent;Parent/Child", as written on the site: blank clears, duplicates are dropped. */
+function parseCatPathsInput(raw: string | null | undefined): string[] {
+  const paths = [
+    ...new Set(
+      (raw ?? "")
+        .split(";")
+        .map((path) =>
+          path
+            .split("/")
+            .map((part) => part.trim())
+            .join("/"),
+        )
+        .filter(Boolean),
+    ),
+  ];
+  for (const path of paths) {
+    if (path.length > 200 || path.split("/").some((part) => !part)) {
+      throw new HttpError(
+        400,
+        `Invalid category path "${path}" -- use paths separated by ";", e.g. Toys & Games/Puzzles`,
+      );
+    }
+  }
+  if (paths.length > MAX_CAT_IDS) {
+    throw new HttpError(400, `Too many category paths -- at most ${MAX_CAT_IDS} allowed`);
+  }
+  return paths;
+}
+
 const catIdsField = z.string().trim().max(1000).nullable().optional();
+const catPathsField = z.string().trim().max(5000).nullable().optional();
 
 /** A field the request leaves out is left as it is (Prisma skips undefined), so a client from before a provider was
  *  added can't wipe that provider's ids; blank or null still clears them. */
@@ -202,6 +232,7 @@ const categoryMetaSchema = z.object({
   makeronline_cat_ids: catIdsField,
   crealitycloud_cat_ids: catIdsField,
   nexprint_cat_ids: catIdsField,
+  thangs_cat_ids: catPathsField,
 });
 
 router.patch(
@@ -223,6 +254,7 @@ router.patch(
         makeronlineCatIds: catIdsUpdate(body.makeronline_cat_ids),
         crealitycloudCatIds: catIdsUpdate(body.crealitycloud_cat_ids),
         nexprintCatIds: catIdsUpdate(body.nexprint_cat_ids)?.map(String),
+        thangsCatIds: body.thangs_cat_ids === undefined ? undefined : parseCatPathsInput(body.thangs_cat_ids),
       },
     });
     res.json(toCategoryOut(updated));

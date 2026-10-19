@@ -23,6 +23,7 @@ import { resolveSnapmakerModel } from "./snapmakerApi";
 import { resolveMakeronlineModel } from "./makeronlineApi";
 import { resolveCrealitycloudModel } from "./crealitycloudApi";
 import { resolveNexprintModel } from "./nexprintApi";
+import { resolveThangsModel, ThangsBlockedError } from "./thangsApi";
 import { getUserMakerworldCookie } from "./makerworldCookieService";
 import { upsertAuthorFromImport } from "./authorService";
 import { emptyGaps, openSourceGaps, type SourceGap } from "./sourceGaps";
@@ -124,6 +125,12 @@ export async function fetchSourceMeta(userId: string, print: Print, sourceUrl: s
     return { ...emptyImportedPageMetadata(), ...resolved.meta, galleryImages: resolved.galleryImages };
   }
 
+  if (provider === "thangs") {
+    const resolved = await resolveThangsModel(externalId);
+    if (!resolved) throw new HttpError(404, "This Thangs model could not be found, or isn't public.");
+    return { ...emptyImportedPageMetadata(), ...resolved.meta, galleryImages: resolved.galleryImages };
+  }
+
   throw new HttpError(400, "This model has no source to fill its details from");
 }
 
@@ -178,6 +185,7 @@ export async function fillSourceGaps(userId: string, printId: string): Promise<F
     if (err instanceof ThingiverseAuthError) throw new HttpError(400, err.message);
     if (err instanceof MyminifactoryRateLimitError) throw new HttpError(429, err.message);
     if (err instanceof MyminifactoryAuthError) throw new HttpError(400, err.message);
+    if (err instanceof ThangsBlockedError) throw new HttpError(429, err.message);
     throw err;
   }
   const wanted = new Set(gaps);

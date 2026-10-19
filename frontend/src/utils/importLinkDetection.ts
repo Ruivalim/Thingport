@@ -8,7 +8,8 @@ export type ImportProviderKey =
   | "snapmaker"
   | "makeronline"
   | "crealitycloud"
-  | "nexprint";
+  | "nexprint"
+  | "thangs";
 
 function parseUrl(url: string): URL | null {
   try {
@@ -30,6 +31,7 @@ export function detectImportProvider(url: string): ImportProviderKey | null {
   if (host === "makeronline.com" || host === "www.makeronline.com") return "makeronline";
   if (host === "crealitycloud.com" || host === "www.crealitycloud.com") return "crealitycloud";
   if (host === "nexprint.com" || host === "www.nexprint.com") return "nexprint";
+  if (host === "thangs.com" || host === "www.thangs.com") return "thangs";
   return null;
 }
 
@@ -192,6 +194,33 @@ export function isNexprintCollectionUrl(url: string): boolean {
   );
 }
 
+function isThangsHost(parsed: URL): boolean {
+  return /^(www\.)?thangs\.com$/i.test(parsed.hostname);
+}
+
+/** See isThingiverseThingUrl. `/designer/<user>/3d-model/<name>-<id>` (also under `/prints`, and with a subpage), or
+ *  `/m/<id>`. */
+export function isThangsModelUrl(url: string): boolean {
+  const parsed = parseUrl(url);
+  if (!parsed || !isThangsHost(parsed)) return false;
+  return (
+    /^\/(?:prints\/)?designer\/[^/]+\/3d-model\/(?:[^/]*-)?\d+(?:\/.*)?$/i.test(parsed.pathname) ||
+    /^\/m\/\d+\/?$/i.test(parsed.pathname)
+  );
+}
+
+/** A Thangs collection (`/designer/<user>/collection/<name>-<id>`, `/mythangs/collections/<id>`) or the user's own
+ *  likes (`/mythangs/liked-models`). */
+export function isThangsListUrl(url: string): boolean {
+  const parsed = parseUrl(url);
+  if (!parsed || !isThangsHost(parsed)) return false;
+  return (
+    /^\/designer\/[^/]+\/collection\/(?:[^/]*-)?\d+(?:\/.*)?$/i.test(parsed.pathname) ||
+    /^\/(?:mythangs\/collections|c)\/\d+\/?$/i.test(parsed.pathname) ||
+    /^\/mythangs\/liked-models\/?$/i.test(parsed.pathname)
+  );
+}
+
 export const IMPORT_LINK_EXAMPLES: Record<ImportProviderKey, { model: string; collection: string }> = {
   makerworld: {
     model: "https://makerworld.com/en/models/123456-example-model",
@@ -224,5 +253,9 @@ export const IMPORT_LINK_EXAMPLES: Record<ImportProviderKey, { model: string; co
   nexprint: {
     model: "https://www.nexprint.com/en/models/G1234567",
     collection: "https://www.nexprint.com/en/collection/G12345678",
+  },
+  thangs: {
+    model: "https://thangs.com/designer/username/3d-model/Example%20Model-1234567",
+    collection: "https://thangs.com/designer/username/collection/Example%20Collection-123456",
   },
 };

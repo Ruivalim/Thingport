@@ -99,6 +99,12 @@ export function captureProviderAccount(hostname: string): void {
     void send("SYNC_NEXPRINT_SESSION");
     return;
   }
+  if (/(^|\.)thangs\.com$/i.test(hostname)) {
+    captured = true;
+    // Its sign-in downloads the files; Thingport renews it from the refresh token, so it's sent once it changes.
+    void send("SYNC_THANGS_SESSION");
+    return;
+  }
   if (hostname === "space.snapmaker.com") {
     captured = true;
     // Its sign-in downloads the files, and lasts a day: kept fresh by the background, and sent on.

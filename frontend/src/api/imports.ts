@@ -476,6 +476,30 @@ export const importsApi = {
     return res.json();
   },
 
+  /** The user's Thangs likes, or a collection, read with their Thangs sign-in. */
+  listThangsListEntries: async (payload: ImportLinkPayload): Promise<ImportCollectionEntriesResult> => {
+    const res = await fetch(`${apiBase()}/import/thangs-list/entries`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Could not load this list"));
+    return res.json();
+  },
+
+  /** Returns immediately; ImportJobContext polls the job. */
+  fromThangsList: async (payload: ImportLinkPayload & { model_ids: string[] }): Promise<{ job_id: string }> => {
+    const res = await fetch(`${apiBase()}/import/thangs-list`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Thangs import failed"));
+    return res.json();
+  },
+
   /** MakerOnline gives its files only to its own pages: the link waits for Thingport Grab's next visit there. */
   queueMakeronline: async (
     payload: ImportLinkPayload & { scope: MakerworldProfileScope },

@@ -15,6 +15,7 @@ export const PROVIDERS = [
   "makeronline",
   "crealitycloud",
   "nexprint",
+  "thangs",
 ] as const;
 export type Provider = (typeof PROVIDERS)[number];
 
@@ -27,6 +28,7 @@ const PROVIDER_NAMES: Record<Provider, string> = {
   makeronline: "MakerOnline",
   crealitycloud: "Creality Cloud",
   nexprint: "NexPrint",
+  thangs: "Thangs",
 };
 
 const SETTING_KEY = "disabled_providers";

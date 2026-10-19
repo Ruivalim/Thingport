@@ -17,10 +17,7 @@ type Logo = {
 };
 
 /** Listed so people know they're on the way; Grab does nothing on them yet. */
-const COMING_SOON = [
-  { id: "thangs", name: "Thangs" },
-  { id: "cults3d", name: "Cults3D" },
-] as const;
+const COMING_SOON = [{ id: "cults3d", name: "Cults3D" }] as const;
 
 // Same glyphs as the web app's providerLogos.tsx.
 const LOGOS: Record<

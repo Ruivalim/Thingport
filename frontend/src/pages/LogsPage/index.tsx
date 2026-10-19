@@ -166,6 +166,7 @@ export default function LogsPage({ onUnauthorized }: Props) {
           makeronline: "MakerOnline",
           crealitycloud: "Creality Cloud",
           nexprint: "NexPrint",
+          thangs: "Thangs",
         };
         const provider = typeof d.provider === "string" ? (names[d.provider] ?? d.provider) : "";
         return t(d.enabled ? "adminSettings.logs.providerOn" : "adminSettings.logs.providerOff", { provider });

@@ -22,6 +22,7 @@ import { scheduleSnapmakerRenewal, SNAPMAKER_ALARM, syncSnapmakerSession } from 
 import { importMakeronlineModel, runWaitingImports, syncMakeronlineSession } from "./makeronline";
 import { syncCrealitycloudSession } from "./crealitycloudSession";
 import { syncNexprintSession } from "./nexprintSession";
+import { syncThangsSession } from "./thangsSession";
 import { onPairingTabClosed, onPairingTabUrl, startPairing } from "./pairing";
 import { openSetup } from "./setup";
 import { setTabIconState } from "./tabIcon";
@@ -46,6 +47,7 @@ listen<BackgroundMessages>({
   SYNC_MAKERONLINE_SESSION: () => syncMakeronlineSession(),
   SYNC_CREALITYCLOUD_SESSION: () => syncCrealitycloudSession(),
   SYNC_NEXPRINT_SESSION: () => syncNexprintSession(),
+  SYNC_THANGS_SESSION: () => syncThangsSession(),
   IMPORT_MAKERONLINE_MODEL: (payload, sender) => importMakeronlineModel(senderTabId(sender), payload),
   RUN_MAKERONLINE_WAITING: (_payload, sender) => runWaitingImports(senderTabId(sender)),
   PRINTABLES_PUSH_DUE: ({ now }) => printablesPushDue({ now }),

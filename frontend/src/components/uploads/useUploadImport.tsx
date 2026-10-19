@@ -35,6 +35,8 @@ import {
   isCrealitycloudModelUrl,
   isNexprintCollectionUrl,
   isNexprintModelUrl,
+  isThangsListUrl,
+  isThangsModelUrl,
   isThingiverseCollectionUrl,
   isThingiverseLikesUrl,
   isThingiverseThingUrl,
@@ -78,6 +80,7 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
     startCrealitycloudListImport,
     startNexprintProfilesImport,
     startNexprintCollectionImport,
+    startThangsListImport,
     startLinksImport,
   } = useImportJob();
   const isBusy = uploading || importing || zipPrompt.isOpen || collectionPrompt.isOpen || importModePrompt.isOpen;
@@ -453,6 +456,33 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
         return;
       }
 
+      if (isThangsListUrl(url)) {
+        setImporting(false);
+        await collectionPrompt.prompt({
+          label: url,
+          loadEntries: async () => {
+            try {
+              return await importsApi.listThangsListEntries(payload);
+            } catch (err) {
+              if (err instanceof UnauthorizedError) onUnauthorized?.();
+              throw err;
+            }
+          },
+          onImportSelected: async (modelIds: string[]) => {
+            try {
+              await startThangsListImport({ ...payload, model_ids: modelIds });
+            } catch (err) {
+              if (err instanceof UnauthorizedError) {
+                onUnauthorized?.();
+                return;
+              }
+              throw err;
+            }
+          },
+        });
+        return;
+      }
+
       if (isCrealitycloudListUrl(url)) {
         setImporting(false);
         await collectionPrompt.prompt({
@@ -540,7 +570,8 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
         isMyminifactoryObjectUrl(url) ||
         isSnapmakerModelUrl(url) ||
         isCrealitycloudModelUrl(url) ||
-        isNexprintModelUrl(url)
+        isNexprintModelUrl(url) ||
+        isThangsModelUrl(url)
       ) {
         // The backend splits these into plates itself.
         const imported = await importsApi.fromLink(payload);

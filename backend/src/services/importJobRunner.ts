@@ -26,6 +26,8 @@ import {
   SNAPMAKER_SESSION_CODE,
   CREALITYCLOUD_SESSION_CODE,
   NEXPRINT_SESSION_CODE,
+  THANGS_SESSION_CODE,
+  THANGS_DOWNLOAD_LIMIT_CODE,
   type ImportRequestBody,
 } from "./importService";
 import {
@@ -47,6 +49,8 @@ import {
 import { CREALITYCLOUD_CONNECT, getUserCrealitycloudAuth } from "./crealitycloudSessionService";
 import { nexprintModelUrl, parseNexprintModelUrl, resolveNexprintModel, selectNexprintProfiles } from "./nexprintApi";
 import { getUserNexprintToken, NEXPRINT_CONNECT } from "./nexprintSessionService";
+import { parseThangsModelUrl, thangsModelUrl } from "./thangsApi";
+import { getUserThangsToken, THANGS_CONNECT } from "./thangsSessionService";
 import { queueGrabImport } from "./grabImportService";
 import { upsertAuthorFromImport } from "./authorService";
 import { extractZipEntriesToPrints } from "./zipService";
@@ -87,6 +91,7 @@ type MakerworldProfilesImportJobBody = ImportRequestBody & { scope: Exclude<Make
 type SnapmakerListImportJobBody = ImportRequestBody & { model_ids: string[]; list: SnapmakerList };
 type CrealitycloudListImportJobBody = ImportRequestBody & { model_ids: string[]; title: string };
 type NexprintCollectionImportJobBody = ImportRequestBody & { model_ids: string[]; title: string };
+type ThangsListImportJobBody = ImportRequestBody & { model_ids: string[]; title: string };
 
 // Why a design failed, so a batch reads as one clear cause instead of "N failed". Once a CAPTCHA
 // ("rateLimited"), the daily download limit, an auth failure or a Cloudflare block ("blocked")
@@ -107,14 +112,19 @@ function classifyImportFailure(err: unknown): ImportFailureReason {
       err.code === MAKERWORLD_AUTH_CODE ||
       err.code === SNAPMAKER_SESSION_CODE ||
       err.code === CREALITYCLOUD_SESSION_CODE ||
-      err.code === NEXPRINT_SESSION_CODE
+      err.code === NEXPRINT_SESSION_CODE ||
+      err.code === THANGS_SESSION_CODE
     ) {
       return "auth";
     }
     if (err.code === CLOUDFLARE_BLOCKED_CODE) return "blocked";
     if (err.code === PROVIDER_DISABLED_CODE) return "disabled";
     if (err.status === 403 || err.status === 404) return "unavailable";
-    if (err.status === 429) return err.code === MAKERWORLD_DOWNLOAD_LIMIT_CODE ? "downloadLimit" : "rateLimited";
+    if (err.status === 429) {
+      return err.code === MAKERWORLD_DOWNLOAD_LIMIT_CODE || err.code === THANGS_DOWNLOAD_LIMIT_CODE
+        ? "downloadLimit"
+        : "rateLimited";
+    }
     if (err.status === 401) return "auth";
   }
   return "other";
@@ -329,6 +339,7 @@ const CREALITYCLOUD_AUTH_TEXT =
   "Creality Cloud turned your sign-in down — visit crealitycloud.com signed in with Thingport Grab, then retry";
 const NEXPRINT_AUTH_TEXT =
   "NexPrint turned your sign-in down — visit nexprint.com signed in with Thingport Grab, then retry";
+const THANGS_AUTH_TEXT = "Thangs turned your sign-in down — visit thangs.com signed in with Thingport Grab, then retry";
 
 /** A provider whose print profiles import by link, each as a plate of one model. */
 type ProfilesProvider = {
@@ -583,9 +594,9 @@ export async function runCollectionImportJob(
 }
 
 /** A provider whose models import one by one with a token: Thingiverse's and MyMiniFactory's instance-wide one, or
- *  the user's own Snapmaker or Creality Cloud sign-in. */
+ *  the user's own Snapmaker, Creality Cloud, NexPrint or Thangs sign-in. */
 type TokenBatchProvider = {
-  provider: "thingiverse" | "myminifactory" | "snapmaker" | "crealitycloud" | "nexprint";
+  provider: "thingiverse" | "myminifactory" | "snapmaker" | "crealitycloud" | "nexprint" | "thangs";
   getToken: () => Promise<string | null>;
   notConfigured: string;
   modelUrl: (id: string) => string;
@@ -647,8 +658,20 @@ function nexprintBatch(userId: string): TokenBatchProvider {
   };
 }
 
+function thangsBatch(userId: string): TokenBatchProvider {
+  return {
+    provider: "thangs",
+    getToken: () => getUserThangsToken(userId),
+    notConfigured: THANGS_CONNECT,
+    modelUrl: (id) => thangsModelUrl(id),
+    rateLimitText: "blocked by Thangs' rate limit — wait a while, then retry",
+    authText: `failed because ${THANGS_AUTH_TEXT}`,
+  };
+}
+
 /** Shared by the Thingiverse Likes and Collection imports, MyMiniFactory's collections, Snapmaker's likes and
- *  bookmarks, Creality Cloud's likes and collections, and NexPrint's collections.
+ *  bookmarks, Creality Cloud's likes and collections, NexPrint's collections, and Thangs' likes and collections.
+ * Once the provider's daily download limit is reached, the rest aren't asked for.
  * Successful imports are filed into the collection named by `resolveCollectionTitle`, which runs
  * afterwards so it costs no API call when nothing was imported. */
 async function runTokenBatchImportJob(
@@ -672,12 +695,21 @@ async function runTokenBatchImportJob(
     let providerOff = 0;
     let rateLimited = 0;
     let authFailed = 0;
+    let downloadLimited = 0;
     const failed: string[] = [];
     const successPrintIds: string[] = [];
     log.info(`${source.provider} job started`, { job: jobId, url: body.url, models: ids.length });
 
     await mapWithConcurrency(ids, COLLECTION_IMPORT_CONCURRENCY, async (thingId, index) => {
       const thingUrl = source.modelUrl(thingId);
+      if (downloadLimited) {
+        // The limit is the account's for the day: every other download would meet it too.
+        failed.push(thingId);
+        downloadLimited++;
+        processed++;
+        await updateJob(jobId, { processed, failedCount: failed.length }).catch(() => undefined);
+        return;
+      }
       const itemBody: ImportRequestBody = {
         url: thingUrl,
         notes: body.notes ?? null,
@@ -697,13 +729,14 @@ async function runTokenBatchImportJob(
         else if (reason === "rateLimited") rateLimited++;
         else if (reason === "auth") authFailed++;
         else if (reason === "disabled") providerOff++;
+        else if (reason === "downloadLimit") downloadLimited++;
       } finally {
         processed++;
         await updateJob(jobId, { processed, imported, alreadyInLibrary, failedCount: failed.length }).catch(
           () => undefined,
         );
       }
-      if (index < ids.length - 1) await sleep(IMPORT_COLLECTION_DELAY_MS);
+      if (index < ids.length - 1 && !downloadLimited) await sleep(IMPORT_COLLECTION_DELAY_MS);
     });
 
     let resultCollectionId: string | null = null;
@@ -747,11 +780,16 @@ async function runTokenBatchImportJob(
 
     const bodyParts: string[] = [];
     if (alreadyInLibrary) bodyParts.push(`${alreadyInLibrary} already in your library`);
-    const otherFailed = failed.length - unavailable - rateLimited - authFailed - providerOff;
-    if (unavailable) bodyParts.push(`${unavailable} unavailable (private, deleted, or hidden)`);
+    const otherFailed = failed.length - unavailable - rateLimited - authFailed - providerOff - downloadLimited;
+    if (unavailable) bodyParts.push(`${unavailable} unavailable (private, deleted, paid, or hidden)`);
     if (providerOff) bodyParts.push(`${providerOff} skipped — ${PROVIDER_OFF_TEXT(name)}`);
     if (rateLimited) bodyParts.push(`${rateLimited} ${source.rateLimitText}`);
     if (authFailed) bodyParts.push(`${authFailed} ${source.authText}`);
+    if (downloadLimited) {
+      bodyParts.push(
+        `${downloadLimited} not downloaded — ${name}'s daily download limit was reached, retry the same collection tomorrow`,
+      );
+    }
     if (otherFailed) bodyParts.push(`${otherFailed} failed`);
     const label = sourceLabel(collectionTitle);
     await createNotification(userId, {
@@ -862,6 +900,23 @@ export async function runNexprintCollectionImportJob(
     jobId,
     userId,
     nexprintBatch(userId),
+    body,
+    body.model_ids,
+    async () => body.title,
+    (collectionTitle) => `"${collectionTitle}"`,
+  );
+}
+
+/** The user's Thangs likes, or a collection, filed into a collection named after it. */
+export async function runThangsListImportJob(
+  jobId: string,
+  userId: string,
+  body: ThangsListImportJobBody,
+): Promise<void> {
+  await runTokenBatchImportJob(
+    jobId,
+    userId,
+    thangsBatch(userId),
     body,
     body.model_ids,
     async () => body.title,
@@ -1079,7 +1134,13 @@ function authStopText(url: string): string {
   if (parseSnapmakerModelUrl(url)) return SNAPMAKER_AUTH_TEXT;
   if (parseCrealitycloudModelUrl(url)) return CREALITYCLOUD_AUTH_TEXT;
   if (parseNexprintModelUrl(url)) return NEXPRINT_AUTH_TEXT;
+  if (parseThangsModelUrl(url)) return THANGS_AUTH_TEXT;
   return "the MakerWorld session expired — update the cookie in Settings, then retry";
+}
+
+/** Whose daily download limit a link met: Thangs' or MakerWorld's, the only ones with one. */
+function downloadLimitSite(url: string | null): string {
+  return url && parseThangsModelUrl(url) ? "Thangs" : "MakerWorld";
 }
 
 function isTransientImportFailure(err: unknown): boolean {
@@ -1217,7 +1278,7 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
         if (stopReason) {
           itemError = {
             rateLimited: "blocked by a MakerWorld CAPTCHA challenge — retry once it clears (usually 1-4 hours)",
-            downloadLimit: "MakerWorld's daily download limit was reached — retry tomorrow",
+            downloadLimit: `${downloadLimitSite(stopUrl)}'s daily download limit was reached — retry tomorrow`,
             auth: authStopText(stopUrl ?? item.url),
             blocked: BLOCKED_RETRY_TEXT,
           }[stopReason];
@@ -1247,7 +1308,7 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
               stopReason = result.stopReason;
               itemError += {
                 rateLimited: " (MakerWorld CAPTCHA challenge — retry once it clears)",
-                downloadLimit: " (MakerWorld's daily download limit — retry tomorrow)",
+                downloadLimit: ` (${downloadLimitSite(item.url)}'s daily download limit — retry tomorrow)`,
                 auth: ` (${authStopText(item.url)})`,
                 blocked: ` (${BLOCKED_RETRY_TEXT})`,
               }[result.stopReason];
@@ -1280,12 +1341,15 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
       if (stopReason && !stopUrl) stopUrl = item.url;
       // The connection failed, not the models: the rest go back to unseen, for the next sync to find
       // again once it works. A link that got some of its profiles in is done.
-      // A sync's provider turned off: they come in once it's back on.
+      // A sync's provider turned off: they come in once it's back on. Thangs' daily download limit resets by itself,
+      // so its models wait for a later sync too, rather than for someone to start them again.
       const deferReason = providerOff
         ? "disabled"
         : stopReason === "auth" || stopReason === "blocked"
           ? stopReason
-          : null;
+          : stopReason === "downloadLimit" && downloadLimitSite(stopUrl) === "Thangs"
+            ? "downloadLimit"
+            : null;
       if (job.collectionSyncId && deferReason) {
         const nothingIn = itemError !== null && !partlyIn;
         if (!nothingIn) {
@@ -1362,7 +1426,7 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
       );
     } else if (stopReason === "downloadLimit") {
       bodyParts.push(
-        `the rest not downloaded — MakerWorld's daily download limit was reached, retry the failed links tomorrow`,
+        `the rest not downloaded — ${downloadLimitSite(stopUrl)}'s daily download limit was reached, retry the failed links tomorrow`,
       );
     } else if (stopReason === "auth") {
       bodyParts.push(`the rest failed because ${authStopText(stopUrl ?? job.sourceUrl)}`);
@@ -1412,7 +1476,7 @@ async function modelNames(printIds: string[]): Promise<string> {
 }
 
 function syncStopText(reason: StopReason, provider: string): string {
-  if (reason === "downloadLimit") return "MakerWorld's daily download limit was reached";
+  if (reason === "downloadLimit") return `${providerName(provider)}'s daily download limit was reached`;
   if (reason === "blocked") return `Cloudflare blocked ${providerName(provider)} and FlareSolverr didn't get past it`;
   if (reason === "auth") {
     return provider === "makerworld"
@@ -1466,7 +1530,7 @@ async function noteMakerworldRejected(userId: string): Promise<void> {
   );
 }
 
-type SyncDeferral = { count: number; reason: "auth" | "blocked" | "disabled" };
+type SyncDeferral = { count: number; reason: "auth" | "blocked" | "disabled" | "downloadLimit" };
 
 /** Takes the sync job's links that haven't run (and `currentItemId`'s, which got nothing in) out of
  *  the job, and out of the sync's seen ids, so its next check queues them again. How many. */
@@ -1497,9 +1561,11 @@ async function deferSyncRest(job: ImportJob, currentItemId: string | null, reaso
               ? `${providerName(sync.provider)} is turned off on this Thingport`
               : reason === "blocked"
                 ? `Cloudflare blocked ${providerName(sync.provider)} and FlareSolverr didn't get past it`
-                : sync.provider === "makerworld"
-                  ? MAKERWORLD_REJECTED_ERROR
-                  : `${providerName(sync.provider)} turned Thingport's sign-in down`,
+                : reason === "downloadLimit"
+                  ? `${providerName(sync.provider)}'s daily download limit was reached`
+                  : sync.provider === "makerworld"
+                    ? MAKERWORLD_REJECTED_ERROR
+                    : `${providerName(sync.provider)} turned Thingport's sign-in down`,
         },
       });
     }
@@ -1536,9 +1602,11 @@ async function notifySyncJobDone(
         ? `${more} will come in on the next sync once you connect MakerWorld again in Configuration → Providers: MakerWorld turned your sign-in down, and it may have expired.`
         : deferred.reason === "disabled"
           ? `${more} will come in on a later sync: ${PROVIDER_OFF_TEXT(providerName(sync.provider))}.`
-          : deferred.reason === "auth"
-            ? `${more} will come in on a later sync: ${providerName(sync.provider)} turned Thingport's sign-in down.`
-            : `${more} will come in on a later sync: Cloudflare blocked ${providerName(sync.provider)} and FlareSolverr didn't get past it. An admin can check FlareSolverr in Administration → Connections.`,
+          : deferred.reason === "downloadLimit"
+            ? `${more} will come in on a later sync: ${providerName(sync.provider)}'s daily download limit for your account was reached.`
+            : deferred.reason === "auth"
+              ? `${more} will come in on a later sync: ${providerName(sync.provider)} turned Thingport's sign-in down.`
+              : `${more} will come in on a later sync: Cloudflare blocked ${providerName(sync.provider)} and FlareSolverr didn't get past it. An admin can check FlareSolverr in Administration → Connections.`,
     );
   }
   if (failedCount) {

@@ -154,7 +154,8 @@ export type ImportProvider =
   | "snapmaker"
   | "makeronline"
   | "crealitycloud"
-  | "nexprint";
+  | "nexprint"
+  | "thangs";
 /** An admin can turn a provider off for the whole instance; menus hide it then. */
 export type ProviderSetting = { id: ImportProvider; enabled: boolean };
 
@@ -454,6 +455,25 @@ export const settingsApi = {
     });
     if (res.status === 401) throw new UnauthorizedError();
     if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to update NexPrint settings"));
+    return res.json();
+  },
+
+  // The user's own Thangs sign-in (its accessToken and refreshToken cookies), which Thingport Grab sends on. Write-only.
+  getThangsSession: async (): Promise<{ configured: boolean; expired: boolean }> => {
+    const res = await fetch(`${apiBase()}/settings/thangs-session`, { headers: authHeaders() });
+    assertOk(res, "Failed to load Thangs settings");
+    return res.json();
+  },
+
+  /** Checked with Thangs before it's saved. Takes a token, either cookie, or a whole Cookie header. */
+  updateThangsSession: async (token: string | null): Promise<{ configured: boolean }> => {
+    const res = await fetch(`${apiBase()}/settings/thangs-session`, {
+      method: "PATCH",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ token, verify: true }),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to update Thangs settings"));
     return res.json();
   },
 

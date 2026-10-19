@@ -80,6 +80,7 @@ export async function seedDefaultCategories(tx: Prisma.TransactionClient, userId
         makeronlineCatIds: node.makeronlineCatIds ?? [],
         crealitycloudCatIds: node.crealitycloudCatIds ?? [],
         nexprintCatIds: node.nexprintCatIds ?? [],
+        thangsCatIds: node.thangsCatIds ?? [],
       },
     });
     let i = 0;

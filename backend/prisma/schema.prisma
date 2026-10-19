@@ -100,6 +100,16 @@ model User {
   nexprintExpiresAt        DateTime?
   // When NexPrint last turned the token down.
   nexprintRejectedAt       DateTime?
+  // The user's Thangs sign-in: the accessToken cookie (a 7-day JWT, sent as a Bearer token) and the refreshToken
+  // cookie that renews it, which lasts about a year and isn't replaced on use. Thingport renews the access token
+  // itself; Thingport Grab sends both whenever the browser's change.
+  thangsToken              String?
+  thangsRefreshToken       String?
+  // The access token's own expiry, from its JWT.
+  thangsExpiresAt          DateTime?
+  thangsUserId             String?
+  // When Thangs last turned the sign-in down, refresh token included.
+  thangsRejectedAt         DateTime?
   slicer                   String?
   // "light" | "dark" | "system"; null means never set.
   themePreference          String?
@@ -177,6 +187,8 @@ model Category {
   crealitycloudCatIds Int[]      @default([])
   // Text: NexPrint's ids are 16 digits, past Int, and a BigInt would break JSON serialization of the row.
   nexprintCatIds      String[]   @default([])
+  // Thangs has no category ids, only paths: "Tools & Organizers", or "Tools & Organizers/Multiboard".
+  thangsCatIds        String[]   @default([])
   prints              Print[]
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
@@ -191,6 +203,7 @@ model Category {
   @@index([makeronlineCatIds], type: Gin)
   @@index([crealitycloudCatIds], type: Gin)
   @@index([nexprintCatIds], type: Gin)
+  @@index([thangsCatIds], type: Gin)
 }
 
 model Print {
