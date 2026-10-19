@@ -19,6 +19,7 @@ import CollectionActionsMenu from "./CollectionActionsMenu";
 import CollectionBookmarkButton from "./CollectionBookmarkButton";
 import CollectionSyncDialog from "./CollectionSyncDialog";
 import CollectionSyncIndicator from "../../components/CollectionSyncIndicator";
+import InfoBanner from "../../components/InfoBanner";
 import { CardSkeletons } from "../../components/media/CardSkeleton";
 import { cardGridSx } from "../../components/media/cardGrid";
 
@@ -174,17 +175,14 @@ export default function CollectionDetailPage({
 
   return (
     <Stack spacing={2} sx={{ maxWidth: "1920px", mx: "auto" }}>
-      {collection.description && (
-        <Typography variant="body2" color="text.secondary">
-          {collection.description}
-        </Typography>
-      )}
       <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
         {collection.sync && <CollectionSyncIndicator sync={collection.sync} onClick={() => setSyncOpen(true)} />}
         <Box sx={{ ml: "auto" }}>
           <SortTabs value={sortMode} onChange={setSortMode} />
         </Box>
       </Box>
+      {/* Its name is already the page's title. */}
+      <InfoBanner description={collection.description} />
       {syncOpen && collection.sync && (
         <CollectionSyncDialog
           collection={{ ...collection, sync: collection.sync }}
