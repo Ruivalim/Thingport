@@ -58,6 +58,7 @@ import {
   getUserCrealitycloudAuth,
   markCrealitycloudSessionRejected,
 } from "./crealitycloudSessionService";
+import { fetchNexprintCollection } from "./nexprintApi";
 import { notifyGrabImportsQueued, queueGrabImport } from "./grabImportService";
 import { getSnapmakerConnection, getUserSnapmakerToken, markSnapmakerTokenRejected } from "./snapmakerSessionService";
 import {
@@ -170,6 +171,11 @@ export async function fetchListing(
       return (await fetchCrealitycloudLikes(auth)).entries.map((e) => e.modelId);
     }
     const listing = await fetchCrealitycloudCollection(id);
+    return listing ? listing.entries.map((e) => e.modelId) : null;
+  }
+  if (sync.provider === "nexprint") {
+    // Collections, the private ones too, list without a sign-in; only their files need one.
+    const listing = await fetchNexprintCollection(id);
     return listing ? listing.entries.map((e) => e.modelId) : null;
   }
   throw new Error(`Unknown provider "${sync.provider}"`);

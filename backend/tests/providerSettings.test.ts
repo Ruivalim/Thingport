@@ -38,6 +38,7 @@ afterAll(async () => {
     "snapmaker",
     "makeronline",
     "crealitycloud",
+    "nexprint",
   ] as const)
     await setProviderEnabled(provider, true);
 });
@@ -54,6 +55,7 @@ describe("turning providers off", () => {
       snapmaker: true,
       makeronline: true,
       crealitycloud: true,
+      nexprint: true,
     });
 
     expect(
@@ -73,6 +75,7 @@ describe("turning providers off", () => {
       snapmaker: true,
       makeronline: true,
       crealitycloud: true,
+      nexprint: true,
     });
   });
 

@@ -32,6 +32,13 @@ import {
   listCrealitycloudCollections,
 } from "./crealitycloudApi";
 import { getCrealitycloudConnection, getUserCrealitycloudAuth } from "./crealitycloudSessionService";
+import {
+  fetchNexprintCollection,
+  listNexprintCollections,
+  NexprintAuthError,
+  nexprintCollectionUrl,
+} from "./nexprintApi";
+import { getNexprintConnection, getUserNexprintToken } from "./nexprintSessionService";
 import { MakerworldAuthError, MakerworldCaptchaError, extractMakerworldBearerToken } from "./makerworldCloudApi";
 import { fetchMakerworldCollectionCard, listMakerworldOwnCollections } from "./makerworldCollections";
 import { getUserMakerworldCookie } from "./makerworldCookieService";
@@ -74,6 +81,7 @@ export const BROWSABLE_PROVIDERS = [
   "snapmaker",
   "makeronline",
   "crealitycloud",
+  "nexprint",
 ] as const;
 export type BrowsableProvider = (typeof BROWSABLE_PROVIDERS)[number];
 
@@ -97,22 +105,25 @@ export type ProviderCollectionOut = {
 };
 
 export async function getProviderAccounts(userId: string): Promise<ProviderAccountsOut> {
-  const [user, thingiverseToken, myminifactoryKey, snapmaker, makeronline, crealitycloud] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        makerworldCookie: true,
-        printablesHandle: true,
-        thingiverseUsername: true,
-        myminifactoryUsername: true,
-      },
-    }),
-    getThingiverseAccessToken(),
-    getMyminifactoryApiKey(),
-    getSnapmakerConnection(userId),
-    getMakeronlineConnection(userId),
-    getCrealitycloudConnection(userId),
-  ]);
+  const [user, thingiverseToken, myminifactoryKey, snapmaker, makeronline, crealitycloud, nexprint] = await Promise.all(
+    [
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          makerworldCookie: true,
+          printablesHandle: true,
+          thingiverseUsername: true,
+          myminifactoryUsername: true,
+        },
+      }),
+      getThingiverseAccessToken(),
+      getMyminifactoryApiKey(),
+      getSnapmakerConnection(userId),
+      getMakeronlineConnection(userId),
+      getCrealitycloudConnection(userId),
+      getNexprintConnection(userId),
+    ],
+  );
   return {
     makerworld: { connected: Boolean(extractMakerworldBearerToken(user?.makerworldCookie)), account: null },
     printables: { connected: true, account: user?.printablesHandle ?? null },
@@ -121,6 +132,7 @@ export async function getProviderAccounts(userId: string): Promise<ProviderAccou
     snapmaker: { connected: snapmaker === "connected", account: null },
     makeronline: { connected: makeronline === "connected", account: null },
     crealitycloud: { connected: crealitycloud === "connected", account: null },
+    nexprint: { connected: nexprint === "connected", account: null },
   };
 }
 
@@ -169,6 +181,8 @@ export async function setProviderAccount(
     throw new HttpError(400, "MakerOnline is linked through its sign-in in Configuration > Providers");
   } else if (provider === "crealitycloud") {
     throw new HttpError(400, "Creality Cloud is linked through its sign-in in Configuration > Providers");
+  } else if (provider === "nexprint") {
+    throw new HttpError(400, "NexPrint is linked through its sign-in in Configuration > Providers");
   } else {
     throw new HttpError(400, "MakerWorld is linked through its cookie in Configuration > Providers");
   }
@@ -207,6 +221,7 @@ async function providerCall<T>(call: () => Promise<T>): Promise<T> {
     if (err instanceof SnapmakerAuthError) throw new HttpError(400, err.message);
     if (err instanceof MakeronlineAuthError) throw new HttpError(400, err.message);
     if (err instanceof CrealitycloudAuthError) throw new HttpError(400, err.message);
+    if (err instanceof NexprintAuthError) throw new HttpError(400, err.message);
     throw err;
   }
 }
@@ -274,6 +289,31 @@ async function crealitycloudCollectionCard(collectionId: string): Promise<Provid
   });
 }
 
+/** The user's own collections, read with their sign-in. */
+async function nexprintCards(userId: string): Promise<ProviderCollectionCard[]> {
+  const token = await getUserNexprintToken(userId);
+  if (!token)
+    throw new HttpError(409, "Connect NexPrint in Configuration > Providers, or visit it with Thingport Grab");
+  return providerCall(() => listNexprintCollections(token));
+}
+
+/** Any collection, by its "G" id: NexPrint lists even private ones without a sign-in. */
+async function nexprintCollectionCard(collectionId: string): Promise<ProviderCollectionCard | null> {
+  return providerCall(async () => {
+    const collection = await fetchNexprintCollection(collectionId, 4);
+    if (!collection) return null;
+    return {
+      id: collectionId,
+      name: collection.info.name,
+      url: nexprintCollectionUrl(collectionId, collection.info.ownerId),
+      modelCount: collection.info.modelCount,
+      thumbnails: collection.entries.flatMap((entry) => (entry.cover ? [entry.cover] : [])),
+      private: collection.info.private,
+      owner: null,
+    };
+  });
+}
+
 async function withSyncs(
   userId: string,
   provider: SyncProvider,
@@ -330,6 +370,8 @@ export async function listProviderCollections(
     cards = await makeronlineCards(userId);
   } else if (provider === "crealitycloud") {
     cards = await crealitycloudCards(userId);
+  } else if (provider === "nexprint") {
+    cards = await nexprintCards(userId);
   } else if (provider === "myminifactory") {
     const key = await requireMyminifactoryKey();
     if (!user?.myminifactoryUsername) throw new HttpError(409, "Tell Thingport your MyMiniFactory username first");
@@ -357,7 +399,7 @@ export async function lookupProviderCollection(userId: string, url: string): Pro
   if (!source)
     throw new HttpError(
       400,
-      "That isn't a MakerWorld, Printables, Thingiverse, MyMiniFactory, Snapmaker Space, MakerOnline or Creality Cloud collection link",
+      "That isn't a MakerWorld, Printables, Thingiverse, MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud or NexPrint collection link",
     );
   await assertProviderEnabled(source.provider);
   let card: ProviderCollectionCard | null;
@@ -391,6 +433,8 @@ export async function lookupProviderCollection(userId: string, url: string): Pro
     card = source.externalId.startsWith("likes-")
       ? ((await crealitycloudCards(userId)).find((own) => own.id === source.externalId) ?? null)
       : await crealitycloudCollectionCard(source.externalId);
+  } else if (source.provider === "nexprint") {
+    card = await nexprintCollectionCard(source.externalId);
   } else if (source.provider === "snapmaker") {
     // Only the user's own likes and bookmarks are there to find.
     card = (await snapmakerCards(userId)).find((own) => own.id === source.externalId) ?? null;
@@ -424,13 +468,13 @@ export async function enableSyncFromApp(
   if (!source)
     throw new HttpError(
       400,
-      "That isn't a MakerWorld, Printables, Thingiverse, MyMiniFactory, Snapmaker Space, MakerOnline or Creality Cloud collection link",
+      "That isn't a MakerWorld, Printables, Thingiverse, MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud or NexPrint collection link",
     );
   await assertProviderEnabled(source.provider);
   if (input.profileScope && !hasProfiles(source.provider)) {
     throw new HttpError(
       400,
-      "Only MakerWorld, Snapmaker Space, MakerOnline and Creality Cloud models have print profiles to pick",
+      "Only MakerWorld, Snapmaker Space, MakerOnline, Creality Cloud and NexPrint models have print profiles to pick",
     );
   }
 

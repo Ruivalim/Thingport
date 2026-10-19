@@ -34,6 +34,7 @@ export default function CategoryMetaDialog({ category, showSiteCatIds, onClose, 
   const [snapmakerCatIds, setSnapmakerCatIds] = useState(category.snapmaker_cat_ids);
   const [makeronlineCatIds, setMakeronlineCatIds] = useState(category.makeronline_cat_ids);
   const [crealitycloudCatIds, setCrealitycloudCatIds] = useState(category.crealitycloud_cat_ids);
+  const [nexprintCatIds, setNexprintCatIds] = useState(category.nexprint_cat_ids);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,6 +52,7 @@ export default function CategoryMetaDialog({ category, showSiteCatIds, onClose, 
         snapmakerCatIds,
         makeronlineCatIds,
         crealitycloudCatIds,
+        nexprintCatIds,
       });
       onClose();
     } catch (err) {
@@ -149,6 +151,15 @@ export default function CategoryMetaDialog({ category, showSiteCatIds, onClose, 
                 fullWidth
                 value={crealitycloudCatIds}
                 onChange={(e) => setCrealitycloudCatIds(e.target.value)}
+                disabled={saving}
+              />
+              <TextField
+                label={t("models:categories.manager.nexprintCatIdLabel")}
+                placeholder={t("models:categories.manager.catIdsPlaceholder") ?? undefined}
+                helperText={t("models:categories.manager.catIdsHelp")}
+                fullWidth
+                value={nexprintCatIds}
+                onChange={(e) => setNexprintCatIds(e.target.value)}
                 disabled={saving}
               />
             </Box>

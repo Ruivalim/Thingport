@@ -18,6 +18,7 @@ const LOGO_PROVIDERS = new Set<string>([
   "snapmaker",
   "makeronline",
   "crealitycloud",
+  "nexprint",
 ]);
 
 type Props = {

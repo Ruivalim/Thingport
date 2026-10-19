@@ -23,6 +23,7 @@ export const IMPORT_PROVIDER_INFO: Record<string, ImportProviderInfo> = {
     textColor: (theme) => (theme.palette.mode === "dark" ? "#FFFFFF" : theme.palette.background.paper),
   },
   crealitycloud: { label: "Creality Cloud", color: "#1AC686" },
+  nexprint: { label: "NexPrint", color: "#7A55E3" },
   // Direct uploads (source_provider is null).
   thingport: { label: "Thingport", color: "common.white", textColor: "common.black", outlined: true },
 };

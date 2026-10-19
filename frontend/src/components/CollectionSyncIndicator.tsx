@@ -20,6 +20,7 @@ const LOGO_PROVIDERS = new Set<string>([
   "snapmaker",
   "makeronline",
   "crealitycloud",
+  "nexprint",
 ]);
 
 /** The provider's logo with a small green tick, slim enough for a toolbar row. Opens the

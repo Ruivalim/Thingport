@@ -19,6 +19,7 @@ export const PROVIDER_ACCENTS: Record<BrowsableProvider, string> = {
   // Anycubic's blue, for the same reason: MakerOnline's own mark is black and white.
   makeronline: "#1F7AE0",
   crealitycloud: "#1AC686",
+  nexprint: "#7A55E3",
 };
 
 type Props = {
@@ -339,6 +340,47 @@ function CrealitycloudTile({ collection }: { collection: ProviderCollection }) {
   );
 }
 
+// The gradient its title sits on: dark in both themes, so the white text reads over any cover.
+const NEXPRINT_SCRIM = "linear-gradient(to top, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0) 70%)";
+
+/** NexPrint: one cover, its first model's, with the name over it, edged in its purple. */
+function NexprintTile({ collection }: { collection: ProviderCollection }) {
+  return (
+    <Box
+      sx={{
+        position: "relative",
+        borderRadius: "10px",
+        overflow: "hidden",
+        borderLeft: `3px solid ${PROVIDER_ACCENTS.nexprint}`,
+        bgcolor: "background.paper",
+      }}
+    >
+      <Thumb src={collection.thumbnails[0]} sx={{ aspectRatio: "4 / 3" }} />
+      <Box
+        sx={{
+          position: "absolute",
+          inset: 0,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "flex-end",
+          px: 1.25,
+          py: 1,
+          backgroundImage: NEXPRINT_SCRIM,
+          color: "common.white",
+        }}
+      >
+        <Typography noWrap sx={{ fontWeight: 700, fontSize: "0.875rem" }}>
+          {collection.name}
+        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", fontSize: "0.75rem", opacity: 0.85 }}>
+          <ModelCount count={collection.model_count} provider="nexprint" />
+          {collection.private && <LockOutlinedIcon sx={{ fontSize: 14, ml: "auto" }} />}
+        </Box>
+      </Box>
+    </Box>
+  );
+}
+
 const TILES: Record<BrowsableProvider, (props: { collection: ProviderCollection }) => JSX.Element> = {
   makerworld: MakerWorldTile,
   printables: PrintablesTile,
@@ -347,6 +389,7 @@ const TILES: Record<BrowsableProvider, (props: { collection: ProviderCollection 
   snapmaker: SnapmakerTile,
   makeronline: MakeronlineTile,
   crealitycloud: CrealitycloudTile,
+  nexprint: NexprintTile,
 };
 
 /** The name to show: a user's likes, and Snapmaker's likes and bookmarks, come named in English by the instance, as
@@ -468,6 +511,13 @@ export function ProviderCollectionTileSkeleton({ provider }: { provider: Browsab
           ))}
         </Box>
         <Box sx={{ px: 1.25, py: 1 }}>{lines}</Box>
+      </Box>
+    );
+  }
+  if (provider === "nexprint") {
+    return (
+      <Box aria-hidden sx={{ borderRadius: "10px", overflow: "hidden" }}>
+        <Skeleton variant="rectangular" sx={{ width: "100%", height: "auto", aspectRatio: "4 / 3" }} />
       </Box>
     );
   }

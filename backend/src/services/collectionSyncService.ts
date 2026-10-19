@@ -42,6 +42,7 @@ import {
   parseCrealitycloudLikesUrl,
 } from "./crealitycloudApi";
 import { getUserCrealitycloudId } from "./crealitycloudSessionService";
+import { nexprintCollectionUrl, nexprintModelUrl, parseNexprintCollectionUrl } from "./nexprintApi";
 import { createLog } from "./auditLog";
 import { pushedLikes } from "./providerListingsService";
 import { createNotification } from "./notificationService";
@@ -55,7 +56,14 @@ import {
 } from "../dto";
 
 export type SyncProvider =
-  "makerworld" | "printables" | "thingiverse" | "myminifactory" | "snapmaker" | "makeronline" | "crealitycloud";
+  | "makerworld"
+  | "printables"
+  | "thingiverse"
+  | "myminifactory"
+  | "snapmaker"
+  | "makeronline"
+  | "crealitycloud"
+  | "nexprint";
 
 /** `likesOf` is set for a user's likes (on Thingiverse, or the user's own on Printables), which a
  *  sync follows like a collection. */
@@ -69,12 +77,17 @@ const PROVIDER_NAMES: Record<SyncProvider, string> = {
   snapmaker: "Snapmaker Space",
   makeronline: "MakerOnline",
   crealitycloud: "Creality Cloud",
+  nexprint: "NexPrint",
 };
 
 /** Providers whose models come with print profiles a sync can pick between. */
 export function hasProfiles(provider: string): boolean {
   return (
-    provider === "makerworld" || provider === "snapmaker" || provider === "makeronline" || provider === "crealitycloud"
+    provider === "makerworld" ||
+    provider === "snapmaker" ||
+    provider === "makeronline" ||
+    provider === "crealitycloud" ||
+    provider === "nexprint"
   );
 }
 
@@ -151,6 +164,11 @@ export function parseSyncSource(url: string): SyncSource | null {
     const { userId } = crealitycloudLikes;
     return { provider: "crealitycloud", externalId: crealitycloudLikesKey(userId), url: crealitycloudLikesUrl(userId) };
   }
+  const nexprint = parseNexprintCollectionUrl(url);
+  if (nexprint) {
+    const { collectionId, ownerId } = nexprint;
+    return { provider: "nexprint", externalId: collectionId, url: nexprintCollectionUrl(collectionId, ownerId) };
+  }
   const printablesLikes = parsePrintablesLikesUrl(url);
   if (printablesLikes) {
     // Only Thingport Grab can read these, as their owner (see providerListingsService.ts).
@@ -182,6 +200,7 @@ export function modelUrlFor(provider: string, externalId: string): string {
   if (provider === "snapmaker") return snapmakerModelUrl(externalId);
   if (provider === "makeronline") return makeronlineModelUrl(externalId);
   if (provider === "crealitycloud") return crealitycloudModelUrl(externalId);
+  if (provider === "nexprint") return nexprintModelUrl(externalId);
   return `https://www.thingiverse.com/thing:${externalId}`;
 }
 
@@ -194,6 +213,7 @@ export function modelIdFromUrl(provider: string, url: string): string | null {
     snapmaker: /\/model\/(\d+)/,
     makeronline: /\/model\/(?:[^/#]+\/)?(\d+)/,
     crealitycloud: /\/model-detail\/([\w-]+)/,
+    nexprint: /\/models\/(G\d+)/i,
   };
   const pattern = patterns[provider] ?? /thing:(\d+)/;
   return url.match(pattern)?.[1] ?? null;
@@ -265,7 +285,7 @@ export async function enableSync(userId: string, input: EnableSyncInput): Promis
   if (!source)
     throw new HttpError(
       400,
-      "Only MakerWorld, Printables, Thingiverse, MyMiniFactory, MakerOnline and Creality Cloud collections, Thingiverse or your own Printables, MakerOnline and Creality Cloud likes, and your own Snapmaker Space likes and bookmarks, can be synced",
+      "Only MakerWorld, Printables, Thingiverse, MyMiniFactory, MakerOnline, Creality Cloud and NexPrint collections, Thingiverse or your own Printables, MakerOnline and Creality Cloud likes, and your own Snapmaker Space likes and bookmarks, can be synced",
     );
   if (source.provider === "printables" && source.likesOf) await assertOwnPrintablesLikes(userId, source.likesOf);
   if (source.provider === "snapmaker") await assertOwnSnapmakerList(userId, source.url);
@@ -503,8 +523,8 @@ export async function disableSync(userId: string, collectionId: string): Promise
 }
 
 /** Applies to checks and models found from now on; models already waiting in the import queue
- *  keep the profile scope they were queued with. Only MakerWorld, Snapmaker, MakerOnline and Creality Cloud models
- *  have print profiles. */
+ *  keep the profile scope they were queued with. Only MakerWorld, Snapmaker, MakerOnline, Creality Cloud and NexPrint
+ *  models have print profiles. */
 export async function updateSyncSettings(
   userId: string,
   collectionId: string,
@@ -514,7 +534,7 @@ export async function updateSyncSettings(
   if (settings.profileScope && !hasProfiles(sync.provider)) {
     throw new HttpError(
       400,
-      "Only MakerWorld, Snapmaker Space, MakerOnline and Creality Cloud models have print profiles to pick",
+      "Only MakerWorld, Snapmaker Space, MakerOnline, Creality Cloud and NexPrint models have print profiles to pick",
     );
   }
   const updated = await prisma.collectionSync.update({

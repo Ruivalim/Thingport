@@ -25,6 +25,7 @@ import {
   importPrintFromUrl,
   SNAPMAKER_SESSION_CODE,
   CREALITYCLOUD_SESSION_CODE,
+  NEXPRINT_SESSION_CODE,
   type ImportRequestBody,
 } from "./importService";
 import {
@@ -44,6 +45,8 @@ import {
   selectCrealitycloudProfiles,
 } from "./crealitycloudApi";
 import { CREALITYCLOUD_CONNECT, getUserCrealitycloudAuth } from "./crealitycloudSessionService";
+import { nexprintModelUrl, parseNexprintModelUrl, resolveNexprintModel, selectNexprintProfiles } from "./nexprintApi";
+import { getUserNexprintToken, NEXPRINT_CONNECT } from "./nexprintSessionService";
 import { queueGrabImport } from "./grabImportService";
 import { upsertAuthorFromImport } from "./authorService";
 import { extractZipEntriesToPrints } from "./zipService";
@@ -83,6 +86,7 @@ type PrintablesCollectionImportJobBody = ImportRequestBody & {
 type MakerworldProfilesImportJobBody = ImportRequestBody & { scope: Exclude<MakerworldProfileScope, "url"> };
 type SnapmakerListImportJobBody = ImportRequestBody & { model_ids: string[]; list: SnapmakerList };
 type CrealitycloudListImportJobBody = ImportRequestBody & { model_ids: string[]; title: string };
+type NexprintCollectionImportJobBody = ImportRequestBody & { model_ids: string[]; title: string };
 
 // Why a design failed, so a batch reads as one clear cause instead of "N failed". Once a CAPTCHA
 // ("rateLimited"), the daily download limit, an auth failure or a Cloudflare block ("blocked")
@@ -102,7 +106,8 @@ function classifyImportFailure(err: unknown): ImportFailureReason {
     if (
       err.code === MAKERWORLD_AUTH_CODE ||
       err.code === SNAPMAKER_SESSION_CODE ||
-      err.code === CREALITYCLOUD_SESSION_CODE
+      err.code === CREALITYCLOUD_SESSION_CODE ||
+      err.code === NEXPRINT_SESSION_CODE
     ) {
       return "auth";
     }
@@ -301,14 +306,33 @@ async function crealitycloudProfileUrls(
   };
 }
 
+/** The print profiles a scope picks from a NexPrint model, as links that each name one. */
+async function nexprintProfileUrls(
+  url: string,
+  scope: Exclude<MakerworldProfileScope, "url">,
+): Promise<{ title: string | null; urls: string[] }> {
+  const parsed = parseNexprintModelUrl(url);
+  if (!parsed) throw new HttpError(400, "Not a NexPrint model link");
+  const resolved = await resolveNexprintModel(parsed.modelId);
+  if (!resolved) throw new HttpError(404, "This NexPrint model could not be found, or isn't public.");
+  const profileIds = selectNexprintProfiles(resolved, scope, parsed.requestedProfileId);
+  if (!profileIds.length) throw new HttpError(400, "This model has no print profiles to import");
+  return {
+    title: resolved.meta.title ?? null,
+    urls: profileIds.map((profileId) => nexprintModelUrl(resolved.modelId, profileId)),
+  };
+}
+
 const SNAPMAKER_AUTH_TEXT =
   "your Snapmaker sign-in ran out — visit space.snapmaker.com with Thingport Grab, then retry";
 const CREALITYCLOUD_AUTH_TEXT =
   "Creality Cloud turned your sign-in down — visit crealitycloud.com signed in with Thingport Grab, then retry";
+const NEXPRINT_AUTH_TEXT =
+  "NexPrint turned your sign-in down — visit nexprint.com signed in with Thingport Grab, then retry";
 
 /** A provider whose print profiles import by link, each as a plate of one model. */
 type ProfilesProvider = {
-  provider: "snapmaker" | "crealitycloud";
+  provider: "snapmaker" | "crealitycloud" | "nexprint";
   name: string;
   profileUrls: typeof snapmakerProfileUrls;
   authText: string;
@@ -326,6 +350,13 @@ const CREALITYCLOUD_PROFILES: ProfilesProvider = {
   name: "Creality Cloud",
   profileUrls: crealitycloudProfileUrls,
   authText: CREALITYCLOUD_AUTH_TEXT,
+};
+
+const NEXPRINT_PROFILES: ProfilesProvider = {
+  provider: "nexprint",
+  name: "NexPrint",
+  profileUrls: nexprintProfileUrls,
+  authText: NEXPRINT_AUTH_TEXT,
 };
 
 /** Imports several print profiles of one model as one model with a file per profile. */
@@ -397,6 +428,14 @@ export function runCrealitycloudProfilesImportJob(
   body: MakerworldProfilesImportJobBody,
 ): Promise<void> {
   return runProfilesImportJob(jobId, userId, CREALITYCLOUD_PROFILES, body);
+}
+
+export function runNexprintProfilesImportJob(
+  jobId: string,
+  userId: string,
+  body: MakerworldProfilesImportJobBody,
+): Promise<void> {
+  return runProfilesImportJob(jobId, userId, NEXPRINT_PROFILES, body);
 }
 
 export async function runCollectionImportJob(
@@ -546,7 +585,7 @@ export async function runCollectionImportJob(
 /** A provider whose models import one by one with a token: Thingiverse's and MyMiniFactory's instance-wide one, or
  *  the user's own Snapmaker or Creality Cloud sign-in. */
 type TokenBatchProvider = {
-  provider: "thingiverse" | "myminifactory" | "snapmaker" | "crealitycloud";
+  provider: "thingiverse" | "myminifactory" | "snapmaker" | "crealitycloud" | "nexprint";
   getToken: () => Promise<string | null>;
   notConfigured: string;
   modelUrl: (id: string) => string;
@@ -597,8 +636,19 @@ function crealitycloudBatch(userId: string): TokenBatchProvider {
   };
 }
 
+function nexprintBatch(userId: string): TokenBatchProvider {
+  return {
+    provider: "nexprint",
+    getToken: () => getUserNexprintToken(userId),
+    notConfigured: NEXPRINT_CONNECT,
+    modelUrl: (id) => nexprintModelUrl(id),
+    rateLimitText: "blocked by NexPrint's rate limit — wait a while, then retry",
+    authText: `failed because ${NEXPRINT_AUTH_TEXT}`,
+  };
+}
+
 /** Shared by the Thingiverse Likes and Collection imports, MyMiniFactory's collections, Snapmaker's likes and
- *  bookmarks, and Creality Cloud's likes and collections.
+ *  bookmarks, Creality Cloud's likes and collections, and NexPrint's collections.
  * Successful imports are filed into the collection named by `resolveCollectionTitle`, which runs
  * afterwards so it costs no API call when nothing was imported. */
 async function runTokenBatchImportJob(
@@ -795,6 +845,23 @@ export async function runCrealitycloudListImportJob(
     jobId,
     userId,
     crealitycloudBatch(userId),
+    body,
+    body.model_ids,
+    async () => body.title,
+    (collectionTitle) => `"${collectionTitle}"`,
+  );
+}
+
+/** A NexPrint collection, filed into a collection named after it. */
+export async function runNexprintCollectionImportJob(
+  jobId: string,
+  userId: string,
+  body: NexprintCollectionImportJobBody,
+): Promise<void> {
+  await runTokenBatchImportJob(
+    jobId,
+    userId,
+    nexprintBatch(userId),
     body,
     body.model_ids,
     async () => body.title,
@@ -1011,6 +1078,7 @@ const LINKS_RETRY_DELAY_MS = 2000;
 function authStopText(url: string): string {
   if (parseSnapmakerModelUrl(url)) return SNAPMAKER_AUTH_TEXT;
   if (parseCrealitycloudModelUrl(url)) return CREALITYCLOUD_AUTH_TEXT;
+  if (parseNexprintModelUrl(url)) return NEXPRINT_AUTH_TEXT;
   return "the MakerWorld session expired — update the cookie in Settings, then retry";
 }
 
@@ -1023,7 +1091,7 @@ function failureMessage(err: unknown): string {
   return err instanceof Error && err.message.trim() ? err.message.trim() : "Import failed";
 }
 
-/** One queued link. A MakerWorld, Snapmaker or Creality Cloud model with a multi-profile scope imports each wanted profile onto
+/** One queued link. A MakerWorld, Snapmaker, Creality Cloud or NexPrint model with a multi-profile scope imports each wanted profile onto
  *  one print, like the PROFILES job; anything else is a plain single import. `profiles` marks the
  *  former, whose totals count print profiles rather than models. */
 async function importOneLink(
@@ -1054,6 +1122,10 @@ async function importOneLink(
   }
   if (parseCrealitycloudModelUrl(url) && body.scope && body.scope !== "url") {
     const { urls } = await crealitycloudProfileUrls(url, body.scope);
+    return { ...(await importProfileUrlsSequentially(userId, urls, { ...body, url })), profiles: true };
+  }
+  if (parseNexprintModelUrl(url) && body.scope && body.scope !== "url") {
+    const { urls } = await nexprintProfileUrls(url, body.scope);
     return { ...(await importProfileUrlsSequentially(userId, urls, { ...body, url })), profiles: true };
   }
   const result = await importPrintFromUrl(userId, url, { ...body, url });

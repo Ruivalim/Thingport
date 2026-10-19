@@ -25,6 +25,7 @@ const LOGOS = new Set<string>([
   "snapmaker",
   "makeronline",
   "crealitycloud",
+  "nexprint",
 ]);
 
 // The pulse is 40% of its segment wide, so 250% starts it past the right end and -100% ends it

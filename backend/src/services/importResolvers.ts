@@ -498,6 +498,7 @@ export type ImportedPageMetadata = {
     | "snapmaker"
     | "makeronline"
     | "crealitycloud"
+    | "nexprint"
     | null;
   /** Lets a second profile of an imported design be added as its own plate. MakerWorld only. */
   makerworldProfile?: MakerworldProfileRef;

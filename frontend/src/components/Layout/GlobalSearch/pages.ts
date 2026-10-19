@@ -87,6 +87,7 @@ export const SEARCH_PAGES: SearchPage[] = [
     "snapmaker",
     "makeronline",
     "creality cloud",
+    "nexprint",
     "app token",
     "api key",
     "access token",

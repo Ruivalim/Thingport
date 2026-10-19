@@ -1,6 +1,6 @@
 # Provider setup
 
-Importing from **Printables** works out of the box (its public API needs no credential). **MakerWorld** needs each user's own session cookie, and **Thingiverse** an App Token an admin sets once for the whole instance. **MyMiniFactory** needs an API key an admin sets once for free models; each user connects their own MyMiniFactory session only to import paid or sign-in-only models from their library. **Snapmaker Space** needs each user's own sign-in, which [Thingport Grab](../extension/README.md) keeps fresh. **MakerOnline** reads its models and public collections with nothing, but hands out files only through Thingport Grab; each user's own sign-in adds their likes and private collections. **Creality Cloud** reads its models and collections with nothing, but gives files and likes only to each user's own sign-in, which Thingport Grab sends on.
+Importing from **Printables** works out of the box (its public API needs no credential). **MakerWorld** needs each user's own session cookie, and **Thingiverse** an App Token an admin sets once for the whole instance. **MyMiniFactory** needs an API key an admin sets once for free models; each user connects their own MyMiniFactory session only to import paid or sign-in-only models from their library. **Snapmaker Space** needs each user's own sign-in, which [Thingport Grab](../extension/README.md) keeps fresh. **MakerOnline** reads its models and public collections with nothing, but hands out files only through Thingport Grab; each user's own sign-in adds their likes and private collections. **Creality Cloud** reads its models and collections with nothing, but gives files and likes only to each user's own sign-in, which Thingport Grab sends on. **NexPrint** reads its models and collections, private ones included, with nothing, and gives files only to each user's own sign-in, which Thingport Grab sends on.
 
 Connect them under **Configuration → Providers**: open the user menu (your avatar, top right) and choose **Configuration**, or click one of the provider chips at the bottom of that menu. Right-click a provider to connect or disconnect it, or double-click one that isn't connected yet. A green tick means it's connected. A provider your admin has [turned off](#turning-a-provider-off) isn't listed.
 
@@ -131,6 +131,33 @@ Thingport says the sign-in ran out, and your next sign-in on crealitycloud.com c
 4. Right-click **Creality Cloud** in Thingport's **Configuration > Providers**, choose **Connect** and paste it.
    Thingport checks it with Creality Cloud before storing it.
 
+## NexPrint
+
+Per-user (Configuration > Providers > NexPrint). NexPrint's model details, print profiles, categories and collections,
+private ones included, need nothing; its files are given only to a signed-in user, so every NexPrint import runs as
+you. A model comes in like a MakerWorld one: its print profile's 3MF, as a file tagged with the profile, and importing
+it again with another profile (`?printConfigId=` in the link, or picking the designer's or all profiles) adds more; a
+model without print profiles brings its model files instead. NexPrint lists no liked models anywhere, so there are no
+likes to import or sync.
+
+Its sign-in is one token, the `auth_token` cookie, which its API takes as a Bearer token. The site keeps the cookie for
+a week and sets it again as it refreshes the token while you use it.
+
+### Easiest: Thingport Grab
+
+With [Thingport Grab](../extension/README.md) allowed on NexPrint, opening nexprint.com while you're signed in connects
+your account, and sends the new token whenever the site renews it. If NexPrint turns it down, Thingport says the
+sign-in ran out, and your next visit to nexprint.com connects it again.
+
+### Manual: copy it from your browser
+
+1. Sign in at [nexprint.com](https://www.nexprint.com).
+2. Open DevTools (`F12`, or `Cmd+Option+I` on macOS) and reload the page.
+3. On the **Network** tab, pick any request to `nexprint.com/gateway` and copy its `Authorization` request header (or
+   the `auth_token` cookie, or the whole `Cookie` header).
+4. Right-click **NexPrint** in Thingport's **Configuration > Providers**, choose **Connect** and paste it. Thingport
+   checks it with NexPrint before storing it.
+
 ## MakerWorld cookie
 
 Per-user (Configuration > Providers > MakerWorld) -- MakerWorld has no developer API, so importing from it runs as _your own_ logged-in MakerWorld session, captured as a cookie value.
@@ -153,7 +180,7 @@ This is your own MakerWorld login session -- don't share it, and expect to redo 
 
 ## Turning a provider off
 
-Admins choose which providers this Thingport imports from, under **Administration → Providers**. All seven are on by
+Admins choose which providers this Thingport imports from, under **Administration → Providers**. All eight are on by
 default. Turn one off and nothing new comes from it for anyone: links to it, Thingport Grab and the import queue are
 refused, its synced collections pause, and background jobs skip it. It also disappears from everyone's
 **Configuration → Providers**. Models already imported from it stay as they are, and turning it back on picks up where

@@ -21,6 +21,7 @@ import { resolveThingiverseThing, ThingiverseAuthError, ThingiverseRateLimitErro
 import { resolveSnapmakerModel } from "./snapmakerApi";
 import { resolveMakeronlineModel } from "./makeronlineApi";
 import { resolveCrealitycloudModel } from "./crealitycloudApi";
+import { resolveNexprintModel } from "./nexprintApi";
 import { getDisabledProviders } from "./providerSettingsService";
 
 // Links models that only know their author by name: first by name matching, then by looking the
@@ -34,6 +35,7 @@ const LOOKUP_PROVIDERS = [
   "snapmaker",
   "makeronline",
   "crealitycloud",
+  "nexprint",
 ] as const;
 type LookupProvider = (typeof LOOKUP_PROVIDERS)[number];
 
@@ -207,6 +209,10 @@ async function lookUpAuthor(
     case "crealitycloud": {
       await maybeSleep(IMPORT_COLLECTION_DELAY_MS);
       return (await resolveCrealitycloudModel(candidate.externalId))?.meta.author ?? null;
+    }
+    case "nexprint": {
+      await maybeSleep(IMPORT_COLLECTION_DELAY_MS);
+      return (await resolveNexprintModel(candidate.externalId))?.meta.author ?? null;
     }
     case "makerworld": {
       const cookie = await getUserMakerworldCookie(candidate.userId);

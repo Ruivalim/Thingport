@@ -94,6 +94,12 @@ model User {
   crealitycloudUserId      String?
   // When Creality Cloud last turned the token down.
   crealitycloudRejectedAt  DateTime?
+  // The user's NexPrint token, from its auth_token cookie, sent as a Bearer token. The site keeps the cookie for a
+  // week and renews it as it refreshes the token; Thingport Grab sends each new one here.
+  nexprintToken            String?
+  nexprintExpiresAt        DateTime?
+  // When NexPrint last turned the token down.
+  nexprintRejectedAt       DateTime?
   slicer                   String?
   // "light" | "dark" | "system"; null means never set.
   themePreference          String?
@@ -169,6 +175,8 @@ model Category {
   snapmakerCatIds     Int[]      @default([])
   makeronlineCatIds   Int[]      @default([])
   crealitycloudCatIds Int[]      @default([])
+  // Text: NexPrint's ids are 16 digits, past Int, and a BigInt would break JSON serialization of the row.
+  nexprintCatIds      String[]   @default([])
   prints              Print[]
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
@@ -182,6 +190,7 @@ model Category {
   @@index([snapmakerCatIds], type: Gin)
   @@index([makeronlineCatIds], type: Gin)
   @@index([crealitycloudCatIds], type: Gin)
+  @@index([nexprintCatIds], type: Gin)
 }
 
 model Print {

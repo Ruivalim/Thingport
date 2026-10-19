@@ -15,6 +15,7 @@ const PROVIDER_NAMES: Record<string, string> = {
   snapmaker: "Snapmaker Space",
   makeronline: "MakerOnline",
   crealitycloud: "Creality Cloud",
+  nexprint: "NexPrint",
 };
 
 /** A Thingiverse user's Likes page, which a sync follows like a collection. */

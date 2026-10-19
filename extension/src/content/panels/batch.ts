@@ -1,5 +1,6 @@
 // Batch flow for Thingiverse Likes/Collections, Printables and MyMiniFactory Collections, Snapmaker Space likes and
-// bookmarks, MakerOnline collections and likes, and Creality Cloud collections and likes. MakerWorld collections use the guided flow in
+// bookmarks, MakerOnline collections and likes, Creality Cloud collections and likes, and NexPrint collections.
+// MakerWorld collections use the guided flow in
 // makerworldCollection.ts.
 
 import type { BatchEntriesResult, ImportJob, SyncLookup } from "../../shared/api";
@@ -24,7 +25,8 @@ type BatchKey =
   | "makeronline:collection"
   | "makeronline:likes"
   | "crealitycloud:collection"
-  | "crealitycloud:likes";
+  | "crealitycloud:likes"
+  | "nexprint:collection";
 
 const SNAPMAKER_LIST = {
   entries: "/import/snapmaker-list/entries",
@@ -72,6 +74,11 @@ const BATCH_ENDPOINTS: Record<BatchKey, { entries: string; start: string; idFiel
   "makeronline:likes": MAKERONLINE_LIST,
   "crealitycloud:collection": CREALITYCLOUD_LIST,
   "crealitycloud:likes": CREALITYCLOUD_LIST,
+  "nexprint:collection": {
+    entries: "/import/nexprint-collection/entries",
+    start: "/import/nexprint-collection",
+    idField: "model_ids",
+  },
 };
 
 const SNAPMAKER_LISTS: { list: SnapmakerList; label: string }[] = [

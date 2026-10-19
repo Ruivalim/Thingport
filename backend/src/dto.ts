@@ -182,6 +182,7 @@ export type CategoryOut = {
   snapmaker_cat_ids: string;
   makeronline_cat_ids: string;
   crealitycloud_cat_ids: string;
+  nexprint_cat_ids: string;
 };
 
 function plateThumbUrl(plateId: string): string | null {
@@ -458,7 +459,7 @@ export function toSystemCollectionOut(
   };
 }
 
-function formatCatIds(ids: number[]): string {
+function formatCatIds(ids: (number | string)[]): string {
   return ids.join(";");
 }
 
@@ -479,6 +480,7 @@ export function toCategoryOut(category: Category): CategoryOut {
     snapmaker_cat_ids: formatCatIds(category.snapmakerCatIds),
     makeronline_cat_ids: formatCatIds(category.makeronlineCatIds),
     crealitycloud_cat_ids: formatCatIds(category.crealitycloudCatIds),
+    nexprint_cat_ids: formatCatIds(category.nexprintCatIds),
   };
 }
 

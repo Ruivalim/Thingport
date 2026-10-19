@@ -23,6 +23,7 @@ const SOURCE_PROVIDERS = [
   "snapmaker",
   "makeronline",
   "crealitycloud",
+  "nexprint",
 ] as const;
 type SourceProvider = (typeof SOURCE_PROVIDERS)[number];
 

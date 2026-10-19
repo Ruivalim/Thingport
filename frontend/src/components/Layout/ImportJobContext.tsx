@@ -15,6 +15,8 @@ type StartSnapmakerProfilesImportPayload = Parameters<typeof importsApi.fromSnap
 type StartSnapmakerListImportPayload = Parameters<typeof importsApi.fromSnapmakerList>[0];
 type StartCrealitycloudProfilesImportPayload = Parameters<typeof importsApi.fromCrealitycloudProfiles>[0];
 type StartCrealitycloudListImportPayload = Parameters<typeof importsApi.fromCrealitycloudList>[0];
+type StartNexprintProfilesImportPayload = Parameters<typeof importsApi.fromNexprintProfiles>[0];
+type StartNexprintCollectionImportPayload = Parameters<typeof importsApi.fromNexprintCollection>[0];
 type StartLinksImportPayload = Parameters<typeof importsApi.fromLinks>[0];
 
 type ImportJobContextValue = {
@@ -32,6 +34,8 @@ type ImportJobContextValue = {
   startSnapmakerListImport: (payload: StartSnapmakerListImportPayload) => Promise<void>;
   startCrealitycloudProfilesImport: (payload: StartCrealitycloudProfilesImportPayload) => Promise<void>;
   startCrealitycloudListImport: (payload: StartCrealitycloudListImportPayload) => Promise<void>;
+  startNexprintProfilesImport: (payload: StartNexprintProfilesImportPayload) => Promise<void>;
+  startNexprintCollectionImport: (payload: StartNexprintCollectionImportPayload) => Promise<void>;
   startLinksImport: (payload: StartLinksImportPayload) => Promise<void>;
   /** Reruns the links that failed on the finished job shown in the progress bar. */
   retryJob: () => Promise<void>;
@@ -239,6 +243,26 @@ export function ImportJobProvider({
     [startPolling],
   );
 
+  const startNexprintProfilesImport = useCallback(
+    async (payload: StartNexprintProfilesImportPayload) => {
+      const { job_id } = await importsApi.fromNexprintProfiles(payload);
+      const job = await importsApi.getImportJob(job_id);
+      setActiveJob(job);
+      startPolling(job_id);
+    },
+    [startPolling],
+  );
+
+  const startNexprintCollectionImport = useCallback(
+    async (payload: StartNexprintCollectionImportPayload) => {
+      const { job_id } = await importsApi.fromNexprintCollection(payload);
+      const job = await importsApi.getImportJob(job_id);
+      setActiveJob(job);
+      startPolling(job_id);
+    },
+    [startPolling],
+  );
+
   const startLinksImport = useCallback(
     async (payload: StartLinksImportPayload) => {
       const { job_id } = await importsApi.fromLinks(payload);
@@ -277,6 +301,8 @@ export function ImportJobProvider({
       startSnapmakerListImport,
       startCrealitycloudProfilesImport,
       startCrealitycloudListImport,
+      startNexprintProfilesImport,
+      startNexprintCollectionImport,
       startLinksImport,
       retryJob,
       dismissJob,
@@ -294,6 +320,8 @@ export function ImportJobProvider({
       startSnapmakerListImport,
       startCrealitycloudProfilesImport,
       startCrealitycloudListImport,
+      startNexprintProfilesImport,
+      startNexprintCollectionImport,
       startLinksImport,
       retryJob,
       dismissJob,

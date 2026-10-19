@@ -165,7 +165,8 @@ function parseCatIdsInput(raw: string | null | undefined): number[] {
   const ids: number[] = [];
   const seen = new Set<number>();
   for (const token of tokens) {
-    if (!/^\d+$/.test(token) || token.length > 15) {
+    // NexPrint's ids are 16 digits; isSafeInteger below still catches anything too large.
+    if (!/^\d+$/.test(token) || token.length > 16) {
       throw new HttpError(400, `Invalid category id "${token}" -- use numbers separated by ";", e.g. 800;71;1001`);
     }
     const id = Number(token);
@@ -194,6 +195,7 @@ const categoryMetaSchema = z.object({
   snapmaker_cat_ids: catIdsField,
   makeronline_cat_ids: catIdsField,
   crealitycloud_cat_ids: catIdsField,
+  nexprint_cat_ids: catIdsField,
 });
 
 router.patch(
@@ -214,6 +216,7 @@ router.patch(
         snapmakerCatIds: parseCatIdsInput(body.snapmaker_cat_ids),
         makeronlineCatIds: parseCatIdsInput(body.makeronline_cat_ids),
         crealitycloudCatIds: parseCatIdsInput(body.crealitycloud_cat_ids),
+        nexprintCatIds: parseCatIdsInput(body.nexprint_cat_ids).map(String),
       },
     });
     res.json(toCategoryOut(updated));
