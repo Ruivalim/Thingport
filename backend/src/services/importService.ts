@@ -1531,11 +1531,17 @@ type ImportResult = {
 
 /** Returns the existing print with `alreadyImported: true` instead of re-downloading a model
  * this user already imported. Every import path comes through here, so each new model is recorded
- * as one activity, whether it came alone or in a job. */
-export async function importPrintFromUrl(userId: string, url: string, body: ImportRequestBody): Promise<ImportResult> {
+ * as one activity, whether it came alone or in a job. `keepGrabImports`: the caller clears what
+ * waits for Grab itself, once it's done with it. */
+export async function importPrintFromUrl(
+  userId: string,
+  url: string,
+  body: ImportRequestBody,
+  { keepGrabImports = false } = {},
+): Promise<ImportResult> {
   const result = await importNewOrExisting(userId, url, body);
   // However it came in, nothing need wait for Grab to bring it.
-  if (result.print.sourceProvider === "makeronline" && result.print.sourceExternalId) {
+  if (!keepGrabImports && result.print.sourceProvider === "makeronline" && result.print.sourceExternalId) {
     await clearGrabImports(userId, result.print.sourceExternalId).catch(() => undefined);
   }
   if (!result.alreadyImported && !result.profileAdded)

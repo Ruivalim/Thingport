@@ -45,13 +45,14 @@ export function normalizeMakeronlineToken(raw: string | null | undefined): Maker
   return { token: text, expiresAt: exp, userId };
 }
 
-/** The user's token while it's still valid; null once it has expired, so nothing asks MakerOnline with it in vain. */
+/** The user's token while it's still valid; null once it has expired or been turned down, so nothing asks MakerOnline
+ *  with it in vain and public reads go without it. */
 export async function getUserMakeronlineToken(userId: string): Promise<string | null> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { makeronlineToken: true, makeronlineTokenExpires: true },
+    select: { makeronlineToken: true, makeronlineTokenExpires: true, makeronlineRejectedAt: true },
   });
-  if (!user?.makeronlineToken) return null;
+  if (!user?.makeronlineToken || user.makeronlineRejectedAt) return null;
   if (user.makeronlineTokenExpires && user.makeronlineTokenExpires.getTime() <= Date.now()) return null;
   return user.makeronlineToken;
 }

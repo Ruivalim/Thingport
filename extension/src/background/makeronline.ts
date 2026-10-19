@@ -121,13 +121,25 @@ function signedUrl(data: unknown): string | null {
   return null;
 }
 
+/** The tab or the instance failed, not the model: every later one would fail the same way, through no fault of its
+ *  own. */
+class RunStoppedError extends Error {}
+
 /** The files a link needs, signed in `tabId`, a makeronline.com tab. Throws with a reason the user can act on. */
 export async function resolveMakeronlineFiles(
   tabId: number,
   url: string,
   scope: "url" | "designer" | "all",
 ): Promise<MakeronlineSignedFile[]> {
-  const plan = await apiCall<{ requests: DownloadRequest[] }>("POST", "/import/makeronline/plan", { url, scope });
+  let plan: { requests: DownloadRequest[] };
+  try {
+    plan = await apiCall<{ requests: DownloadRequest[] }>("POST", "/import/makeronline/plan", { url, scope });
+  } catch (err) {
+    // fetch rejects with a TypeError when the instance can't be reached; an answer it gave is about the model.
+    if (err instanceof TypeError)
+      throw new RunStoppedError(`Couldn't reach Thingport (${err.message})`, { cause: err });
+    throw err;
+  }
   return signRequests(tabId, plan.requests);
 }
 
@@ -142,7 +154,7 @@ async function signRequests(tabId: number, requests: DownloadRequest[]): Promise
     });
     answers = (result?.result as SignAnswer[] | undefined) ?? [];
   } catch (err) {
-    throw new Error(
+    throw new RunStoppedError(
       `Couldn't ask MakerOnline for the files on this page (${err instanceof Error ? err.message : String(err)}). ` +
         "Reload it and try again; Firefox needs version 128 or newer for this.",
       { cause: err },
@@ -179,12 +191,28 @@ async function pollTask(taskId: string): Promise<Print> {
 }
 
 let waitingRun: Promise<number> | null = null;
+// A tab that asked while a run was going: what it queued may have come after that run read the list.
+let rerunTabId: number | null = null;
 
 /** Imports what waits on the instance for Grab, using `tabId`'s makeronline.com page to sign the files. One run at a
- *  time, whichever tab asks; resolves to how many came in. Never throws: what fails is recorded on the instance. */
+ *  time, whichever tab asks, and one more after it for anyone who asked meanwhile; resolves to how many came in
+ *  altogether. Never throws: what fails is recorded on the instance. */
 export function runWaitingImports(tabId: number): Promise<number> {
-  waitingRun ??= runWaiting(tabId).finally(() => {
+  if (waitingRun) {
+    rerunTabId = tabId;
+    return waitingRun;
+  }
+  waitingRun = (async () => {
+    let total = 0;
+    for (let next: number | null = tabId; next !== null;) {
+      rerunTabId = null;
+      total += await runWaiting(next);
+      next = rerunTabId;
+    }
+    return total;
+  })().finally(() => {
     waitingRun = null;
+    rerunTabId = null;
   });
   return waitingRun;
 }
@@ -199,6 +227,8 @@ async function runWaiting(tabId: number): Promise<number> {
     try {
       files = await resolveMakeronlineFiles(tabId, item.url, scope);
     } catch (err) {
+      // Not the model's fault: it waits for the next run as it is.
+      if (err instanceof RunStoppedError) break;
       const error = err instanceof Error ? err.message : "Couldn't get the files signed";
       await apiCall("POST", `/import/makeronline/waiting/${item.id}/failed`, { error }).catch(() => undefined);
       // A captcha or a lost sign-in fails every later one too.

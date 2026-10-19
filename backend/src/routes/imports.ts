@@ -78,6 +78,7 @@ import {
   markMakeronlineTokenRejected,
 } from "../services/makeronlineSessionService";
 import {
+  clearGrabImports,
   getGrabImport,
   listGrabImports,
   notifyGrabImportsQueued,
@@ -150,10 +151,15 @@ async function enabledImportUrl(raw: string): Promise<string> {
   return url;
 }
 
-async function importAndDescribe(userId: string, url: string, body: z.infer<typeof importRequestSchema>) {
+async function importAndDescribe(
+  userId: string,
+  url: string,
+  body: z.infer<typeof importRequestSchema>,
+  options?: { keepGrabImports?: boolean },
+) {
   let result;
   try {
-    result = await importPrintFromUrl(userId, url, body);
+    result = await importPrintFromUrl(userId, url, body, options);
   } catch (err) {
     if (body.notify !== false) {
       const error = err instanceof HttpError ? err.message : "Something went wrong on the server.";
@@ -601,22 +607,30 @@ router.post(
     const run = async () => {
       let described;
       try {
-        described = await importAndDescribe(userId, row.url, {
-          url: row.url,
-          tags: row.tags,
-          notes: row.notes,
-          category_id: row.categoryId,
-          resolved_files: body.files,
-          notify: false,
-        });
+        described = await importAndDescribe(
+          userId,
+          row.url,
+          {
+            url: row.url,
+            tags: row.tags,
+            notes: row.notes,
+            category_id: row.categoryId,
+            resolved_files: body.files,
+            notify: false,
+          },
+          // Cleared once it's filed, so a failed filing keeps the collection to try again with.
+          { keepGrabImports: true },
+        );
+        if (row.collectionId) {
+          const collection = await prisma.collection.findFirst({ where: { id: row.collectionId, userId } });
+          if (collection) await addPrintsToCollection(collection.id, [described.id]);
+        }
       } catch (err) {
         await recordGrabImportFailure(row, err instanceof Error ? err.message : "Import failed").catch(() => undefined);
         throw err;
       }
-      if (row.collectionId) {
-        const collection = await prisma.collection.findFirst({ where: { id: row.collectionId, userId } });
-        if (collection) await addPrintsToCollection(collection.id, [described.id]);
-      }
+      const modelId = parseMakeronlineModelUrl(row.url)?.modelId;
+      if (modelId) await clearGrabImports(userId, modelId).catch(() => undefined);
       return described;
     };
     if (req.query.async === "1") {
