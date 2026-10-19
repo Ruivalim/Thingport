@@ -504,7 +504,27 @@ export type ImportedPageMetadata = {
   makerworldProfile?: MakerworldProfileRef;
 };
 
-export type MakerworldProfileRef = { instanceId: string | null };
+/** `coverUrl`: the profile's own picture on MakerWorld, which becomes its plate's thumbnail. */
+export type MakerworldProfileRef = { instanceId: string | null; coverUrl?: string | null };
+
+/** A profile's own picture: its `cover`, else the first of its `pictures`. */
+export function makerworldInstanceCover(design: unknown, instanceId: string | null): string | null {
+  if (!instanceId || !design || typeof design !== "object") return null;
+  const instances = (design as Record<string, unknown>).instances;
+  if (!Array.isArray(instances)) return null;
+  const inst = instances.find(
+    (candidate) =>
+      candidate && typeof candidate === "object" && String((candidate as Record<string, unknown>).id) === instanceId,
+  ) as Record<string, unknown> | undefined;
+  if (!inst) return null;
+  const firstPicture = Array.isArray(inst.pictures)
+    ? (inst.pictures[0] as Record<string, unknown> | undefined)
+    : undefined;
+  for (const url of [inst.cover, firstPicture?.url]) {
+    if (typeof url === "string" && /^https:\/\//i.test(url.trim())) return url.trim();
+  }
+  return null;
+}
 
 export type ImportedAuthorInfo = {
   provider: string;
@@ -632,8 +652,13 @@ export async function resolveMakerworldDownloadUrl(
   let nonce: string | null = null;
   let instanceId: string | null = null;
   let defaultInstanceId: string | null = null;
-  const asDefault = (downloadUrl: string) => ({ downloadUrl, profile: { instanceId: defaultInstanceId } });
+  let design: unknown = null;
+  const asDefault = (downloadUrl: string) => ({
+    downloadUrl,
+    profile: { instanceId: defaultInstanceId, coverUrl: makerworldInstanceCover(design, defaultInstanceId) },
+  });
   if (nextData) {
+    design = getPath(nextData, "props", "pageProps", "design");
     instanceId = makerworldInstanceIdFromNextData(nextData, requestedInstanceId);
     defaultInstanceId = makerworldInstanceIdFromNextData(nextData, null);
     // A generic URL in the page data belongs to the default profile.
@@ -647,7 +672,8 @@ export async function resolveMakerworldDownloadUrl(
 
   if (instanceId) {
     const url = await fetchMakerworldInstanceDownloadUrl(instanceId, pageUrl, makerworldCookie);
-    if (url) return { downloadUrl: url, profile: { instanceId } };
+    if (url)
+      return { downloadUrl: url, profile: { instanceId, coverUrl: makerworldInstanceCover(design, instanceId) } };
   }
 
   const modelId = designId || makerworldModelIdFromUrl(pageUrl);

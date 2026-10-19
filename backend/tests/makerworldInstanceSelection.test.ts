@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { makerworldInstanceIdFromNextData } from "../src/services/importResolvers";
+import { makerworldInstanceCover, makerworldInstanceIdFromNextData } from "../src/services/importResolvers";
 
 function nextData(design: Record<string, unknown>) {
   return { props: { pageProps: { design } } };
@@ -25,5 +25,27 @@ describe("makerworldInstanceIdFromNextData", () => {
   it("answers null without a design or profiles", () => {
     expect(makerworldInstanceIdFromNextData({}, null)).toBeNull();
     expect(makerworldInstanceIdFromNextData(nextData({ defaultInstanceId: 5, instances: [] }), null)).toBeNull();
+  });
+});
+
+describe("makerworldInstanceCover", () => {
+  const design = {
+    instances: [
+      { id: 1, cover: "https://makerworld.bblmw.com/a/instance/one.png" },
+      { id: 2, cover: "", pictures: [{ url: "https://makerworld.bblmw.com/a/instance/two.png" }] },
+      { id: 3, cover: "javascript:alert(1)" },
+    ],
+  };
+
+  it("takes the profile's cover, else its first picture", () => {
+    expect(makerworldInstanceCover(design, "1")).toBe("https://makerworld.bblmw.com/a/instance/one.png");
+    expect(makerworldInstanceCover(design, "2")).toBe("https://makerworld.bblmw.com/a/instance/two.png");
+  });
+
+  it("answers null for an unknown profile, no profile or a non-https address", () => {
+    expect(makerworldInstanceCover(design, "9")).toBeNull();
+    expect(makerworldInstanceCover(design, null)).toBeNull();
+    expect(makerworldInstanceCover(design, "3")).toBeNull();
+    expect(makerworldInstanceCover({}, "1")).toBeNull();
   });
 });

@@ -1,5 +1,6 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import request from "supertest";
+import sharp from "sharp";
 
 // No pacing or DNS here. config.ts reads the pace on load, so it's hoisted.
 vi.hoisted(() => {
@@ -17,6 +18,7 @@ vi.mock("node:dns/promises", () => ({
 import { createApp } from "../src/app";
 import { prisma } from "../src/db";
 import { selectMakerworldProfiles } from "../src/services/makerworldCloudApi";
+import { plateThumbPath } from "../src/services/printService";
 
 const app = createApp();
 const stamp = Date.now();
@@ -41,12 +43,40 @@ function design(designId: string) {
     designCreator: DESIGNER,
     defaultInstanceId: 2,
     instances: [
-      { id: 1, profileId: 101, title: "Single-colour version", instanceCreator: DESIGNER },
-      { id: 2, profileId: 102, title: "multi-colored version", instanceCreator: DESIGNER },
+      {
+        id: 1,
+        profileId: 101,
+        title: "Single-colour version",
+        instanceCreator: DESIGNER,
+        cover: "https://makerworld.bblmw.com/phoenix/101/instance/red.png",
+      },
+      {
+        id: 2,
+        profileId: 102,
+        title: "multi-colored version",
+        instanceCreator: DESIGNER,
+        // No cover of its own: the first of its pictures stands in.
+        pictures: [{ url: "https://makerworld.bblmw.com/phoenix/102/instance/blue.png" }],
+      },
       { id: 3, profileId: 103, title: "Tail Color", instanceCreator: { uid: 740193827, name: "BlomsD" } },
       { id: 4, profileId: 104, title: "0.16mm layer", instanceCreator: { uid: 356629145, name: "gekkoace" } },
     ],
   };
+}
+
+const solid = (r: number, g: number, b: number) =>
+  sharp({ create: { width: 8, height: 8, channels: 3, background: { r, g, b } } })
+    .png()
+    .toBuffer();
+const PROFILE_COVERS: Record<string, Promise<Buffer>> = {
+  "https://makerworld.bblmw.com/phoenix/101/instance/red.png": solid(255, 0, 0),
+  "https://makerworld.bblmw.com/phoenix/102/instance/blue.png": solid(0, 0, 255),
+};
+
+/** The thumbnail's average colour, which survives the JPEG re-encode. */
+async function thumbColour(plateId: string): Promise<[number, number, number]> {
+  const { channels } = await sharp(plateThumbPath(plateId)).stats();
+  return [channels[0].mean, channels[1].mean, channels[2].mean].map(Math.round) as [number, number, number];
 }
 
 describe("selectMakerworldProfiles", () => {
@@ -102,6 +132,9 @@ describe("importing several MakerWorld print profiles", () => {
         return new Response(`solid phoenix-${file[1]}\nendsolid\n`, {
           headers: { "content-type": "application/octet-stream" },
         });
+      if (PROFILE_COVERS[url]) {
+        return new Response(await PROFILE_COVERS[url], { headers: { "content-type": "image/png" } });
+      }
       if (url === "https://makerworld.bblmw.com/phoenix/cover.jpg") {
         return new Response(
           Buffer.from(
@@ -158,6 +191,12 @@ describe("importing several MakerWorld print profiles", () => {
       ["2", "phoenix-102.stl"],
       ["1", "phoenix-101.stl"],
     ]);
+    // Each profile's file shows that profile's own picture, not the model's cover.
+    const [blue, red] = await Promise.all(print.plates.map((p) => thumbColour(p.id)));
+    expect(blue[2]).toBeGreaterThan(200);
+    expect(blue[0]).toBeLessThan(60);
+    expect(red[0]).toBeGreaterThan(200);
+    expect(red[2]).toBeLessThan(60);
   });
 
   it("adds the community profiles to a model that already has the designer's", async () => {
