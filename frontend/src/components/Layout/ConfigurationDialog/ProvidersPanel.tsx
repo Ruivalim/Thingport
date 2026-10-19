@@ -31,6 +31,7 @@ const PROVIDERS: { id: ProviderId; name: string }[] = [
   { id: "myminifactory", name: "MyMiniFactory" },
   { id: "snapmaker", name: "Snapmaker Space" },
   { id: "makeronline", name: "MakerOnline" },
+  { id: "crealitycloud", name: "Creality Cloud" },
   ...COMING_SOON_PROVIDERS,
 ];
 const isComingSoon = (id: ProviderId) => COMING_SOON_PROVIDERS.some((provider) => provider.id === id);
@@ -39,10 +40,16 @@ const SHARED = new Set<ProviderId>(["thingiverse"]);
 // Connected with the user's own sign-in, which the site can turn down once it expires. MyMiniFactory's also has
 // the instance's API key, set in Administration; the user's sign-in adds paid and login-only models. Snapmaker's
 // lasts a day; Thingport Grab keeps renewing it. MakerOnline's reads the user's likes and private collections; its
-// files only ever come through Thingport Grab.
-type SessionProvider = "makerworld" | "myminifactory" | "snapmaker" | "makeronline";
-const isSessionProvider = (id: ProviderId): id is SessionProvider =>
-  id === "makerworld" || id === "myminifactory" || id === "snapmaker" || id === "makeronline";
+// files only ever come through Thingport Grab. Creality Cloud's lasts a week from signing in there.
+type SessionProvider = "makerworld" | "myminifactory" | "snapmaker" | "makeronline" | "crealitycloud";
+const SESSION_PROVIDERS = new Set<ProviderId>([
+  "makerworld",
+  "myminifactory",
+  "snapmaker",
+  "makeronline",
+  "crealitycloud",
+]);
+const isSessionProvider = (id: ProviderId): id is SessionProvider => SESSION_PROVIDERS.has(id);
 
 type Props = {
   isAdmin: boolean;
@@ -67,7 +74,7 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
     thangs: false,
     cults3d: false,
     makeronline: null,
-    crealitycloud: false,
+    crealitycloud: null,
     nexprint: false,
     snapmaker: null,
   });
@@ -77,6 +84,7 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
     myminifactory: false,
     snapmaker: false,
     makeronline: false,
+    crealitycloud: false,
   });
   const isExpired = (id: ProviderId) => isSessionProvider(id) && Boolean(connected[id]) && expired[id];
   const [connecting, setConnecting] = React.useState<ProviderId | null>(null);
@@ -121,6 +129,14 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
         setExpired((current) => ({ ...current, makeronline: res.expired }));
       })
       .catch(() => undefined);
+    settingsApi
+      .getCrealitycloudSession()
+      .then((res) => {
+        if (!active) return;
+        setConnected((current) => ({ ...current, crealitycloud: res.configured }));
+        setExpired((current) => ({ ...current, crealitycloud: res.expired }));
+      })
+      .catch(() => undefined);
     return () => {
       active = false;
     };
@@ -157,6 +173,10 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
       const result = await settingsApi.updateMakeronlineSession(value);
       setConnected((current) => ({ ...current, makeronline: result.configured }));
       setExpired((current) => ({ ...current, makeronline: false }));
+    } else if (id === "crealitycloud") {
+      const result = await settingsApi.updateCrealitycloudSession(value);
+      setConnected((current) => ({ ...current, crealitycloud: result.configured }));
+      setExpired((current) => ({ ...current, crealitycloud: false }));
     }
   };
 
@@ -227,7 +247,7 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
                 ? locked
                 : isConnected
                   ? t("providers.connected")
-                  : id === "myminifactory" || id === "snapmaker" || id === "makeronline"
+                  : isSessionProvider(id) && id !== "makerworld"
                     ? t(`providers.${id}.notConnected`)
                     : t("providers.notConnected");
           return (
@@ -353,7 +373,8 @@ function ConnectBox({ id, name, onCancel, onConnect, onUnauthorized }: ConnectBo
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const steps = t(`providers.${id}.steps`, { returnObjects: true }) as string[];
-  const multiline = id === "makerworld";
+  // MakerWorld's cookie is long; Creality Cloud's sign-in may be pasted as two copied request headers.
+  const multiline = id === "makerworld" || id === "crealitycloud";
   const rootRef = React.useRef<HTMLDivElement | null>(null);
 
   // It opens below the icons, often past the bottom of the panel.

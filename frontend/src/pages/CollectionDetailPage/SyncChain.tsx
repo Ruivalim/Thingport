@@ -17,7 +17,15 @@ import { collectionDisplayName } from "../../utils/collectionDisplay";
 // One trip of the pulse: provider to Thingport in the first half, Thingport to the collection in
 // the second, each node lighting up as it arrives.
 const CYCLE = "2.8s";
-const LOGOS = new Set<string>(["makerworld", "thingiverse", "printables", "myminifactory", "snapmaker", "makeronline"]);
+const LOGOS = new Set<string>([
+  "makerworld",
+  "thingiverse",
+  "printables",
+  "myminifactory",
+  "snapmaker",
+  "makeronline",
+  "crealitycloud",
+]);
 
 // The pulse is 40% of its segment wide, so 250% starts it past the right end and -100% ends it
 // past the left one.

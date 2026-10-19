@@ -14,7 +14,7 @@ import { type Print, printsApi } from "../../api/prints";
 import { type PreviewMode } from "../../api/settings";
 import { type ResolvedTheme } from "../../constants/settingsOptions";
 import { renderPreviewContent } from "../../components/media/renderPreviewContent";
-import { printProviderInfo } from "../../constants/importProviders";
+import { printProviderInfo, providerChipSx } from "../../constants/importProviders";
 import { SELF_AUTHOR_ID } from "../../constants/selfAuthor";
 import { useGravatarUrl } from "../../hooks/useGravatarUrl";
 import StarToggle from "../../components/StarToggle";
@@ -143,8 +143,7 @@ export default function ModelCard({
             fontSize: 11,
             fontWeight: 600,
             lineHeight: 1.4,
-            color: providerInfo.textColor ?? "#fff",
-            bgcolor: providerInfo.color,
+            ...providerChipSx(providerInfo),
           }}
         >
           {providerInfo.label}

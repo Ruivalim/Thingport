@@ -20,7 +20,6 @@ type Logo = {
 const COMING_SOON = [
   { id: "thangs", name: "Thangs" },
   { id: "cults3d", name: "Cults3D" },
-  { id: "crealitycloud", name: "Creality Cloud" },
   { id: "nexprint", name: "NextPrint" },
 ] as const;
 

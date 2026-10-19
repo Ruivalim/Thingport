@@ -87,6 +87,12 @@ export function captureProviderAccount(hostname: string): void {
     void syncMakeronline();
     return;
   }
+  if (/(^|\.)crealitycloud\.com$/i.test(hostname)) {
+    captured = true;
+    // Its sign-in downloads the files and reads the likes; a new one comes with each sign-in there.
+    void send("SYNC_CREALITYCLOUD_SESSION");
+    return;
+  }
   if (hostname === "space.snapmaker.com") {
     captured = true;
     // Its sign-in downloads the files, and lasts a day: kept fresh by the background, and sent on.

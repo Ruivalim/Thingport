@@ -47,10 +47,11 @@ const PASTE_EXAMPLES: Record<BrowsableProvider, string> = {
   myminifactory: "https://www.myminifactory.com/users/…/collection/…",
   snapmaker: "https://space.snapmaker.com/en/creator/…?tab=interactions&list=likes",
   makeronline: "https://www.makeronline.com/en/user/collectionDetail/…/….html",
+  crealitycloud: "https://www.crealitycloud.com/collection/…",
 };
 
 // Listed with the user's own sign-in, which already says who they are, so no username is asked for.
-const SIGNED_IN = new Set<BrowsableProvider>(["makerworld", "snapmaker", "makeronline"]);
+const SIGNED_IN = new Set<BrowsableProvider>(["makerworld", "snapmaker", "makeronline", "crealitycloud"]);
 
 /** The one the user's slicer goes with, unless it isn't connected; then the first that is. Only from `available`,
  *  the ones an admin hasn't turned off. */

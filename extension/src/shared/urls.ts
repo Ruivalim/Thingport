@@ -1,6 +1,7 @@
 // Provider URL recognition, duplicated from the frontend and backend parsers. Keep in sync by hand.
 
-export type Provider = "makerworld" | "thingiverse" | "printables" | "myminifactory" | "snapmaker" | "makeronline";
+export type Provider =
+  "makerworld" | "thingiverse" | "printables" | "myminifactory" | "snapmaker" | "makeronline" | "crealitycloud";
 
 export type Classification =
   | { kind: "single"; provider: "makerworld"; type: "model" }
@@ -9,12 +10,14 @@ export type Classification =
   | { kind: "single"; provider: "myminifactory"; type: "object" }
   | { kind: "single"; provider: "snapmaker"; type: "model" }
   | { kind: "single"; provider: "makeronline"; type: "model" }
+  | { kind: "single"; provider: "crealitycloud"; type: "model" }
   | { kind: "batch"; provider: "makerworld"; type: "collection" }
   | { kind: "batch"; provider: "thingiverse"; type: "likes" | "collection" }
   | { kind: "batch"; provider: "printables"; type: "collection" }
   | { kind: "batch"; provider: "myminifactory"; type: "collection" }
   | { kind: "batch"; provider: "snapmaker"; type: SnapmakerList }
-  | { kind: "batch"; provider: "makeronline"; type: "collection" | "likes" };
+  | { kind: "batch"; provider: "makeronline"; type: "collection" | "likes" }
+  | { kind: "batch"; provider: "crealitycloud"; type: "collection" | "likes" };
 
 export type SnapmakerList = "likes" | "bookmarks";
 
@@ -169,6 +172,43 @@ export function isMakeronlineLikesUrl(url: string): boolean {
   );
 }
 
+function isCrealitycloud(parsed: URL): boolean {
+  return /^(www\.)?crealitycloud\.com$/i.test(parsed.hostname);
+}
+
+const CREALITYCLOUD_LANG = String.raw`(?:[a-z]{2}(?:-[a-z]{2,4})?/)?`;
+
+/** `/model-detail/<alias>`, the alias made of the model's title; Thingport's own `#profileId-<id>` picks a print
+ *  profile. */
+export function parseCrealitycloudModelUrl(url: string): { modelId: string; requestedProfileId: string | null } | null {
+  const parsed = parse(url);
+  if (!parsed || !isCrealitycloud(parsed)) return null;
+  const m = parsed.pathname.match(new RegExp(String.raw`^/${CREALITYCLOUD_LANG}model-detail/([\w-]+)/?$`, "i"));
+  if (!m) return null;
+  return {
+    modelId: m[1].toLowerCase(),
+    requestedProfileId: parsed.hash.match(/profileId-([0-9a-f]{24})/i)?.[1]?.toLowerCase() ?? null,
+  };
+}
+
+/** `/collection/<alias>`. */
+export function isCrealitycloudCollectionUrl(url: string): boolean {
+  const parsed = parse(url);
+  return Boolean(
+    parsed &&
+    isCrealitycloud(parsed) &&
+    new RegExp(String.raw`^/${CREALITYCLOUD_LANG}collection/[\w-]+/?$`, "i").test(parsed.pathname),
+  );
+}
+
+/** The user's likes, `/user/<id>/likes`; Creality Cloud shows them to their owner only. */
+export function parseCrealitycloudLikesUrl(url: string): { userId: string } | null {
+  const parsed = parse(url);
+  if (!parsed || !isCrealitycloud(parsed)) return null;
+  const m = parsed.pathname.match(new RegExp(String.raw`^/${CREALITYCLOUD_LANG}user/(\d+)/likes/?$`, "i"));
+  return m ? { userId: m[1] } : null;
+}
+
 /** Null keeps the icon hidden. "single" pages get a dedup check; "batch" pages always show it. */
 export function classifyUrl(url: string): Classification | null {
   if (isMakerworldCollectionUrl(url)) return { kind: "batch", provider: "makerworld", type: "collection" };
@@ -180,11 +220,14 @@ export function classifyUrl(url: string): Classification | null {
   if (snapmakerList) return { kind: "batch", provider: "snapmaker", type: snapmakerList.list };
   if (isMakeronlineCollectionUrl(url)) return { kind: "batch", provider: "makeronline", type: "collection" };
   if (isMakeronlineLikesUrl(url)) return { kind: "batch", provider: "makeronline", type: "likes" };
+  if (isCrealitycloudCollectionUrl(url)) return { kind: "batch", provider: "crealitycloud", type: "collection" };
+  if (parseCrealitycloudLikesUrl(url)) return { kind: "batch", provider: "crealitycloud", type: "likes" };
   if (parseMakerworldModelUrl(url)) return { kind: "single", provider: "makerworld", type: "model" };
   if (parseThingiverseThingUrl(url)) return { kind: "single", provider: "thingiverse", type: "thing" };
   if (parsePrintablesModelUrl(url)) return { kind: "single", provider: "printables", type: "model" };
   if (parseMyminifactoryObjectUrl(url)) return { kind: "single", provider: "myminifactory", type: "object" };
   if (parseSnapmakerModelUrl(url)) return { kind: "single", provider: "snapmaker", type: "model" };
   if (parseMakeronlineModelUrl(url)) return { kind: "single", provider: "makeronline", type: "model" };
+  if (parseCrealitycloudModelUrl(url)) return { kind: "single", provider: "crealitycloud", type: "model" };
   return null;
 }

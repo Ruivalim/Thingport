@@ -13,6 +13,8 @@ type StartMyminifactoryCollectionImportPayload = Parameters<typeof importsApi.fr
 type StartMakerworldProfilesImportPayload = Parameters<typeof importsApi.fromMakerworldProfiles>[0];
 type StartSnapmakerProfilesImportPayload = Parameters<typeof importsApi.fromSnapmakerProfiles>[0];
 type StartSnapmakerListImportPayload = Parameters<typeof importsApi.fromSnapmakerList>[0];
+type StartCrealitycloudProfilesImportPayload = Parameters<typeof importsApi.fromCrealitycloudProfiles>[0];
+type StartCrealitycloudListImportPayload = Parameters<typeof importsApi.fromCrealitycloudList>[0];
 type StartLinksImportPayload = Parameters<typeof importsApi.fromLinks>[0];
 
 type ImportJobContextValue = {
@@ -28,6 +30,8 @@ type ImportJobContextValue = {
   startMakerworldProfilesImport: (payload: StartMakerworldProfilesImportPayload) => Promise<void>;
   startSnapmakerProfilesImport: (payload: StartSnapmakerProfilesImportPayload) => Promise<void>;
   startSnapmakerListImport: (payload: StartSnapmakerListImportPayload) => Promise<void>;
+  startCrealitycloudProfilesImport: (payload: StartCrealitycloudProfilesImportPayload) => Promise<void>;
+  startCrealitycloudListImport: (payload: StartCrealitycloudListImportPayload) => Promise<void>;
   startLinksImport: (payload: StartLinksImportPayload) => Promise<void>;
   /** Reruns the links that failed on the finished job shown in the progress bar. */
   retryJob: () => Promise<void>;
@@ -215,6 +219,26 @@ export function ImportJobProvider({
     [startPolling],
   );
 
+  const startCrealitycloudProfilesImport = useCallback(
+    async (payload: StartCrealitycloudProfilesImportPayload) => {
+      const { job_id } = await importsApi.fromCrealitycloudProfiles(payload);
+      const job = await importsApi.getImportJob(job_id);
+      setActiveJob(job);
+      startPolling(job_id);
+    },
+    [startPolling],
+  );
+
+  const startCrealitycloudListImport = useCallback(
+    async (payload: StartCrealitycloudListImportPayload) => {
+      const { job_id } = await importsApi.fromCrealitycloudList(payload);
+      const job = await importsApi.getImportJob(job_id);
+      setActiveJob(job);
+      startPolling(job_id);
+    },
+    [startPolling],
+  );
+
   const startLinksImport = useCallback(
     async (payload: StartLinksImportPayload) => {
       const { job_id } = await importsApi.fromLinks(payload);
@@ -251,6 +275,8 @@ export function ImportJobProvider({
       startMakerworldProfilesImport,
       startSnapmakerProfilesImport,
       startSnapmakerListImport,
+      startCrealitycloudProfilesImport,
+      startCrealitycloudListImport,
       startLinksImport,
       retryJob,
       dismissJob,
@@ -266,6 +292,8 @@ export function ImportJobProvider({
       startMakerworldProfilesImport,
       startSnapmakerProfilesImport,
       startSnapmakerListImport,
+      startCrealitycloudProfilesImport,
+      startCrealitycloudListImport,
       startLinksImport,
       retryJob,
       dismissJob,

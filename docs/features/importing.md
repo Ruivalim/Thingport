@@ -1,4 +1,4 @@
-# Import from MakerWorld, Printables, Thingiverse, MyMiniFactory, Snapmaker Space and MakerOnline
+# Import from MakerWorld, Printables, Thingiverse, MyMiniFactory, Snapmaker Space, MakerOnline and Creality Cloud
 
 Thingport keeps a real copy of every model you import: its files, photos, title, description, tags, author and a link
 back to where it came from. If the original page disappears, the model is still in your library.
@@ -6,13 +6,14 @@ back to where it came from. If the original page disappears, the model is still 
 ## Ways to import
 
 - **Paste a link.** Click **Add → Import** and paste a model link from MakerWorld, Printables, Thingiverse,
-  MyMiniFactory, Snapmaker Space or MakerOnline, or any direct link to a model file. Paste several links, one per line, and they're imported one after
+  MyMiniFactory, Snapmaker Space, MakerOnline or Creality Cloud, or any direct link to a model file. Paste several links, one per line, and they're imported one after
   another as a background job. You can also paste a link straight into the search bar.
 - **Use Thingport Grab.** The [browser extension](../../extension/README.md) adds a Thingport button to model pages on
-  all six sites (MyMiniFactory, Snapmaker Space and MakerOnline once you allow them, with a single click in its popup), so you can
+  all seven sites (MyMiniFactory, Snapmaker Space, MakerOnline and Creality Cloud once you allow them, with a single click in its popup), so you can
   import without leaving the page, file the model into a collection, and import whole collections.
 - **Import a collection or your likes.** Paste a collection link, or your Thingiverse likes, and pick which models to
-  bring in. Your Snapmaker Space likes and bookmarks import from your profile's Interactions tab with Thingport Grab. MakerWorld collections are imported with Thingport Grab.
+  bring in. Your Snapmaker Space likes and bookmarks import from your profile's Interactions tab with Thingport Grab,
+  and your Creality Cloud likes from their page, in Thingport or with Grab. MakerWorld collections are imported with Thingport Grab.
 - **MakerOnline goes through Thingport Grab.** MakerOnline hands out its files only to its own pages, so a MakerOnline
   link pasted in Thingport, a MakerOnline collection or your likes imported here, and a synced MakerOnline collection
   all wait for Grab: the next time you open makeronline.com in a browser with Grab, it imports them there.
@@ -21,7 +22,7 @@ back to where it came from. If the original page disappears, the model is still 
 
 ## What comes with a model
 
-- Every file, and on MakerWorld, Snapmaker Space and MakerOnline, its print profiles: the one the link points to, all of the
+- Every file, and on MakerWorld, Snapmaker Space, MakerOnline and Creality Cloud, its print profiles: the one the link points to, all of the
   designer's, or the community's too. Each profile becomes its own file on the model.
 - The photo gallery, the formatted description, tags and the source site's category, which Thingport maps to your own
   [categories](organize-and-search.md).
@@ -41,7 +42,8 @@ from Thingport Grab wait in **Administration → Import queue** until they're st
 
 Printables works with no setup. MakerWorld needs your session cookie, and Thingiverse and MyMiniFactory a key set by an
 admin; MyMiniFactory models you bought come in once you connect your MyMiniFactory account. Snapmaker Space needs your
-own sign-in, which Thingport Grab keeps fresh, and MakerOnline Thingport Grab for its files. See
+own sign-in, which Thingport Grab keeps fresh, MakerOnline Thingport Grab for its files, and Creality Cloud your own
+sign-in, which Grab sends each time you sign in there. See
 [provider setup](../PROVIDER_SETUP.md). Admins can also
 [turn a provider off](../PROVIDER_SETUP.md#turning-a-provider-off) for the whole instance, and then nothing is imported
 from it.

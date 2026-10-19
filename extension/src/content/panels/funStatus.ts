@@ -14,6 +14,7 @@ export const SITE_NAMES: Record<Provider, string> = {
   myminifactory: "MyMiniFactory",
   snapmaker: "Snapmaker Space",
   makeronline: "MakerOnline",
+  crealitycloud: "Creality Cloud",
 };
 
 /** The instance inspects the link: finds the file, reads its title, checks whether it's a zip. */

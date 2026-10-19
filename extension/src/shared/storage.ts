@@ -24,6 +24,8 @@ export const STORAGE_KEYS = {
   lastSyncedSnapmakerToken: "lastSyncedSnapmakerToken",
   // The MakerOnline access token last sent, and to which Thingport account.
   lastSyncedMakeronlineToken: "lastSyncedMakeronlineToken",
+  // The Creality Cloud sign-in last sent, and to which Thingport account.
+  lastSyncedCrealitycloudSession: "lastSyncedCrealitycloudSession",
   // The Printables and Thingiverse usernames last sent to the instance, so unchanged ones aren't.
   lastSentProviderAccounts: "lastSentProviderAccounts",
   // When Printables' lists were last read and sent, so a burst of page loads reads them once.
@@ -49,6 +51,7 @@ export type StoredConfig = {
   lastSyncedMyminifactorySession?: { account: string; value: string };
   lastSyncedSnapmakerToken?: { account: string; value: string };
   lastSyncedMakeronlineToken?: { account: string; value: string };
+  lastSyncedCrealitycloudSession?: { account: string; value: string };
   /** `account` is the Thingport instance and email they were sent to. */
   lastSentProviderAccounts?: { account: string; values: Record<string, string> };
   lastPrintablesPushAt?: number;

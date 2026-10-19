@@ -7,7 +7,7 @@ import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import Chip from "@mui/material/Chip";
 import PublicIcon from "@mui/icons-material/Public";
-import { printProviderInfo } from "../../constants/importProviders";
+import { printProviderInfo, providerChipSx } from "../../constants/importProviders";
 import type { DashboardProvider } from "../../api/dashboard";
 
 type Props = {
@@ -46,11 +46,7 @@ export default function ProviderListCard({ providers }: Props) {
             return (
               <ListItem key={p.provider} sx={{ px: 1 }}>
                 <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ width: "100%" }}>
-                  <Chip
-                    label={info.label}
-                    size="small"
-                    sx={{ bgcolor: info.color, color: info.textColor ?? "#fff", fontWeight: 600 }}
-                  />
+                  <Chip label={info.label} size="small" sx={{ ...providerChipSx(info), fontWeight: 600 }} />
                   <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0, pl: 1 }}>
                     {t("dashboard.topProviders.modelCount", { count: p.model_count })}
                   </Typography>

@@ -1,6 +1,6 @@
 # Provider setup
 
-Importing from **Printables** works out of the box (its public API needs no credential). **MakerWorld** needs each user's own session cookie, and **Thingiverse** an App Token an admin sets once for the whole instance. **MyMiniFactory** needs an API key an admin sets once for free models; each user connects their own MyMiniFactory session only to import paid or sign-in-only models from their library. **Snapmaker Space** needs each user's own sign-in, which [Thingport Grab](../extension/README.md) keeps fresh. **MakerOnline** reads its models and public collections with nothing, but hands out files only through Thingport Grab; each user's own sign-in adds their likes and private collections.
+Importing from **Printables** works out of the box (its public API needs no credential). **MakerWorld** needs each user's own session cookie, and **Thingiverse** an App Token an admin sets once for the whole instance. **MyMiniFactory** needs an API key an admin sets once for free models; each user connects their own MyMiniFactory session only to import paid or sign-in-only models from their library. **Snapmaker Space** needs each user's own sign-in, which [Thingport Grab](../extension/README.md) keeps fresh. **MakerOnline** reads its models and public collections with nothing, but hands out files only through Thingport Grab; each user's own sign-in adds their likes and private collections. **Creality Cloud** reads its models and collections with nothing, but gives files and likes only to each user's own sign-in, which Thingport Grab sends on.
 
 Connect them under **Configuration → Providers**: open the user menu (your avatar, top right) and choose **Configuration**, or click one of the provider chips at the bottom of that menu. Right-click a provider to connect or disconnect it, or double-click one that isn't connected yet. A green tick means it's connected. A provider your admin has [turned off](#turning-a-provider-off) isn't listed.
 
@@ -104,6 +104,32 @@ or sync them. Opening makeronline.com signed in, with Grab allowed there, connec
    checks it with MakerOnline before storing it.
 
 It lasts about three months; Grab sends the new one whenever you sign in again.
+
+## Creality Cloud
+
+Per-user (Configuration > Providers > Creality Cloud). Creality Cloud's model details, print profiles and collections,
+private ones included, need nothing; its files and your likes are given only to a signed-in user, so every Creality
+Cloud import, and reading your likes, runs as you. A model comes in like a MakerWorld one: its print profile's 3MF, as a
+file tagged with the profile, and importing it again with another profile (or picking the designer's or all profiles)
+adds more; a model without print profiles brings its model files instead.
+
+Its sign-in is two cookies, `model_token` and `model_user_id`, which its API takes together. The site sets them once
+when you sign in, for a week, and never renews them; Thingport doesn't either.
+
+### Easiest: Thingport Grab
+
+With [Thingport Grab](../extension/README.md) allowed on Creality Cloud, opening crealitycloud.com while you're signed
+in connects your account, and sends the new sign-in each time you sign in there again. Once a week has passed,
+Thingport says the sign-in ran out, and your next sign-in on crealitycloud.com connects it again.
+
+### Manual: copy it from your browser
+
+1. Sign in at [crealitycloud.com](https://www.crealitycloud.com).
+2. Open DevTools (`F12`, or `Cmd+Option+I` on macOS) and reload the page.
+3. On the **Network** tab, pick any request to `crealitycloud.com/api` and copy its `Cookie` request header. (Its
+   `__cxy_token_` and `__cxy_uid_` request headers, copied together, work too.)
+4. Right-click **Creality Cloud** in Thingport's **Configuration > Providers**, choose **Connect** and paste it.
+   Thingport checks it with Creality Cloud before storing it.
 
 ## MakerWorld cookie
 

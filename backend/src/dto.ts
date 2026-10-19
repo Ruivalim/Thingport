@@ -181,6 +181,7 @@ export type CategoryOut = {
   myminifactory_cat_ids: string;
   snapmaker_cat_ids: string;
   makeronline_cat_ids: string;
+  crealitycloud_cat_ids: string;
 };
 
 function plateThumbUrl(plateId: string): string | null {
@@ -477,6 +478,7 @@ export function toCategoryOut(category: Category): CategoryOut {
     myminifactory_cat_ids: formatCatIds(category.myminifactoryCatIds),
     snapmaker_cat_ids: formatCatIds(category.snapmakerCatIds),
     makeronline_cat_ids: formatCatIds(category.makeronlineCatIds),
+    crealitycloud_cat_ids: formatCatIds(category.crealitycloudCatIds),
   };
 }
 

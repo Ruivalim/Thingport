@@ -24,6 +24,7 @@ import {
   fetchMakerworldDesignForImport,
   importPrintFromUrl,
   SNAPMAKER_SESSION_CODE,
+  CREALITYCLOUD_SESSION_CODE,
   type ImportRequestBody,
 } from "./importService";
 import {
@@ -36,6 +37,13 @@ import {
 } from "./snapmakerApi";
 import { getUserSnapmakerToken, SNAPMAKER_CONNECT } from "./snapmakerSessionService";
 import { parseMakeronlineModelUrl } from "./makeronlineApi";
+import {
+  crealitycloudModelUrl,
+  parseCrealitycloudModelUrl,
+  resolveCrealitycloudModel,
+  selectCrealitycloudProfiles,
+} from "./crealitycloudApi";
+import { CREALITYCLOUD_CONNECT, getUserCrealitycloudAuth } from "./crealitycloudSessionService";
 import { queueGrabImport } from "./grabImportService";
 import { upsertAuthorFromImport } from "./authorService";
 import { extractZipEntriesToPrints } from "./zipService";
@@ -74,6 +82,7 @@ type PrintablesCollectionImportJobBody = ImportRequestBody & {
 };
 type MakerworldProfilesImportJobBody = ImportRequestBody & { scope: Exclude<MakerworldProfileScope, "url"> };
 type SnapmakerListImportJobBody = ImportRequestBody & { model_ids: string[]; list: SnapmakerList };
+type CrealitycloudListImportJobBody = ImportRequestBody & { model_ids: string[]; title: string };
 
 // Why a design failed, so a batch reads as one clear cause instead of "N failed". Once a CAPTCHA
 // ("rateLimited"), the daily download limit, an auth failure or a Cloudflare block ("blocked")
@@ -90,7 +99,13 @@ const PROVIDER_OFF_TEXT = (name: string) =>
 function classifyImportFailure(err: unknown): ImportFailureReason {
   if (err instanceof MakerworldAuthError) return "auth";
   if (err instanceof HttpError) {
-    if (err.code === MAKERWORLD_AUTH_CODE || err.code === SNAPMAKER_SESSION_CODE) return "auth";
+    if (
+      err.code === MAKERWORLD_AUTH_CODE ||
+      err.code === SNAPMAKER_SESSION_CODE ||
+      err.code === CREALITYCLOUD_SESSION_CODE
+    ) {
+      return "auth";
+    }
     if (err.code === CLOUDFLARE_BLOCKED_CODE) return "blocked";
     if (err.code === PROVIDER_DISABLED_CODE) return "disabled";
     if (err.status === 403 || err.status === 404) return "unavailable";
@@ -269,16 +284,61 @@ async function snapmakerProfileUrls(
   };
 }
 
-/** Imports several print profiles of one Snapmaker model as one model with a file per profile. */
-export async function runSnapmakerProfilesImportJob(
+/** The print profiles a scope picks from a Creality Cloud model, as links that each name one. */
+async function crealitycloudProfileUrls(
+  url: string,
+  scope: Exclude<MakerworldProfileScope, "url">,
+): Promise<{ title: string | null; urls: string[] }> {
+  const parsed = parseCrealitycloudModelUrl(url);
+  if (!parsed) throw new HttpError(400, "Not a Creality Cloud model link");
+  const resolved = await resolveCrealitycloudModel(parsed.modelId);
+  if (!resolved) throw new HttpError(404, "This Creality Cloud model could not be found, or isn't public.");
+  const profileIds = selectCrealitycloudProfiles(resolved, scope, parsed.requestedProfileId);
+  if (!profileIds.length) throw new HttpError(400, "This model has no print profiles to import");
+  return {
+    title: resolved.meta.title ?? null,
+    urls: profileIds.map((profileId) => crealitycloudModelUrl(resolved.alias, profileId)),
+  };
+}
+
+const SNAPMAKER_AUTH_TEXT =
+  "your Snapmaker sign-in ran out — visit space.snapmaker.com with Thingport Grab, then retry";
+const CREALITYCLOUD_AUTH_TEXT =
+  "Creality Cloud turned your sign-in down — visit crealitycloud.com signed in with Thingport Grab, then retry";
+
+/** A provider whose print profiles import by link, each as a plate of one model. */
+type ProfilesProvider = {
+  provider: "snapmaker" | "crealitycloud";
+  name: string;
+  profileUrls: typeof snapmakerProfileUrls;
+  authText: string;
+};
+
+const SNAPMAKER_PROFILES: ProfilesProvider = {
+  provider: "snapmaker",
+  name: "Snapmaker Space",
+  profileUrls: snapmakerProfileUrls,
+  authText: SNAPMAKER_AUTH_TEXT,
+};
+
+const CREALITYCLOUD_PROFILES: ProfilesProvider = {
+  provider: "crealitycloud",
+  name: "Creality Cloud",
+  profileUrls: crealitycloudProfileUrls,
+  authText: CREALITYCLOUD_AUTH_TEXT,
+};
+
+/** Imports several print profiles of one model as one model with a file per profile. */
+async function runProfilesImportJob(
   jobId: string,
   userId: string,
+  source: ProfilesProvider,
   body: MakerworldProfilesImportJobBody,
 ): Promise<void> {
   try {
-    const { title, urls } = await snapmakerProfileUrls(body.url, body.scope);
+    const { title, urls } = await source.profileUrls(body.url, body.scope);
     await updateJob(jobId, { total: urls.length, sourceLabel: title });
-    log.info("snapmaker profiles job started", { job: jobId, url: body.url, profiles: urls.length });
+    log.info(`${source.provider} profiles job started`, { job: jobId, url: body.url, profiles: urls.length });
     const totals = await importProfileUrlsSequentially(
       userId,
       urls,
@@ -304,16 +364,16 @@ export async function runSnapmakerProfilesImportJob(
       userId,
       action: "import_completed",
       targetId: printId,
-      details: { provider: "snapmaker", sourceLabel: title, imported, alreadyInLibrary, failed },
+      details: { provider: source.provider, sourceLabel: title, imported, alreadyInLibrary, failed },
     });
     const bodyParts: string[] = [];
     if (alreadyInLibrary) bodyParts.push(`${alreadyInLibrary} already on the model`);
-    if (stopReason === "auth") bodyParts.push(`the rest failed because ${SNAPMAKER_AUTH_TEXT}`);
+    if (stopReason === "auth") bodyParts.push(`the rest failed because ${source.authText}`);
     else if (failed) bodyParts.push(`${failed} failed`);
-    const label = title ? `"${title}"` : "a Snapmaker model";
+    const label = title ? `"${title}"` : `a ${source.name} model`;
     await createNotification(userId, {
       type: "import",
-      title: `Imported ${imported} of ${urls.length} print profiles from Snapmaker Space`,
+      title: `Imported ${imported} of ${urls.length} print profiles from ${source.name}`,
       body: bodyParts.length ? `Of ${label} — ${bodyParts.join(", ")}.` : `Of ${label}.`,
       externalUrl: body.url,
       internalPath: printId ? `/models/${printId}` : null,
@@ -323,8 +383,21 @@ export async function runSnapmakerProfilesImportJob(
   }
 }
 
-const SNAPMAKER_AUTH_TEXT =
-  "your Snapmaker sign-in ran out — visit space.snapmaker.com with Thingport Grab, then retry";
+export function runSnapmakerProfilesImportJob(
+  jobId: string,
+  userId: string,
+  body: MakerworldProfilesImportJobBody,
+): Promise<void> {
+  return runProfilesImportJob(jobId, userId, SNAPMAKER_PROFILES, body);
+}
+
+export function runCrealitycloudProfilesImportJob(
+  jobId: string,
+  userId: string,
+  body: MakerworldProfilesImportJobBody,
+): Promise<void> {
+  return runProfilesImportJob(jobId, userId, CREALITYCLOUD_PROFILES, body);
+}
 
 export async function runCollectionImportJob(
   jobId: string,
@@ -471,9 +544,9 @@ export async function runCollectionImportJob(
 }
 
 /** A provider whose models import one by one with a token: Thingiverse's and MyMiniFactory's instance-wide one, or
- *  the user's own Snapmaker sign-in. */
+ *  the user's own Snapmaker or Creality Cloud sign-in. */
 type TokenBatchProvider = {
-  provider: "thingiverse" | "myminifactory" | "snapmaker";
+  provider: "thingiverse" | "myminifactory" | "snapmaker" | "crealitycloud";
   getToken: () => Promise<string | null>;
   notConfigured: string;
   modelUrl: (id: string) => string;
@@ -513,8 +586,19 @@ function snapmakerBatch(userId: string): TokenBatchProvider {
   };
 }
 
-/** Shared by the Thingiverse Likes and Collection imports, MyMiniFactory's collections and Snapmaker's likes and
- *  bookmarks.
+function crealitycloudBatch(userId: string): TokenBatchProvider {
+  return {
+    provider: "crealitycloud",
+    getToken: async () => (await getUserCrealitycloudAuth(userId))?.token ?? null,
+    notConfigured: CREALITYCLOUD_CONNECT,
+    modelUrl: (id) => crealitycloudModelUrl(id),
+    rateLimitText: "blocked by Creality Cloud's rate limit — wait a while, then retry",
+    authText: `failed because ${CREALITYCLOUD_AUTH_TEXT}`,
+  };
+}
+
+/** Shared by the Thingiverse Likes and Collection imports, MyMiniFactory's collections, Snapmaker's likes and
+ *  bookmarks, and Creality Cloud's likes and collections.
  * Successful imports are filed into the collection named by `resolveCollectionTitle`, which runs
  * afterwards so it costs no API call when nothing was imported. */
 async function runTokenBatchImportJob(
@@ -698,6 +782,23 @@ export async function runSnapmakerListImportJob(
     body.model_ids,
     async () => name,
     () => `your ${name}`,
+  );
+}
+
+/** The user's Creality Cloud likes, or a collection, filed into a collection named after it. */
+export async function runCrealitycloudListImportJob(
+  jobId: string,
+  userId: string,
+  body: CrealitycloudListImportJobBody,
+): Promise<void> {
+  await runTokenBatchImportJob(
+    jobId,
+    userId,
+    crealitycloudBatch(userId),
+    body,
+    body.model_ids,
+    async () => body.title,
+    (collectionTitle) => `"${collectionTitle}"`,
   );
 }
 
@@ -908,9 +1009,9 @@ const LINKS_RETRY_DELAY_MS = 2000;
 
 /** Why a link's sign-in failed, by its provider. */
 function authStopText(url: string): string {
-  return parseSnapmakerModelUrl(url)
-    ? SNAPMAKER_AUTH_TEXT
-    : "the MakerWorld session expired — update the cookie in Settings, then retry";
+  if (parseSnapmakerModelUrl(url)) return SNAPMAKER_AUTH_TEXT;
+  if (parseCrealitycloudModelUrl(url)) return CREALITYCLOUD_AUTH_TEXT;
+  return "the MakerWorld session expired — update the cookie in Settings, then retry";
 }
 
 function isTransientImportFailure(err: unknown): boolean {
@@ -922,7 +1023,7 @@ function failureMessage(err: unknown): string {
   return err instanceof Error && err.message.trim() ? err.message.trim() : "Import failed";
 }
 
-/** One queued link. A MakerWorld or Snapmaker model with a multi-profile scope imports each wanted profile onto
+/** One queued link. A MakerWorld, Snapmaker or Creality Cloud model with a multi-profile scope imports each wanted profile onto
  *  one print, like the PROFILES job; anything else is a plain single import. `profiles` marks the
  *  former, whose totals count print profiles rather than models. */
 async function importOneLink(
@@ -949,6 +1050,10 @@ async function importOneLink(
   }
   if (parseSnapmakerModelUrl(url) && body.scope && body.scope !== "url") {
     const { urls } = await snapmakerProfileUrls(url, body.scope);
+    return { ...(await importProfileUrlsSequentially(userId, urls, { ...body, url })), profiles: true };
+  }
+  if (parseCrealitycloudModelUrl(url) && body.scope && body.scope !== "url") {
+    const { urls } = await crealitycloudProfileUrls(url, body.scope);
     return { ...(await importProfileUrlsSequentially(userId, urls, { ...body, url })), profiles: true };
   }
   const result = await importPrintFromUrl(userId, url, { ...body, url });

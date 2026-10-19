@@ -19,6 +19,7 @@ const LOGO_PROVIDERS = new Set<string>([
   "myminifactory",
   "snapmaker",
   "makeronline",
+  "crealitycloud",
 ]);
 
 /** The provider's logo with a small green tick, slim enough for a toolbar row. Opens the

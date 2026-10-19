@@ -193,6 +193,7 @@ const categoryMetaSchema = z.object({
   myminifactory_cat_ids: catIdsField,
   snapmaker_cat_ids: catIdsField,
   makeronline_cat_ids: catIdsField,
+  crealitycloud_cat_ids: catIdsField,
 });
 
 router.patch(
@@ -212,6 +213,7 @@ router.patch(
         myminifactoryCatIds: parseCatIdsInput(body.myminifactory_cat_ids),
         snapmakerCatIds: parseCatIdsInput(body.snapmaker_cat_ids),
         makeronlineCatIds: parseCatIdsInput(body.makeronline_cat_ids),
+        crealitycloudCatIds: parseCatIdsInput(body.crealitycloud_cat_ids),
       },
     });
     res.json(toCategoryOut(updated));

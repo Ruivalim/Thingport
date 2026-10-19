@@ -27,6 +27,7 @@ const ALL: readonly ImportProvider[] = [
   "myminifactory",
   "snapmaker",
   "makeronline",
+  "crealitycloud",
 ];
 
 /** With every provider off there's nothing to import from or connect to, so those parts of the app hide. */

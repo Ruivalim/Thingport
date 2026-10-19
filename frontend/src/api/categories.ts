@@ -21,6 +21,7 @@ export type Category = {
   myminifactory_cat_ids: string;
   snapmaker_cat_ids: string;
   makeronline_cat_ids: string;
+  crealitycloud_cat_ids: string;
 };
 
 export type CategoryMetaInput = {
@@ -32,6 +33,7 @@ export type CategoryMetaInput = {
   myminifactoryCatIds: string;
   snapmakerCatIds: string;
   makeronlineCatIds: string;
+  crealitycloudCatIds: string;
 };
 
 export const categoriesApi = {
@@ -81,6 +83,7 @@ export const categoriesApi = {
         myminifactory_cat_ids: meta.myminifactoryCatIds,
         snapmaker_cat_ids: meta.snapmakerCatIds,
         makeronline_cat_ids: meta.makeronlineCatIds,
+        crealitycloud_cat_ids: meta.crealitycloudCatIds,
       }),
     });
     if (res.status === 401) throw new UnauthorizedError();

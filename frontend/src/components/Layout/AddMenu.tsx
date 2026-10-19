@@ -40,6 +40,8 @@ import {
   isSnapmakerModelUrl,
   isMakeronlineListUrl,
   isMakeronlineModelUrl,
+  isCrealitycloudListUrl,
+  isCrealitycloudModelUrl,
   isThingiverseCollectionUrl,
   isThingiverseLikesUrl,
   type ImportProviderKey,
@@ -54,6 +56,7 @@ const IMPORT_PROVIDERS: ImportProviderKey[] = [
   "myminifactory",
   "snapmaker",
   "makeronline",
+  "crealitycloud",
 ];
 
 /** What the search palette's !import command calls. */
@@ -120,12 +123,17 @@ const AddMenu = React.forwardRef<AddMenuHandle, Props>(function AddMenu(
           isPrintablesCollectionUrl(link) ||
           isMyminifactoryCollectionUrl(link) ||
           isSnapmakerListUrl(link) ||
-          isMakeronlineListUrl(link),
+          isMakeronlineListUrl(link) ||
+          isCrealitycloudListUrl(link),
       )
     : isMakerworldCollectionUrl(linkValue);
   // Models with print profiles to pick between.
   const hasProfiles = links.some(
-    (link) => isMakerworldModelUrl(link) || isSnapmakerModelUrl(link) || isMakeronlineModelUrl(link),
+    (link) =>
+      isMakerworldModelUrl(link) ||
+      isSnapmakerModelUrl(link) ||
+      isMakeronlineModelUrl(link) ||
+      isCrealitycloudModelUrl(link),
   );
 
   const closeMenu = () => setAnchorEl(null);

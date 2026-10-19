@@ -37,6 +37,7 @@ afterAll(async () => {
     "myminifactory",
     "snapmaker",
     "makeronline",
+    "crealitycloud",
   ] as const)
     await setProviderEnabled(provider, true);
 });
@@ -52,6 +53,7 @@ describe("turning providers off", () => {
       myminifactory: true,
       snapmaker: true,
       makeronline: true,
+      crealitycloud: true,
     });
 
     expect(
@@ -70,6 +72,7 @@ describe("turning providers off", () => {
       myminifactory: true,
       snapmaker: true,
       makeronline: true,
+      crealitycloud: true,
     });
   });
 

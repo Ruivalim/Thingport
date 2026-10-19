@@ -274,6 +274,7 @@
       "myminifactoryDisabledReason": "MyMiniFactory: the admin hasn't configured an API key yet",
       "snapmakerDisabledReason": "Snapmaker Space: connect your account in Configuration → Providers",
       "makeronlineDisabledReason": "MakerOnline: connect your account in Configuration → Providers",
+      "crealitycloudDisabledReason": "Creality Cloud: connect your account in Configuration → Providers",
       "myModels": "My models"
     },
     "notifications": {
@@ -538,7 +539,8 @@
           "thingiverse": "Imports, collections and liked models, through this Thingport's App Token.",
           "myminifactory": "Models and public collections, through this Thingport's API key; bought models through each user's own MyMiniFactory account.",
           "snapmaker": "Models with their print profiles, and each user's likes and bookmarks, through each user's own Snapmaker account.",
-          "makeronline": "Models with their print profiles, collections and each user's likes. Files come through Thingport Grab: MakerOnline gives them only to its own pages."
+          "makeronline": "Models with their print profiles, collections and each user's likes. Files come through Thingport Grab: MakerOnline gives them only to its own pages.",
+          "crealitycloud": "Models with their print profiles, collections and each user's likes, through each user's own Creality Cloud account."
         },
         "keyStatus": {
           "thingiverse": {
@@ -1635,6 +1637,17 @@
         "expired": "Sign-in expired. Visit makeronline.com with Thingport Grab, or connect MakerOnline again in Configuration → Providers.",
         "expiredStatus": "Sign-in expired"
       },
+      "crealitycloud": {
+        "placeholder": "The Cookie header, with model_token and model_user_id",
+        "steps": [
+          "Easiest: with Thingport Grab, just open crealitycloud.com while signed in. It connects your account, and again each time you sign in there.",
+          "Or by hand: sign in at crealitycloud.com, open your browser's developer tools (F12) and reload the page.",
+          "Under Network, pick any request to crealitycloud.com/api, copy its Cookie request header and paste it below. It lasts a week from when you signed in."
+        ],
+        "notConnected": "Creality Cloud gives its files to signed-in users only. Connect your account to import its models, and your likes.",
+        "expired": "Sign-in expired. Sign in on crealitycloud.com with Thingport Grab, or connect Creality Cloud again in Configuration → Providers.",
+        "expiredStatus": "Sign-in expired"
+      },
       "printables": {
         "alwaysConnected": "Printables is connected by default: it needs no account or key."
       },
@@ -2585,7 +2598,7 @@
           "takenBy": "Synced with \"{{name}}\"",
           "loadFailed": "Couldn't load the collections.",
           "lookupFailed": "Couldn't find that collection.",
-          "notALink": "Paste a MakerWorld, Printables, Thingiverse, MyMiniFactory, Snapmaker Space or MakerOnline collection link.",
+          "notALink": "Paste a MakerWorld, Printables, Thingiverse, MyMiniFactory, Snapmaker Space, MakerOnline or Creality Cloud collection link.",
           "usernameFailed": "Couldn't save the username.",
           "openProviders": "Open Providers",
           "notConnected": {
@@ -2594,7 +2607,8 @@
             "thingiverse": "Thingiverse isn't connected on this Thingport yet. An admin can connect it in Configuration > Providers.",
             "myminifactory": "MyMiniFactory isn't connected on this Thingport yet. An admin can connect it in Configuration > Providers.",
             "snapmaker": "Connect Snapmaker Space in Configuration > Providers, or visit it with Thingport Grab, to see your likes and bookmarks here.",
-            "makeronline": "Connect MakerOnline in Configuration > Providers, or visit it with Thingport Grab, to see your likes and collections here."
+            "makeronline": "Connect MakerOnline in Configuration > Providers, or visit it with Thingport Grab, to see your likes and collections here.",
+            "crealitycloud": "Connect Creality Cloud in Configuration > Providers, or visit it with Thingport Grab, to see your likes and collections here."
           },
           "usernameLabel": "Your {{provider}} username",
           "usernameHint": {
@@ -2712,6 +2726,7 @@
         "myminifactoryCatIdLabel": "MyMiniFactory category IDs",
         "snapmakerCatIdLabel": "Snapmaker Space category IDs",
         "makeronlineCatIdLabel": "MakerOnline category IDs",
+        "crealitycloudCatIdLabel": "Creality Cloud category IDs",
         "catIdsPlaceholder": "e.g. 800;71;1001",
         "catIdsHelp": "Separate multiple IDs with \";\" -- matches if an import's category is any of these",
         "dragToMove": "Drag to move"

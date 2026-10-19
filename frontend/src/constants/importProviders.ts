@@ -1,8 +1,13 @@
 import type { Theme } from "@mui/material/styles";
 
 // `color`/`textColor` are sx palette tokens or hex brand colors; `textColor` may also be a theme
-// callback.
-export type ImportProviderInfo = { label: string; color: string; textColor?: string | ((theme: Theme) => string) };
+// callback. `outlined` adds a primary-colour ring.
+export type ImportProviderInfo = {
+  label: string;
+  color: string;
+  textColor?: string | ((theme: Theme) => string);
+  outlined?: boolean;
+};
 
 export const IMPORT_PROVIDER_INFO: Record<string, ImportProviderInfo> = {
   makerworld: { label: "MakerWorld", color: "#00B800" },
@@ -10,25 +15,16 @@ export const IMPORT_PROVIDER_INFO: Record<string, ImportProviderInfo> = {
   printables: { label: "Printables", color: "#FA6831" },
   // A darker shade of MyMiniFactory's #00C4A6, so the white label stays readable.
   myminifactory: { label: "MyMiniFactory", color: "#00866F" },
-  // Snapmaker's mark is black and white, so it follows the theme like Thingport's own.
-  snapmaker: {
-    label: "Snapmaker Space",
-    color: "text.primary",
-    textColor: (theme) => (theme.palette.mode === "dark" ? "#FFFFFF" : theme.palette.background.paper),
-  },
-  // MakerOnline's mark is black and white too.
+  snapmaker: { label: "Snapmaker Space", color: "#0C63E2" },
+  // MakerOnline's mark is black and white, so it follows the theme.
   makeronline: {
     label: "MakerOnline",
     color: "text.primary",
     textColor: (theme) => (theme.palette.mode === "dark" ? "#FFFFFF" : theme.palette.background.paper),
   },
-  // Direct uploads (source_provider is null). Monochrome so it doesn't compete with provider badges;
-  // dark mode uses flat white for contrast against the chip.
-  thingport: {
-    label: "Thingport",
-    color: "text.primary",
-    textColor: (theme) => (theme.palette.mode === "dark" ? "#FFFFFF" : theme.palette.background.paper),
-  },
+  crealitycloud: { label: "Creality Cloud", color: "#1AC686" },
+  // Direct uploads (source_provider is null).
+  thingport: { label: "Thingport", color: "common.white", textColor: "common.black", outlined: true },
 };
 
 /** Known external providers only; null for uploads. */
@@ -40,4 +36,14 @@ export function importProviderInfo(provider: string | null | undefined): ImportP
 /** Like importProviderInfo, but falls back to "Thingport" for uploads. */
 export function printProviderInfo(provider: string | null | undefined): ImportProviderInfo {
   return importProviderInfo(provider) ?? IMPORT_PROVIDER_INFO.thingport;
+}
+
+/** The fill, text and ring of a provider chip. */
+export function providerChipSx(info: ImportProviderInfo) {
+  return {
+    bgcolor: info.color,
+    color: info.textColor ?? "#fff",
+    // An inset ring, so the outlined chip stays the same size as the others.
+    ...(info.outlined && { boxShadow: (theme: Theme) => `inset 0 0 0 1.5px ${theme.palette.primary.main}` }),
+  };
 }

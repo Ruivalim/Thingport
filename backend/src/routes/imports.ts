@@ -13,6 +13,7 @@ import { requireCaptcha } from "../services/captchaService";
 import {
   assertCanImportUrl,
   SNAPMAKER_SESSION_CODE,
+  CREALITYCLOUD_SESSION_CODE,
   checkImportStatus,
   downloadImportToTemp,
   findImportedExternalIds,
@@ -86,6 +87,21 @@ import {
   queueGrabImport,
   recordGrabImportFailure,
 } from "../services/grabImportService";
+import {
+  CREALITYCLOUD_LIKES_NAME,
+  CrealitycloudAuthError,
+  type CrealitycloudListing,
+  fetchCrealitycloudCollection,
+  fetchCrealitycloudLikes,
+  parseCrealitycloudCollectionUrl,
+  parseCrealitycloudLikesUrl,
+  parseCrealitycloudModelUrl,
+} from "../services/crealitycloudApi";
+import {
+  CREALITYCLOUD_CONNECT,
+  getUserCrealitycloudAuth,
+  markCrealitycloudSessionRejected,
+} from "../services/crealitycloudSessionService";
 import { addPrintsToCollection, findOrCreateCollectionByName } from "../services/collectionService";
 import { listZipEntries } from "../services/zipService";
 import { createJob, createJobItems, getActiveJob, getJob, listJobItems } from "../services/importJobService";
@@ -93,6 +109,8 @@ import { queueLink, startLinksJob } from "../services/importQueueService";
 import { getImportTask, startImportTask } from "../services/importTaskService";
 import {
   runCollectionImportJob,
+  runCrealitycloudListImportJob,
+  runCrealitycloudProfilesImportJob,
   runLinksImportJob,
   runMakerworldProfilesImportJob,
   runMyminifactoryCollectionImportJob,
@@ -261,8 +279,17 @@ router.get(
 );
 
 const statusBatchSchema = z.object({
-  provider: z.enum(["makerworld", "thingiverse", "printables", "myminifactory", "snapmaker", "makeronline"]),
-  external_ids: z.array(z.string().max(64)).max(10_000),
+  provider: z.enum([
+    "makerworld",
+    "thingiverse",
+    "printables",
+    "myminifactory",
+    "snapmaker",
+    "makeronline",
+    "crealitycloud",
+  ]),
+  // Creality Cloud's ids are its models' aliases, made of their titles.
+  external_ids: z.array(z.string().max(200)).max(10_000),
 });
 
 // One query for a whole collection page; per-model /import/status calls bog down on big ones.
@@ -544,6 +571,63 @@ router.post(
   }),
 );
 
+/** The user's likes, or a collection, from a Creality Cloud link. Likes are their owner's only; collections are read
+ *  without a sign-in. */
+async function crealitycloudListOf(
+  userId: string,
+  url: string,
+): Promise<{ title: string; listing: CrealitycloudListing }> {
+  try {
+    const likes = parseCrealitycloudLikesUrl(url);
+    if (likes) {
+      const auth = await getUserCrealitycloudAuth(userId);
+      if (!auth) throw new HttpError(400, CREALITYCLOUD_CONNECT, CREALITYCLOUD_SESSION_CODE);
+      if (auth.userId !== likes.userId) {
+        throw new HttpError(400, "Creality Cloud shows likes to their owner only, so only your own can be imported");
+      }
+      return { title: CREALITYCLOUD_LIKES_NAME, listing: await fetchCrealitycloudLikes(auth) };
+    }
+    const parsed = parseCrealitycloudCollectionUrl(url);
+    if (!parsed) throw new HttpError(400, "Not a link to a Creality Cloud collection or your likes");
+    const collection = await fetchCrealitycloudCollection(parsed.collectionId);
+    if (!collection) throw new HttpError(404, "That collection can't be found. It may have been deleted.");
+    return { title: collection.info.name, listing: collection };
+  } catch (err) {
+    if (err instanceof CrealitycloudAuthError) {
+      await markCrealitycloudSessionRejected(userId);
+      // 400, not 401: the frontend treats any 401 as an expired Thingport session.
+      throw new HttpError(400, err.message, CREALITYCLOUD_SESSION_CODE);
+    }
+    throw err;
+  }
+}
+
+router.post(
+  "/import/crealitycloud-list/entries",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(importRequestSchema, req.body);
+    const url = await enabledImportUrl(body.url);
+    const { title, listing } = await crealitycloudListOf(req.userId!, url);
+    if (!listing.entries.length) throw new HttpError(400, `"${title}" is empty`);
+    const alreadyImported = await findImportedExternalIds(
+      req.userId!,
+      "crealitycloud",
+      listing.entries.map((e) => e.modelId),
+    );
+    res.json({
+      title,
+      total: listing.total,
+      truncated: listing.truncated,
+      entries: listing.entries.map((e) => ({
+        design_id: e.modelId,
+        title: e.title,
+        cover: e.cover,
+        already_imported: alreadyImported.has(e.modelId),
+      })),
+    });
+  }),
+);
+
 // ---- MakerOnline: files only through Thingport Grab ----
 // MakerOnline signs its download links only for a page its own anti-bot script runs on. Grab asks what a model needs
 // (plan), gets it signed on makeronline.com, and imports with the signed links; imports started anywhere else wait
@@ -772,6 +856,20 @@ router.post(
   }),
 );
 
+router.post(
+  "/import/crealitycloud-profiles",
+  requireCaptcha("import"),
+  asyncHandler(async (req, res) => {
+    const body = parseBody(makerworldProfilesImportRequestSchema, req.body);
+    await assertNoActiveJob(req.userId!);
+    const url = await enabledImportUrl(body.url);
+    if (!parseCrealitycloudModelUrl(url)) throw new HttpError(400, "Not a Creality Cloud model link");
+    const job = await createJob(req.userId!, "PROFILES", { sourceUrl: url, provider: "crealitycloud" });
+    void runCrealitycloudProfilesImportJob(job.id, req.userId!, { ...body, url });
+    res.status(202).json({ job_id: job.id });
+  }),
+);
+
 const collectionImportRequestSchema = importRequestSchema.extend({ design_ids: z.array(z.string()).min(1) });
 
 router.post(
@@ -895,6 +993,36 @@ router.post(
       total: body.model_ids.length,
     });
     void runSnapmakerListImportJob(job.id, req.userId!, { ...body, url, list });
+    res.status(202).json({ job_id: job.id });
+  }),
+);
+
+const crealitycloudListImportRequestSchema = importRequestSchema.extend({
+  model_ids: z
+    .array(
+      z
+        .string()
+        .regex(/^[\w-]+$/)
+        .max(200),
+    )
+    .min(1)
+    .max(1000),
+});
+
+router.post(
+  "/import/crealitycloud-list",
+  requireCaptcha("import"),
+  asyncHandler(async (req, res) => {
+    const body = parseBody(crealitycloudListImportRequestSchema, req.body);
+    await assertNoActiveJob(req.userId!);
+    const url = await enabledImportUrl(body.url);
+    const { title } = await crealitycloudListOf(req.userId!, url);
+    const job = await createJob(req.userId!, "COLLECTION", {
+      sourceUrl: url,
+      provider: "crealitycloud",
+      total: body.model_ids.length,
+    });
+    void runCrealitycloudListImportJob(job.id, req.userId!, { ...body, url, title });
     res.status(202).json({ job_id: job.id });
   }),
 );

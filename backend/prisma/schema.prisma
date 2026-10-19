@@ -86,6 +86,14 @@ model User {
   makeronlineUserId        String?
   // When MakerOnline last turned the token down.
   makeronlineRejectedAt    DateTime?
+  // The user's Creality Cloud token, from its model_token cookie. The site sets it once at sign-in for 7 days and
+  // never renews it; Thingport Grab sends each new one here.
+  crealitycloudToken       String?
+  crealitycloudExpiresAt   DateTime?
+  // Their Creality Cloud user id (model_user_id): their likes are synced under it.
+  crealitycloudUserId      String?
+  // When Creality Cloud last turned the token down.
+  crealitycloudRejectedAt  DateTime?
   slicer                   String?
   // "light" | "dark" | "system"; null means never set.
   themePreference          String?
@@ -160,6 +168,7 @@ model Category {
   myminifactoryCatIds Int[]      @default([])
   snapmakerCatIds     Int[]      @default([])
   makeronlineCatIds   Int[]      @default([])
+  crealitycloudCatIds Int[]      @default([])
   prints              Print[]
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
@@ -172,6 +181,7 @@ model Category {
   @@index([myminifactoryCatIds], type: Gin)
   @@index([snapmakerCatIds], type: Gin)
   @@index([makeronlineCatIds], type: Gin)
+  @@index([crealitycloudCatIds], type: Gin)
 }
 
 model Print {
