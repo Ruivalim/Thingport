@@ -117,9 +117,9 @@ import {
 export const MYMINIFACTORY_SESSION_CODE = "myminifactory_session";
 /** An import refused because the user hasn't connected Snapmaker, or their sign-in has run out. */
 export const SNAPMAKER_SESSION_CODE = "snapmaker_session";
-/** A MakerOnline import that came without the signed file links only Thingport Grab can get. */
 /** An import refused because the user hasn't connected Creality Cloud, or it turned their sign-in down. */
 export const CREALITYCLOUD_SESSION_CODE = "crealitycloud_session";
+/** A MakerOnline import that came without the signed file links only Thingport Grab can get. */
 export const MAKERONLINE_GRAB_CODE = "makeronline_grab";
 export const MAKERONLINE_NEEDS_GRAB =
   "MakerOnline only gives its files to its own pages: import it with Thingport Grab on makeronline.com.";

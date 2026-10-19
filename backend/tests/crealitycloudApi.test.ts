@@ -19,8 +19,9 @@ import { buildImportSourceUrl, identifySourceModel } from "../src/services/impor
 
 // The Creality Cloud client against the shapes its own site gets back, with fetch mocked. No database.
 
-const TOKEN = "b6609720113002cac49d2cc97b463cb0bc975695772ba5917b00e0ed4444cec5";
-const AUTH = { token: TOKEN, userId: "2859484974" };
+const TOKEN = "0123456789abcdef".repeat(4);
+const USER_ID = "1000000001";
+const AUTH = { token: TOKEN, userId: USER_ID };
 
 function apiResponse(code: number, result: unknown = {}, msg = "ok"): Response {
   return new Response(JSON.stringify({ code, msg, reqId: "r", result }), {
@@ -79,9 +80,9 @@ describe("Creality Cloud URLs", () => {
     });
     // The store's own collections aren't models.
     expect(parseCrealitycloudCollectionUrl("https://www.crealitycloud.com/collections/materials")).toBeNull();
-    const likes = "https://www.crealitycloud.com/user/2859484974/likes";
-    expect(parseCrealitycloudLikesUrl(likes)).toEqual({ userId: "2859484974" });
-    expect(parseSyncSource(likes)).toEqual({ provider: "crealitycloud", externalId: "likes-2859484974", url: likes });
+    const likes = `https://www.crealitycloud.com/user/${USER_ID}/likes`;
+    expect(parseCrealitycloudLikesUrl(likes)).toEqual({ userId: USER_ID });
+    expect(parseSyncSource(likes)).toEqual({ provider: "crealitycloud", externalId: `likes-${USER_ID}`, url: likes });
   });
 
   it("identifies imported models and links back to them", () => {
@@ -105,13 +106,13 @@ describe("Creality Cloud URLs", () => {
 describe("Creality Cloud sign-in", () => {
   it("takes the token and user id from a Cookie header, or from copied request headers", () => {
     expect(
-      normalizeCrealitycloudSession(`Cookie: model_lang=0; model_token=${TOKEN}; model_user_id=2859484974; x=1`),
+      normalizeCrealitycloudSession(`Cookie: model_lang=0; model_token=${TOKEN}; model_user_id=${USER_ID}; x=1`),
     ).toEqual({ ...AUTH, expiresAt: null });
-    expect(normalizeCrealitycloudSession(`__cxy_token_\n${TOKEN}\n__cxy_uid_\n2859484974`)).toEqual({
+    expect(normalizeCrealitycloudSession(`__cxy_token_\n${TOKEN}\n__cxy_uid_\n${USER_ID}`)).toEqual({
       ...AUTH,
       expiresAt: null,
     });
-    expect(normalizeCrealitycloudSession(`__cxy_token_: ${TOKEN}\n__cxy_uid_: 2859484974`)).toMatchObject(AUTH);
+    expect(normalizeCrealitycloudSession(`__cxy_token_: ${TOKEN}\n__cxy_uid_: ${USER_ID}`)).toMatchObject(AUTH);
   });
 
   it("refuses a token without its user id, or anything else", () => {
@@ -124,12 +125,12 @@ describe("Creality Cloud sign-in", () => {
   it("sends the site's whole header set, the sign-in included, and tells a rejected sign-in apart", async () => {
     const calls = stubApi({
       "/v3/user/getInfo": () =>
-        apiResponse(0, { profileUserInfo: { base: { userId: 2859484974, nickName: "Tautvydas" } } }),
+        apiResponse(0, { profileUserInfo: { base: { userId: Number(USER_ID), nickName: "Maker" } } }),
     });
-    expect(await checkCrealitycloudAuth(AUTH)).toEqual({ userId: "2859484974", name: "Tautvydas" });
+    expect(await checkCrealitycloudAuth(AUTH)).toEqual({ userId: USER_ID, name: "Maker" });
     expect(calls[0].headers).toMatchObject({
       __cxy_token_: TOKEN,
-      __cxy_uid_: "2859484974",
+      __cxy_uid_: USER_ID,
       __cxy_app_id_: "cxy-gen2",
       __cxy_os_ver_: expect.any(String),
       __cxy_app_ch_: expect.any(String),
@@ -286,7 +287,7 @@ describe("Creality Cloud lists", () => {
           id: "6ad5fb7d6418247fd75f3f3c",
           customizationUrl: "3d-model-collection-gQVJSX",
           thematicName: "Test",
-          creator: 2859484974,
+          creator: Number(USER_ID),
           isPublic: true,
           modelQuantity: 1,
         }),

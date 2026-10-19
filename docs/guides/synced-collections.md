@@ -100,9 +100,9 @@ linked:
 - **Overview** shows the chain from the provider's collection to yours, when it was last checked and when the next
   check is due, and a link to the collection on the provider's site. **Sync now** checks it right away. **Stop
   syncing** unlinks it.
-- **Settings** sets how often it's checked: every hour, 6 hours or 24 hours (the default). For MakerWorld it also sets
-  which print profiles each new model brings: the default one, the designer's (the default), or all of them, community
-  ones included.
+- **Settings** sets how often it's checked: every hour, 6 hours or 24 hours (the default). For MakerWorld, Snapmaker
+  Space, MakerOnline and Creality Cloud it also sets which print profiles each new model brings: the default one, the
+  designer's (the default), or all of them, community ones included.
 
 ## How it works
 

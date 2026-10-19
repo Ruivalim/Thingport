@@ -22,11 +22,20 @@ export async function syncCrealitycloudSession(): Promise<{ userId: string | nul
   } catch {
     return { userId: null };
   }
-  if (!token?.value || !user?.value) return { userId: null };
-  const value = `model_token=${token.value}; model_user_id=${user.value}`;
   // Per Thingport account, so switching the extension to another one sends it there too.
   const account = `${config.instanceUrl} ${config.email}`;
   const last = config.lastSyncedCrealitycloudSession;
+  if (!token?.value || !user?.value) {
+    // Signed out there: clear the sign-in Grab sent, but not one pasted in Thingport.
+    if (last?.account === account) {
+      try {
+        await apiCall("PATCH", "/settings/crealitycloud-session", { token: null });
+        await chrome.storage.local.remove(STORAGE_KEYS.lastSyncedCrealitycloudSession);
+      } catch {}
+    }
+    return { userId: null };
+  }
+  const value = `model_token=${token.value}; model_user_id=${user.value}`;
   if (last?.account !== account || last.value !== value) {
     try {
       await apiCall("PATCH", "/settings/crealitycloud-session", {

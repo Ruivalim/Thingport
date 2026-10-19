@@ -47,7 +47,12 @@ import {
   getUserMakeronlineToken,
   markMakeronlineTokenRejected,
 } from "./makeronlineSessionService";
-import { CrealitycloudAuthError, fetchCrealitycloudCollection, fetchCrealitycloudLikes } from "./crealitycloudApi";
+import {
+  CrealitycloudAuthError,
+  crealitycloudLikesKey,
+  fetchCrealitycloudCollection,
+  fetchCrealitycloudLikes,
+} from "./crealitycloudApi";
 import {
   getCrealitycloudConnection,
   getUserCrealitycloudAuth,
@@ -158,6 +163,10 @@ export async function fetchListing(
     if (isSignInLikes(sync)) {
       const auth = await getUserCrealitycloudAuth(sync.userId);
       if (!auth) throw new LikesUnreadableError(CONNECTION_PROBLEMS.crealitycloudLikesDisconnected);
+      // The sign-in may since be another account's, whose likes aren't this sync's.
+      if (crealitycloudLikesKey(auth.userId) !== id) {
+        throw new LikesUnreadableError(CONNECTION_PROBLEMS.crealitycloudLikesOtherAccount);
+      }
       return (await fetchCrealitycloudLikes(auth)).entries.map((e) => e.modelId);
     }
     const listing = await fetchCrealitycloudCollection(id);
@@ -227,6 +236,11 @@ const CONNECTION_PROBLEMS = {
     error: "Creality Cloud isn't connected",
     reason: "Creality Cloud shows likes to their owner only, and it isn't connected.",
     fix: "you open crealitycloud.com with Thingport Grab, or connect it",
+  },
+  crealitycloudLikesOtherAccount: {
+    error: "Creality Cloud is connected to another account",
+    reason: "These likes are another Creality Cloud account's than the one connected now.",
+    fix: "you connect the account the likes are from again",
   },
   crealitycloudExpired: {
     error: "Creality Cloud sign-in ran out",
