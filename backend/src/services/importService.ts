@@ -37,12 +37,14 @@ import {
   extractPageMetadata,
   findDownloadUrl,
   makerworldHtmlHeaders,
+  makerworldInstanceCover,
   makerworldMetaFromDesign,
   resolveMakerworldCookie,
   resolveMakerworldDownloadUrl,
   type ImportCookies,
   type ImportedAuthorInfo,
   type ImportedPageMetadata,
+  type MakerworldProfileRef,
 } from "./importResolvers";
 import {
   extractMakerworldBearerToken,
@@ -336,8 +338,36 @@ async function makerworldMetaFromExtension(url: string, body: ImportRequestBody)
     ...meta,
     author,
     creator: author?.name ?? meta.creator,
-    makerworldProfile: { instanceId: body.resolved_instance_id ?? null },
+    makerworldProfile: { instanceId: body.resolved_instance_id ?? null, coverUrl: extensionProfileCover(url, body) },
   };
+}
+
+/** The picked profile's own picture from the design the extension sent, limited to MakerWorld's CDN as it's
+ *  client-supplied. */
+function extensionProfileCover(url: string, body: ImportRequestBody): string | null {
+  const design = body.makerworld_design;
+  if (!design || String(design.id) !== parseMakerworldModelUrl(url)?.designId) return null;
+  const cover = makerworldInstanceCover(design, body.resolved_instance_id ?? null);
+  return isMakerworldCdnUrl(cover) ? cover : null;
+}
+
+/** Puts a MakerWorld profile's own picture on its plate, in place of the 3MF's embedded thumbnail: designers often
+ *  ship every profile with the same one, so the profiles would all look alike. Best-effort; never throws. */
+async function applyMakerworldProfileCover(
+  printId: string,
+  profile: MakerworldProfileRef | null | undefined,
+): Promise<void> {
+  if (!profile?.instanceId || !profile.coverUrl) return;
+  try {
+    const plate = await prisma.plate.findFirst({
+      where: { printId, sourceInstanceId: profile.instanceId },
+      select: { id: true },
+    });
+    const buf = plate ? await fetchImageBytes(profile.coverUrl) : null;
+    if (plate && buf) await saveThumbFromBytes(plate.id, buf);
+  } catch {
+    // The embedded thumbnail stays.
+  }
 }
 
 type MakerworldCloudShortcut = { downloadUrl: string; meta: ImportedPageMetadata };
@@ -795,6 +825,8 @@ async function addMakerworldProfileToPrint(
     ? await openImportResponse(body.resolved_download_url!, { ...body, resolved_download_url: null }, url)
     : await openImportResponse(url, body);
   const instanceId = presolved ? body.resolved_instance_id! : (opened.meta.makerworldProfile?.instanceId ?? null);
+  // The presolved download is fetched bare, so its profile's picture comes from the design the extension sent.
+  const coverUrl = presolved ? extensionProfileCover(url, body) : (opened.meta.makerworldProfile?.coverUrl ?? null);
   // Unknown profile, or the resolver fell back to one already on the print.
   if (!instanceId || hasProfile(instanceId)) {
     await opened.response.body?.cancel().catch(() => undefined);
@@ -802,7 +834,12 @@ async function addMakerworldProfileToPrint(
   }
 
   const { tempPath, filename, mime } = await saveImportResponseToTemp(opened, body);
-  return addProfilePlate(existing, { filename, mime, tempFilePath: tempPath }, instanceId);
+  const result = await addProfilePlate(existing, { filename, mime, tempFilePath: tempPath }, instanceId);
+  if (result.profileAdded) {
+    await applyMakerworldProfileCover(existing.print.id, { instanceId, coverUrl });
+    return { ...result, plates: await platesOf(existing.print.id) };
+  }
+  return result;
 }
 
 /** Adds a downloaded profile's file to an imported print as another plate, or, when an untagged plate has the same
@@ -1901,6 +1938,7 @@ async function importNewOrExisting(userId: string, url: string, body: ImportRequ
       meta.galleryImages,
       body.makerworldPaceMs,
     );
+    await applyMakerworldProfileCover(result.print.id, meta.makerworldProfile);
     await localizeDescriptionImages(result.print.id);
     const previewImages = await prisma.previewImage.findMany({
       where: { printId: result.print.id },

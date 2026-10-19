@@ -161,7 +161,13 @@ export function makerworldDesignForImport(design: MakerworldDesign): Record<stri
   }
   if (Array.isArray(source.categories))
     out.categories = source.categories.map((category) => ({ id: getPath(category, "id") }));
-  return JSON.stringify(out).length <= MAX_IMPORT_DESIGN_CHARS ? out : null;
+  if (JSON.stringify(out).length > MAX_IMPORT_DESIGN_CHARS) return null;
+  // Each profile's own picture, for its file's thumbnail; left out rather than lose the rest when there are too many.
+  if (Array.isArray(source.instances)) {
+    const instances = source.instances.map((inst) => ({ id: getPath(inst, "id"), cover: getPath(inst, "cover") }));
+    if (JSON.stringify({ ...out, instances }).length <= MAX_IMPORT_DESIGN_CHARS) out.instances = instances;
+  }
+  return out;
 }
 
 export function currentMakerworldProfileTitle(pageUrl: string): string | null {
