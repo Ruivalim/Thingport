@@ -276,6 +276,7 @@
       "makeronlineDisabledReason": "MakerOnline: connect your account in Configuration → Providers",
       "crealitycloudDisabledReason": "Creality Cloud: connect your account in Configuration → Providers",
       "nexprintDisabledReason": "NexPrint: connect your account in Configuration → Providers",
+      "thangsDisabledReason": "Thangs: connect your account in Configuration → Providers",
       "myModels": "My models"
     },
     "notifications": {
@@ -542,7 +543,8 @@
           "snapmaker": "Models with their print profiles, and each user's likes and bookmarks, through each user's own Snapmaker account.",
           "makeronline": "Models with their print profiles, collections and each user's likes. Files come through Thingport Grab: MakerOnline gives them only to its own pages.",
           "crealitycloud": "Models with their print profiles, collections and each user's likes, through each user's own Creality Cloud account.",
-          "nexprint": "Models with their print profiles, and collections, through each user's own NexPrint account."
+          "nexprint": "Models with their print profiles, and collections, through each user's own NexPrint account.",
+          "thangs": "Free and bought models, likes and collections, through each user's own Thangs account."
         },
         "keyStatus": {
           "thingiverse": {
@@ -1661,6 +1663,17 @@
         "expired": "Sign-in expired. Sign in on nexprint.com with Thingport Grab, or connect NexPrint again in Configuration → Providers.",
         "expiredStatus": "Sign-in expired"
       },
+      "thangs": {
+        "placeholder": "The accessToken or refreshToken cookie, or the whole Cookie header",
+        "steps": [
+          "Easiest: with Thingport Grab, just open thangs.com while signed in. It connects your account, and Thingport keeps it connected for about a year.",
+          "Or by hand: sign in at thangs.com, open your browser's developer tools (F12) and reload the page.",
+          "Under Network, pick any request to thangs.com/api, copy its Cookie request header (it holds both tokens) and paste it below."
+        ],
+        "notConnected": "Thangs gives its files to signed-in users only. Connect your account to import its models.",
+        "expired": "Sign-in expired. Sign in on thangs.com with Thingport Grab, or connect Thangs again in Configuration → Providers.",
+        "expiredStatus": "Sign-in expired"
+      },
       "printables": {
         "alwaysConnected": "Printables is connected by default: it needs no account or key."
       },
@@ -1711,8 +1724,6 @@
       }
     },
     "bookmarklet": {
-      "heading": "Bookmarklet",
-      "help": "Drag the button to your browser's bookmarks bar. On a model's page on a supported site, click the bookmark: Thingport opens with the import dialog filled in with that page's link. Thingport Grab, the browser extension, is the recommended way to import; this is a lighter alternative.",
       "linkLabel": "Send to Thingport",
       "dragHint": "Drag this to your bookmarks bar",
       "copy": "Copy the bookmarklet code",
@@ -2633,7 +2644,7 @@
           "takenBy": "Synced with \"{{name}}\"",
           "loadFailed": "Couldn't load the collections.",
           "lookupFailed": "Couldn't find that collection.",
-          "notALink": "Paste a MakerWorld, Printables, Thingiverse, MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud or NexPrint collection link.",
+          "notALink": "Paste a MakerWorld, Printables, Thingiverse, MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud, NexPrint or Thangs collection link.",
           "usernameFailed": "Couldn't save the username.",
           "openProviders": "Open Providers",
           "notConnected": {
@@ -2644,7 +2655,8 @@
             "snapmaker": "Connect Snapmaker Space in Configuration > Providers, or visit it with Thingport Grab, to see your likes and bookmarks here.",
             "makeronline": "Connect MakerOnline in Configuration > Providers, or visit it with Thingport Grab, to see your likes and collections here.",
             "crealitycloud": "Connect Creality Cloud in Configuration > Providers, or visit it with Thingport Grab, to see your likes and collections here.",
-            "nexprint": "Connect NexPrint in Configuration > Providers, or visit it with Thingport Grab, to see your collections here."
+            "nexprint": "Connect NexPrint in Configuration > Providers, or visit it with Thingport Grab, to see your collections here.",
+            "thangs": "Connect Thangs in Configuration > Providers, or visit it with Thingport Grab, to see your likes and collections here."
           },
           "usernameLabel": "Your {{provider}} username",
           "usernameHint": {
@@ -2756,17 +2768,24 @@
         "metaDialogTitle": "Details — {{name}}",
         "metaTitleLabel": "Meta title",
         "metaDescriptionLabel": "Meta description",
-        "makerworldCatIdLabel": "MakerWorld category IDs",
-        "thingiverseCatIdLabel": "Thingiverse category IDs",
-        "printablesCatIdLabel": "Printables category IDs",
-        "myminifactoryCatIdLabel": "MyMiniFactory category IDs",
-        "snapmakerCatIdLabel": "Snapmaker Space category IDs",
-        "makeronlineCatIdLabel": "MakerOnline category IDs",
-        "crealitycloudCatIdLabel": "Creality Cloud category IDs",
-        "nexprintCatIdLabel": "NexPrint category IDs",
-        "catIdsPlaceholder": "e.g. 800;71;1001",
-        "catIdsHelp": "Separate multiple IDs with \";\" -- matches if an import's category is any of these",
-        "dragToMove": "Drag to move"
+        "dragToMove": "Drag to move",
+        "mapping": {
+          "heading": "Source categories",
+          "help": "Models imported from these categories on each site land in \"{{category}}\". Pick them with Manage.",
+          "none": "None",
+          "manage": "Manage ({{count}})",
+          "manageLabel": "Manage {{provider}} categories, {{count}} picked",
+          "pickerTitle": "{{provider}} categories",
+          "pickerSubtitle": "Imports from the ones you pick land in \"{{category}}\"",
+          "search": "Search {{provider}} categories",
+          "selected": "Picked ({{count}})",
+          "clearAll": "Clear all",
+          "done": "Done",
+          "noMatches": "No categories match \"{{query}}\".",
+          "empty": "No categories known for {{provider}}.",
+          "loadFailed": "Couldn't load the category list. Close this and try again.",
+          "unknown": "Unknown #{{id}}"
+        }
       }
     },
     "view": {

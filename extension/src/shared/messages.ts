@@ -124,6 +124,8 @@ export type BackgroundMessages = {
   SYNC_CREALITYCLOUD_SESSION: { payload: void; result: { userId: string | null } };
   /** On a NexPrint page: send the sign-in on, if it changed. */
   SYNC_NEXPRINT_SESSION: { payload: void; result: void };
+  /** On a Thangs page: send the sign-in on, if it changed. */
+  SYNC_THANGS_SESSION: { payload: void; result: void };
   /** On a MakerOnline model page: get its files signed there, then import it. */
   IMPORT_MAKERONLINE_MODEL: {
     payload: { url: string; scope: "url" | "designer" | "all"; collectionId: string | null; title: string | null };

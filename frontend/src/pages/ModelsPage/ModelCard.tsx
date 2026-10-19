@@ -14,7 +14,7 @@ import { type Print, printsApi } from "../../api/prints";
 import { type PreviewMode } from "../../api/settings";
 import { type ResolvedTheme } from "../../constants/settingsOptions";
 import { renderPreviewContent } from "../../components/media/renderPreviewContent";
-import { printProviderInfo, providerChipSx } from "../../constants/importProviders";
+import ProviderBadge from "../../components/ProviderBadge";
 import { SELF_AUTHOR_ID } from "../../constants/selfAuthor";
 import { useGravatarUrl } from "../../hooks/useGravatarUrl";
 import StarToggle from "../../components/StarToggle";
@@ -85,7 +85,6 @@ export default function ModelCard({
   const authorName =
     author?.name || author?.handle || item.creator || (showViewerAsAuthor ? viewer!.display_name : null);
   const authorAvatarUrl = author?.avatar_url || (showViewerAsAuthor ? viewerAvatarUrl : undefined);
-  const providerInfo = printProviderInfo(item.source_provider);
   // Only mounted while hovered, so idle cards don't load images or tick.
   const [hovered, setHovered] = useState(false);
   const contextMenu = useCardContextMenu();
@@ -125,30 +124,7 @@ export default function ModelCard({
         )}
       </Box>
 
-      <Tooltip
-        title={
-          item.source_provider
-            ? t("models:card.importedFrom", { provider: providerInfo.label })
-            : t("models:card.uploadedDirectly")
-        }
-      >
-        <Box
-          sx={{
-            position: "absolute",
-            top: 8,
-            left: 8,
-            px: 1,
-            py: 0.375,
-            borderRadius: 1,
-            fontSize: 11,
-            fontWeight: 600,
-            lineHeight: 1.4,
-            ...providerChipSx(providerInfo),
-          }}
-        >
-          {providerInfo.label}
-        </Box>
-      </Tooltip>
+      <ProviderBadge provider={item.source_provider} sx={{ position: "absolute", top: 8, left: 8 }} />
 
       <Stack
         className="model-card-actions"

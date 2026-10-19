@@ -59,6 +59,20 @@ import {
   markCrealitycloudSessionRejected,
 } from "./crealitycloudSessionService";
 import { fetchNexprintCollection } from "./nexprintApi";
+import {
+  fetchThangsCollection,
+  fetchThangsLikes,
+  fetchThangsPurchases,
+  THANGS_LIKES_KEY,
+  ThangsAuthError,
+} from "./thangsApi";
+import {
+  getThangsConnection,
+  getUserThangsId,
+  getUserThangsToken,
+  markThangsSessionRejected,
+  withThangsToken,
+} from "./thangsSessionService";
 import { notifyGrabImportsQueued, queueGrabImport } from "./grabImportService";
 import { getSnapmakerConnection, getUserSnapmakerToken, markSnapmakerTokenRejected } from "./snapmakerSessionService";
 import {
@@ -179,6 +193,21 @@ export async function fetchListing(
     const listing = await fetchNexprintCollection(id, Number.POSITIVE_INFINITY);
     return listing ? listing.entries.map((e) => e.modelId) : null;
   }
+  if (sync.provider === "thangs") {
+    // Every file is the user's to download, so the sign-in is there (see connectionProblem). Paid models they own
+    // are kept in, the rest of the paid ones left out.
+    const token = await getUserThangsToken(sync.userId);
+    const thangsId = await getUserThangsId(sync.userId);
+    if (!token || !thangsId) throw new ThangsAuthError();
+    const owned = await withThangsToken(sync.userId, token, fetchThangsPurchases);
+    if (id === THANGS_LIKES_KEY) {
+      return (await fetchThangsLikes(thangsId, owned, Number.POSITIVE_INFINITY)).entries.map((e) => e.modelId);
+    }
+    const listing = await withThangsToken(sync.userId, token, (fresh) =>
+      fetchThangsCollection(id, fresh, owned, Number.POSITIVE_INFINITY),
+    );
+    return listing ? listing.entries.map((e) => e.modelId) : null;
+  }
   throw new Error(`Unknown provider "${sync.provider}"`);
 }
 
@@ -279,6 +308,16 @@ const CONNECTION_PROBLEMS = {
     reason: "Your Snapmaker Space sign-in ran out; Thingport Grab renews it while the browser it's in is open.",
     fix: "you open space.snapmaker.com with Thingport Grab, or connect it again",
   },
+  thangsDisconnected: {
+    error: "Thangs isn't connected",
+    reason: "Thangs gives its files to a signed-in user only, and it isn't connected.",
+    fix: "you open thangs.com with Thingport Grab, or connect it",
+  },
+  thangsExpired: {
+    error: "Thangs sign-in ran out",
+    reason: "Thangs turned your sign-in down; signing out there, or a year since signing in, ends it.",
+    fix: "you sign in on thangs.com with Thingport Grab, or connect it again",
+  },
 } satisfies Record<string, ConnectionProblem>;
 
 /** `"A"`, `"A" and "B"`, or the first few and how many more. */
@@ -340,6 +379,11 @@ async function connectionProblem(
     const connection = await getCrealitycloudConnection(sync.userId);
     if (connection === "disconnected") return CONNECTION_PROBLEMS.crealitycloudLikesDisconnected;
     if (connection === "expired") return CONNECTION_PROBLEMS.crealitycloudExpired;
+  }
+  if (sync.provider === "thangs") {
+    const connection = await getThangsConnection(sync.userId);
+    if (connection === "disconnected") return CONNECTION_PROBLEMS.thangsDisconnected;
+    if (connection === "expired") return CONNECTION_PROBLEMS.thangsExpired;
   }
   return null;
 }
@@ -424,6 +468,11 @@ async function runSync(syncId: string): Promise<SyncOutcome> {
       // Only the likes are read with the sign-in, so only they wait for a new one.
       await markCrealitycloudSessionRejected(userId);
       await holdProvider(userId, sync.provider, CONNECTION_PROBLEMS.crealitycloudExpired, sync.externalId);
+      return "disconnected";
+    }
+    if (err instanceof ThangsAuthError) {
+      await markThangsSessionRejected(userId);
+      await holdProvider(userId, sync.provider, CONNECTION_PROBLEMS.thangsExpired);
       return "disconnected";
     }
     const message = err instanceof Error && err.message.trim() ? err.message.trim() : "Sync failed";

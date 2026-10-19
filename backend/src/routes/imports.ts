@@ -15,6 +15,7 @@ import {
   SNAPMAKER_SESSION_CODE,
   CREALITYCLOUD_SESSION_CODE,
   NEXPRINT_SESSION_CODE,
+  THANGS_SESSION_CODE,
   checkImportStatus,
   downloadImportToTemp,
   findImportedExternalIds,
@@ -110,6 +111,25 @@ import {
   parseNexprintModelUrl,
 } from "../services/nexprintApi";
 import { markNexprintSessionRejected } from "../services/nexprintSessionService";
+import {
+  fetchThangsCollection,
+  fetchThangsLikes,
+  fetchThangsPurchases,
+  isThangsLikesUrl,
+  parseThangsCollectionUrl,
+  ThangsAuthError,
+  ThangsBlockedError,
+  type ThangsListing,
+  THANGS_LIKES_NAME,
+  ThangsPrivateCollectionError,
+} from "../services/thangsApi";
+import {
+  getUserThangsId,
+  getUserThangsToken,
+  markThangsSessionRejected,
+  THANGS_CONNECT,
+  withThangsToken,
+} from "../services/thangsSessionService";
 import { addPrintsToCollection, findOrCreateCollectionByName } from "../services/collectionService";
 import { listZipEntries } from "../services/zipService";
 import { createJob, createJobItems, getActiveJob, getJob, listJobItems } from "../services/importJobService";
@@ -121,6 +141,7 @@ import {
   runCrealitycloudProfilesImportJob,
   runNexprintCollectionImportJob,
   runNexprintProfilesImportJob,
+  runThangsListImportJob,
   runLinksImportJob,
   runMakerworldProfilesImportJob,
   runMyminifactoryCollectionImportJob,
@@ -298,6 +319,7 @@ const statusBatchSchema = z.object({
     "makeronline",
     "crealitycloud",
     "nexprint",
+    "thangs",
   ]),
   // Creality Cloud's ids are its models' aliases, made of their titles.
   external_ids: z.array(z.string().max(200)).max(10_000),
@@ -675,6 +697,60 @@ router.post(
       total: collection.total,
       truncated: collection.truncated,
       entries: collection.entries.map((e) => ({
+        design_id: e.modelId,
+        title: e.title,
+        cover: e.cover,
+        already_imported: alreadyImported.has(e.modelId),
+      })),
+    });
+  }),
+);
+
+/** The user's likes, or a collection, from a Thangs link, read with their sign-in: every file needs it anyway, and it
+ *  says which paid models they own, which the listing keeps. */
+async function thangsListOf(userId: string, url: string): Promise<{ title: string; listing: ThangsListing }> {
+  const likes = isThangsLikesUrl(url);
+  const collection = likes ? null : parseThangsCollectionUrl(url);
+  if (!likes && !collection) throw new HttpError(400, "Not a link to a Thangs collection or your likes");
+  try {
+    const [token, thangsId] = await Promise.all([getUserThangsToken(userId), getUserThangsId(userId)]);
+    if (!token || !thangsId) throw new HttpError(400, THANGS_CONNECT, THANGS_SESSION_CODE);
+    const owned = await withThangsToken(userId, token, fetchThangsPurchases);
+    if (likes) return { title: THANGS_LIKES_NAME, listing: await fetchThangsLikes(thangsId, owned) };
+    const found = await withThangsToken(userId, token, (fresh) =>
+      fetchThangsCollection(collection!.collectionId, fresh, owned),
+    );
+    if (!found) throw new HttpError(404, "That collection can't be found. It may have been deleted.");
+    return { title: found.info.name, listing: found };
+  } catch (err) {
+    if (err instanceof ThangsAuthError) {
+      await markThangsSessionRejected(userId);
+      // 400, not 401: the frontend treats any 401 as an expired Thingport session.
+      throw new HttpError(400, err.message, THANGS_SESSION_CODE);
+    }
+    if (err instanceof ThangsPrivateCollectionError) throw new HttpError(403, err.message);
+    if (err instanceof ThangsBlockedError) throw new HttpError(429, err.message);
+    throw err;
+  }
+}
+
+router.post(
+  "/import/thangs-list/entries",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(importRequestSchema, req.body);
+    const url = await enabledImportUrl(body.url);
+    const { title, listing } = await thangsListOf(req.userId!, url);
+    if (!listing.entries.length) throw new HttpError(400, `"${title}" has no models Thingport can import`);
+    const alreadyImported = await findImportedExternalIds(
+      req.userId!,
+      "thangs",
+      listing.entries.map((e) => e.modelId),
+    );
+    res.json({
+      title,
+      total: listing.total,
+      truncated: listing.truncated,
+      entries: listing.entries.map((e) => ({
         design_id: e.modelId,
         title: e.title,
         cover: e.cover,
@@ -1128,6 +1204,28 @@ router.post(
       url,
       title: info.name,
     });
+    res.status(202).json({ job_id: job.id });
+  }),
+);
+
+const thangsListImportRequestSchema = importRequestSchema.extend({
+  model_ids: z.array(z.string().regex(/^\d+$/).max(20)).min(1).max(1000),
+});
+
+router.post(
+  "/import/thangs-list",
+  requireCaptcha("import"),
+  asyncHandler(async (req, res) => {
+    const body = parseBody(thangsListImportRequestSchema, req.body);
+    await assertNoActiveJob(req.userId!);
+    const url = await enabledImportUrl(body.url);
+    const { title } = await thangsListOf(req.userId!, url);
+    const job = await createJob(req.userId!, "COLLECTION", {
+      sourceUrl: url,
+      provider: "thangs",
+      total: body.model_ids.length,
+    });
+    void runThangsListImportJob(job.id, req.userId!, { ...body, url, title });
     res.status(202).json({ job_id: job.id });
   }),
 );

@@ -53,9 +53,17 @@ vi.mock("../src/utils/browserFetch", async (importOriginal) => ({
   browserFetch: (
     url: string,
     {
+      method,
+      body,
       headers,
       signal,
       redirect,
-    }: { headers?: Record<string, string>; signal?: AbortSignal; redirect?: RequestRedirect },
-  ) => fetch(url, { headers, signal, redirect }),
+    }: {
+      method?: string;
+      body?: string;
+      headers?: Record<string, string>;
+      signal?: AbortSignal;
+      redirect?: RequestRedirect;
+    },
+  ) => fetch(url, { method, body, headers, signal, redirect }),
 }));

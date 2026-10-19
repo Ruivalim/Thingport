@@ -183,6 +183,7 @@ export type CategoryOut = {
   makeronline_cat_ids: string;
   crealitycloud_cat_ids: string;
   nexprint_cat_ids: string;
+  thangs_cat_ids: string;
 };
 
 function plateThumbUrl(plateId: string): string | null {
@@ -481,6 +482,7 @@ export function toCategoryOut(category: Category): CategoryOut {
     makeronline_cat_ids: formatCatIds(category.makeronlineCatIds),
     crealitycloud_cat_ids: formatCatIds(category.crealitycloudCatIds),
     nexprint_cat_ids: formatCatIds(category.nexprintCatIds),
+    thangs_cat_ids: formatCatIds(category.thangsCatIds),
   };
 }
 

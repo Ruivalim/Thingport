@@ -8,7 +8,8 @@ export type Provider =
   | "snapmaker"
   | "makeronline"
   | "crealitycloud"
-  | "nexprint";
+  | "nexprint"
+  | "thangs";
 
 export type Classification =
   | { kind: "single"; provider: "makerworld"; type: "model" }
@@ -19,6 +20,7 @@ export type Classification =
   | { kind: "single"; provider: "makeronline"; type: "model" }
   | { kind: "single"; provider: "crealitycloud"; type: "model" }
   | { kind: "single"; provider: "nexprint"; type: "model" }
+  | { kind: "single"; provider: "thangs"; type: "model" }
   | { kind: "batch"; provider: "makerworld"; type: "collection" }
   | { kind: "batch"; provider: "thingiverse"; type: "likes" | "collection" }
   | { kind: "batch"; provider: "printables"; type: "collection" }
@@ -26,7 +28,8 @@ export type Classification =
   | { kind: "batch"; provider: "snapmaker"; type: SnapmakerList }
   | { kind: "batch"; provider: "makeronline"; type: "collection" | "likes" }
   | { kind: "batch"; provider: "crealitycloud"; type: "collection" | "likes" }
-  | { kind: "batch"; provider: "nexprint"; type: "collection" };
+  | { kind: "batch"; provider: "nexprint"; type: "collection" }
+  | { kind: "batch"; provider: "thangs"; type: "collection" | "likes" };
 
 export type SnapmakerList = "likes" | "bookmarks";
 
@@ -248,6 +251,36 @@ export function isNexprintCollectionUrl(url: string): boolean {
   );
 }
 
+function isThangs(parsed: URL): boolean {
+  return /^(www\.)?thangs\.com$/i.test(parsed.hostname);
+}
+
+/** `/designer/<user>/3d-model/<name>-<id>` (also under `/prints`, and with a subpage after it), or `/m/<id>`. */
+export function parseThangsModelUrl(url: string): { modelId: string } | null {
+  const parsed = parse(url);
+  if (!parsed || !isThangs(parsed)) return null;
+  const m =
+    parsed.pathname.match(/^\/(?:prints\/)?designer\/[^/]+\/3d-model\/(?:[^/]*-)?(\d+)(?:\/.*)?$/i) ??
+    parsed.pathname.match(/^\/m\/(\d+)\/?$/i);
+  return m ? { modelId: m[1] } : null;
+}
+
+/** A collection: `/designer/<user>/collection/<name>-<id>`, or the owner's own `/mythangs/collections/<id>`. */
+export function isThangsCollectionUrl(url: string): boolean {
+  const parsed = parse(url);
+  if (!parsed || !isThangs(parsed)) return false;
+  return (
+    /^\/designer\/[^/]+\/collection\/(?:[^/]*-)?\d+(?:\/.*)?$/i.test(parsed.pathname) ||
+    /^\/(?:mythangs\/collections|c)\/\d+\/?$/i.test(parsed.pathname)
+  );
+}
+
+/** The user's own liked models; the page names no user. */
+export function isThangsLikesUrl(url: string): boolean {
+  const parsed = parse(url);
+  return !!parsed && isThangs(parsed) && /^\/mythangs\/liked-models\/?$/i.test(parsed.pathname);
+}
+
 /** Null keeps the icon hidden. "single" pages get a dedup check; "batch" pages always show it. */
 export function classifyUrl(url: string): Classification | null {
   if (isMakerworldCollectionUrl(url)) return { kind: "batch", provider: "makerworld", type: "collection" };
@@ -262,6 +295,8 @@ export function classifyUrl(url: string): Classification | null {
   if (isCrealitycloudCollectionUrl(url)) return { kind: "batch", provider: "crealitycloud", type: "collection" };
   if (parseCrealitycloudLikesUrl(url)) return { kind: "batch", provider: "crealitycloud", type: "likes" };
   if (isNexprintCollectionUrl(url)) return { kind: "batch", provider: "nexprint", type: "collection" };
+  if (isThangsCollectionUrl(url)) return { kind: "batch", provider: "thangs", type: "collection" };
+  if (isThangsLikesUrl(url)) return { kind: "batch", provider: "thangs", type: "likes" };
   if (parseMakerworldModelUrl(url)) return { kind: "single", provider: "makerworld", type: "model" };
   if (parseThingiverseThingUrl(url)) return { kind: "single", provider: "thingiverse", type: "thing" };
   if (parsePrintablesModelUrl(url)) return { kind: "single", provider: "printables", type: "model" };
@@ -270,5 +305,6 @@ export function classifyUrl(url: string): Classification | null {
   if (parseMakeronlineModelUrl(url)) return { kind: "single", provider: "makeronline", type: "model" };
   if (parseCrealitycloudModelUrl(url)) return { kind: "single", provider: "crealitycloud", type: "model" };
   if (parseNexprintModelUrl(url)) return { kind: "single", provider: "nexprint", type: "model" };
+  if (parseThangsModelUrl(url)) return { kind: "single", provider: "thangs", type: "model" };
   return null;
 }

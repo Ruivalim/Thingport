@@ -36,6 +36,7 @@ const NAMES: Record<ImportProvider, string> = {
   makeronline: "MakerOnline",
   crealitycloud: "Creality Cloud",
   nexprint: "NexPrint",
+  thangs: "Thangs",
 };
 
 const KEYED = new Set<ImportProvider>(["thingiverse", "myminifactory"]);
@@ -128,6 +129,7 @@ export default function ProvidersPage({ onUnauthorized }: Props) {
               "makeronline",
               "crealitycloud",
               "nexprint",
+              "thangs",
             ] as const
           ).map((id) => ({
             id,

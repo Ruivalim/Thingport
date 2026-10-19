@@ -17,6 +17,7 @@ type StartCrealitycloudProfilesImportPayload = Parameters<typeof importsApi.from
 type StartCrealitycloudListImportPayload = Parameters<typeof importsApi.fromCrealitycloudList>[0];
 type StartNexprintProfilesImportPayload = Parameters<typeof importsApi.fromNexprintProfiles>[0];
 type StartNexprintCollectionImportPayload = Parameters<typeof importsApi.fromNexprintCollection>[0];
+type StartThangsListImportPayload = Parameters<typeof importsApi.fromThangsList>[0];
 type StartLinksImportPayload = Parameters<typeof importsApi.fromLinks>[0];
 
 type ImportJobContextValue = {
@@ -36,6 +37,7 @@ type ImportJobContextValue = {
   startCrealitycloudListImport: (payload: StartCrealitycloudListImportPayload) => Promise<void>;
   startNexprintProfilesImport: (payload: StartNexprintProfilesImportPayload) => Promise<void>;
   startNexprintCollectionImport: (payload: StartNexprintCollectionImportPayload) => Promise<void>;
+  startThangsListImport: (payload: StartThangsListImportPayload) => Promise<void>;
   startLinksImport: (payload: StartLinksImportPayload) => Promise<void>;
   /** Reruns the links that failed on the finished job shown in the progress bar. */
   retryJob: () => Promise<void>;
@@ -263,6 +265,16 @@ export function ImportJobProvider({
     [startPolling],
   );
 
+  const startThangsListImport = useCallback(
+    async (payload: StartThangsListImportPayload) => {
+      const { job_id } = await importsApi.fromThangsList(payload);
+      const job = await importsApi.getImportJob(job_id);
+      setActiveJob(job);
+      startPolling(job_id);
+    },
+    [startPolling],
+  );
+
   const startLinksImport = useCallback(
     async (payload: StartLinksImportPayload) => {
       const { job_id } = await importsApi.fromLinks(payload);
@@ -303,6 +315,7 @@ export function ImportJobProvider({
       startCrealitycloudListImport,
       startNexprintProfilesImport,
       startNexprintCollectionImport,
+      startThangsListImport,
       startLinksImport,
       retryJob,
       dismissJob,
@@ -322,6 +335,7 @@ export function ImportJobProvider({
       startCrealitycloudListImport,
       startNexprintProfilesImport,
       startNexprintCollectionImport,
+      startThangsListImport,
       startLinksImport,
       retryJob,
       dismissJob,

@@ -19,6 +19,7 @@ const LOGO_PROVIDERS = new Set<string>([
   "makeronline",
   "crealitycloud",
   "nexprint",
+  "thangs",
 ]);
 
 type Props = {

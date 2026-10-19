@@ -75,7 +75,8 @@ function hasMeta(category: Category): boolean {
     category.snapmaker_cat_ids ||
     category.makeronline_cat_ids ||
     category.crealitycloud_cat_ids ||
-    category.nexprint_cat_ids,
+    category.nexprint_cat_ids ||
+    category.thangs_cat_ids,
   );
 }
 

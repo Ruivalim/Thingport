@@ -24,6 +24,7 @@ const SOURCE_PROVIDERS = [
   "makeronline",
   "crealitycloud",
   "nexprint",
+  "thangs",
 ] as const;
 type SourceProvider = (typeof SOURCE_PROVIDERS)[number];
 

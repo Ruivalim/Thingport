@@ -28,6 +28,8 @@ export const STORAGE_KEYS = {
   lastSyncedCrealitycloudSession: "lastSyncedCrealitycloudSession",
   // The NexPrint token last sent, and to which Thingport account.
   lastSyncedNexprintSession: "lastSyncedNexprintSession",
+  // The Thangs tokens last sent, and to which Thingport account.
+  lastSyncedThangsSession: "lastSyncedThangsSession",
   // The Printables and Thingiverse usernames last sent to the instance, so unchanged ones aren't.
   lastSentProviderAccounts: "lastSentProviderAccounts",
   // When Printables' lists were last read and sent, so a burst of page loads reads them once.
@@ -55,6 +57,7 @@ export type StoredConfig = {
   lastSyncedMakeronlineToken?: { account: string; value: string };
   lastSyncedCrealitycloudSession?: { account: string; value: string };
   lastSyncedNexprintSession?: { account: string; value: string };
+  lastSyncedThangsSession?: { account: string; value: string };
   /** `account` is the Thingport instance and email they were sent to. */
   lastSentProviderAccounts?: { account: string; values: Record<string, string> };
   lastPrintablesPushAt?: number;

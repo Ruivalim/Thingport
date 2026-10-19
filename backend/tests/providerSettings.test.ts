@@ -39,6 +39,7 @@ afterAll(async () => {
     "makeronline",
     "crealitycloud",
     "nexprint",
+    "thangs",
   ] as const)
     await setProviderEnabled(provider, true);
 });
@@ -56,6 +57,7 @@ describe("turning providers off", () => {
       makeronline: true,
       crealitycloud: true,
       nexprint: true,
+      thangs: true,
     });
 
     expect(
@@ -76,6 +78,7 @@ describe("turning providers off", () => {
       makeronline: true,
       crealitycloud: true,
       nexprint: true,
+      thangs: true,
     });
   });
 

@@ -26,6 +26,7 @@ const LOGOS = new Set<string>([
   "makeronline",
   "crealitycloud",
   "nexprint",
+  "thangs",
 ]);
 
 // The pulse is 40% of its segment wide, so 250% starts it past the right end and -100% ends it

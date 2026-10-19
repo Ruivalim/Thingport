@@ -88,6 +88,7 @@ export const SEARCH_PAGES: SearchPage[] = [
     "makeronline",
     "creality cloud",
     "nexprint",
+    "thangs",
     "app token",
     "api key",
     "access token",

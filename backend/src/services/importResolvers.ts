@@ -488,8 +488,8 @@ export type ImportedPageMetadata = {
   galleryImages: { url: string; filename: string }[];
   /** Structured creator record; `creator` stays a plain display string. */
   author: ImportedAuthorInfo | null;
-  /** The site's own category ids; each site has its own id namespace. */
-  siteCategoryIds: number[];
+  /** The site's own category ids; each site has its own id namespace. Thangs', which has no ids, are category paths. */
+  siteCategoryIds: (number | string)[];
   categorySite:
     | "makerworld"
     | "thingiverse"
@@ -499,6 +499,7 @@ export type ImportedPageMetadata = {
     | "makeronline"
     | "crealitycloud"
     | "nexprint"
+    | "thangs"
     | null;
   /** Lets a second profile of an imported design be added as its own plate. MakerWorld only. */
   makerworldProfile?: MakerworldProfileRef;

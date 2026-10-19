@@ -29,6 +29,7 @@ const ALL: readonly ImportProvider[] = [
   "makeronline",
   "crealitycloud",
   "nexprint",
+  "thangs",
 ];
 
 /** With every provider off there's nothing to import from or connect to, so those parts of the app hide. */

@@ -1,6 +1,6 @@
 # Provider setup
 
-Importing from **Printables** works out of the box (its public API needs no credential). **MakerWorld** needs each user's own session cookie, and **Thingiverse** an App Token an admin sets once for the whole instance. **MyMiniFactory** needs an API key an admin sets once for free models; each user connects their own MyMiniFactory session only to import paid or sign-in-only models from their library. **Snapmaker Space** needs each user's own sign-in, which [Thingport Grab](../extension/README.md) keeps fresh. **MakerOnline** reads its models and public collections with nothing, but hands out files only through Thingport Grab; each user's own sign-in adds their likes and private collections. **Creality Cloud** reads its models and collections with nothing, but gives files and likes only to each user's own sign-in, which Thingport Grab sends on. **NexPrint** reads its models and collections, private ones included, with nothing, and gives files only to each user's own sign-in, which Thingport Grab sends on.
+Importing from **Printables** works out of the box (its public API needs no credential). **MakerWorld** needs each user's own session cookie, and **Thingiverse** an App Token an admin sets once for the whole instance. **MyMiniFactory** needs an API key an admin sets once for free models; each user connects their own MyMiniFactory session only to import paid or sign-in-only models from their library. **Snapmaker Space** needs each user's own sign-in, which [Thingport Grab](../extension/README.md) keeps fresh. **MakerOnline** reads its models and public collections with nothing, but hands out files only through Thingport Grab; each user's own sign-in adds their likes and private collections. **Creality Cloud** reads its models and collections with nothing, but gives files and likes only to each user's own sign-in, which Thingport Grab sends on. **NexPrint** reads its models and collections, private ones included, with nothing, and gives files only to each user's own sign-in, which Thingport Grab sends on. **Thangs** reads its models, likes and public collections with nothing, and gives files only to each user's own sign-in, which Thingport Grab sends on and Thingport keeps renewed for about a year.
 
 Connect them under **Configuration → Providers**: open the user menu (your avatar, top right) and choose **Configuration**, or click one of the provider chips at the bottom of that menu. Right-click a provider to connect or disconnect it, or double-click one that isn't connected yet. A green tick means it's connected. A provider your admin has [turned off](#turning-a-provider-off) isn't listed.
 
@@ -158,6 +158,41 @@ sign-in ran out, and your next visit to nexprint.com connects it again.
 4. Right-click **NexPrint** in Thingport's **Configuration > Providers**, choose **Connect** and paste it. Thingport
    checks it with NexPrint before storing it.
 
+## Thangs
+
+Per-user (Configuration > Providers > Thangs). Thangs' model details, categories, anyone's liked models and public
+collections need nothing; its files are given only to a signed-in user, so every Thangs import runs as you. A model
+comes in as one file, or as the zip of all its parts that Thangs builds, each part its own file in Thingport. Your own
+likes and collections, private ones included, can be imported and synced.
+
+- **Daily downloads.** Free Thangs accounts download a limited number of models a day. Once yours are used up, a
+  collection or likes import stops asking and says so, and a synced collection leaves the rest for its next check.
+- **Paid models.** A model for sale, or for a designer membership's members, downloads only once your account owns it:
+  bought on its own or in a bundle, or included in a membership you're in. Paid models you don't own are left out of
+  collection imports and syncs.
+- **Print-only models.** Some designers sell a model only as a print, and Thangs offers no files for it, so it can't be
+  imported.
+
+Its sign-in is two cookies: `accessToken`, a token that lasts a week and goes to its API as a Bearer token, and
+`refreshToken`, which renews it and lasts about a year. Thingport renews the access token itself, so it stays connected
+until you sign out of Thangs or the refresh token runs out.
+
+### Easiest: Thingport Grab
+
+With [Thingport Grab](../extension/README.md) allowed on Thangs, opening thangs.com while you're signed in connects
+your account. If Thangs turns the sign-in down, Thingport says it ran out, and your next visit to thangs.com connects it
+again.
+
+### Manual: copy it from your browser
+
+1. Sign in at [thangs.com](https://thangs.com).
+2. Open DevTools (`F12`, or `Cmd+Option+I` on macOS) and reload the page.
+3. On the **Network** tab, pick any request to `thangs.com/api` and copy its `Cookie` request header, which holds both
+   tokens. The `refreshToken` cookie alone works too, as does the `Authorization` header, though that one lasts only a
+   week.
+4. Right-click **Thangs** in Thingport's **Configuration > Providers**, choose **Connect** and paste it. Thingport checks
+   it with Thangs before storing it.
+
 ## MakerWorld cookie
 
 Per-user (Configuration > Providers > MakerWorld) -- MakerWorld has no developer API, so importing from it runs as _your own_ logged-in MakerWorld session, captured as a cookie value.
@@ -180,7 +215,7 @@ This is your own MakerWorld login session -- don't share it, and expect to redo 
 
 ## Turning a provider off
 
-Admins choose which providers this Thingport imports from, under **Administration → Providers**. All eight are on by
+Admins choose which providers this Thingport imports from, under **Administration → Providers**. All nine are on by
 default. Turn one off and nothing new comes from it for anyone: links to it, Thingport Grab and the import queue are
 refused, its synced collections pause, and background jobs skip it. It also disappears from everyone's
 **Configuration → Providers**. Models already imported from it stay as they are, and turning it back on picks up where

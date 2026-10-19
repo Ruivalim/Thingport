@@ -11,6 +11,7 @@ export const BROWSABLE_PROVIDERS = [
   "makeronline",
   "crealitycloud",
   "nexprint",
+  "thangs",
 ] as const;
 export type BrowsableProvider = (typeof BROWSABLE_PROVIDERS)[number];
 

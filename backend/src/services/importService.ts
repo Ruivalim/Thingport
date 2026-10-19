@@ -127,6 +127,18 @@ import {
   selectNexprintProfiles,
 } from "./nexprintApi";
 import { getUserNexprintToken, markNexprintSessionRejected, NEXPRINT_CONNECT } from "./nexprintSessionService";
+import {
+  fetchThangsDownload,
+  isThangsFileHost,
+  parseThangsModelUrl,
+  resolveThangsModel,
+  ThangsAuthError,
+  ThangsBlockedError,
+  ThangsDownloadLimitError,
+  thangsModelUrl,
+  type ThangsModelResolution,
+} from "./thangsApi";
+import { getUserThangsToken, markThangsSessionRejected, THANGS_CONNECT, withThangsToken } from "./thangsSessionService";
 
 /** An import refused because the user's MyMiniFactory session has expired. */
 export const MYMINIFACTORY_SESSION_CODE = "myminifactory_session";
@@ -136,6 +148,10 @@ export const SNAPMAKER_SESSION_CODE = "snapmaker_session";
 export const CREALITYCLOUD_SESSION_CODE = "crealitycloud_session";
 /** An import refused because the user hasn't connected NexPrint, or it turned their sign-in down. */
 export const NEXPRINT_SESSION_CODE = "nexprint_session";
+/** An import refused because the user hasn't connected Thangs, or it turned their sign-in down. */
+export const THANGS_SESSION_CODE = "thangs_session";
+/** A Thangs import refused because the account's daily downloads are used up. */
+export const THANGS_DOWNLOAD_LIMIT_CODE = "THANGS_DOWNLOAD_LIMIT";
 /** A MakerOnline import that came without the signed file links only Thingport Grab can get. */
 export const MAKERONLINE_GRAB_CODE = "makeronline_grab";
 export const MAKERONLINE_NEEDS_GRAB =
@@ -796,7 +812,11 @@ const CATEGORY_SITE_CAT_IDS_FIELD = {
   makeronline: "makeronlineCatIds",
   crealitycloud: "crealitycloudCatIds",
   nexprint: "nexprintCatIds",
+  thangs: "thangsCatIds",
 } as const;
+
+// Columns of text: NexPrint's ids are past Int, and Thangs' are category paths.
+const TEXT_CAT_IDS_FIELDS = new Set<string>(["nexprintCatIds", "thangsCatIds"]);
 
 /** Auto-categorizes an import when a category's `*CatIds` for this site overlap the model's own
  * category ids. Those come most specific first (a model's own category, then its parent), and the
@@ -805,18 +825,20 @@ const CATEGORY_SITE_CAT_IDS_FIELD = {
 export async function resolveCategoryIdByCategory(
   userId: string,
   categorySite: ImportedPageMetadata["categorySite"],
-  siteCategoryIds: number[],
+  siteCategoryIds: (number | string)[],
 ): Promise<string | null> {
   if (!categorySite || !siteCategoryIds.length) return null;
   const field = CATEGORY_SITE_CAT_IDS_FIELD[categorySite];
-  // NexPrint's column holds text (its ids are past Int); compare everything as text so one path serves all.
+  // Compared as text, so one path serves the text columns and the Int ones alike.
   const wanted = siteCategoryIds.map(String);
+  const numeric = siteCategoryIds.map(Number).filter((n) => Number.isSafeInteger(n));
+  if (!TEXT_CAT_IDS_FIELDS.has(field) && !numeric.length) return null;
   const candidates = await prisma.category.findMany({
     // Folders are the user's own tree; only categories take imports by site category id.
     where: {
       userId,
       kind: "category",
-      [field]: { hasSome: field === "nexprintCatIds" ? wanted : siteCategoryIds },
+      [field]: { hasSome: TEXT_CAT_IDS_FIELDS.has(field) ? wanted : numeric },
     },
     orderBy: { position: "asc" },
   });
@@ -847,6 +869,8 @@ export function identifySourceModel(url: string): { provider: string; externalId
   if (crealitycloud) return { provider: "crealitycloud", externalId: crealitycloud.modelId };
   const nexprint = parseNexprintModelUrl(url);
   if (nexprint) return { provider: "nexprint", externalId: nexprint.modelId };
+  const thangs = parseThangsModelUrl(url);
+  if (thangs) return { provider: "thangs", externalId: thangs.modelId };
   return null;
 }
 
@@ -905,6 +929,7 @@ export function buildImportSourceUrl(provider: string | null, externalId: string
   if (provider === "makeronline") return `https://www.makeronline.com/en/model/${externalId}`;
   if (provider === "crealitycloud") return `https://www.crealitycloud.com/model-detail/${externalId}`;
   if (provider === "nexprint") return `https://www.nexprint.com/en/models/${externalId}`;
+  if (provider === "thangs") return thangsModelUrl(externalId);
   return null;
 }
 
@@ -1924,6 +1949,88 @@ async function addNexprintProfileToPrint(
   return addProfilePlateWithDetails(existing, profile, wanted, profileDetailsOf(model.profiles, { names: false }));
 }
 
+const THANGS_BLOCKED =
+  "Thangs blocked the file download (rate limit). This usually clears after a while -- wait, then retry the same import.";
+const THANGS_MISSING = "This Thangs model could not be found, or isn't public.";
+
+/** The user's access token, renewed when it's out, or the HttpError that says to connect Thangs. */
+async function requireThangsToken(userId: string): Promise<string> {
+  let token: string | null;
+  try {
+    token = await getUserThangsToken(userId);
+  } catch (err) {
+    throw await thangsFailure(userId, err);
+  }
+  if (!token) throw new HttpError(400, THANGS_CONNECT, THANGS_SESSION_CODE);
+  return token;
+}
+
+/** Thangs' errors as the HttpErrors an import reports; a rejected sign-in is remembered, so the app can say so. */
+async function thangsFailure(userId: string, err: unknown): Promise<unknown> {
+  if (err instanceof ThangsAuthError) {
+    await markThangsSessionRejected(userId);
+    // 400, not 401: see tryMakerworldCloudApi.
+    return new HttpError(400, err.message, THANGS_SESSION_CODE);
+  }
+  if (err instanceof ThangsDownloadLimitError) return new HttpError(429, err.message, THANGS_DOWNLOAD_LIMIT_CODE);
+  if (err instanceof ThangsBlockedError) return new HttpError(429, err.message);
+  return err;
+}
+
+/** Why Thangs won't hand over a model's files, by what kind of model it is. */
+function thangsUnavailable(resolved: ThangsModelResolution): HttpError {
+  if (resolved.access === "printOnly") {
+    return new HttpError(403, "This Thangs model is sold only as a print: its designer doesn't offer its files.");
+  }
+  if (resolved.access === "paid") {
+    const price = resolved.price !== null ? ` ($${resolved.price})` : "";
+    return new HttpError(
+      403,
+      `This is a paid Thangs model${price}, so it downloads only for an account that bought it, or a member of a ` +
+        "designer membership that includes it. Get it on Thangs with the account connected to Thingport, then import it again.",
+    );
+  }
+  if (resolved.access === "membership") {
+    return new HttpError(
+      403,
+      "This Thangs model is for members of its designer's membership only: join it on Thangs with the account " +
+        "connected to Thingport, then import it again.",
+    );
+  }
+  return new HttpError(403, "Thangs doesn't let your account download this model.");
+}
+
+/** Like MyMiniFactory: metadata from the public API, then the files as the user, in one download -- the model file, or
+ *  a zip whose model files each become a plate. Every download counts towards the account's daily ones, so a model
+ *  that can't be had (print-only) is refused before asking. */
+async function importThangsModel(
+  userId: string,
+  source: { provider: string; externalId: string },
+  body: ImportRequestBody,
+): Promise<ImportResult> {
+  let resolved: ThangsModelResolution | null;
+  try {
+    resolved = await resolveThangsModel(source.externalId);
+  } catch (err) {
+    throw await thangsFailure(userId, err);
+  }
+  if (!resolved) throw new HttpError(404, THANGS_MISSING);
+  if (resolved.access === "printOnly") throw thangsUnavailable(resolved);
+  const token = await requireThangsToken(userId);
+  const downloaded: NewPlateInput[] = [];
+  try {
+    const file = await withThangsToken(userId, token, (fresh) => fetchThangsDownload(source.externalId, fresh));
+    if (!file) throw thangsUnavailable(resolved);
+    downloaded.push(...((await downloadSignedFile(file, isThangsFileHost, THANGS_BLOCKED)) ?? []));
+  } catch (err) {
+    await Promise.all(downloaded.map((input) => fs.rm(input.tempFilePath!, { force: true }).catch(() => undefined)));
+    throw await thangsFailure(userId, err);
+  }
+  if (!downloaded.length) throw new HttpError(400, "This Thangs model has no files Thingport can import.");
+
+  return createSourcedPrint(userId, source, body, resolved, downloaded, `thangs-${source.externalId}`);
+}
+
 const MAKERONLINE_BLOCKED =
   "MakerOnline blocked the file download (rate limit). This usually clears after a while -- wait, then try again.";
 
@@ -2087,6 +2194,9 @@ async function importNewOrExisting(userId: string, url: string, body: ImportRequ
   }
   if (source?.provider === "nexprint") {
     return importNexprintModel(userId, source, url, body);
+  }
+  if (source?.provider === "thangs") {
+    return importThangsModel(userId, source, body);
   }
 
   const { tempPath, filename, mime, meta } = await downloadImportToTemp(url, body);

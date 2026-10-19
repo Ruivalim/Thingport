@@ -1,4 +1,4 @@
-// Thingiverse, Printables, MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud and NexPrint import directly; other links go through
+// Thingiverse, Printables, MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud, NexPrint and Thangs import directly; other links go through
 // /import/inspect first, like the web app's useUploadImport.tsx. MakerOnline's files are signed on its own page first
 // (see background/makeronline.ts).
 
@@ -21,6 +21,7 @@ import { loadSnapmakerProfiles } from "../snapmaker";
 import { loadMakeronlineProfiles } from "../makeronline";
 import { loadCrealitycloudProfiles } from "../crealitycloud";
 import { loadNexprintProfiles } from "../nexprint";
+import { thangsDownloadBlock } from "../thangs";
 import { onPanelAction, panelQuery, panelQueryAll, renderPanel } from "../shell";
 import { collectionIdFor, collectionPickerHtml, readCollectionChoice, wireCollectionPicker } from "./collectionPicker";
 import { errorHtml, statusHtml, successHtml } from "./results";
@@ -147,6 +148,15 @@ export async function loadSingleItem(): Promise<void> {
     return;
   }
   renderFunStatus(checkingLinkPhrases(provider));
+  // Thangs counts every download against the account's daily ones, so one it would refuse isn't tried.
+  const thangsBlock = provider === "thangs" ? await thangsDownloadBlock(ctx().url) : null;
+  if (thangsBlock) {
+    renderPanel(`
+      <div class="tg-title">${escapeHtml(thangsBlock.title)}</div>
+      <div class="tg-hint">${escapeHtml(thangsBlock.hint)}</div>
+    `);
+    return;
+  }
   const skipInspect =
     (provider === "thingiverse" && type === "thing") ||
     (provider === "printables" && type === "model") ||
@@ -154,7 +164,8 @@ export async function loadSingleItem(): Promise<void> {
     (provider === "snapmaker" && type === "model") ||
     (provider === "makeronline" && type === "model") ||
     (provider === "crealitycloud" && type === "model") ||
-    (provider === "nexprint" && type === "model");
+    (provider === "nexprint" && type === "model") ||
+    (provider === "thangs" && type === "model");
 
   let zipFilename: string | null = null;
   if (skipInspect) {
