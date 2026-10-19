@@ -1,4 +1,6 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
 import request from "supertest";
 import sharp from "sharp";
 
@@ -16,6 +18,7 @@ vi.mock("node:dns/promises", () => ({
 }));
 
 import { createApp } from "../src/app";
+import { STORAGE } from "../src/config";
 import { prisma } from "../src/db";
 import { selectMakerworldProfiles } from "../src/services/makerworldCloudApi";
 import { plateThumbPath } from "../src/services/printService";
@@ -114,7 +117,8 @@ describe("importing several MakerWorld print profiles", () => {
     global.fetch = originalFetch;
   });
 
-  function mockMakerworld(designId: string) {
+  /** `sameName`: every profile's file comes named alike, as MakerWorld often does. */
+  function mockMakerworld(designId: string, { sameName = false } = {}) {
     const fetched: string[] = [];
     global.fetch = vi.fn<(input: RequestInfo | URL) => Promise<Response>>(async (input) => {
       const url = String(input);
@@ -125,7 +129,7 @@ describe("importing several MakerWorld print profiles", () => {
         return json({
           message: "success",
           url: `https://s3.example.com/phoenix-${profile[1]}.stl`,
-          filename: `phoenix-${profile[1]}.stl`,
+          filename: sameName ? "phoenix.stl" : `phoenix-${profile[1]}.stl`,
         });
       const file = url.match(/^https:\/\/s3\.example\.com\/phoenix-(\d+)\.stl$/);
       if (file)
@@ -206,6 +210,27 @@ describe("importing several MakerWorld print profiles", () => {
     expect(job).toMatchObject({ status: "DONE", total: 4, imported: 2, already_in_library: 2, failed_count: 0 });
     const plates = await prisma.plate.findMany({ where: { printId: job.result_print_id } });
     expect(plates.map((p) => p.sourceInstanceId).toSorted()).toEqual(["1", "2", "3", "4"]);
+  });
+
+  it("names profile files that come named alike after their profiles", async () => {
+    const designId = String((stamp % 1_000_000_000) + 1);
+    mockMakerworld(designId, { sameName: true });
+    await runJob(designId, "designer");
+    const job = await runJob(designId, "all");
+    expect(job).toMatchObject({ status: "DONE", failed_count: 0 });
+    const plates = await prisma.plate.findMany({
+      where: { printId: job.result_print_id },
+      orderBy: { position: "asc" },
+    });
+    expect(plates.map((p) => [p.sourceInstanceId, p.filename])).toEqual([
+      ["2", "phoenix - multi-colored version.stl"],
+      ["1", "phoenix - Single-colour version.stl"],
+      ["3", "phoenix - Tail Color.stl"],
+      ["4", "phoenix - 0.16mm layer.stl"],
+    ]);
+    // The renamed first file moved on disk with its new name.
+    expect(plates.every((p) => fs.existsSync(path.join(STORAGE, p.storagePath)))).toBe(true);
+    expect(plates[0].storagePath.endsWith("phoenix - multi-colored version.stl")).toBe(true);
   });
 
   it("refuses a link that isn't a MakerWorld model", async () => {

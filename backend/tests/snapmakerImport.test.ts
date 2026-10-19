@@ -1,9 +1,11 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import request from "supertest";
+import sharp from "sharp";
 import { createApp } from "../src/app";
 import { importPrintFromUrl } from "../src/services/importService";
 import { prisma } from "../src/db";
 import { getSnapmakerConnection, setUserSnapmakerToken } from "../src/services/snapmakerSessionService";
+import { plateThumbPath } from "../src/services/printService";
 
 // Snapmaker Space import end to end: details and signed downloads in the shapes its site gets, fetch mocked.
 
@@ -20,10 +22,23 @@ const ONE_PIXEL_PNG = Buffer.from(
   "base64",
 );
 
-const PROFILES = [
+type Profile = { id: string; title: string; creatorId: string; pictures?: string[] };
+const PROFILES: Profile[] = [
   { id: "501", title: "Designer's", creatorId: "777" },
   { id: "502", title: "Community remix", creatorId: "888" },
 ];
+
+const RED_URL = "https://cdn-model.snapmaker.com/snapmaker/model/test/501-red.png";
+const BLUE_URL = "https://cdn-model.snapmaker.com/snapmaker/model/test/502-blue.png";
+const solid = (r: number, g: number, b: number) =>
+  sharp({ create: { width: 8, height: 8, channels: 3, background: { r, g, b } } })
+    .png()
+    .toBuffer();
+/** The thumbnail's average colour, which survives the JPEG re-encode. */
+async function thumbColour(plateId: string): Promise<number[]> {
+  const { channels } = await sharp(plateThumbPath(plateId)).stats();
+  return channels.slice(0, 3).map((c) => Math.round(c.mean));
+}
 
 function detail(profiles = PROFILES) {
   return {
@@ -52,7 +67,8 @@ function apiResponse(code: number, data: unknown = null): Response {
   });
 }
 
-function mockSnapmaker(opts: { profiles?: typeof PROFILES; downloadCode?: number } = {}) {
+/** `sameName`: every profile's file comes named alike, as Snapmaker often does. */
+function mockSnapmaker(opts: { profiles?: Profile[]; downloadCode?: number; sameName?: boolean } = {}) {
   return vi.fn<(input: RequestInfo | URL) => Promise<Response>>(async (input) => {
     const url = String(input);
     if (url === `${API}/model/detail/${MODEL_ID}`) return apiResponse(200, detail(opts.profiles));
@@ -62,7 +78,7 @@ function mockSnapmaker(opts: { profiles?: typeof PROFILES; downloadCode?: number
         modelFiles: [{ fileName: "princess.stl", downloadUrl: MODEL_STL }],
         printProfiles: (opts.profiles ?? PROFILES).map((profile) => ({
           profileId: profile.id,
-          fileName: `${profile.id}.3mf`,
+          fileName: opts.sameName ? "princess.3mf" : `${profile.id}.3mf`,
           downloadUrl: profile.id === "501" ? DESIGNER_3MF : REMIX_3MF,
         })),
       });
@@ -72,6 +88,8 @@ function mockSnapmaker(opts: { profiles?: typeof PROFILES; downloadCode?: number
       return new Response("designer 3mf", { status: 200, headers: { "content-type": "text/html" } });
     if (url === REMIX_3MF) return new Response("remix 3mf", { status: 200, headers: { "content-type": "text/html" } });
     if (url === MODEL_STL) return new Response("solid princess\nendsolid princess\n", { status: 200 });
+    if (url === RED_URL) return new Response(await solid(255, 0, 0), { headers: { "content-type": "image/png" } });
+    if (url === BLUE_URL) return new Response(await solid(0, 0, 255), { headers: { "content-type": "image/png" } });
     if (url === IMAGE_URL)
       return new Response(ONE_PIXEL_PNG, { status: 200, headers: { "content-type": "image/png" } });
     throw new Error(`Unexpected fetch to ${url}`);
@@ -151,6 +169,58 @@ describe("importPrintFromUrl -- Snapmaker Space", () => {
     const added = await importPrintFromUrl(userId, remixUrl, { url: remixUrl, tags: [] });
     expect(added.profileAdded).toBe(true);
     expect(added.plates.map((plate) => plate.sourceInstanceId).toSorted()).toEqual(["501", "502"]);
+  });
+
+  it("tells profiles apart by their own names and pictures when their files come named alike", async () => {
+    await setUserSnapmakerToken(userId, token());
+    const profiles = [
+      { ...PROFILES[0], pictures: [RED_URL] },
+      { ...PROFILES[1], pictures: [BLUE_URL] },
+    ];
+    global.fetch = mockSnapmaker({ profiles, sameName: true });
+    const first = await importPrintFromUrl(userId, MODEL_URL, { url: MODEL_URL, tags: [] });
+    // Alone, it keeps the site's name.
+    expect(first.plates.map((plate) => plate.filename)).toEqual(["princess.3mf"]);
+
+    const remixUrl = `${MODEL_URL}#profileId-502`;
+    const added = await importPrintFromUrl(userId, remixUrl, { url: remixUrl, tags: [] });
+    expect(added.plates.map((plate) => [plate.sourceInstanceId, plate.filename])).toEqual([
+      ["501", "princess - Designer's.3mf"],
+      ["502", "princess - Community remix.3mf"],
+    ]);
+    const [red, blue] = await Promise.all(added.plates.map((plate) => thumbColour(plate.id)));
+    expect(red[0]).toBeGreaterThan(200);
+    expect(red[2]).toBeLessThan(60);
+    expect(blue[2]).toBeGreaterThan(200);
+    expect(blue[0]).toBeLessThan(60);
+  });
+
+  // As on model 33211: titles that already hold the file's name are names enough on their own.
+  it("names a profile by its title alone when the title holds the file's name", async () => {
+    await setUserSnapmakerToken(userId, token());
+    const profiles = [
+      { ...PROFILES[0], title: "princess_1plates" },
+      { ...PROFILES[1], title: "princess" },
+    ];
+    global.fetch = mockSnapmaker({ profiles, sameName: true });
+    await importPrintFromUrl(userId, MODEL_URL, { url: MODEL_URL, tags: [] });
+    const remixUrl = `${MODEL_URL}#profileId-502`;
+    const added = await importPrintFromUrl(userId, remixUrl, { url: remixUrl, tags: [] });
+    expect(added.plates.map((plate) => plate.filename)).toEqual(["princess_1plates.3mf", "princess.3mf"]);
+  });
+
+  // As on model 185: profiles named alike can't be told apart by name, so the site's name stays, suffixed.
+  it("leaves the names be when the profiles' titles are alike too", async () => {
+    await setUserSnapmakerToken(userId, token());
+    const profiles = [
+      { ...PROFILES[0], title: "Princess" },
+      { ...PROFILES[1], title: "Princess" },
+    ];
+    global.fetch = mockSnapmaker({ profiles, sameName: true });
+    await importPrintFromUrl(userId, MODEL_URL, { url: MODEL_URL, tags: [] });
+    const remixUrl = `${MODEL_URL}#profileId-502`;
+    const added = await importPrintFromUrl(userId, remixUrl, { url: remixUrl, tags: [] });
+    expect(added.plates.map((plate) => plate.filename)).toEqual(["princess.3mf", "princess (2).3mf"]);
   });
 
   it("brings the model files when the model has no print profiles", async () => {

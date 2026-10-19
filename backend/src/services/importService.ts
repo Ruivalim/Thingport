@@ -38,6 +38,7 @@ import {
   findDownloadUrl,
   makerworldHtmlHeaders,
   makerworldInstanceCover,
+  makerworldInstanceTitles,
   makerworldMetaFromDesign,
   resolveMakerworldCookie,
   resolveMakerworldDownloadUrl,
@@ -145,11 +146,12 @@ import { upsertAuthorFromImport } from "./authorService";
 import {
   addPlatesToPrint,
   createPrint,
+  refreshAutoPreparedMetadata,
   resolvePlateFilePath,
   type NewPlateInput,
   type PrintMetaInput,
 } from "./printCreation";
-import { plateThumbReplaceable, saveThumbFromBytes } from "./printService";
+import { availablePlateFilename, plateThumbReplaceable, relocatePrint, saveThumbFromBytes } from "./printService";
 import { addPreviewImage, removeGeneratedPreviewImages } from "./previewImageService";
 import { localizeDescriptionImages } from "./descriptionImageService";
 import { prisma } from "../db";
@@ -338,36 +340,173 @@ async function makerworldMetaFromExtension(url: string, body: ImportRequestBody)
     ...meta,
     author,
     creator: author?.name ?? meta.creator,
-    makerworldProfile: { instanceId: body.resolved_instance_id ?? null, coverUrl: extensionProfileCover(url, body) },
+    makerworldProfile: extensionProfile(url, body),
   };
 }
 
-/** The picked profile's own picture from the design the extension sent, limited to MakerWorld's CDN as it's
- *  client-supplied. */
-function extensionProfileCover(url: string, body: ImportRequestBody): string | null {
+/** The picked profile from the design the extension sent: its picture, limited to MakerWorld's CDN as it's
+ *  client-supplied, and every profile's name. */
+function extensionProfile(url: string, body: ImportRequestBody): MakerworldProfileRef {
+  const instanceId = body.resolved_instance_id ?? null;
   const design = body.makerworld_design;
-  if (!design || String(design.id) !== parseMakerworldModelUrl(url)?.designId) return null;
-  const cover = makerworldInstanceCover(design, body.resolved_instance_id ?? null);
-  return isMakerworldCdnUrl(cover) ? cover : null;
+  if (!design || String(design.id) !== parseMakerworldModelUrl(url)?.designId) return { instanceId };
+  const cover = makerworldInstanceCover(design, instanceId);
+  return {
+    instanceId,
+    coverUrl: isMakerworldCdnUrl(cover) ? cover : null,
+    titles: makerworldInstanceTitles(design),
+  };
 }
 
-/** Puts a MakerWorld profile's own picture on its plate, in place of the 3MF's embedded thumbnail: designers often
- *  ship every profile with the same one, so the profiles would all look alike. Best-effort; never throws. */
-async function applyMakerworldProfileCover(
-  printId: string,
-  profile: MakerworldProfileRef | null | undefined,
-): Promise<void> {
-  if (!profile?.instanceId || !profile.coverUrl) return;
-  try {
-    const plate = await prisma.plate.findFirst({
-      where: { printId, sourceInstanceId: profile.instanceId },
-      select: { id: true },
-    });
-    const buf = plate ? await fetchImageBytes(profile.coverUrl) : null;
-    if (plate && buf) await saveThumbFromBytes(plate.id, buf);
-  } catch {
-    // The embedded thumbnail stays.
+/** What tells a model's print profiles apart, by profile id: their names, for files that come named alike, and their
+ *  own pictures, for their files' thumbnails. */
+type ProfileDetails = { titles?: Record<string, string>; covers?: Record<string, string> };
+
+/** `names: false` for a provider whose profile files are already named after their profiles. */
+function profileDetailsOf(
+  profiles: { id: string; title: string; coverUrl?: string | null }[],
+  { names = true } = {},
+): ProfileDetails {
+  return {
+    titles: names ? Object.fromEntries(profiles.map((p) => [p.id, p.title])) : undefined,
+    covers: Object.fromEntries(profiles.flatMap((p) => (p.coverUrl ? [[p.id, p.coverUrl]] : []))),
+  };
+}
+
+function makerworldProfileDetails(profile: MakerworldProfileRef | null | undefined): ProfileDetails {
+  const { instanceId, coverUrl, titles } = profile ?? {};
+  return { titles, covers: instanceId && coverUrl ? { [instanceId]: coverUrl } : undefined };
+}
+
+/** A profile's file named after the profile: "Phoenix - Multi-colour.3mf". */
+function profileFilename(filename: string, profileTitle: string): string {
+  const ext = path.extname(filename);
+  const stem = path.basename(filename, ext);
+  // A title that already holds the file's name ("vase_2_1plates" for "vase_2") says it all on its own.
+  return sanitizeFilename(
+    looseName(profileTitle).includes(looseName(stem)) ? `${profileTitle}${ext}` : `${stem} - ${profileTitle}${ext}`,
+  );
+}
+
+/** For comparing names: case, spaces, dashes and underscores aside. */
+function looseName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[\s_-]+/g, " ")
+    .trim();
+}
+
+/** Sites often give every profile's file the same name, so the files on a model can't be told apart. A new profile
+ *  whose file shares an earlier profile's name is named after its profile instead; so is each earlier one it clashes
+ *  with, which is renamed (and moved on disk) once the new one is in. */
+function profilePlateNaming(
+  plates: Plate[],
+  filename: string,
+  instanceId: string,
+  titles: Record<string, string> | undefined,
+): { filename: string; renames: { plate: Plate; filename: string }[] } {
+  const title = titles?.[instanceId];
+  if (!title) return { filename, renames: [] };
+  const name = sanitizeFilename(filename).toLowerCase();
+  const ext = path.extname(name);
+  // Earlier profiles of the file that were already named apart count as the same name.
+  const namedApart = `${path.basename(name, ext)} - `;
+  const clashing = plates.filter((plate) => {
+    const other = plate.filename.toLowerCase();
+    return other === name || (plate.sourceInstanceId != null && other.startsWith(namedApart) && other.endsWith(ext));
+  });
+  if (!clashing.length) return { filename, renames: [] };
+  // Profiles named alike can't be told apart by their names either: the site's own name, suffixed, will do.
+  const sameTitle = clashing.some((plate) => {
+    const otherTitle = plate.sourceInstanceId ? titles?.[plate.sourceInstanceId] : undefined;
+    return otherTitle !== undefined && looseName(otherTitle) === looseName(title);
+  });
+  if (sameTitle) return { filename, renames: [] };
+  const renames = clashing.flatMap((plate) => {
+    const otherTitle = plate.sourceInstanceId ? titles?.[plate.sourceInstanceId] : undefined;
+    return otherTitle && plate.filename.toLowerCase() === name
+      ? [{ plate, filename: profileFilename(filename, otherTitle) }]
+      : [];
+  });
+  return { filename: profileFilename(filename, title), renames };
+}
+
+/** The same for profiles that come in together, before any is on the model. */
+function nameInputsApart(inputs: NewPlateInput[], titles: Record<string, string> | undefined): NewPlateInput[] {
+  if (!titles) return inputs;
+  const titleOf = (input: NewPlateInput) => (input.sourceInstanceId ? titles[input.sourceInstanceId] : undefined);
+  const key = (input: NewPlateInput) => sanitizeFilename(input.filename).toLowerCase();
+  // Per file name, how many profiles have it, and how many of those share each title.
+  const counts = new Map<string, number>();
+  for (const input of inputs) {
+    if (!input.sourceInstanceId) continue;
+    counts.set(key(input), (counts.get(key(input)) ?? 0) + 1);
+    const title = titleOf(input);
+    if (title)
+      counts.set(`${key(input)}\0${looseName(title)}`, (counts.get(`${key(input)}\0${looseName(title)}`) ?? 0) + 1);
   }
+  return inputs.map((input) => {
+    const title = titleOf(input);
+    // Only a title that tells this one apart from the others with its name.
+    const apart = title && (counts.get(`${key(input)}\0${looseName(title)}`) ?? 0) === 1;
+    return apart && (counts.get(key(input)) ?? 0) > 1
+      ? { ...input, filename: profileFilename(input.filename, title) }
+      : input;
+  });
+}
+
+async function renameProfilePlates(printId: string, renames: { plate: Plate; filename: string }[]): Promise<void> {
+  if (!renames.length) return;
+  const print = await prisma.print.findUnique({ where: { id: printId } });
+  if (!print) return;
+  for (const { plate, filename } of renames) {
+    const next = await availablePlateFilename(printId, filename, plate.id);
+    await prisma.plate.update({ where: { id: plate.id }, data: { filename: next } });
+    await relocatePrint(print, [{ ...plate, filename: next }]);
+    if (plate.position === 0) await refreshAutoPreparedMetadata(printId);
+  }
+}
+
+/** Puts each profile's own picture on its plate, in place of the 3MF's embedded thumbnail: designers often ship every
+ *  profile with the same one, so the profiles would all look alike. Only `instanceIds` when given. Best-effort; never
+ *  throws. */
+async function applyProfileCovers(
+  printId: string,
+  covers: Record<string, string> | undefined,
+  instanceIds?: string[],
+): Promise<void> {
+  const wanted = Object.keys(covers ?? {}).filter((id) => !instanceIds || instanceIds.includes(id));
+  if (!covers || !wanted.length) return;
+  try {
+    const plates = await prisma.plate.findMany({
+      where: { printId, sourceInstanceId: { in: wanted } },
+      select: { id: true, sourceInstanceId: true },
+    });
+    for (const plate of plates) {
+      const buf = await fetchImageBytes(covers[plate.sourceInstanceId!]);
+      if (buf) await saveThumbFromBytes(plate.id, buf);
+    }
+  } catch {
+    // The embedded thumbnails stay.
+  }
+}
+
+/** addProfilePlate, with the new profile told apart from the others by its name and picture. */
+async function addProfilePlateWithDetails(
+  existing: ExistingImportedPrint,
+  file: NewPlateInput,
+  instanceId: string,
+  details: ProfileDetails,
+): Promise<ExistingImportedPrint & { alreadyImported: boolean; profileAdded?: boolean }> {
+  const naming = profilePlateNaming(existing.plates, file.filename, instanceId, details.titles);
+  // The earlier profiles first, so the new file is placed under its own name once and never moved while its preview
+  // renders. Only profiles' own plates are renamed, so the content match addProfilePlate makes on untagged ones holds.
+  // Best-effort: the profile comes in either way.
+  await renameProfilePlates(existing.print.id, naming.renames).catch(() => undefined);
+  const result = await addProfilePlate(existing, { ...file, filename: naming.filename }, instanceId);
+  if (!result.profileAdded) return result;
+  await applyProfileCovers(existing.print.id, details.covers, [instanceId]);
+  return { ...result, plates: await platesOf(existing.print.id) };
 }
 
 type MakerworldCloudShortcut = { downloadUrl: string; meta: ImportedPageMetadata };
@@ -824,9 +963,9 @@ async function addMakerworldProfileToPrint(
   const opened = presolved
     ? await openImportResponse(body.resolved_download_url!, { ...body, resolved_download_url: null }, url)
     : await openImportResponse(url, body);
-  const instanceId = presolved ? body.resolved_instance_id! : (opened.meta.makerworldProfile?.instanceId ?? null);
-  // The presolved download is fetched bare, so its profile's picture comes from the design the extension sent.
-  const coverUrl = presolved ? extensionProfileCover(url, body) : (opened.meta.makerworldProfile?.coverUrl ?? null);
+  // The presolved download is fetched bare, so its profile's details come from the design the extension sent.
+  const profile = presolved ? extensionProfile(url, body) : opened.meta.makerworldProfile;
+  const instanceId = profile?.instanceId ?? null;
   // Unknown profile, or the resolver fell back to one already on the print.
   if (!instanceId || hasProfile(instanceId)) {
     await opened.response.body?.cancel().catch(() => undefined);
@@ -834,12 +973,12 @@ async function addMakerworldProfileToPrint(
   }
 
   const { tempPath, filename, mime } = await saveImportResponseToTemp(opened, body);
-  const result = await addProfilePlate(existing, { filename, mime, tempFilePath: tempPath }, instanceId);
-  if (result.profileAdded) {
-    await applyMakerworldProfileCover(existing.print.id, { instanceId, coverUrl });
-    return { ...result, plates: await platesOf(existing.print.id) };
-  }
-  return result;
+  return addProfilePlateWithDetails(
+    existing,
+    { filename, mime, tempFilePath: tempPath },
+    instanceId,
+    makerworldProfileDetails(profile),
+  );
 }
 
 /** Adds a downloaded profile's file to an imported print as another plate, or, when an untagged plate has the same
@@ -1442,7 +1581,15 @@ async function importSnapmakerModel(
   }
   if (!downloaded.length) throw new HttpError(400, "This Snapmaker model has no files Thingport can import.");
 
-  return createSourcedPrint(userId, source, body, resolved, downloaded, `snapmaker-${source.externalId}`);
+  return createSourcedPrint(
+    userId,
+    source,
+    body,
+    resolved,
+    downloaded,
+    `snapmaker-${source.externalId}`,
+    profileDetailsOf(resolved.profiles),
+  );
 }
 
 /** A new print from a provider model whose files are downloaded: its metadata, author, category and gallery. Removes
@@ -1454,6 +1601,7 @@ async function createSourcedPrint(
   resolved: { meta: Partial<ImportedPageMetadata>; galleryImages: { url: string; filename: string }[] },
   downloaded: NewPlateInput[],
   nameHint: string,
+  profiles: ProfileDetails = {},
 ): Promise<ImportResult> {
   const { meta, galleryImages } = resolved;
   try {
@@ -1474,7 +1622,12 @@ async function createSourcedPrint(
     };
     let created: { print: Print; plates: Plate[] };
     try {
-      created = await createPrint(userId, printMeta, meta.title || nameHint, downloaded);
+      created = await createPrint(
+        userId,
+        printMeta,
+        meta.title || nameHint,
+        nameInputsApart(downloaded, profiles.titles),
+      );
     } catch (err) {
       // Race guard: a concurrent import of the same source model won.
       if (isUniqueConstraintError(err)) {
@@ -1489,6 +1642,7 @@ async function createSourcedPrint(
       meta.previewImageUrl ?? null,
       galleryImages,
     );
+    await applyProfileCovers(created.print.id, profiles.covers);
     await localizeDescriptionImages(created.print.id);
     const previewImages = await prisma.previewImage.findMany({
       where: { printId: created.print.id },
@@ -1524,7 +1678,9 @@ async function addSnapmakerProfileToPrint(
     throw await snapmakerFailure(userId, err);
   }
   if (!profile) throw new HttpError(404, "This Snapmaker model has no such print profile.");
-  return addProfilePlate(existing, profile, wanted);
+  // Its public details name and picture the profiles; without them the file still comes in.
+  const model = await resolveSnapmakerModel(existing.print.sourceExternalId!).catch(() => null);
+  return addProfilePlateWithDetails(existing, profile, wanted, model ? profileDetailsOf(model.profiles) : {});
 }
 
 const CREALITYCLOUD_BLOCKED =
@@ -1613,7 +1769,16 @@ async function importCrealitycloudModel(
   }
   if (!downloaded.length) throw new HttpError(400, "This Creality Cloud model has no files Thingport can import.");
 
-  return createSourcedPrint(userId, source, body, resolved, downloaded, `crealitycloud-${source.externalId}`);
+  // Its profile files are named after their profiles already.
+  return createSourcedPrint(
+    userId,
+    source,
+    body,
+    resolved,
+    downloaded,
+    `crealitycloud-${source.externalId}`,
+    profileDetailsOf(resolved.profiles, { names: false }),
+  );
 }
 
 /** Re-import of a Creality Cloud model naming a profile it doesn't have yet: that profile's 3MF becomes another plate.
@@ -1631,15 +1796,17 @@ async function addCrealitycloudProfileToPrint(
   const userId = existing.print.userId;
   const auth = await requireCrealitycloudAuth(userId);
   let profile: NewPlateInput | null;
+  let model: CrealitycloudModelResolution | null;
   try {
-    const model = resolved ?? (await resolveCrealitycloudModel(existing.print.sourceExternalId!));
+    model = resolved ?? (await resolveCrealitycloudModel(existing.print.sourceExternalId!));
     if (!model) throw new HttpError(404, CREALITYCLOUD_MISSING);
     profile = await downloadCrealitycloudProfile(model, wanted, auth);
   } catch (err) {
     throw await crealitycloudFailure(userId, err);
   }
   if (!profile) throw new HttpError(404, "This Creality Cloud model has no such print profile.");
-  return addProfilePlate(existing, profile, wanted);
+  // Its profile files are named after their profiles already.
+  return addProfilePlateWithDetails(existing, profile, wanted, profileDetailsOf(model.profiles, { names: false }));
 }
 
 const NEXPRINT_BLOCKED =
@@ -1719,7 +1886,16 @@ async function importNexprintModel(
   }
   if (!downloaded.length) throw new HttpError(400, "This NexPrint model has no files Thingport can import.");
 
-  return createSourcedPrint(userId, source, body, resolved, downloaded, `nexprint-${source.externalId}`);
+  // Its profile files are named after their profiles already.
+  return createSourcedPrint(
+    userId,
+    source,
+    body,
+    resolved,
+    downloaded,
+    `nexprint-${source.externalId}`,
+    profileDetailsOf(resolved.profiles, { names: false }),
+  );
 }
 
 /** Re-import of a NexPrint model naming a profile it doesn't have yet: that profile's 3MF becomes another plate. A
@@ -1736,15 +1912,17 @@ async function addNexprintProfileToPrint(
   const userId = existing.print.userId;
   const token = await requireNexprintToken(userId);
   let profile: NewPlateInput | null;
+  let model: NexprintModelResolution | null;
   try {
-    const model = await resolveNexprintModel(existing.print.sourceExternalId!);
+    model = await resolveNexprintModel(existing.print.sourceExternalId!);
     if (!model) throw new HttpError(404, NEXPRINT_MISSING);
     profile = await downloadNexprintProfile(model, wanted, token);
   } catch (err) {
     throw await nexprintFailure(userId, err);
   }
   if (!profile) throw new HttpError(404, "This NexPrint model has no such print profile.");
-  return addProfilePlate(existing, profile, wanted);
+  // Its profile files are named after their profiles already.
+  return addProfilePlateWithDetails(existing, profile, wanted, profileDetailsOf(model.profiles, { names: false }));
 }
 
 const MAKERONLINE_BLOCKED =
@@ -1794,7 +1972,15 @@ async function importMakeronlineModel(
   const resolved = await resolveMakeronlineModel(source.externalId);
   if (!resolved) throw new HttpError(404, "This MakerOnline model could not be found, or isn't public.");
   const downloaded = await downloadMakeronlineFiles(body.resolved_files);
-  return createSourcedPrint(userId, source, body, resolved, downloaded, `makeronline-${source.externalId}`);
+  return createSourcedPrint(
+    userId,
+    source,
+    body,
+    resolved,
+    downloaded,
+    `makeronline-${source.externalId}`,
+    profileDetailsOf(resolved.profiles),
+  );
 }
 
 /** Re-import of a MakerOnline model with print profiles it doesn't have yet: each becomes another plate. Anything
@@ -1807,11 +1993,14 @@ async function addMakeronlineProfilesToPrint(
   const wanted = (body.resolved_files ?? []).filter((file) => file.profile_id && !have.has(file.profile_id));
   if (!wanted.length) return { ...existing, alreadyImported: true };
   const inputs = await downloadMakeronlineFiles(wanted);
+  // Its public details name and picture the profiles; without them the files still come in.
+  const model = await resolveMakeronlineModel(existing.print.sourceExternalId!).catch(() => null);
+  const details = model ? profileDetailsOf(model.profiles) : {};
   let current: ExistingImportedPrint = existing;
   let profileAdded = false;
   try {
     for (const input of inputs) {
-      const result = await addProfilePlate(current, input, input.sourceInstanceId!);
+      const result = await addProfilePlateWithDetails(current, input, input.sourceInstanceId!, details);
       profileAdded ||= Boolean(result.profileAdded);
       current = result;
     }
@@ -1938,7 +2127,7 @@ async function importNewOrExisting(userId: string, url: string, body: ImportRequ
       meta.galleryImages,
       body.makerworldPaceMs,
     );
-    await applyMakerworldProfileCover(result.print.id, meta.makerworldProfile);
+    await applyProfileCovers(result.print.id, makerworldProfileDetails(meta.makerworldProfile).covers);
     await localizeDescriptionImages(result.print.id);
     const previewImages = await prisma.previewImage.findMany({
       where: { printId: result.print.id },

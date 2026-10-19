@@ -112,7 +112,8 @@ export async function checkSnapmakerToken(token: string): Promise<"ok" | "reject
   }
 }
 
-export type SnapmakerProfile = { id: string; title: string; creatorId: string | null };
+/** `coverUrl`: the profile's own picture, which becomes its file's thumbnail. */
+export type SnapmakerProfile = { id: string; title: string; creatorId: string | null; coverUrl: string | null };
 
 export type SnapmakerModelResolution = {
   meta: Partial<ImportedPageMetadata>;
@@ -194,6 +195,7 @@ export function snapmakerMetaFromDetail(detail: Record<string, unknown>): Snapma
             id: id(profile.id)!,
             title: str(profile.translatedTitle) ?? str(profile.title) ?? `Profile ${String(profile.id)}`,
             creatorId: id(profile.creatorId),
+            coverUrl: Array.isArray(profile.pictures) ? str(profile.pictures[0]) : null,
           },
         ];
       })

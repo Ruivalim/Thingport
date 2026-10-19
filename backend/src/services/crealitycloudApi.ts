@@ -176,7 +176,14 @@ export async function checkCrealitycloudAuth(
   }
 }
 
-export type CrealitycloudProfile = { id: string; title: string; creatorId: string | null; designers: boolean };
+/** `coverUrl`: the profile's own picture, which becomes its file's thumbnail. */
+export type CrealitycloudProfile = {
+  id: string;
+  title: string;
+  creatorId: string | null;
+  designers: boolean;
+  coverUrl: string | null;
+};
 
 export type CrealitycloudModelResolution = {
   meta: Partial<ImportedPageMetadata>;
@@ -285,6 +292,7 @@ export function crealitycloudMetaFromDetail(
           title: profileTitle(profile, profileId),
           creatorId: owner,
           designers: profile.isAuth === true || (!!owner && owner === creatorId),
+          coverUrl: coverUrls(profile.covers)[0] ?? str(profile.thumbnail),
         },
       ];
     }),

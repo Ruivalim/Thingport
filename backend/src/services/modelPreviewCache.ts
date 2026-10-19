@@ -2,7 +2,8 @@ import fs from "node:fs/promises";
 import fsSync from "node:fs";
 import path from "node:path";
 import { Worker } from "node:worker_threads";
-import { MODEL_PREVIEWS, MODEL_PREVIEW_MAX_MEMORY_MB, MODEL_PREVIEW_TIMEOUT_SECONDS } from "../config";
+import { MODEL_PREVIEWS, MODEL_PREVIEW_MAX_MEMORY_MB, MODEL_PREVIEW_TIMEOUT_SECONDS, STORAGE } from "../config";
+import { prisma } from "../db";
 import type { ModelPreviewWorkerInput, ModelPreviewWorkerResult } from "./modelPreviewWorker";
 import { getSimplifyPreviews } from "./settingsService";
 import { workerBootstrap } from "../utils/workerBootstrap";
@@ -198,12 +199,14 @@ async function runGeneration(plateId: string, srcPath: string): Promise<void> {
   try {
     await fs.writeFile(pendingPath, new Date().toISOString());
     const simplify = await getSimplifyPreviews();
-    const outcome = await renderInWorker({
-      kind: "glb",
-      srcPath,
-      destPath: tmp,
-      options: { simplifyTo: simplify ? SIMPLIFY_TARGET_TRIANGLES : null },
-    });
+    const outcome = await renderPlateFile(plateId, srcPath, (from) =>
+      renderInWorker({
+        kind: "glb",
+        srcPath: from,
+        destPath: tmp,
+        options: { simplifyTo: simplify ? SIMPLIFY_TARGET_TRIANGLES : null },
+      }),
+    );
     switch (outcome.status) {
       case "ok":
         await fs.rename(tmp, dest);
@@ -234,6 +237,31 @@ async function runGeneration(plateId: string, srcPath: string): Promise<void> {
     await fs.rm(pendingPath, { force: true }).catch(() => undefined);
     inFlight.delete(plateId);
   }
+}
+
+/** The plate's file where it is when its render starts: renders wait in a queue, and the file may have been renamed
+ *  (and so moved) since, as when a newly imported print profile is named apart from another. */
+async function currentPlatePath(plateId: string, queuedPath: string): Promise<string> {
+  if (fsSync.existsSync(queuedPath)) return queuedPath;
+  const plate = await prisma.plate
+    .findUnique({ where: { id: plateId }, select: { storagePath: true, sourcePath: true } })
+    .catch(() => null);
+  const managed = plate ? path.join(STORAGE, plate.storagePath) : null;
+  if (managed && fsSync.existsSync(managed)) return managed;
+  return plate?.sourcePath && fsSync.existsSync(plate.sourcePath) ? plate.sourcePath : queuedPath;
+}
+
+/** Renders from the plate's current file, and once more from where it went if it was moved away mid-render. */
+async function renderPlateFile<T extends { status: string }>(
+  plateId: string,
+  queuedPath: string,
+  render: (srcPath: string) => Promise<T>,
+): Promise<T> {
+  const srcPath = await currentPlatePath(plateId, queuedPath);
+  const outcome = await render(srcPath);
+  if (outcome.status !== "error" || fsSync.existsSync(srcPath)) return outcome;
+  const moved = await currentPlatePath(plateId, srcPath);
+  return moved !== srcPath && fsSync.existsSync(moved) ? render(moved) : outcome;
 }
 
 // Pictures of a model for small slots like the dashboard lists: near-black on transparent.
@@ -273,15 +301,17 @@ export async function generateModelImage(plateId: string, srcPath: string, filen
     const dest = modelImagePath(plateId);
     const tmp = `${dest}.${process.pid}.${Date.now()}.tmp`;
     try {
-      const outcome = await renderInWorker(
-        {
-          kind: "image",
-          srcPath,
-          destPath: tmp,
-          ext: path.extname(filename).toLowerCase(),
-          image: { size: MODEL_IMAGE_SIZE, color: MODEL_IMAGE_COLOR },
-        },
-        MODEL_IMAGE_TIMEOUT_SECONDS,
+      const outcome = await renderPlateFile(plateId, srcPath, (from) =>
+        renderInWorker(
+          {
+            kind: "image",
+            srcPath: from,
+            destPath: tmp,
+            ext: path.extname(filename).toLowerCase(),
+            image: { size: MODEL_IMAGE_SIZE, color: MODEL_IMAGE_COLOR },
+          },
+          MODEL_IMAGE_TIMEOUT_SECONDS,
+        ),
       );
       if (outcome.status === "ok") {
         await fs.rename(tmp, dest);

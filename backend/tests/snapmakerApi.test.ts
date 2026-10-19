@@ -112,7 +112,13 @@ const DETAIL = {
   creatorName: "Decorartor",
   creatorAvatar: "https://cdn-model.snapmaker.com/snapmaker/avatar/119349/avatar.jpg",
   printProfiles: [
-    { id: "37940", title: "snapmaker_2plates", translatedTitle: "2 plates", creatorId: "119349" },
+    {
+      id: "37940",
+      title: "snapmaker_2plates",
+      translatedTitle: "2 plates",
+      creatorId: "119349",
+      pictures: ["https://cdn-model.snapmaker.com/snapmaker/model/1/a.jpg", "https://cdn-model.snapmaker.com/b.jpg"],
+    },
     { id: "40001", title: "remix", creatorId: "555" },
   ],
 };
@@ -135,8 +141,14 @@ describe("Snapmaker model details", () => {
     expect(galleryImages.map((image) => image.filename)).toEqual(["a.jpg", "b.jpg"]);
     expect(creatorId).toBe("119349");
     expect(profiles).toEqual([
-      { id: "37940", title: "2 plates", creatorId: "119349" },
-      { id: "40001", title: "remix", creatorId: "555" },
+      // A profile's own picture is its first.
+      {
+        id: "37940",
+        title: "2 plates",
+        creatorId: "119349",
+        coverUrl: "https://cdn-model.snapmaker.com/snapmaker/model/1/a.jpg",
+      },
+      { id: "40001", title: "remix", creatorId: "555", coverUrl: null },
     ]);
   });
 

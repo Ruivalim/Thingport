@@ -171,6 +171,8 @@ export type NexprintProfile = {
   fileId: string;
   title: string;
   designers: boolean;
+  /** The profile's own picture, which becomes its file's thumbnail. */
+  coverUrl: string | null;
 };
 
 export type NexprintModelFile = { fileId: string; name: string };
@@ -263,6 +265,7 @@ export function nexprintMetaFromDetail(data: Record<string, unknown>): NexprintM
         fileId,
         title: str(setting.settingName) ?? `Profile ${profileId}`,
         designers: setting.isCreator === true || (!!authorId && id(setting.userId) === authorId),
+        coverUrl: str(setting.settingCoverImgUrl),
       },
     ];
   });
