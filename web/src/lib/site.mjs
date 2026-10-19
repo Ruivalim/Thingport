@@ -84,6 +84,15 @@ export const DOCS = [
       "Link a MakerWorld, Printables, Thingiverse or MyMiniFactory collection to Thingport, and models added to it later are imported on their own.",
   },
   {
+    slug: "guides/bookmarklet",
+    source: "docs/guides/bookmarklet.md",
+    group: "Add your library",
+    title: "Import with a bookmarklet",
+    nav: "Bookmarklet",
+    description:
+      "Add a bookmark that opens Thingport's import dialog with the model page you're on, in any browser and with nothing to install.",
+  },
+  {
     slug: "features/importing",
     source: "docs/features/importing.md",
     group: "Features",

@@ -8,6 +8,8 @@ back to where it came from. If the original page disappears, the model is still 
 - **Paste a link.** Click **Add → Import** and paste a model link from MakerWorld, Printables, Thingiverse,
   MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud or NexPrint, or any direct link to a model file. Paste several links, one per line, and they're imported one after
   another as a background job. You can also paste a link straight into the search bar.
+- **Use the bookmarklet.** Drag the [bookmarklet](../guides/bookmarklet.md) to your bookmarks bar, and clicking it on
+  a model's page opens Thingport with the link already in the import dialog. Nothing to install.
 - **Use Thingport Grab.** The [browser extension](../../extension/README.md) adds a Thingport button to model pages on
   all eight sites (MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud and NexPrint once you allow them, with a single click in its popup), so you can
   import without leaving the page, file the model into a collection, and import whole collections.

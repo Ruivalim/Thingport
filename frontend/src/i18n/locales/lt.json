@@ -1765,6 +1765,26 @@
         "removeTitle": "Pašalinti Thingport Grab naršyklėje {{name}}?",
         "removeMessage": "Thingport Grab naršyklėje {{name}} bus atjungtas ir negalės importuoti, kol vėl nebus prijungtas."
       }
+    },
+    "bookmarklet": {
+      "heading": "Žymių programėlė",
+      "help": "Nutempkite mygtuką į naršyklės žymių juostą. Palaikomos svetainės modelio puslapyje spustelėkite žymę: atsidarys Thingport su importavimo langu, į kurį jau įrašyta to puslapio nuoroda.",
+      "linkLabel": "Siųsti į Thingport",
+      "dragHint": "Nutempkite tai į žymių juostą",
+      "copy": "Kopijuoti žymių programėlės kodą",
+      "copied": "Žymių programėlės kodas nukopijuotas",
+      "copyFailed": "Čia nukopijuoti nepavyko. Nutempkite mygtuką į žymių juostą arba spustelėkite jį dešiniuoju pelės klavišu ir nukopijuokite nuorodą.",
+      "guide": {
+        "open": "Sužinoti apie žymių programėles",
+        "title": "Importavimas žymių programėle",
+        "steps": [
+          "Nutempkite žemiau esantį mygtuką į naršyklės žymių juostą (ją parodo Ctrl+Shift+B arba ⌘⇧B „Mac“ kompiuteryje).",
+          "Atidarykite modelio puslapį „MakerWorld“, „Printables“ ar kitoje palaikomoje svetainėje.",
+          "Spustelėkite žymę. Atsidarys Thingport su nuoroda importavimo lange: spustelėkite „Importuoti“."
+        ],
+        "cantDrag": "Negalite nutempti, pvz., telefone? Nukopijuokite kodą, pažymėkite bet kurį puslapį, tada redaguokite žymę ir įklijuokite kodą kaip jos adresą.",
+        "readMore": "Skaityti vadovą"
+      }
     }
   },
   "common": {

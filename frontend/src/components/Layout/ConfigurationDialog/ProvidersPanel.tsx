@@ -19,6 +19,7 @@ import { settingsApi } from "../../../api/settings";
 import type { MakerWorldSettings } from "../../../utils/settings";
 import { useConfirm } from "../../ConfirmProvider";
 import { AppGrid, AppTile, menuPosition, reopenContextMenuBelow, TileMenuHeader } from "./AppTiles";
+import BookmarkletSection from "./BookmarkletSection";
 import { PanelHeader } from "./parts";
 import { COMING_SOON_PROVIDERS, ProviderLogo, type ProviderId } from "./providerLogos";
 import { useDisabledProviders } from "../../../hooks/useDisabledProviders";
@@ -371,6 +372,10 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
           onUnauthorized={onUnauthorized}
         />
       )}
+
+      <Box sx={{ mt: 3 }}>
+        <BookmarkletSection />
+      </Box>
     </>
   );
 }
