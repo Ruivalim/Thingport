@@ -12,8 +12,7 @@ dialog already filled in with that page's link. One more click on **Import** and
 ## Add the bookmarklet
 
 1. Show your browser's bookmarks bar: **Ctrl+Shift+B**, or **⌘⇧B** on a Mac.
-2. In Thingport, open **Add → Import** and click **Learn about bookmarklets**, or open **Configuration → Providers**
-   and find **Bookmarklet** at the bottom.
+2. In Thingport, open **Add → Import** and click **Learn about bookmarklets**.
 3. Drag the **Send to Thingport** button onto the bookmarks bar.
 
 The bookmarklet points at the address you opened Thingport at when you dragged it. If you later move Thingport to
@@ -33,7 +32,7 @@ The copy button needs Thingport to be opened over HTTPS or on `localhost`. On a 
 ## Use it
 
 1. Open a model's page on any [supported site](../features/importing.md): MakerWorld, Printables, Thingiverse,
-   MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud or NexPrint.
+   MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud, NexPrint or Thangs.
 2. Click **Send to Thingport** in the bookmarks bar.
 3. Thingport opens with the link in the import dialog. Pick the print profiles to bring in if the site has them, then
    click **Import**.

@@ -1724,8 +1724,6 @@
       }
     },
     "bookmarklet": {
-      "heading": "Bookmarklet",
-      "help": "Drag the button to your browser's bookmarks bar. On a model's page on a supported site, click the bookmark: Thingport opens with the import dialog filled in with that page's link. Thingport Grab, the browser extension, is the recommended way to import; this is a lighter alternative.",
       "linkLabel": "Send to Thingport",
       "dragHint": "Drag this to your bookmarks bar",
       "copy": "Copy the bookmarklet code",

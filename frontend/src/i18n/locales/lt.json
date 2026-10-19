@@ -1780,8 +1780,6 @@
       }
     },
     "bookmarklet": {
-      "heading": "Žymių programėlė",
-      "help": "Nutempkite mygtuką į naršyklės žymių juostą. Palaikomos svetainės modelio puslapyje spustelėkite žymę: atsidarys Thingport su importavimo langu, į kurį jau įrašyta to puslapio nuoroda. Rekomenduojamas importavimo būdas yra naršyklės plėtinys Thingport Grab; tai paprastesnė alternatyva.",
       "linkLabel": "Siųsti į Thingport",
       "dragHint": "Nutempkite tai į žymių juostą",
       "copy": "Kopijuoti žymių programėlės kodą",
