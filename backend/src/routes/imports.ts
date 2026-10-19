@@ -78,7 +78,7 @@ import {
   markMakeronlineTokenRejected,
 } from "../services/makeronlineSessionService";
 import {
-  clearGrabImports,
+  clearGrabImport,
   getGrabImport,
   listGrabImports,
   notifyGrabImportsQueued,
@@ -618,7 +618,7 @@ router.post(
             resolved_files: body.files,
             notify: false,
           },
-          // Cleared once it's filed, so a failed filing keeps the collection to try again with.
+          // Only this row is cleared, once it's filed, so a failed filing keeps the collection to try again with.
           { keepGrabImports: true },
         );
         if (row.collectionId) {
@@ -629,8 +629,7 @@ router.post(
         await recordGrabImportFailure(row, err instanceof Error ? err.message : "Import failed").catch(() => undefined);
         throw err;
       }
-      const modelId = parseMakeronlineModelUrl(row.url)?.modelId;
-      if (modelId) await clearGrabImports(userId, modelId).catch(() => undefined);
+      await clearGrabImport(row).catch(() => undefined);
       return described;
     };
     if (req.query.async === "1") {

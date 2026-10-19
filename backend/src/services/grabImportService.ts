@@ -93,6 +93,11 @@ export async function clearGrabImports(userId: string, modelId: string): Promise
   if (done.length) await prisma.grabImport.deleteMany({ where: { id: { in: done } } });
 }
 
+/** One waiting import done; others for the same model, under another link or with other options, still wait. */
+export async function clearGrabImport(row: GrabImport): Promise<void> {
+  await prisma.grabImport.deleteMany({ where: { id: row.id, userId: row.userId } });
+}
+
 /** A failed try. The last one drops the model and says why. */
 export async function recordGrabImportFailure(row: GrabImport, error: string): Promise<void> {
   const attempts = row.attempts + 1;
