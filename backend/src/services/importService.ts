@@ -501,7 +501,7 @@ async function addProfilePlateWithDetails(
   const naming = profilePlateNaming(existing.plates, file.filename, instanceId, details.titles);
   // The earlier profiles first, so the new file is placed under its own name once and never moved while its preview
   // renders. Only profiles' own plates are renamed, so the content match addProfilePlate makes on untagged ones holds.
-  // Best-effort: the profile comes in either way.
+  // Best-effort: a failed move leaves the file where its plate says it is, and the profile comes in either way.
   await renameProfilePlates(existing.print.id, naming.renames).catch(() => undefined);
   const result = await addProfilePlate(existing, { ...file, filename: naming.filename }, instanceId);
   if (!result.profileAdded) return result;
