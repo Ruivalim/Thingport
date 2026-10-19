@@ -488,7 +488,8 @@ export async function fetchThangsCollection(
     };
     const items = records(data.items);
     models.push(...items);
-    if (items.length < PAGE_SIZE || models.length >= info.modelCount) break;
+    // A total only stops it when the answer gives one; a short page always does.
+    if (items.length < PAGE_SIZE || (info.modelCount > 0 && models.length >= info.modelCount)) break;
   }
   if (!info) return null;
   return { ...listingOf(models, owned, maxItems), info };

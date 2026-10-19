@@ -338,6 +338,19 @@ describe("Thangs listings", () => {
     expect(calls.map((call) => call.query.get("page"))).toEqual(["0", "1"]);
     expect(calls[0].query.get("isLoggedIn")).toBe("true");
 
+    // Without a total, it pages on until a short page.
+    const untold = stubApi({
+      "/collections/493183": (call) =>
+        json({
+          id: "493183",
+          name: "Thangs collection",
+          items:
+            call.query.get("page") === "0" ? Array.from({ length: 50 }, (_, i) => item(String(i + 1))) : [item("51")],
+        }),
+    });
+    expect((await fetchThangsCollection("493183", ACCESS, new Set()))?.entries).toHaveLength(51);
+    expect(untold).toHaveLength(2);
+
     stubApi({ "/collections/1": () => json({ message: "Collection is private" }, 403) });
     await expect(fetchThangsCollection("1", null, new Set())).rejects.toBeInstanceOf(ThangsPrivateCollectionError);
 
