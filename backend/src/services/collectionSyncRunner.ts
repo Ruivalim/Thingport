@@ -174,8 +174,9 @@ export async function fetchListing(
     return listing ? listing.entries.map((e) => e.modelId) : null;
   }
   if (sync.provider === "nexprint") {
-    // Collections, the private ones too, list without a sign-in; only their files need one.
-    const listing = await fetchNexprintCollection(id);
+    // Collections, the private ones too, list without a sign-in; only their files need one. All of it, not the import
+    // dialog's first 600, or models past those would never be found.
+    const listing = await fetchNexprintCollection(id, Number.POSITIVE_INFINITY);
     return listing ? listing.entries.map((e) => e.modelId) : null;
   }
   throw new Error(`Unknown provider "${sync.provider}"`);

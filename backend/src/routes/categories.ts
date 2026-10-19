@@ -185,6 +185,12 @@ function parseCatIdsInput(raw: string | null | undefined): number[] {
 }
 
 const catIdsField = z.string().trim().max(1000).nullable().optional();
+
+/** A field the request leaves out is left as it is (Prisma skips undefined), so a client from before a provider was
+ *  added can't wipe that provider's ids; blank or null still clears them. */
+function catIdsUpdate(raw: string | null | undefined): number[] | undefined {
+  return raw === undefined ? undefined : parseCatIdsInput(raw);
+}
 const categoryMetaSchema = z.object({
   meta_title: z.string().trim().max(200).nullable().optional(),
   meta_description: z.string().trim().max(2000).nullable().optional(),
@@ -209,14 +215,14 @@ router.patch(
       data: {
         metaTitle: body.meta_title || null,
         metaDescription: body.meta_description || null,
-        makerworldCatIds: parseCatIdsInput(body.makerworld_cat_ids),
-        thingiverseCatIds: parseCatIdsInput(body.thingiverse_cat_ids),
-        printablesCatIds: parseCatIdsInput(body.printables_cat_ids),
-        myminifactoryCatIds: parseCatIdsInput(body.myminifactory_cat_ids),
-        snapmakerCatIds: parseCatIdsInput(body.snapmaker_cat_ids),
-        makeronlineCatIds: parseCatIdsInput(body.makeronline_cat_ids),
-        crealitycloudCatIds: parseCatIdsInput(body.crealitycloud_cat_ids),
-        nexprintCatIds: parseCatIdsInput(body.nexprint_cat_ids).map(String),
+        makerworldCatIds: catIdsUpdate(body.makerworld_cat_ids),
+        thingiverseCatIds: catIdsUpdate(body.thingiverse_cat_ids),
+        printablesCatIds: catIdsUpdate(body.printables_cat_ids),
+        myminifactoryCatIds: catIdsUpdate(body.myminifactory_cat_ids),
+        snapmakerCatIds: catIdsUpdate(body.snapmaker_cat_ids),
+        makeronlineCatIds: catIdsUpdate(body.makeronline_cat_ids),
+        crealitycloudCatIds: catIdsUpdate(body.crealitycloud_cat_ids),
+        nexprintCatIds: catIdsUpdate(body.nexprint_cat_ids)?.map(String),
       },
     });
     res.json(toCategoryOut(updated));

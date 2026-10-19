@@ -42,8 +42,8 @@ from Thingport Grab wait in **Administration → Import queue** until they're st
 
 Printables works with no setup. MakerWorld needs your session cookie, and Thingiverse and MyMiniFactory a key set by an
 admin; MyMiniFactory models you bought come in once you connect your MyMiniFactory account. Snapmaker Space needs your
-own sign-in, which Thingport Grab keeps fresh, MakerOnline Thingport Grab for its files, and Creality Cloud and NexPrint your own
-sign-in, which Grab sends on when you visit them. See
+own sign-in, which Thingport Grab keeps fresh; MakerOnline's files come only through Thingport Grab; and Creality Cloud
+and NexPrint need your own sign-in, which Grab sends to Thingport when you visit them. See
 [provider setup](../PROVIDER_SETUP.md). Admins can also
 [turn a provider off](../PROVIDER_SETUP.md#turning-a-provider-off) for the whole instance, and then nothing is imported
 from it.

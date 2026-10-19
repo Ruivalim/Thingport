@@ -124,6 +124,10 @@ describe("NexPrint sign-in", () => {
 
     stubApi({ "/model-user-server/member/user_data": () => apiResponse(401, null, "账号未登录") });
     expect(await checkNexprintAuth(TOKEN)).toBe("rejected");
+
+    // Its own trouble isn't the token's fault.
+    stubApi({ "/model-user-server/member/user_data": () => apiResponse(500, null, "系统繁忙") });
+    expect(await checkNexprintAuth(TOKEN)).toBe("unreachable");
   });
 });
 

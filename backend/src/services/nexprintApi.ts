@@ -154,7 +154,9 @@ export async function checkNexprintAuth(
   try {
     const { code, data } = await fetchApi("/model-user-server/member/user_data", { body: {} }, token);
     const user = isRecord(data) && isRecord(data.userData) ? data.userData : null;
-    if (code !== CODE_OK || !user || !outId(user.userId, "U")) return code === null ? "unreachable" : "rejected";
+    // Only a refusal says the token is bad; any other error code is NexPrint's own trouble.
+    if (code !== CODE_OK) return code === CODE_UNAUTHORIZED ? "rejected" : "unreachable";
+    if (!user || !outId(user.userId, "U")) return "rejected";
     return { userId: outId(user.userId, "U")!, name: str(user.nickname) };
   } catch (err) {
     return err instanceof NexprintAuthError ? "rejected" : "unreachable";

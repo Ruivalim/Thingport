@@ -20,7 +20,10 @@ export async function syncNexprintSession(): Promise<void> {
   // Per Thingport account, so switching the extension to another one sends it there too.
   const account = `${config.instanceUrl} ${config.email}`;
   const last = config.lastSyncedNexprintSession;
-  const token = cookie?.value ? decodeURIComponent(cookie.value) : "";
+  let token = "";
+  try {
+    token = cookie?.value ? decodeURIComponent(cookie.value) : "";
+  } catch {} // Malformed percent-encoding: not a token.
   // Signed out, the site clears the cookie or leaves a placeholder in it.
   if (!/^[0-9a-f]{32,128}$/i.test(token)) {
     // Clear the sign-in Grab sent, but not one pasted in Thingport.
