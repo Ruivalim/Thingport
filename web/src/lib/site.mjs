@@ -90,7 +90,7 @@ export const DOCS = [
     title: "Import with a bookmarklet",
     nav: "Bookmarklet",
     description:
-      "Add a bookmark that opens Thingport's import dialog with the model page you're on, in any browser and with nothing to install.",
+      "An alternative to Thingport Grab: a bookmark that opens Thingport's import dialog with the model page you're on, in any browser.",
   },
   {
     slug: "features/importing",

@@ -4,10 +4,10 @@ A bookmarklet is a bookmark that runs a small piece of code instead of opening a
 the page you're on to your Thingport: click it on a model's page, and Thingport opens in a new tab with the import
 dialog already filled in with that page's link. One more click on **Import** and the model is on its way.
 
-It works in any browser, with nothing to install. It does less than [Thingport Grab](../../extension/README.md), the
-browser extension, which imports right on the model page, files the model into a collection, imports whole
-collections and is the only way to import from some sites. The bookmarklet is the quick way to import one model at a
-time without it.
+> **[Thingport Grab](../../extension/README.md), the browser extension, is the recommended way to import.** It
+> imports right on the model page, files the model into a collection, imports whole collections, and some sites, such
+> as MakerOnline, only work through it. The bookmarklet is an alternative for when you can't or would rather not
+> install the extension: it works in any browser, with nothing to install, one model at a time.
 
 ## Add the bookmarklet
 

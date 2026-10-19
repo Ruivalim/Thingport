@@ -1712,7 +1712,7 @@
     },
     "bookmarklet": {
       "heading": "Bookmarklet",
-      "help": "Drag the button to your browser's bookmarks bar. On a model's page on a supported site, click the bookmark: Thingport opens with the import dialog filled in with that page's link.",
+      "help": "Drag the button to your browser's bookmarks bar. On a model's page on a supported site, click the bookmark: Thingport opens with the import dialog filled in with that page's link. Thingport Grab, the browser extension, is the recommended way to import; this is a lighter alternative.",
       "linkLabel": "Send to Thingport",
       "dragHint": "Drag this to your bookmarks bar",
       "copy": "Copy the bookmarklet code",
@@ -1727,7 +1727,9 @@
           "Click the bookmark. Thingport opens with the link already in the import dialog: click Import."
         ],
         "cantDrag": "Can't drag, as on a phone? Copy the code, bookmark any page, then edit the bookmark and paste the code as its address.",
-        "readMore": "Read the guide"
+        "readMore": "Read the guide",
+        "extensionRecommended": "Thingport Grab, the browser extension, is the recommended way to import: it works right on the model page, brings in whole collections, and some sites only work with it. The bookmarklet is a lighter alternative for one model at a time.",
+        "getExtension": "Get Grab"
       }
     }
   },

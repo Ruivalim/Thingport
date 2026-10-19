@@ -402,7 +402,15 @@ const AddMenu = React.forwardRef<AddMenuHandle, Props>(function AddMenu(
         </DialogActions>
       </Dialog>
 
-      <BookmarkletGuideDialog open={bookmarkletGuideOpen} onClose={() => setBookmarkletGuideOpen(false)} />
+      <BookmarkletGuideDialog
+        open={bookmarkletGuideOpen}
+        onClose={() => setBookmarkletGuideOpen(false)}
+        onGetExtension={() => {
+          setBookmarkletGuideOpen(false);
+          setImportOpen(false);
+          navigate("/downloads");
+        }}
+      />
       {upload.modals}
     </>
   );

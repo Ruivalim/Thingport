@@ -1768,7 +1768,7 @@
     },
     "bookmarklet": {
       "heading": "Žymių programėlė",
-      "help": "Nutempkite mygtuką į naršyklės žymių juostą. Palaikomos svetainės modelio puslapyje spustelėkite žymę: atsidarys Thingport su importavimo langu, į kurį jau įrašyta to puslapio nuoroda.",
+      "help": "Nutempkite mygtuką į naršyklės žymių juostą. Palaikomos svetainės modelio puslapyje spustelėkite žymę: atsidarys Thingport su importavimo langu, į kurį jau įrašyta to puslapio nuoroda. Rekomenduojamas importavimo būdas yra naršyklės plėtinys Thingport Grab; tai paprastesnė alternatyva.",
       "linkLabel": "Siųsti į Thingport",
       "dragHint": "Nutempkite tai į žymių juostą",
       "copy": "Kopijuoti žymių programėlės kodą",
@@ -1783,7 +1783,9 @@
           "Spustelėkite žymę. Atsidarys Thingport su nuoroda importavimo lange: spustelėkite „Importuoti“."
         ],
         "cantDrag": "Negalite nutempti, pvz., telefone? Nukopijuokite kodą, pažymėkite bet kurį puslapį, tada redaguokite žymę ir įklijuokite kodą kaip jos adresą.",
-        "readMore": "Skaityti vadovą"
+        "readMore": "Skaityti vadovą",
+        "extensionRecommended": "Rekomenduojamas importavimo būdas yra naršyklės plėtinys Thingport Grab: jis veikia tiesiai modelio puslapyje, importuoja ištisas kolekcijas, o kai kurios svetainės veikia tik su juo. Žymių programėlė yra paprastesnė alternatyva vienam modeliui importuoti.",
+        "getExtension": "Gauti Grab"
       }
     }
   },
