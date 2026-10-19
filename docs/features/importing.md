@@ -11,6 +11,9 @@ back to where it came from. If the original page disappears, the model is still 
 - **Use Thingport Grab.** The [browser extension](../../extension/README.md) adds a Thingport button to model pages on
   all eight sites (MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud and NexPrint once you allow them, with a single click in its popup), so you can
   import without leaving the page, file the model into a collection, and import whole collections.
+  This is the recommended way to import.
+- **Or use the bookmarklet.** Without the extension, drag the [bookmarklet](../guides/bookmarklet.md) to your
+  bookmarks bar: clicking it on a model's page opens Thingport with the link already in the import dialog.
 - **Import a collection or your likes.** Paste a collection link, or your Thingiverse likes, and pick which models to
   bring in. Your Snapmaker Space likes and bookmarks import from your profile's Interactions tab with Thingport Grab,
   and your Creality Cloud likes from their page, in Thingport or with Grab. MakerWorld collections are imported with Thingport Grab.

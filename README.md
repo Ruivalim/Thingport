@@ -279,6 +279,7 @@ To have Thingport import whatever you drop into a folder on the server, uncommen
 ## Features
 
 - **[Import from MakerWorld, Printables, Thingiverse, MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud and NexPrint](docs/features/importing.md)**
+- **[Import bookmarklet](docs/guides/bookmarklet.md)**
 - **[Synced collections](docs/guides/synced-collections.md)**
 - **[Bring your existing library](docs/guides/existing-library.md)**
 - **[Consume folder](docs/guides/consume-folder.md)**

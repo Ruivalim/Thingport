@@ -1709,6 +1709,28 @@
         "removeTitle": "Remove Thingport Grab in {{name}}?",
         "removeMessage": "Thingport Grab in {{name}} will be signed out and won't be able to import until it's connected again."
       }
+    },
+    "bookmarklet": {
+      "heading": "Bookmarklet",
+      "help": "Drag the button to your browser's bookmarks bar. On a model's page on a supported site, click the bookmark: Thingport opens with the import dialog filled in with that page's link. Thingport Grab, the browser extension, is the recommended way to import; this is a lighter alternative.",
+      "linkLabel": "Send to Thingport",
+      "dragHint": "Drag this to your bookmarks bar",
+      "copy": "Copy the bookmarklet code",
+      "copied": "Bookmarklet code copied",
+      "copyFailed": "Couldn't copy here. Drag the button to your bookmarks bar, or right-click it and copy the link.",
+      "guide": {
+        "open": "Learn about bookmarklets",
+        "title": "Import with a bookmarklet",
+        "steps": [
+          "Drag the button below to your browser's bookmarks bar (show it with Ctrl+Shift+B, or ⌘⇧B on a Mac).",
+          "Open a model's page on MakerWorld, Printables or another supported site.",
+          "Click the bookmark. Thingport opens with the link already in the import dialog: click Import."
+        ],
+        "cantDrag": "Can't drag, as on a phone? Copy the code, bookmark any page, then edit the bookmark and paste the code as its address.",
+        "readMore": "Read the guide",
+        "extensionRecommended": "Thingport Grab, the browser extension, is the recommended way to import: it works right on the model page, brings in whole collections, and some sites only work with it. The bookmarklet is a lighter alternative for one model at a time.",
+        "getExtension": "Get Grab"
+      }
     }
   },
   "common": {

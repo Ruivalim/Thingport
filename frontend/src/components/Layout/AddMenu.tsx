@@ -4,6 +4,7 @@ import CaptchaField from "../CaptchaField";
 import { useCaptchaSettings } from "../../hooks/useCaptchaSettings";
 import React from "react";
 import { useTranslation } from "react-i18next";
+import { useLocation, useNavigate } from "react-router-dom";
 import Button from "@mui/material/Button";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
@@ -24,6 +25,8 @@ import AddIcon from "@mui/icons-material/Add";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import DriveFolderUploadIcon from "@mui/icons-material/DriveFolderUpload";
 import LinkIcon from "@mui/icons-material/Link";
+import BookmarkAddOutlinedIcon from "@mui/icons-material/BookmarkAddOutlined";
+import BookmarkletGuideDialog from "../BookmarkletGuideDialog";
 import { useUploadImport } from "../uploads/useUploadImport";
 import { useImportJob } from "./ImportJobContext";
 import { useToast } from "../ToastProvider";
@@ -50,6 +53,7 @@ import {
 } from "../../utils/importLinkDetection";
 import type { MakerworldProfileScope } from "../../api/imports";
 import { allProvidersOff, useDisabledProviders } from "../../hooks/useDisabledProviders";
+import { readImportLink } from "../../utils/bookmarklet";
 
 const IMPORT_PROVIDERS: ImportProviderKey[] = [
   "makerworld",
@@ -92,6 +96,7 @@ const AddMenu = React.forwardRef<AddMenuHandle, Props>(function AddMenu(
   const [linkValue, setLinkValue] = React.useState("");
   const [exampleProvider, setExampleProvider] = React.useState<ImportProviderKey | null>(null);
   const [profileScope, setProfileScope] = React.useState<MakerworldProfileScope>("url");
+  const [bookmarkletGuideOpen, setBookmarkletGuideOpen] = React.useState(false);
   const { isImporting } = useImportJob();
   const upload = useUploadImport({ categoryId, makerworldCookie, onUploaded, onUnauthorized });
   const captchaSettings = useCaptchaSettings();
@@ -175,6 +180,18 @@ const AddMenu = React.forwardRef<AddMenuHandle, Props>(function AddMenu(
       else openImport(url);
     },
   }));
+
+  // The bookmarklet's /import?url=: the dialog opens filled in, so the import is one click away.
+  const location = useLocation();
+  const navigate = useNavigate();
+  React.useEffect(() => {
+    const link = readImportLink(location.pathname, location.search);
+    if (link === null) return;
+    navigate("/", { replace: true });
+    if (upload.isBusy || isImporting) showToast({ message: t("addMenu.disabledWhileImporting"), severity: "info" });
+    else openImport(link);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, location.search]);
 
   const closeImport = () => {
     if (upload.importing) return;
@@ -358,6 +375,14 @@ const AddMenu = React.forwardRef<AddMenuHandle, Props>(function AddMenu(
           )}
         </DialogContent>
         <DialogActions>
+          <Button
+            size="small"
+            startIcon={<BookmarkAddOutlinedIcon fontSize="small" />}
+            onClick={() => setBookmarkletGuideOpen(true)}
+            sx={{ mr: "auto" }}
+          >
+            {t("bookmarklet.guide.open")}
+          </Button>
           <Button onClick={closeImport} disabled={upload.importing}>
             {t("common:cancel")}
           </Button>
@@ -377,6 +402,15 @@ const AddMenu = React.forwardRef<AddMenuHandle, Props>(function AddMenu(
         </DialogActions>
       </Dialog>
 
+      <BookmarkletGuideDialog
+        open={bookmarkletGuideOpen}
+        onClose={() => setBookmarkletGuideOpen(false)}
+        onGetExtension={() => {
+          setBookmarkletGuideOpen(false);
+          setImportOpen(false);
+          navigate("/downloads");
+        }}
+      />
       {upload.modals}
     </>
   );
