@@ -1,9 +1,9 @@
 # Thingport Grab privacy policy
 
-_Effective 19 October 2026._
+_Effective 20 October 2026._
 
 Thingport Grab is a browser extension that imports 3D-printing models from MakerWorld, Printables,
-Thingiverse and, once you allow them, MyMiniFactory and Snapmaker Space into **your own self-hosted Thingport instance**, and converts MakerWorld files for
+Thingiverse and, once you allow them, MyMiniFactory, Snapmaker Space and MakerOnline into **your own self-hosted Thingport instance**, and converts MakerWorld files for
 other slicers in your browser. It has no servers of its own: the
 extension's developer never receives any of your data, and nothing is shared with anyone else.
 
@@ -30,6 +30,8 @@ the list of recent imports, which is synced between your browsers as described b
   only sent again when they change, and when it last read your Printables collections and likes.
 - **Your Snapmaker Space sign-in (its access token),** as last sent to your Thingport instance, so it's only sent
   again when it changes.
+- **Your MakerOnline sign-in (its access token),** as last sent to your Thingport instance, so it's only sent again
+  when it changes.
 - **Collection import progress:** while a MakerWorld collection import is running, the list of
   model pages still to visit, so it can carry on across page loads. It's deleted when the import
   ends.
@@ -44,7 +46,8 @@ Snapmaker sign-in at id.snapmaker.com every few hours while the browser is open,
 **To your Thingport instance:**
 
 - Your email and password, to sign in.
-- The address of each model page you open on MakerWorld, Printables, Thingiverse, MyMiniFactory or Snapmaker Space, to check
+- The address of each model page you open on MakerWorld, Printables, Thingiverse, MyMiniFactory, Snapmaker Space or
+  MakerOnline, to check
   whether you've already imported that model. This happens when the page opens, so the extension
   knows whether to show its button. On a MakerWorld collection page, the same check runs for each
   model in the collection when you open the extension's panel there.
@@ -63,6 +66,12 @@ Snapmaker sign-in at id.snapmaker.com every few hours while the browser is open,
 - If you're signed in to Snapmaker Space in this browser, and have allowed the extension there: your Snapmaker access
   token, when you open a Snapmaker Space page and every few hours while the browser is open, whenever it changed since
   last sent. Your Thingport instance uses it to download Snapmaker models and to read your likes and bookmarks there.
+- If you're signed in to MakerOnline in this browser, and have allowed the extension there: your MakerOnline access
+  token, when you open a MakerOnline page and it changed since last sent. Your Thingport instance uses it to read your
+  likes and private collections there.
+- On MakerOnline: the download links MakerOnline gives the page for the files of a model you import, or of the models
+  waiting on your Thingport instance for the extension (it asks your instance for that list on each MakerOnline page).
+  Your instance downloads the files from those links.
 - If you're logged into Printables, Thingiverse or MyMiniFactory in this browser: your username there, when it
   first sees it or it changes, so Thingport's web app can list your collections on that site when
   you pick one to sync with.
@@ -71,7 +80,7 @@ Snapmaker sign-in at id.snapmaker.com every few hours while the browser is open,
   included), the models you liked there, and the models in the private collections you sync. Only
   you can see these on Printables, so this is how Thingport can sync them.
 
-**To MakerWorld, Printables, Thingiverse, MyMiniFactory and Snapmaker Space:**
+**To MakerWorld, Printables, Thingiverse, MyMiniFactory, Snapmaker Space and MakerOnline:**
 
 - On MakerWorld, to find a model's download link, the extension asks MakerWorld's own website for
   it, the same way the page does when you click Download, using your existing MakerWorld session.
@@ -92,6 +101,10 @@ Snapmaker sign-in at id.snapmaker.com every few hours while the browser is open,
   the same way the site does, and writes the renewed sign-in back into the site's own cookies, so you stay signed in
   there. When you open the panel on a model page, it also asks Snapmaker's public model API which print profiles the
   model has.
+- On MakerOnline, once you've allowed it there: MakerOnline gives its files only to its own pages, so to import a model
+  the extension asks MakerOnline's download service for each file's link from the page itself, the same way the page's
+  own Download button does, with your existing MakerOnline sign-in and the page's own security check. It also asks
+  MakerOnline's public model API which print profiles a model has.
 
 **The extension reads, on supported pages only:** the model's title, MakerWorld's page data for the
 model, the model links listed on collection pages, and, on Thingiverse and MyMiniFactory, your username from the
@@ -107,16 +120,16 @@ page's header. It doesn't read any other websites.
 
 ## Permissions
 
-| Permission                                       | Why                                                                                                                                                                                                                                              |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Storage                                          | Keeps the settings and data listed under "What the extension stores".                                                                                                                                                                            |
-| Cookies                                          | Reads MakerWorld's, Printables' and MyMiniFactory's session cookies, and reads and renews Snapmaker Space's sign-in cookies, only on their sites (see above).                                                                                    |
-| Downloads                                        | Reads the link from the MakerWorld download it starts, then cancels and removes that download.                                                                                                                                                   |
-| Scripting                                        | Adds the import button to MyMiniFactory's and Snapmaker Space's pages, and those of sites added later, once you allow them.                                                                                                                      |
-| Alarms                                           | Renews the Snapmaker Space sign-in every few hours, once you've allowed Snapmaker Space.                                                                                                                                                         |
-| Access to MakerWorld, Printables and Thingiverse | Shows the import button, and MakerWorld's Download normalized button, on their pages.                                                                                                                                                            |
-| Access to newer model sites (optional)           | Asked for one site at a time, only when you click **Enable** next to it under **Providers** in the popup (MyMiniFactory, Snapmaker Space, and sites added in later updates). You can take this access back in your browser's extension settings. |
-| Access to your Thingport instance                | Requested for that one address when you set the extension up, so it can talk to your instance.                                                                                                                                                   |
+| Permission                                       | Why                                                                                                                                                                                                                                                           |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Storage                                          | Keeps the settings and data listed under "What the extension stores".                                                                                                                                                                                         |
+| Cookies                                          | Reads MakerWorld's, Printables', MyMiniFactory's and MakerOnline's session cookies, and reads and renews Snapmaker Space's sign-in cookies, only on their sites (see above).                                                                                  |
+| Downloads                                        | Reads the link from the MakerWorld download it starts, then cancels and removes that download.                                                                                                                                                                |
+| Scripting                                        | Adds the import button to MyMiniFactory's, Snapmaker Space's and MakerOnline's pages, and those of sites added later, once you allow them; on MakerOnline, also asks for file links from within the page (see above).                                         |
+| Alarms                                           | Renews the Snapmaker Space sign-in every few hours, once you've allowed Snapmaker Space.                                                                                                                                                                      |
+| Access to MakerWorld, Printables and Thingiverse | Shows the import button, and MakerWorld's Download normalized button, on their pages.                                                                                                                                                                         |
+| Access to newer model sites (optional)           | Asked for one site at a time, only when you click **Enable** next to it under **Providers** in the popup (MyMiniFactory, Snapmaker Space, MakerOnline, and sites added in later updates). You can take this access back in your browser's extension settings. |
+| Access to your Thingport instance                | Requested for that one address when you set the extension up, so it can talk to your instance.                                                                                                                                                                |
 
 ## Your control over your data
 

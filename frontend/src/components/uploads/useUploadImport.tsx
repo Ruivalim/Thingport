@@ -29,6 +29,8 @@ import {
   isPrintablesModelUrl,
   isSnapmakerListUrl,
   isSnapmakerModelUrl,
+  isMakeronlineListUrl,
+  isMakeronlineModelUrl,
   isThingiverseCollectionUrl,
   isThingiverseLikesUrl,
   isThingiverseThingUrl,
@@ -255,7 +257,8 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
     showToast({ message: t(key, { name }) });
   };
 
-  /** `profileScope`: which MakerWorld or Snapmaker print profiles to import; more than the link's runs as a job. */
+  /** `profileScope`: which MakerWorld, Snapmaker or MakerOnline print profiles to import; more than the link's runs as
+   *  a job, and MakerOnline's wait for Thingport Grab. */
   const submitImport = async (
     rawUrl: string,
     captcha?: CaptchaAnswer | null,
@@ -286,6 +289,41 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
 
       if (profileScope !== "url" && isSnapmakerModelUrl(url)) {
         await startSnapmakerProfilesImport({ ...payload, scope: profileScope });
+        return;
+      }
+
+      if (isMakeronlineModelUrl(url)) {
+        // Its files come only through Thingport Grab, on makeronline.com.
+        await importsApi.queueMakeronline({ ...payload, scope: profileScope });
+        showToast({ message: t("uploadBar.makeronlineWaiting") });
+        return;
+      }
+
+      if (isMakeronlineListUrl(url)) {
+        setImporting(false);
+        await collectionPrompt.prompt({
+          label: url,
+          loadEntries: async () => {
+            try {
+              return await importsApi.listMakeronlineListEntries(payload);
+            } catch (err) {
+              if (err instanceof UnauthorizedError) onUnauthorized?.();
+              throw err;
+            }
+          },
+          onImportSelected: async (modelIds: string[]) => {
+            try {
+              const { queued } = await importsApi.queueMakeronlineList({ ...payload, model_ids: modelIds });
+              showToast({ message: t("uploadBar.makeronlineListWaiting", { count: queued }) });
+            } catch (err) {
+              if (err instanceof UnauthorizedError) {
+                onUnauthorized?.();
+                return;
+              }
+              throw err;
+            }
+          },
+        });
         return;
       }
 

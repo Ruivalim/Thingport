@@ -1,6 +1,6 @@
 // Provider URL recognition, duplicated from the frontend and backend parsers. Keep in sync by hand.
 
-export type Provider = "makerworld" | "thingiverse" | "printables" | "myminifactory" | "snapmaker";
+export type Provider = "makerworld" | "thingiverse" | "printables" | "myminifactory" | "snapmaker" | "makeronline";
 
 export type Classification =
   | { kind: "single"; provider: "makerworld"; type: "model" }
@@ -8,11 +8,13 @@ export type Classification =
   | { kind: "single"; provider: "printables"; type: "model" }
   | { kind: "single"; provider: "myminifactory"; type: "object" }
   | { kind: "single"; provider: "snapmaker"; type: "model" }
+  | { kind: "single"; provider: "makeronline"; type: "model" }
   | { kind: "batch"; provider: "makerworld"; type: "collection" }
   | { kind: "batch"; provider: "thingiverse"; type: "likes" | "collection" }
   | { kind: "batch"; provider: "printables"; type: "collection" }
   | { kind: "batch"; provider: "myminifactory"; type: "collection" }
-  | { kind: "batch"; provider: "snapmaker"; type: SnapmakerList };
+  | { kind: "batch"; provider: "snapmaker"; type: SnapmakerList }
+  | { kind: "batch"; provider: "makeronline"; type: "collection" | "likes" };
 
 export type SnapmakerList = "likes" | "bookmarks";
 
@@ -128,6 +130,45 @@ export function snapmakerListUrl(userId: string, list: SnapmakerList): string {
   return `https://space.snapmaker.com/en/creator/${userId}?tab=interactions&list=${list}`;
 }
 
+function isMakeronline(parsed: URL): boolean {
+  return /^(www\.)?makeronline\.com$/i.test(parsed.hostname);
+}
+
+const MAKERONLINE_LANG = String.raw`(?:[a-z]{2}(?:[-_][a-z]{2})?/)?`;
+
+/** `/en/model/<title>/<id>.html`; Thingport's own `#profileId-<id>` picks a print profile. */
+export function parseMakeronlineModelUrl(url: string): { modelId: string; requestedProfileId: string | null } | null {
+  const parsed = parse(url);
+  if (!parsed || !isMakeronline(parsed)) return null;
+  const m = parsed.pathname.match(
+    new RegExp(String.raw`^/${MAKERONLINE_LANG}model/(?:[^/]+/)?(\d+)(?:\.html)?/?$`, "i"),
+  );
+  if (!m) return null;
+  return { modelId: m[1], requestedProfileId: parsed.hash.match(/profileId-(\d+)/i)?.[1] ?? null };
+}
+
+/** `/en/user/collectionDetail/<owner id>/<collection id>.html`. */
+export function isMakeronlineCollectionUrl(url: string): boolean {
+  const parsed = parse(url);
+  return Boolean(
+    parsed &&
+    isMakeronline(parsed) &&
+    new RegExp(String.raw`^/${MAKERONLINE_LANG}user/collectionDetail/(?:[\w-]+/)?\d+(?:\.html)?/?$`, "i").test(
+      parsed.pathname,
+    ),
+  );
+}
+
+/** The signed-in user's likes, `/en/user/likes/models.html`. */
+export function isMakeronlineLikesUrl(url: string): boolean {
+  const parsed = parse(url);
+  return Boolean(
+    parsed &&
+    isMakeronline(parsed) &&
+    new RegExp(String.raw`^/${MAKERONLINE_LANG}user/likes/models(?:\.html)?/?$`, "i").test(parsed.pathname),
+  );
+}
+
 /** Null keeps the icon hidden. "single" pages get a dedup check; "batch" pages always show it. */
 export function classifyUrl(url: string): Classification | null {
   if (isMakerworldCollectionUrl(url)) return { kind: "batch", provider: "makerworld", type: "collection" };
@@ -137,10 +178,13 @@ export function classifyUrl(url: string): Classification | null {
   if (isMyminifactoryCollectionUrl(url)) return { kind: "batch", provider: "myminifactory", type: "collection" };
   const snapmakerList = parseSnapmakerListUrl(url);
   if (snapmakerList) return { kind: "batch", provider: "snapmaker", type: snapmakerList.list };
+  if (isMakeronlineCollectionUrl(url)) return { kind: "batch", provider: "makeronline", type: "collection" };
+  if (isMakeronlineLikesUrl(url)) return { kind: "batch", provider: "makeronline", type: "likes" };
   if (parseMakerworldModelUrl(url)) return { kind: "single", provider: "makerworld", type: "model" };
   if (parseThingiverseThingUrl(url)) return { kind: "single", provider: "thingiverse", type: "thing" };
   if (parsePrintablesModelUrl(url)) return { kind: "single", provider: "printables", type: "model" };
   if (parseMyminifactoryObjectUrl(url)) return { kind: "single", provider: "myminifactory", type: "object" };
   if (parseSnapmakerModelUrl(url)) return { kind: "single", provider: "snapmaker", type: "model" };
+  if (parseMakeronlineModelUrl(url)) return { kind: "single", provider: "makeronline", type: "model" };
   return null;
 }

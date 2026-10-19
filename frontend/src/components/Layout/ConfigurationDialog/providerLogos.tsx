@@ -19,7 +19,6 @@ export type ProviderId =
 export const COMING_SOON_PROVIDERS: { id: ProviderId; name: string }[] = [
   { id: "thangs", name: "Thangs" },
   { id: "cults3d", name: "Cults3D" },
-  { id: "makeronline", name: "MakerOnline" },
   { id: "crealitycloud", name: "Creality Cloud" },
   { id: "nexprint", name: "NextPrint" },
 ];

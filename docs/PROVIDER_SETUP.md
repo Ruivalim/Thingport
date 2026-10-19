@@ -1,6 +1,6 @@
 # Provider setup
 
-Importing from **Printables** works out of the box (its public API needs no credential). **MakerWorld** needs each user's own session cookie, and **Thingiverse** an App Token an admin sets once for the whole instance. **MyMiniFactory** needs an API key an admin sets once for free models; each user connects their own MyMiniFactory session only to import paid or sign-in-only models from their library. **Snapmaker Space** needs each user's own sign-in, which [Thingport Grab](../extension/README.md) keeps fresh.
+Importing from **Printables** works out of the box (its public API needs no credential). **MakerWorld** needs each user's own session cookie, and **Thingiverse** an App Token an admin sets once for the whole instance. **MyMiniFactory** needs an API key an admin sets once for free models; each user connects their own MyMiniFactory session only to import paid or sign-in-only models from their library. **Snapmaker Space** needs each user's own sign-in, which [Thingport Grab](../extension/README.md) keeps fresh. **MakerOnline** reads its models and public collections with nothing, but hands out files only through Thingport Grab; each user's own sign-in adds their likes and private collections.
 
 Connect them under **Configuration → Providers**: open the user menu (your avatar, top right) and choose **Configuration**, or click one of the provider chips at the bottom of that menu. Right-click a provider to connect or disconnect it, or double-click one that isn't connected yet. A green tick means it's connected. A provider your admin has [turned off](#turning-a-provider-off) isn't listed.
 
@@ -76,6 +76,35 @@ If the browser stays closed for a day, Thingport says the sign-in ran out, and t
 A sign-in pasted by hand lasts a day; only Grab renews it. Don't copy `login_refresh_token`: renewing with it would sign
 your browser out of Snapmaker.
 
+## MakerOnline
+
+MakerOnline's model details, categories and public collections need nothing. Its files are another matter: its download
+call wants a token that only its own anti-bot script makes, in a real makeronline.com page. So every MakerOnline file
+comes through [Thingport Grab](../extension/README.md), allowed on MakerOnline from its popup:
+
+- On a model page, Grab's panel imports it straight away, with the print profile you pick (or the designer's, or all of
+  them), just like MakerWorld.
+- A MakerOnline link pasted in Thingport, a collection or your likes imported in Thingport, and new models in a synced
+  MakerOnline collection wait for Grab. The next time you open any makeronline.com page in a browser with Grab, it
+  imports them there and files them where they were meant to go. A model that fails three times is dropped, with a
+  notification saying why.
+
+If MakerOnline asks for a captcha, download one file from a model page by hand and solve it, then reload.
+
+### Your MakerOnline sign-in
+
+Per-user (Configuration > Providers > MakerOnline): it lets Thingport read your likes and private collections, to import
+or sync them. Opening makeronline.com signed in, with Grab allowed there, connects it. By hand:
+
+1. Sign in at [makeronline.com](https://www.makeronline.com).
+2. Open DevTools (`F12`, or `Cmd+Option+I` on macOS).
+3. Chrome/Edge: **Application** tab > **Cookies** > `https://www.makeronline.com`. Firefox: **Storage** tab > **Cookies**.
+4. Copy the value of the cookie named `mo_access_token`. (Pasting the whole `Cookie` header works too.)
+5. Right-click **MakerOnline** in Thingport's **Configuration > Providers**, choose **Connect** and paste it. Thingport
+   checks it with MakerOnline before storing it.
+
+It lasts about three months; Grab sends the new one whenever you sign in again.
+
 ## MakerWorld cookie
 
 Per-user (Configuration > Providers > MakerWorld) -- MakerWorld has no developer API, so importing from it runs as _your own_ logged-in MakerWorld session, captured as a cookie value.
@@ -98,7 +127,7 @@ This is your own MakerWorld login session -- don't share it, and expect to redo 
 
 ## Turning a provider off
 
-Admins choose which providers this Thingport imports from, under **Administration → Providers**. All five are on by
+Admins choose which providers this Thingport imports from, under **Administration → Providers**. All six are on by
 default. Turn one off and nothing new comes from it for anyone: links to it, Thingport Grab and the import queue are
 refused, its synced collections pause, and background jobs skip it. It also disappears from everyone's
 **Configuration → Providers**. Models already imported from it stay as they are, and turning it back on picks up where

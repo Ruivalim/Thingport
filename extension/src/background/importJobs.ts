@@ -30,7 +30,7 @@ async function pollImportTask(taskId: string): Promise<Print> {
  *  away: the background outlives the content script. */
 /** `notify: false` for each model of a run that sends its own summary at the end. */
 export async function importSingle(
-  { url, entries, collectionId, resolved, title }: ImportSinglePayload,
+  { url, entries, collectionId, resolved, files, title }: ImportSinglePayload,
   { notify = true }: { notify?: boolean } = {},
 ): Promise<Print | null> {
   // A page-resolved download lets the backend skip the resolution calls that trip MakerWorld's
@@ -41,7 +41,9 @@ export async function importSingle(
         resolved_instance_id: resolved.instanceId || null,
         makerworld_design: resolved.design ?? null,
       }
-    : null;
+    : files?.length
+      ? { resolved_files: files }
+      : null;
 
   let print: Print | null;
   if (entries) {

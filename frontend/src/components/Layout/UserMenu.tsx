@@ -25,7 +25,7 @@ import { settingsApi } from "../../api/settings";
 import { useDisabledProviders } from "../../hooks/useDisabledProviders";
 
 type ServiceChipDef = {
-  key: "makerworld" | "thingiverse" | "printables" | "myminifactory" | "snapmaker";
+  key: "makerworld" | "thingiverse" | "printables" | "myminifactory" | "snapmaker" | "makeronline";
   label: string;
   connected: boolean;
   /** Explains what's missing when not connected. */
@@ -52,6 +52,8 @@ export function UserMenu({ user, onOpenConfiguration, onOpenProfile, onLogout }:
   const [myminifactoryConfigured, setMyminifactoryConfigured] = React.useState(false);
   const [snapmakerConfigured, setSnapmakerConfigured] = React.useState(false);
   const [snapmakerExpired, setSnapmakerExpired] = React.useState(false);
+  const [makeronlineConfigured, setMakeronlineConfigured] = React.useState(false);
+  const [makeronlineExpired, setMakeronlineExpired] = React.useState(false);
 
   const menuOpen = Boolean(anchorEl);
   // Checked on every open: the cookie can change in Configuration while the menu stays mounted.
@@ -84,6 +86,14 @@ export function UserMenu({ user, onOpenConfiguration, onOpenProfile, onLogout }:
         if (!active) return;
         setSnapmakerConfigured(res.configured);
         setSnapmakerExpired(res.expired);
+      })
+      .catch(() => undefined);
+    settingsApi
+      .getMakeronlineSession()
+      .then((res) => {
+        if (!active) return;
+        setMakeronlineConfigured(res.configured);
+        setMakeronlineExpired(res.expired);
       })
       .catch(() => undefined);
     return () => {
@@ -120,6 +130,12 @@ export function UserMenu({ user, onOpenConfiguration, onOpenProfile, onLogout }:
       ...IMPORT_PROVIDER_INFO.snapmaker,
       connected: snapmakerConfigured && !snapmakerExpired,
       disabledReason: snapmakerExpired ? t("providers.snapmaker.expired") : t("userMenu.snapmakerDisabledReason"),
+    },
+    {
+      key: "makeronline",
+      ...IMPORT_PROVIDER_INFO.makeronline,
+      connected: makeronlineConfigured && !makeronlineExpired,
+      disabledReason: makeronlineExpired ? t("providers.makeronline.expired") : t("userMenu.makeronlineDisabledReason"),
     },
   ];
   // Turned off by an admin: no icon. Coming-soon sites follow the live ones.

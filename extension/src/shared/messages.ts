@@ -58,11 +58,17 @@ export type ResolvedDownload = {
   design?: Record<string, unknown> | null;
 };
 
+/** One of a MakerOnline model's files, its link signed on a makeronline.com page; `profile_id` marks a print
+ *  profile's 3MF. */
+export type MakeronlineSignedFile = { url: string; name: string; profile_id: string | null };
+
 export type ImportSinglePayload = {
   url: string;
   entries?: string[];
   collectionId?: string | null;
   resolved?: ResolvedDownload | null;
+  /** MakerOnline's files, signed by its own page (see background/makeronline.ts). */
+  files?: MakeronlineSignedFile[] | null;
   title?: string | null;
 };
 
@@ -112,6 +118,15 @@ export type BackgroundMessages = {
   SYNC_MYMINIFACTORY_SESSION: { payload: void; result: null };
   /** On a Snapmaker Space page: keep the sign-in fresh and send it on. Says who's signed in there. */
   SYNC_SNAPMAKER_SESSION: { payload: void; result: { userId: string | null } };
+  /** On a MakerOnline page: send the sign-in on, if it changed. Says who's signed in there. */
+  SYNC_MAKERONLINE_SESSION: { payload: void; result: { userId: string | null } };
+  /** On a MakerOnline model page: get its files signed there, then import it. */
+  IMPORT_MAKERONLINE_MODEL: {
+    payload: { url: string; scope: "url" | "designer" | "all"; collectionId: string | null; title: string | null };
+    result: Print | null;
+  };
+  /** On any MakerOnline page: import what waits on the instance for Grab. How many came in. */
+  RUN_MAKERONLINE_WAITING: { payload: void; result: number };
   /** What to read on Printables now, or null when it isn't time to read anything. */
   /** `now`: skip the hourly wait, e.g. right after a private collection's sync was turned on. */
   PRINTABLES_PUSH_DUE: { payload: { now?: boolean }; result: PrintablesPushPlan | null };

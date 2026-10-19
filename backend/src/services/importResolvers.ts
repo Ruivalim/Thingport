@@ -490,7 +490,7 @@ export type ImportedPageMetadata = {
   author: ImportedAuthorInfo | null;
   /** The site's own category ids; each site has its own id namespace. */
   siteCategoryIds: number[];
-  categorySite: "makerworld" | "thingiverse" | "printables" | "myminifactory" | "snapmaker" | null;
+  categorySite: "makerworld" | "thingiverse" | "printables" | "myminifactory" | "snapmaker" | "makeronline" | null;
   /** Lets a second profile of an imported design be added as its own plate. MakerWorld only. */
   makerworldProfile?: MakerworldProfileRef;
 };

@@ -62,6 +62,12 @@ import {
   normalizeSnapmakerToken,
   setUserSnapmakerToken,
 } from "../services/snapmakerSessionService";
+import { checkMakeronlineToken } from "../services/makeronlineApi";
+import {
+  getMakeronlineConnection,
+  normalizeMakeronlineToken,
+  setUserMakeronlineToken,
+} from "../services/makeronlineSessionService";
 import { SLICER_IDS, getUserSlicer, setUserSlicer } from "../services/slicerPreferenceService";
 import { CATEGORIES_VIEWS, getCategoriesView, setCategoriesView } from "../services/categoriesViewService";
 import {
@@ -658,6 +664,51 @@ router.patch(
         throw new HttpError(503, "Couldn't reach Snapmaker to check this sign-in. Try again in a moment.");
     }
     const configured = await setUserSnapmakerToken(req.userId!, token);
+    res.json({ configured });
+  }),
+);
+
+// Per-user: the MakerOnline access token, which Thingport Grab sends whenever the browser's changes.
+router.get(
+  "/settings/makeronline-session",
+  asyncHandler(async (req, res) => {
+    const connection = await getMakeronlineConnection(req.userId!);
+    res.json({ configured: connection !== "disconnected", expired: connection === "expired" });
+  }),
+);
+
+const makeronlineSessionSchema = z.object({
+  token: z.string().max(10_000).nullable(),
+  verify: z.boolean().optional(),
+});
+router.patch(
+  "/settings/makeronline-session",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(makeronlineSessionSchema, req.body);
+    const token = normalizeMakeronlineToken(body.token);
+    if ((body.token ?? "").trim() && !token) {
+      throw new HttpError(
+        422,
+        "That doesn't look like a MakerOnline sign-in: paste the mo_access_token cookie's value.",
+      );
+    }
+    if (token?.expiresAt && token.expiresAt.getTime() <= Date.now()) {
+      throw new HttpError(422, "This MakerOnline sign-in has already expired. Copy a fresh one from a signed-in tab.");
+    }
+    if (body.verify && token) {
+      const check = await checkMakeronlineToken(token.token);
+      if (check === "rejected") {
+        throw new HttpError(
+          422,
+          "MakerOnline didn't accept this sign-in -- it may have expired. Copy a fresh mo_access_token from a signed-in makeronline.com tab and try again.",
+        );
+      }
+      // 503, not 422: nothing is known to be wrong with the token.
+      if (check === "unreachable")
+        throw new HttpError(503, "Couldn't reach MakerOnline to check this sign-in. Try again in a moment.");
+      token.userId = check.userId;
+    }
+    const configured = await setUserMakeronlineToken(req.userId!, token);
     res.json({ configured });
   }),
 );

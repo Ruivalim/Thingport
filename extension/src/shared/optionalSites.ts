@@ -3,12 +3,13 @@
 // asked for at runtime, when the user enables it in the popup (within the manifest's optional_host_permissions), and
 // the background registers the content script there. It only ever runs on the sites listed here.
 
-export type OptionalSite = { id: "myminifactory" | "snapmaker"; name: string; origins: string[] };
+export type OptionalSite = { id: "myminifactory" | "snapmaker" | "makeronline"; name: string; origins: string[] };
 
 export const OPTIONAL_SITES: readonly OptionalSite[] = [
   { id: "myminifactory", name: "MyMiniFactory", origins: ["*://*.myminifactory.com/*"] },
   // id.snapmaker.com renews the sign-in (see snapmakerSession.ts); Grab's panel only ever shows on Snapmaker Space.
   { id: "snapmaker", name: "Snapmaker Space", origins: ["*://space.snapmaker.com/*", "*://id.snapmaker.com/*"] },
+  { id: "makeronline", name: "MakerOnline", origins: ["*://*.makeronline.com/*"] },
 ];
 
 const scriptId = (site: OptionalSite) => `site-${site.id}`;

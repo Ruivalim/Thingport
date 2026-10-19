@@ -400,6 +400,46 @@ export const importsApi = {
     return res.json();
   },
 
+  /** MakerOnline gives its files only to its own pages: the link waits for Thingport Grab's next visit there. */
+  queueMakeronline: async (
+    payload: ImportLinkPayload & { scope: MakerworldProfileScope },
+  ): Promise<{ queued: number }> => {
+    const res = await fetch(`${apiBase()}/import/makeronline/queue`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "MakerOnline import failed"));
+    return res.json();
+  },
+
+  /** A MakerOnline collection, or the user's own likes. */
+  listMakeronlineListEntries: async (payload: ImportLinkPayload): Promise<ImportCollectionEntriesResult> => {
+    const res = await fetch(`${apiBase()}/import/makeronline-list/entries`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Could not load this collection"));
+    return res.json();
+  },
+
+  /** The picked models wait for Thingport Grab, filed into a collection named after the list. */
+  queueMakeronlineList: async (
+    payload: ImportLinkPayload & { model_ids: string[] },
+  ): Promise<{ queued: number; collection_id: string }> => {
+    const res = await fetch(`${apiBase()}/import/makeronline-list`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "MakerOnline import failed"));
+    return res.json();
+  },
+
   getActiveImportJob: async (): Promise<ImportJob | null> => {
     const res = await fetch(`${apiBase()}/import/jobs/active`, { headers: authHeaders() });
     if (res.status === 401) throw new UnauthorizedError();

@@ -1,5 +1,5 @@
-/** Starter category tree modeled on MakerWorld's, with matching Thingiverse, Printables, MyMiniFactory and Snapmaker
- * ids so imports are auto-categorized from the start. */
+/** Starter category tree modeled on MakerWorld's, with matching Thingiverse, Printables, MyMiniFactory, Snapmaker and
+ * MakerOnline ids so imports are auto-categorized from the start. */
 export type DefaultCategoryNode = {
   name: string;
   tags?: string[];
@@ -10,6 +10,7 @@ export type DefaultCategoryNode = {
   printablesCatIds?: number[];
   myminifactoryCatIds?: number[];
   snapmakerCatIds?: number[];
+  makeronlineCatIds?: number[];
   children?: DefaultCategoryNode[];
 };
 
@@ -24,6 +25,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     printablesCatIds: [1],
     myminifactoryCatIds: [366],
     snapmakerCatIds: [103],
+    makeronlineCatIds: [33],
     children: [
       {
         name: "3D Printer Accessories",
@@ -35,6 +37,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         printablesCatIds: [40],
         myminifactoryCatIds: [1001, 1000],
         snapmakerCatIds: [116, 115, 117, 118],
+        makeronlineCatIds: [34],
       },
       {
         name: "3D Printer Parts",
@@ -48,6 +51,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           493, 494, 495, 588, 590, 591, 592, 593, 594, 595, 596, 597, 598, 599, 600, 601, 602, 603, 604, 605, 606, 607,
           608, 672, 949, 1271,
         ],
+        makeronlineCatIds: [35],
       },
       {
         name: "Test Models",
@@ -59,6 +63,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         printablesCatIds: [12],
         myminifactoryCatIds: [960],
         snapmakerCatIds: [114],
+        makeronlineCatIds: [36],
       },
     ],
   },
@@ -71,6 +76,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     thingiverseCatIds: [63],
     printablesCatIds: [13],
     snapmakerCatIds: [104],
+    makeronlineCatIds: [70],
     children: [
       {
         name: "2D Art",
@@ -81,6 +87,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         thingiverseCatIds: [144],
         printablesCatIds: [16],
         snapmakerCatIds: [119],
+        makeronlineCatIds: [75],
       },
       {
         name: "Coin & Badges",
@@ -89,6 +96,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           "Create unique and memorable keepsakes with our collection of customizable 3D printed coins and badges. Commemorate special events, recognize achievements, or simply express your individuality with personalized designs that are sure to impress.",
         makerworldCatIds: [103],
         thingiverseCatIds: [143],
+        makeronlineCatIds: [72],
       },
       {
         name: "Signs & Logos",
@@ -98,6 +106,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [102],
         thingiverseCatIds: [76],
         myminifactoryCatIds: [105],
+        makeronlineCatIds: [73],
       },
       {
         name: "Sculptures",
@@ -109,6 +118,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         printablesCatIds: [14],
         myminifactoryCatIds: [112, 355],
         snapmakerCatIds: [121],
+        makeronlineCatIds: [74],
       },
       {
         name: "Other Art Models",
@@ -119,6 +129,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         thingiverseCatIds: [75, 78, 79, 145],
         printablesCatIds: [15, 41],
         snapmakerCatIds: [120, 183],
+        makeronlineCatIds: [71, 105],
       },
     ],
   },
@@ -132,6 +143,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     printablesCatIds: [90],
     myminifactoryCatIds: [86],
     snapmakerCatIds: [106],
+    makeronlineCatIds: [82],
     children: [
       {
         name: "Biology",
@@ -142,6 +154,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         thingiverseCatIds: [106],
         myminifactoryCatIds: [154, 373, 997, 1045],
         snapmakerCatIds: [129],
+        makeronlineCatIds: [89],
       },
       {
         name: "Chemistry",
@@ -152,6 +165,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         printablesCatIds: [92],
         myminifactoryCatIds: [162],
         snapmakerCatIds: [128],
+        makeronlineCatIds: [88],
       },
       {
         name: "Engineering",
@@ -163,6 +177,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         printablesCatIds: [93],
         myminifactoryCatIds: [953, 241, 374, 1042],
         snapmakerCatIds: [132],
+        makeronlineCatIds: [86],
       },
       {
         name: "Geography",
@@ -173,6 +188,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         printablesCatIds: [98],
         myminifactoryCatIds: [164],
         snapmakerCatIds: [130],
+        makeronlineCatIds: [87],
       },
       {
         name: "Mathematics",
@@ -184,6 +200,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         printablesCatIds: [94],
         myminifactoryCatIds: [163, 1035],
         snapmakerCatIds: [126],
+        makeronlineCatIds: [84],
       },
       {
         name: "Physics & Astronomy",
@@ -195,6 +212,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         printablesCatIds: [91],
         myminifactoryCatIds: [165, 558, 1036],
         snapmakerCatIds: [131, 127],
+        makeronlineCatIds: [85],
       },
       {
         name: "Other Education Models",
@@ -205,6 +223,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         printablesCatIds: [96],
         myminifactoryCatIds: [344, 166, 109, 1034, 969, 970, 971, 972, 973],
         snapmakerCatIds: [133],
+        makeronlineCatIds: [83],
       },
     ],
   },
@@ -218,6 +237,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     printablesCatIds: [17],
     myminifactoryCatIds: [58],
     snapmakerCatIds: [107],
+    makeronlineCatIds: [76],
     children: [
       {
         name: "Bags",
@@ -227,6 +247,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [201],
         myminifactoryCatIds: [143],
         snapmakerCatIds: [135],
+        makeronlineCatIds: [80],
       },
       {
         name: "Clothes",
@@ -237,6 +258,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         thingiverseCatIds: [142],
         myminifactoryCatIds: [169],
         snapmakerCatIds: [182],
+        makeronlineCatIds: [79],
       },
       {
         name: "Earrings",
@@ -274,6 +296,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         thingiverseCatIds: [84, 82],
         myminifactoryCatIds: [291, 148, 426, 359, 430, 145, 439],
         snapmakerCatIds: [134],
+        makeronlineCatIds: [78],
       },
       {
         name: "Rings",
@@ -294,6 +317,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         printablesCatIds: [18, 20, 42],
         myminifactoryCatIds: [357],
         snapmakerCatIds: [136, 138],
+        makeronlineCatIds: [77, 81],
       },
     ],
   },
@@ -306,6 +330,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     thingiverseCatIds: [66],
     printablesCatIds: [48],
     snapmakerCatIds: [109],
+    makeronlineCatIds: [46],
     children: [
       {
         name: "Electronics",
@@ -319,6 +344,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           59, 943, 328, 378, 329, 941, 275, 113, 326, 647, 375, 488, 489, 490, 491, 492, 648, 507, 633, 670,
         ],
         snapmakerCatIds: [148],
+        makeronlineCatIds: [48],
       },
       {
         name: "Music",
@@ -330,6 +356,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         printablesCatIds: [95],
         myminifactoryCatIds: [68],
         snapmakerCatIds: [152],
+        makeronlineCatIds: [49],
       },
       {
         name: "RC",
@@ -343,6 +370,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           985, 987, 976, 988, 992, 977, 990, 991,
         ],
         snapmakerCatIds: [150],
+        makeronlineCatIds: [51],
       },
       {
         name: "Robotics",
@@ -354,6 +382,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         printablesCatIds: [64],
         myminifactoryCatIds: [393, 429, 999],
         snapmakerCatIds: [149],
+        makeronlineCatIds: [52],
       },
       {
         name: "Sport & Outdoors",
@@ -365,6 +394,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         printablesCatIds: [9, 83, 74, 85, 84],
         myminifactoryCatIds: [56, 69, 71, 966, 967, 968, 114, 342, 550, 551, 962],
         snapmakerCatIds: [154],
+        makeronlineCatIds: [50],
       },
       {
         name: "Vehicles",
@@ -375,6 +405,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         thingiverseCatIds: [155],
         printablesCatIds: [89],
         snapmakerCatIds: [153],
+        makeronlineCatIds: [47],
       },
       {
         name: "Other Hobby & DIY",
@@ -385,6 +416,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         thingiverseCatIds: [93],
         printablesCatIds: [51, 82],
         snapmakerCatIds: [151, 155],
+        makeronlineCatIds: [54, 53],
       },
     ],
   },
@@ -398,6 +430,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     printablesCatIds: [3],
     myminifactoryCatIds: [57],
     snapmakerCatIds: [108],
+    makeronlineCatIds: [37],
     children: [
       {
         name: "Decor",
@@ -409,6 +442,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         printablesCatIds: [44],
         myminifactoryCatIds: [335, 389, 399, 372, 398, 362, 336],
         snapmakerCatIds: [139],
+        makeronlineCatIds: [38, 43],
       },
       {
         name: "Festivities",
@@ -419,6 +453,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         printablesCatIds: [65, 69, 68, 70],
         myminifactoryCatIds: [385, 384, 634, 635, 636],
         snapmakerCatIds: [140],
+        makeronlineCatIds: [42],
       },
       {
         name: "Garden",
@@ -430,6 +465,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         printablesCatIds: [53, 71],
         myminifactoryCatIds: [150],
         snapmakerCatIds: [146],
+        makeronlineCatIds: [39],
       },
       {
         name: "Office",
@@ -441,6 +477,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         printablesCatIds: [29],
         myminifactoryCatIds: [382, 377],
         snapmakerCatIds: [143],
+        makeronlineCatIds: [41],
       },
       {
         name: "Pets",
@@ -451,6 +488,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         thingiverseCatIds: [103],
         printablesCatIds: [57],
         snapmakerCatIds: [147],
+        makeronlineCatIds: [44],
       },
       {
         name: "Other Household Models",
@@ -465,6 +503,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           944, 947, 948, 775,
         ],
         snapmakerCatIds: [142, 144, 145, 184],
+        makeronlineCatIds: [45, 40],
       },
     ],
   },
@@ -478,6 +517,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     printablesCatIds: [101],
     myminifactoryCatIds: [1015],
     snapmakerCatIds: [110],
+    makeronlineCatIds: [95],
     children: [
       {
         name: "Animals",
@@ -499,6 +539,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         printablesCatIds: [103, 62],
         myminifactoryCatIds: [787, 1153, 1158, 913],
         snapmakerCatIds: [158],
+        makeronlineCatIds: [100],
       },
       {
         name: "Creatures",
@@ -509,6 +550,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         thingiverseCatIds: [109],
         printablesCatIds: [97],
         snapmakerCatIds: [159],
+        makeronlineCatIds: [99],
       },
       {
         name: "People",
@@ -520,6 +562,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         printablesCatIds: [60],
         myminifactoryCatIds: [785, 780, 782, 783, 784, 1145],
         snapmakerCatIds: [156],
+        makeronlineCatIds: [101],
       },
       {
         name: "Other Miniatures",
@@ -531,6 +574,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         printablesCatIds: [104, 105, 75],
         myminifactoryCatIds: [617, 786, 1306, 1310, 1311, 1312, 1313, 1304, 1319, 1325, 1324],
         snapmakerCatIds: [160],
+        makeronlineCatIds: [96, 97, 98],
       },
     ],
   },
@@ -543,6 +587,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     printablesCatIds: [76],
     myminifactoryCatIds: [119],
     snapmakerCatIds: [105],
+    makeronlineCatIds: [90],
     children: [
       {
         name: "Costumes",
@@ -553,6 +598,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         printablesCatIds: [77],
         myminifactoryCatIds: [340],
         snapmakerCatIds: [123],
+        makeronlineCatIds: [94],
       },
       {
         name: "Masks & Helmets",
@@ -563,6 +609,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         printablesCatIds: [78],
         myminifactoryCatIds: [155],
         snapmakerCatIds: [122],
+        makeronlineCatIds: [93],
       },
       {
         name: "Cosplay Weapons",
@@ -582,6 +629,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         thingiverseCatIds: [114],
         printablesCatIds: [81, 80],
         snapmakerCatIds: [125],
+        makeronlineCatIds: [92, 91],
       },
     ],
   },
@@ -594,6 +642,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     thingiverseCatIds: [71],
     myminifactoryCatIds: [252],
     snapmakerCatIds: [111],
+    makeronlineCatIds: [55],
     children: [
       {
         name: "Gadgets",
@@ -604,6 +653,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         thingiverseCatIds: [65],
         printablesCatIds: [21, 25, 27, 26, 28, 100, 140, 43],
         myminifactoryCatIds: [94, 330, 368, 388],
+        makeronlineCatIds: [56],
       },
       {
         name: "Hand Tools",
@@ -613,6 +663,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [703],
         thingiverseCatIds: [118],
         snapmakerCatIds: [161],
+        makeronlineCatIds: [60],
       },
       {
         name: "Machine Tools",
@@ -622,6 +673,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [704],
         thingiverseCatIds: [117],
         snapmakerCatIds: [165],
+        makeronlineCatIds: [59],
       },
       {
         name: "Measure Tools",
@@ -641,6 +693,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         myminifactoryCatIds: [
           288, 110, 1259, 1004, 1022, 1023, 1024, 1006, 1005, 1007, 1008, 1025, 1028, 1029, 1031, 1032, 1033, 1091,
         ],
+        makeronlineCatIds: [58],
       },
       {
         name: "Organizers",
@@ -652,6 +705,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         printablesCatIds: [50],
         myminifactoryCatIds: [149],
         snapmakerCatIds: [141, 163],
+        makeronlineCatIds: [61],
       },
       {
         name: "Other Tools",
@@ -662,6 +716,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         thingiverseCatIds: [141, 86, 87, 88, 90, 91, 119],
         printablesCatIds: [49],
         snapmakerCatIds: [164, 166],
+        makeronlineCatIds: [57],
       },
     ],
   },
@@ -675,6 +730,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     printablesCatIds: [30],
     myminifactoryCatIds: [60],
     snapmakerCatIds: [112],
+    makeronlineCatIds: [62],
     children: [
       {
         name: "Board Games",
@@ -686,6 +742,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         printablesCatIds: [31],
         myminifactoryCatIds: [1014, 523, 1016],
         snapmakerCatIds: [172],
+        makeronlineCatIds: [68],
       },
       {
         name: "Characters",
@@ -698,6 +755,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           104, 67, 435, 442, 496, 532, 533, 436, 536, 537, 538, 539, 540, 541, 543, 544, 733, 927, 957, 1159, 1309,
         ],
         snapmakerCatIds: [171],
+        makeronlineCatIds: [104, 69, 110],
       },
       {
         name: "Outdoor Toys",
@@ -707,6 +765,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [803],
         printablesCatIds: [34],
         snapmakerCatIds: [173],
+        makeronlineCatIds: [66],
       },
       {
         name: "Puzzles",
@@ -718,6 +777,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         printablesCatIds: [33],
         myminifactoryCatIds: [100],
         snapmakerCatIds: [169],
+        makeronlineCatIds: [65],
       },
       {
         name: "Construction Sets",
@@ -728,6 +788,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         thingiverseCatIds: [121],
         printablesCatIds: [37],
         snapmakerCatIds: [170],
+        makeronlineCatIds: [67],
       },
       {
         name: "Other Toys & Games",
@@ -739,6 +800,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         printablesCatIds: [38, 47],
         myminifactoryCatIds: [462, 1308, 1307, 529],
         snapmakerCatIds: [167, 168, 174, 175],
+        makeronlineCatIds: [63, 64],
       },
     ],
   },
@@ -748,6 +810,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     metaDescription:
       "Here you can find creative models built using 3D model generators. They are beautifully crafted and may provide inspiration on how to utilize these generators.",
     makerworldCatIds: [2000],
+    makeronlineCatIds: [113, 114, 115, 117],
     children: [
       {
         name: "Hueforge & Lithophane",

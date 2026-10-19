@@ -13,6 +13,7 @@ const PROVIDER_NAMES: Record<string, string> = {
   thingiverse: "Thingiverse",
   myminifactory: "MyMiniFactory",
   snapmaker: "Snapmaker Space",
+  makeronline: "MakerOnline",
 };
 
 /** A Thingiverse user's Likes page, which a sync follows like a collection. */

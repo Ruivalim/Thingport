@@ -146,7 +146,8 @@ export type DatabaseCredentialsInput = {
   password: string;
 };
 
-export type ImportProvider = "makerworld" | "printables" | "thingiverse" | "myminifactory" | "snapmaker";
+export type ImportProvider =
+  "makerworld" | "printables" | "thingiverse" | "myminifactory" | "snapmaker" | "makeronline";
 /** An admin can turn a provider off for the whole instance; menus hide it then. */
 export type ProviderSetting = { id: ImportProvider; enabled: boolean };
 
@@ -388,6 +389,25 @@ export const settingsApi = {
     });
     if (res.status === 401) throw new UnauthorizedError();
     if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to update Snapmaker Space settings"));
+    return res.json();
+  },
+
+  // The user's own MakerOnline sign-in (its access token), which Thingport Grab sends on. Write-only.
+  getMakeronlineSession: async (): Promise<{ configured: boolean; expired: boolean }> => {
+    const res = await fetch(`${apiBase()}/settings/makeronline-session`, { headers: authHeaders() });
+    assertOk(res, "Failed to load MakerOnline settings");
+    return res.json();
+  },
+
+  /** Checked with MakerOnline before it's saved. */
+  updateMakeronlineSession: async (token: string | null): Promise<{ configured: boolean }> => {
+    const res = await fetch(`${apiBase()}/settings/makeronline-session`, {
+      method: "PATCH",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ token, verify: true }),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to update MakerOnline settings"));
     return res.json();
   },
 

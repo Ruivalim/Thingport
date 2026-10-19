@@ -1,9 +1,11 @@
-// Batch flow for Thingiverse Likes/Collections, Printables and MyMiniFactory Collections, and Snapmaker Space likes
-// and bookmarks. MakerWorld collections use the guided flow in makerworldCollection.ts.
+// Batch flow for Thingiverse Likes/Collections, Printables and MyMiniFactory Collections, Snapmaker Space likes and
+// bookmarks, and MakerOnline collections and likes. MakerWorld collections use the guided flow in
+// makerworldCollection.ts.
 
 import type { BatchEntriesResult, ImportJob, SyncLookup } from "../../shared/api";
 import { ctx, setContext } from "../context";
 import { parseSnapmakerListUrl, snapmakerListUrl, type SnapmakerList } from "../../shared/urls";
+import { request } from "../../shared/messages";
 import { api, escapeHtml, sleep } from "../runtime";
 import { isPanelMounted, onPanelAction, panelQueryAll, renderPanel } from "../shell";
 import { errorHtml, statusHtml, successHtml } from "./results";
@@ -18,11 +20,20 @@ type BatchKey =
   | "printables:collection"
   | "myminifactory:collection"
   | "snapmaker:likes"
-  | "snapmaker:bookmarks";
+  | "snapmaker:bookmarks"
+  | "makeronline:collection"
+  | "makeronline:likes";
 
 const SNAPMAKER_LIST = {
   entries: "/import/snapmaker-list/entries",
   start: "/import/snapmaker-list",
+  idField: "model_ids",
+};
+
+// The picked models wait on the instance for Grab, which imports them from this very page right after.
+const MAKERONLINE_LIST = {
+  entries: "/import/makeronline-list/entries",
+  start: "/import/makeronline-list",
   idField: "model_ids",
 };
 
@@ -49,6 +60,8 @@ const BATCH_ENDPOINTS: Record<BatchKey, { entries: string; start: string; idFiel
   },
   "snapmaker:likes": SNAPMAKER_LIST,
   "snapmaker:bookmarks": SNAPMAKER_LIST,
+  "makeronline:collection": MAKERONLINE_LIST,
+  "makeronline:likes": MAKERONLINE_LIST,
 };
 
 const SNAPMAKER_LISTS: { list: SnapmakerList; label: string }[] = [
@@ -214,6 +227,23 @@ async function runBatchImport(result: PanelEntries, sync: SyncLookup | null): Pr
         ? `${instanceUrl}/models/collections/${target.collection_id}`
         : `${instanceUrl}/models`;
       renderPanel(successHtml(collectionLink, note ?? "Nothing new to import.", note ? "Saved" : "Nothing to import"));
+      return;
+    }
+    if (ctx().classification.provider === "makeronline") {
+      // Parked on the instance, then brought in from this page, which can sign their files.
+      const { collection_id } = await api<{ queued: number; collection_id: string }>("POST", start, {
+        url,
+        [idField]: ids,
+      });
+      renderPanel(statusHtml(`Importing ${ids.length} model${ids.length === 1 ? "" : "s"}…`));
+      const imported = await request("RUN_MAKERONLINE_WAITING");
+      renderPanel(
+        successHtml(
+          `${instanceUrl}/models/collections/${collection_id}`,
+          `Imported ${imported} model${imported === 1 ? "" : "s"}.${note ? ` ${note}` : ""}`,
+          imported ? undefined : "Nothing imported",
+        ),
+      );
       return;
     }
     const { job_id } = await api<{ job_id: string }>("POST", start, {

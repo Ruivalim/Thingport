@@ -85,6 +85,7 @@ export const SEARCH_PAGES: SearchPage[] = [
     "thingiverse",
     "myminifactory",
     "snapmaker",
+    "makeronline",
     "app token",
     "api key",
     "access token",

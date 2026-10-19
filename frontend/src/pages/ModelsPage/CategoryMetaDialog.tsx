@@ -32,6 +32,7 @@ export default function CategoryMetaDialog({ category, showSiteCatIds, onClose, 
   const [printablesCatIds, setPrintablesCatIds] = useState(category.printables_cat_ids);
   const [myminifactoryCatIds, setMyminifactoryCatIds] = useState(category.myminifactory_cat_ids);
   const [snapmakerCatIds, setSnapmakerCatIds] = useState(category.snapmaker_cat_ids);
+  const [makeronlineCatIds, setMakeronlineCatIds] = useState(category.makeronline_cat_ids);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,6 +48,7 @@ export default function CategoryMetaDialog({ category, showSiteCatIds, onClose, 
         printablesCatIds,
         myminifactoryCatIds,
         snapmakerCatIds,
+        makeronlineCatIds,
       });
       onClose();
     } catch (err) {
@@ -127,6 +129,15 @@ export default function CategoryMetaDialog({ category, showSiteCatIds, onClose, 
                 fullWidth
                 value={snapmakerCatIds}
                 onChange={(e) => setSnapmakerCatIds(e.target.value)}
+                disabled={saving}
+              />
+              <TextField
+                label={t("models:categories.manager.makeronlineCatIdLabel")}
+                placeholder={t("models:categories.manager.catIdsPlaceholder") ?? undefined}
+                helperText={t("models:categories.manager.catIdsHelp")}
+                fullWidth
+                value={makeronlineCatIds}
+                onChange={(e) => setMakeronlineCatIds(e.target.value)}
                 disabled={saving}
               />
             </Box>

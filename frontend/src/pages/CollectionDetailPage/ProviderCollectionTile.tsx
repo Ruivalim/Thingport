@@ -17,6 +17,8 @@ export const PROVIDER_ACCENTS: Record<BrowsableProvider, string> = {
   myminifactory: "#00C4A6",
   // Snapmaker's own blue: its mark is black, which a dark theme would lose.
   snapmaker: "#2563EB",
+  // Anycubic's blue, for the same reason: MakerOnline's own mark is black and white.
+  makeronline: "#1F7AE0",
 };
 
 type Props = {
@@ -276,12 +278,43 @@ function SnapmakerTile({ collection }: { collection: ProviderCollection }) {
   );
 }
 
+// MakerOnline's collection card: four covers in a square grid, then name and count.
+function MakeronlineTile({ collection }: { collection: ProviderCollection }) {
+  return (
+    <Box
+      sx={{
+        borderRadius: "12px",
+        border: 1,
+        borderColor: "divider",
+        bgcolor: "background.paper",
+        overflow: "hidden",
+      }}
+    >
+      <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px" }}>
+        {[0, 1, 2, 3].map((i) => (
+          <Thumb key={i} src={collection.thumbnails[i]} sx={{ aspectRatio: "1 / 1" }} />
+        ))}
+      </Box>
+      <Box sx={{ px: 1.25, py: 1 }}>
+        <Typography noWrap sx={{ fontWeight: 600, fontSize: "0.875rem" }}>
+          {collection.name}
+        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", fontSize: "0.8rem", color: "text.secondary" }}>
+          <ModelCount count={collection.model_count} provider="makeronline" />
+          {collection.private && <LockOutlinedIcon sx={{ fontSize: 14, ml: "auto" }} />}
+        </Box>
+      </Box>
+    </Box>
+  );
+}
+
 const TILES: Record<BrowsableProvider, (props: { collection: ProviderCollection }) => JSX.Element> = {
   makerworld: MakerWorldTile,
   printables: PrintablesTile,
   thingiverse: ThingiverseTile,
   myminifactory: MyMiniFactoryTile,
   snapmaker: SnapmakerTile,
+  makeronline: MakeronlineTile,
 };
 
 /** The name to show: a user's likes, and Snapmaker's likes and bookmarks, come named in English by the instance. */
@@ -289,6 +322,7 @@ function displayName(provider: BrowsableProvider, collection: ProviderCollection
   if (collection.likes) return t("collections.sync.browse.likes");
   if (provider === "snapmaker" && collection.id.startsWith("likes-")) return t("collections.sync.browse.likes");
   if (provider === "snapmaker" && collection.id.startsWith("bookmarks-")) return t("collections.sync.browse.bookmarks");
+  if (provider === "makeronline" && collection.id === "likes") return t("collections.sync.browse.likes");
   return collection.name;
 }
 
@@ -388,6 +422,18 @@ export function ProviderCollectionTileSkeleton({ provider }: { provider: Browsab
           ))}
         </Box>
         {lines}
+      </Box>
+    );
+  }
+  if (provider === "makeronline") {
+    return (
+      <Box aria-hidden sx={{ borderRadius: "12px", border: 1, borderColor: "divider", overflow: "hidden" }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px" }}>
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} variant="rectangular" sx={{ width: "100%", height: "auto", aspectRatio: "1 / 1" }} />
+          ))}
+        </Box>
+        <Box sx={{ px: 1.25, py: 1 }}>{lines}</Box>
       </Box>
     );
   }

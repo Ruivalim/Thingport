@@ -61,6 +61,31 @@ import {
   markSnapmakerTokenRejected,
   SNAPMAKER_CONNECT,
 } from "../services/snapmakerSessionService";
+import {
+  fetchMakeronlineCollection,
+  fetchMakeronlineCollectionInfo,
+  fetchMakeronlineLikes,
+  isMakeronlineLikesUrl,
+  MakeronlineAuthError,
+  MAKERONLINE_LIKES_NAME,
+  parseMakeronlineCollectionUrl,
+  parseMakeronlineModelUrl,
+  type MakeronlineListing,
+} from "../services/makeronlineApi";
+import {
+  getUserMakeronlineToken,
+  MAKERONLINE_CONNECT,
+  markMakeronlineTokenRejected,
+} from "../services/makeronlineSessionService";
+import {
+  getGrabImport,
+  listGrabImports,
+  notifyGrabImportsQueued,
+  planMakeronlineDownloads,
+  queueGrabImport,
+  recordGrabImportFailure,
+} from "../services/grabImportService";
+import { addPrintsToCollection, findOrCreateCollectionByName } from "../services/collectionService";
 import { listZipEntries } from "../services/zipService";
 import { createJob, createJobItems, getActiveJob, getJob, listJobItems } from "../services/importJobService";
 import { queueLink, startLinksJob } from "../services/importQueueService";
@@ -97,6 +122,12 @@ const importRequestSchema = z.object({
   // what trips MakerWorld's CAPTCHA.
   resolved_download_url: z.string().nullable().optional(),
   resolved_instance_id: z.string().nullable().optional(),
+  // MakerOnline's files, their links signed by Thingport Grab on the site's own page.
+  resolved_files: z
+    .array(z.object({ url: z.string().url(), name: z.string().max(500), profile_id: z.string().nullable().optional() }))
+    .max(200)
+    .nullable()
+    .optional(),
   makerworld_design: z.record(z.unknown()).nullable().optional(),
   // False for each model of a run the client drives itself; the run sends one summary at the end.
   notify: z.boolean().optional(),
@@ -224,7 +255,7 @@ router.get(
 );
 
 const statusBatchSchema = z.object({
-  provider: z.enum(["makerworld", "thingiverse", "printables", "myminifactory", "snapmaker"]),
+  provider: z.enum(["makerworld", "thingiverse", "printables", "myminifactory", "snapmaker", "makeronline"]),
   external_ids: z.array(z.string().max(64)).max(10_000),
 });
 
@@ -504,6 +535,186 @@ router.post(
         already_imported: alreadyImported.has(e.modelId),
       })),
     });
+  }),
+);
+
+// ---- MakerOnline: files only through Thingport Grab ----
+// MakerOnline signs its download links only for a page its own anti-bot script runs on. Grab asks what a model needs
+// (plan), gets it signed on makeronline.com, and imports with the signed links; imports started anywhere else wait
+// for it (see grabImportService.ts).
+
+const makeronlineScopeSchema = z.enum(["url", "designer", "all"]).default("url");
+
+router.post(
+  "/import/makeronline/plan",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(z.object({ url: z.string(), scope: makeronlineScopeSchema }), req.body);
+    const url = await enabledImportUrl(body.url);
+    res.json(await planMakeronlineDownloads(url, body.scope));
+  }),
+);
+
+/** A link pasted in the app: it waits for Grab's next visit to makeronline.com. */
+router.post(
+  "/import/makeronline/queue",
+  requireCaptcha("import"),
+  asyncHandler(async (req, res) => {
+    const body = parseBody(
+      importRequestSchema.extend({ scope: makeronlineScopeSchema, collection_id: z.string().nullable().optional() }),
+      req.body,
+    );
+    const url = await enabledImportUrl(body.url);
+    if (!parseMakeronlineModelUrl(url)) throw new HttpError(400, "Not a MakerOnline model link");
+    await queueGrabImport(req.userId!, url, {
+      scope: body.scope,
+      collectionId: body.collection_id ?? null,
+      categoryId: body.category_id ?? null,
+      tags: body.tags,
+      notes: body.notes ?? null,
+    });
+    res.status(202).json({ queued: 1 });
+  }),
+);
+
+router.get(
+  "/import/makeronline/waiting",
+  asyncHandler(async (req, res) => {
+    res.json(await listGrabImports(req.userId!));
+  }),
+);
+
+const grabFilesSchema = z.object({
+  files: z
+    .array(z.object({ url: z.string().url(), name: z.string().max(500), profile_id: z.string().nullable().optional() }))
+    .min(1)
+    .max(200),
+});
+
+/** Grab signed a waiting model's files: imported like any link, then filed where it was meant to go. Asynchronous
+ *  with `?async=1`, as /import is, since a model of many files outlasts an extension worker's fetch. */
+router.post(
+  "/import/makeronline/waiting/:id",
+  asyncHandler(async (req, res) => {
+    const userId = req.userId!;
+    const body = parseBody(grabFilesSchema, req.body);
+    const row = await getGrabImport(userId, req.params.id);
+    const run = async () => {
+      let described;
+      try {
+        described = await importAndDescribe(userId, row.url, {
+          url: row.url,
+          tags: row.tags,
+          notes: row.notes,
+          category_id: row.categoryId,
+          resolved_files: body.files,
+          notify: false,
+        });
+      } catch (err) {
+        await recordGrabImportFailure(row, err instanceof Error ? err.message : "Import failed").catch(() => undefined);
+        throw err;
+      }
+      if (row.collectionId) {
+        const collection = await prisma.collection.findFirst({ where: { id: row.collectionId, userId } });
+        if (collection) await addPrintsToCollection(collection.id, [described.id]);
+      }
+      return described;
+    };
+    if (req.query.async === "1") {
+      res.status(202).json({ task_id: startImportTask(userId, run) });
+      return;
+    }
+    res.json(await run());
+  }),
+);
+
+/** Grab couldn't get a waiting model's files signed, e.g. MakerOnline asked for a captcha. */
+router.post(
+  "/import/makeronline/waiting/:id/failed",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(z.object({ error: z.string().max(1000) }), req.body);
+    await recordGrabImportFailure(await getGrabImport(req.userId!, req.params.id), body.error);
+    res.json({ ok: true });
+  }),
+);
+
+/** The user's likes, or any collection they can see, from a MakerOnline link. */
+async function makeronlineListOf(userId: string, url: string): Promise<{ title: string; listing: MakeronlineListing }> {
+  const token = await getUserMakeronlineToken(userId);
+  try {
+    if (isMakeronlineLikesUrl(url)) {
+      if (!token) throw new HttpError(400, MAKERONLINE_CONNECT);
+      return { title: MAKERONLINE_LIKES_NAME, listing: await fetchMakeronlineLikes(token) };
+    }
+    const parsed = parseMakeronlineCollectionUrl(url);
+    if (!parsed) throw new HttpError(400, "Not a link to a MakerOnline collection or your likes");
+    const [info, listing] = await Promise.all([
+      fetchMakeronlineCollectionInfo(parsed.collectionId, token),
+      fetchMakeronlineCollection(parsed.collectionId, token),
+    ]);
+    if (!info || !listing) throw new HttpError(404, "That collection can't be found. It may be private or deleted.");
+    return { title: info.name, listing };
+  } catch (err) {
+    if (err instanceof MakeronlineAuthError) {
+      await markMakeronlineTokenRejected(userId);
+      // 400, not 401: the frontend treats any 401 as an expired Thingport session.
+      throw new HttpError(400, err.message);
+    }
+    throw err;
+  }
+}
+
+router.post(
+  "/import/makeronline-list/entries",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(importRequestSchema, req.body);
+    const url = await enabledImportUrl(body.url);
+    const { title, listing } = await makeronlineListOf(req.userId!, url);
+    if (!listing.entries.length) throw new HttpError(400, `"${title}" is empty`);
+    const alreadyImported = await findImportedExternalIds(
+      req.userId!,
+      "makeronline",
+      listing.entries.map((e) => e.modelId),
+    );
+    res.json({
+      title,
+      total: listing.total,
+      truncated: listing.truncated,
+      entries: listing.entries.map((e) => ({
+        design_id: e.modelId,
+        title: e.title,
+        cover: e.cover,
+        already_imported: alreadyImported.has(e.modelId),
+      })),
+    });
+  }),
+);
+
+/** The picked models of a list wait for Grab, filed into a collection named after the list. */
+router.post(
+  "/import/makeronline-list",
+  requireCaptcha("import"),
+  asyncHandler(async (req, res) => {
+    const body = parseBody(
+      importRequestSchema.extend({ model_ids: z.array(z.string().regex(/^\d+$/)).min(1).max(1000) }),
+      req.body,
+    );
+    const url = await enabledImportUrl(body.url);
+    const { title } = await makeronlineListOf(req.userId!, url);
+    const collection = await findOrCreateCollectionByName(req.userId!, title);
+    for (const modelId of body.model_ids) {
+      await queueGrabImport(req.userId!, `https://www.makeronline.com/en/model/${modelId}`, {
+        collectionId: collection.id,
+        categoryId: body.category_id ?? null,
+        tags: body.tags,
+        notes: body.notes ?? null,
+      });
+    }
+    await notifyGrabImportsQueued(req.userId!, body.model_ids.length, {
+      label: title,
+      externalUrl: url,
+      internalPath: `/models/collections/${collection.id}`,
+    });
+    res.status(202).json({ queued: body.model_ids.length, collection_id: collection.id });
   }),
 );
 

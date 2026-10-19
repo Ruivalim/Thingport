@@ -36,6 +36,14 @@ import {
 } from "./makerworldCookieService";
 import { checkPrintablesCollection, fetchPrintablesCollectionEntries } from "./printablesApi";
 import { fetchSnapmakerList, SnapmakerAuthError } from "./snapmakerApi";
+import {
+  fetchMakeronlineCollection,
+  fetchMakeronlineLikes,
+  MAKERONLINE_LIKES_KEY,
+  MakeronlineAuthError,
+} from "./makeronlineApi";
+import { getUserMakeronlineToken, markMakeronlineTokenRejected } from "./makeronlineSessionService";
+import { notifyGrabImportsQueued, queueGrabImport } from "./grabImportService";
 import { getSnapmakerConnection, getUserSnapmakerToken, markSnapmakerTokenRejected } from "./snapmakerSessionService";
 import {
   checkThingiverseCollection,
@@ -112,6 +120,16 @@ export async function fetchListing(
     const { entries } = await fetchSnapmakerList(id.startsWith("likes-") ? "likes" : "bookmarks", token);
     return entries.map((e) => e.modelId);
   }
+  if (sync.provider === "makeronline") {
+    // Public collections list without a sign-in; the user's likes and private collections need theirs.
+    const token = await getUserMakeronlineToken(sync.userId);
+    if (id === MAKERONLINE_LIKES_KEY) {
+      if (!token) throw new Error("MakerOnline isn't connected");
+      return (await fetchMakeronlineLikes(token)).entries.map((e) => e.modelId);
+    }
+    const listing = await fetchMakeronlineCollection(id, token);
+    return listing ? listing.entries.map((e) => e.modelId) : null;
+  }
   throw new Error(`Unknown provider "${sync.provider}"`);
 }
 
@@ -161,6 +179,11 @@ const CONNECTION_PROBLEMS = {
     error: "MakerWorld isn't connected",
     reason: "MakerWorld isn't connected.",
     fix: "you connect it again",
+  },
+  makeronlineExpired: {
+    error: "MakerOnline sign-in ran out",
+    reason: "Your MakerOnline sign-in ran out.",
+    fix: "you open makeronline.com with Thingport Grab, or connect it again",
   },
   makerworldExpired: {
     error: MAKERWORLD_REJECTED_ERROR,
@@ -301,6 +324,11 @@ async function runSync(syncId: string): Promise<SyncOutcome> {
       await holdProvider(userId, sync.provider, CONNECTION_PROBLEMS.snapmakerExpired);
       return "disconnected";
     }
+    if (err instanceof MakeronlineAuthError) {
+      await markMakeronlineTokenRejected(userId);
+      await holdProvider(userId, sync.provider, CONNECTION_PROBLEMS.makeronlineExpired);
+      return "disconnected";
+    }
     const message = err instanceof Error && err.message.trim() ? err.message.trim() : "Sync failed";
     console.warn(`[sync] "${sync.collection.name}" (${sync.provider} ${sync.externalId}): ${message}`);
     await prisma.collectionSync
@@ -347,6 +375,24 @@ async function runSync(syncId: string): Promise<SyncOutcome> {
     scope: hasProfiles(sync.provider) ? sync.profileScope : "url",
     title: null,
   };
+
+  if (toImport.length && sync.provider === "makeronline") {
+    // MakerOnline's files only come through Thingport Grab: the new models wait for its next visit there.
+    for (const id of toImport) {
+      await queueGrabImport(userId, modelUrlFor(sync.provider, id), {
+        scope: sync.profileScope === "designer" || sync.profileScope === "all" ? sync.profileScope : "url",
+        collectionId: sync.collectionId,
+      });
+    }
+    await addPrintsToCollection(sync.collectionId, [...inLibrary.values()]);
+    await markChecked();
+    await notifyGrabImportsQueued(userId, toImport.length, {
+      label: sync.collection.name,
+      externalUrl: sync.sourceUrl,
+      internalPath: `/models/collections/${sync.collectionId}`,
+    });
+    return "queued";
+  }
 
   if (toImport.length && openJob) {
     // The sync's paused job waits for someone to start it; new models wait with it.

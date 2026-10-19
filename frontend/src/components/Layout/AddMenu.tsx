@@ -17,7 +17,7 @@ import TextField from "@mui/material/TextField";
 import CircularProgress from "@mui/material/CircularProgress";
 import Tooltip from "@mui/material/Tooltip";
 import Stack from "@mui/material/Stack";
-import Chip from "@mui/material/Chip";
+import IconButton from "@mui/material/IconButton";
 import Alert from "@mui/material/Alert";
 import Typography from "@mui/material/Typography";
 import AddIcon from "@mui/icons-material/Add";
@@ -28,6 +28,7 @@ import { useUploadImport } from "../uploads/useUploadImport";
 import { useImportJob } from "./ImportJobContext";
 import { useToast } from "../ToastProvider";
 import { IMPORT_PROVIDER_INFO } from "../../constants/importProviders";
+import { COMING_SOON_PROVIDERS, ProviderLogo } from "./ConfigurationDialog/providerLogos";
 import {
   detectImportProvider,
   IMPORT_LINK_EXAMPLES,
@@ -37,6 +38,8 @@ import {
   isPrintablesCollectionUrl,
   isSnapmakerListUrl,
   isSnapmakerModelUrl,
+  isMakeronlineListUrl,
+  isMakeronlineModelUrl,
   isThingiverseCollectionUrl,
   isThingiverseLikesUrl,
   type ImportProviderKey,
@@ -44,7 +47,14 @@ import {
 import type { MakerworldProfileScope } from "../../api/imports";
 import { allProvidersOff, useDisabledProviders } from "../../hooks/useDisabledProviders";
 
-const IMPORT_PROVIDERS: ImportProviderKey[] = ["makerworld", "thingiverse", "printables", "myminifactory", "snapmaker"];
+const IMPORT_PROVIDERS: ImportProviderKey[] = [
+  "makerworld",
+  "thingiverse",
+  "printables",
+  "myminifactory",
+  "snapmaker",
+  "makeronline",
+];
 
 /** What the search palette's !import command calls. */
 export type AddMenuHandle = {
@@ -109,11 +119,14 @@ const AddMenu = React.forwardRef<AddMenuHandle, Props>(function AddMenu(
           isThingiverseCollectionUrl(link) ||
           isPrintablesCollectionUrl(link) ||
           isMyminifactoryCollectionUrl(link) ||
-          isSnapmakerListUrl(link),
+          isSnapmakerListUrl(link) ||
+          isMakeronlineListUrl(link),
       )
     : isMakerworldCollectionUrl(linkValue);
   // Models with print profiles to pick between.
-  const hasProfiles = links.some((link) => isMakerworldModelUrl(link) || isSnapmakerModelUrl(link));
+  const hasProfiles = links.some(
+    (link) => isMakerworldModelUrl(link) || isSnapmakerModelUrl(link) || isMakeronlineModelUrl(link),
+  );
 
   const closeMenu = () => setAnchorEl(null);
 
@@ -212,22 +225,55 @@ const AddMenu = React.forwardRef<AddMenuHandle, Props>(function AddMenu(
       <Dialog open={importOpen} onClose={closeImport} fullWidth maxWidth="sm">
         <DialogTitle>{t("addMenu.importTitle")}</DialogTitle>
         <DialogContent>
-          <Stack direction="row" spacing={1} sx={{ mb: 1.5 }}>
+          <Stack direction="row" spacing={0.5} sx={{ mb: 1.5, flexWrap: "wrap" }}>
             {IMPORT_PROVIDERS.filter((key) => !disabledProviders.has(key)).map((key) => {
-              const info = IMPORT_PROVIDER_INFO[key];
-              const active = detectedProviders.has(key);
+              const label = IMPORT_PROVIDER_INFO[key].label;
+              // Lit when a pasted link is from it, or its example links are open.
+              const lit = detectedProviders.has(key) || exampleProvider === key;
               return (
-                <Chip
-                  key={key}
-                  label={info.label}
-                  size="small"
-                  onClick={() => setExampleProvider((prev) => (prev === key ? null : key))}
-                  sx={{
-                    fontWeight: 600,
-                    bgcolor: active ? info.color : "action.disabledBackground",
-                    color: active ? (info.textColor ?? "#fff") : "text.disabled",
-                  }}
-                />
+                <Tooltip key={key} title={label}>
+                  <IconButton
+                    size="small"
+                    aria-label={label}
+                    aria-pressed={exampleProvider === key}
+                    onClick={() => setExampleProvider((prev) => (prev === key ? null : key))}
+                    sx={{
+                      p: 0.75,
+                      "& svg": {
+                        filter: lit ? "none" : "grayscale(1)",
+                        opacity: lit ? 1 : 0.45,
+                        transform: lit ? "scale(1.1)" : "none",
+                        transition: "filter 150ms, opacity 150ms, transform 150ms",
+                        "@media (prefers-reduced-motion: reduce)": { transition: "none" },
+                      },
+                      "&:hover svg, &:focus-visible svg": { filter: "none", opacity: 1 },
+                    }}
+                  >
+                    <ProviderLogo id={key} size={22} />
+                  </IconButton>
+                </Tooltip>
+              );
+            })}
+            {COMING_SOON_PROVIDERS.map(({ id, name }) => {
+              const label = `${name}: ${t("providers.comingSoon")}`;
+              return (
+                <Tooltip key={id} title={label}>
+                  {/* aria-disabled rather than disabled, so hover and focus still show the tooltip. */}
+                  <IconButton
+                    size="small"
+                    aria-label={label}
+                    aria-disabled="true"
+                    disableRipple
+                    sx={{
+                      p: 0.75,
+                      cursor: "default",
+                      "&:hover": { bgcolor: "transparent" },
+                      "& svg": { filter: "grayscale(1)", opacity: 0.2 },
+                    }}
+                  >
+                    <ProviderLogo id={id} size={22} />
+                  </IconButton>
+                </Tooltip>
               );
             })}
           </Stack>
