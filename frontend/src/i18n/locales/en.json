@@ -2768,20 +2768,24 @@
         "metaDialogTitle": "Details — {{name}}",
         "metaTitleLabel": "Meta title",
         "metaDescriptionLabel": "Meta description",
-        "makerworldCatIdLabel": "MakerWorld category IDs",
-        "thingiverseCatIdLabel": "Thingiverse category IDs",
-        "printablesCatIdLabel": "Printables category IDs",
-        "myminifactoryCatIdLabel": "MyMiniFactory category IDs",
-        "snapmakerCatIdLabel": "Snapmaker Space category IDs",
-        "makeronlineCatIdLabel": "MakerOnline category IDs",
-        "crealitycloudCatIdLabel": "Creality Cloud category IDs",
-        "nexprintCatIdLabel": "NexPrint category IDs",
-        "thangsCatIdLabel": "Thangs category paths",
-        "thangsCatPathsPlaceholder": "Toys & Games/Puzzles;Toys & Games",
-        "thangsCatPathsHelp": "Thangs names categories rather than numbering them: separate paths with ;",
-        "catIdsPlaceholder": "e.g. 800;71;1001",
-        "catIdsHelp": "Separate multiple IDs with \";\" -- matches if an import's category is any of these",
-        "dragToMove": "Drag to move"
+        "dragToMove": "Drag to move",
+        "mapping": {
+          "heading": "Source categories",
+          "help": "Models imported from these categories on each site land in \"{{category}}\". Pick them with Manage.",
+          "none": "None",
+          "manage": "Manage ({{count}})",
+          "manageLabel": "Manage {{provider}} categories, {{count}} picked",
+          "pickerTitle": "{{provider}} categories",
+          "pickerSubtitle": "Imports from the ones you pick land in \"{{category}}\"",
+          "search": "Search {{provider}} categories",
+          "selected": "Picked ({{count}})",
+          "clearAll": "Clear all",
+          "done": "Done",
+          "noMatches": "No categories match \"{{query}}\".",
+          "empty": "No categories known for {{provider}}.",
+          "loadFailed": "Couldn't load the category list. Close this and try again.",
+          "unknown": "Unknown #{{id}}"
+        }
       }
     },
     "view": {
