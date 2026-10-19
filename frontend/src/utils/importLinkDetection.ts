@@ -1,6 +1,7 @@
 /** URL-shape detection shared by useUploadImport and AddMenu so they can't drift apart. */
 
-export type ImportProviderKey = "makerworld" | "thingiverse" | "printables" | "myminifactory" | "snapmaker";
+export type ImportProviderKey =
+  "makerworld" | "thingiverse" | "printables" | "myminifactory" | "snapmaker" | "makeronline";
 
 function parseUrl(url: string): URL | null {
   try {
@@ -19,6 +20,7 @@ export function detectImportProvider(url: string): ImportProviderKey | null {
   if (host === "printables.com" || host === "www.printables.com") return "printables";
   if (host === "myminifactory.com" || host === "www.myminifactory.com") return "myminifactory";
   if (host === "space.snapmaker.com") return "snapmaker";
+  if (host === "makeronline.com" || host === "www.makeronline.com") return "makeronline";
   return null;
 }
 
@@ -115,6 +117,26 @@ export function isSnapmakerListUrl(url: string): boolean {
   );
 }
 
+function isMakeronlineHost(parsed: URL): boolean {
+  return /^(www\.)?makeronline\.com$/i.test(parsed.hostname);
+}
+
+/** See isThingiverseThingUrl. `/en/model/<title>/<id>.html`; `#profileId-<id>` may pick a print profile. */
+export function isMakeronlineModelUrl(url: string): boolean {
+  const parsed = parseUrl(url);
+  if (!parsed || !isMakeronlineHost(parsed)) return false;
+  return /^\/(?:[a-z]{2}(?:[-_][a-z]{2})?\/)?model\/(?:[^/]+\/)?\d+(?:\.html)?\/?$/i.test(parsed.pathname);
+}
+
+/** A MakerOnline collection, or the signed-in user's likes (`/en/user/likes/models.html`). */
+export function isMakeronlineListUrl(url: string): boolean {
+  const parsed = parseUrl(url);
+  if (!parsed || !isMakeronlineHost(parsed)) return false;
+  return /^\/(?:[a-z]{2}(?:[-_][a-z]{2})?\/)?user\/(?:collectionDetail\/(?:[\w-]+\/)?\d+|likes\/models)(?:\.html)?\/?$/i.test(
+    parsed.pathname,
+  );
+}
+
 export const IMPORT_LINK_EXAMPLES: Record<ImportProviderKey, { model: string; collection: string }> = {
   makerworld: {
     model: "https://makerworld.com/en/models/123456-example-model",
@@ -135,5 +157,9 @@ export const IMPORT_LINK_EXAMPLES: Record<ImportProviderKey, { model: string; co
   snapmaker: {
     model: "https://space.snapmaker.com/en/model/12345-example-model",
     collection: "https://space.snapmaker.com/en/creator/12345?tab=interactions&list=likes",
+  },
+  makeronline: {
+    model: "https://www.makeronline.com/en/model/Example-Model/123456.html",
+    collection: "https://www.makeronline.com/en/user/collectionDetail/…/123456.html",
   },
 };

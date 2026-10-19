@@ -20,7 +20,14 @@ export function publishProviders(providers: ProviderSetting[]): void {
 }
 
 const NONE: ReadonlySet<ImportProvider> = new Set();
-const ALL: readonly ImportProvider[] = ["makerworld", "printables", "thingiverse", "myminifactory", "snapmaker"];
+const ALL: readonly ImportProvider[] = [
+  "makerworld",
+  "printables",
+  "thingiverse",
+  "myminifactory",
+  "snapmaker",
+  "makeronline",
+];
 
 /** With every provider off there's nothing to import from or connect to, so those parts of the app hide. */
 export function allProvidersOff(disabled: ReadonlySet<ImportProvider>): boolean {

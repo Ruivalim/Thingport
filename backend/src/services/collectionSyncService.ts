@@ -22,6 +22,16 @@ import {
   snapmakerModelUrl,
 } from "./snapmakerApi";
 import { getUserSnapmakerId } from "./snapmakerSessionService";
+import {
+  isMakeronlineLikesUrl,
+  MAKERONLINE_LIKES_KEY,
+  MAKERONLINE_LIKES_NAME,
+  MAKERONLINE_LIKES_URL,
+  makeronlineCollectionUrl,
+  makeronlineModelUrl,
+  parseMakeronlineCollectionUrl,
+} from "./makeronlineApi";
+import { getUserMakeronlineToken } from "./makeronlineSessionService";
 import { createLog } from "./auditLog";
 import { pushedLikes } from "./providerListingsService";
 import { createNotification } from "./notificationService";
@@ -34,7 +44,7 @@ import {
   type SyncProfileScope,
 } from "../dto";
 
-export type SyncProvider = "makerworld" | "printables" | "thingiverse" | "myminifactory" | "snapmaker";
+export type SyncProvider = "makerworld" | "printables" | "thingiverse" | "myminifactory" | "snapmaker" | "makeronline";
 
 /** `likesOf` is set for a user's likes (on Thingiverse, or the user's own on Printables), which a
  *  sync follows like a collection. */
@@ -46,11 +56,12 @@ const PROVIDER_NAMES: Record<SyncProvider, string> = {
   thingiverse: "Thingiverse",
   myminifactory: "MyMiniFactory",
   snapmaker: "Snapmaker Space",
+  makeronline: "MakerOnline",
 };
 
 /** Providers whose models come with print profiles a sync can pick between. */
 export function hasProfiles(provider: string): boolean {
-  return provider === "makerworld" || provider === "snapmaker";
+  return provider === "makerworld" || provider === "snapmaker" || provider === "makeronline";
 }
 
 export function providerName(provider: string): string {
@@ -106,6 +117,15 @@ export function parseSyncSource(url: string): SyncSource | null {
       url: snapmakerListUrl(snapmaker.userId, snapmaker.list),
     };
   }
+  const makeronline = parseMakeronlineCollectionUrl(url);
+  if (makeronline) {
+    const { collectionId, ownerId } = makeronline;
+    return { provider: "makeronline", externalId: collectionId, url: makeronlineCollectionUrl(ownerId, collectionId) };
+  }
+  if (isMakeronlineLikesUrl(url)) {
+    // The page names no user: it's always the signed-in one's, read with their token.
+    return { provider: "makeronline", externalId: MAKERONLINE_LIKES_KEY, url: MAKERONLINE_LIKES_URL };
+  }
   const printablesLikes = parsePrintablesLikesUrl(url);
   if (printablesLikes) {
     // Only Thingport Grab can read these, as their owner (see providerListingsService.ts).
@@ -135,6 +155,7 @@ export function modelUrlFor(provider: string, externalId: string): string {
   if (provider === "printables") return `https://www.printables.com/model/${externalId}`;
   if (provider === "myminifactory") return `https://www.myminifactory.com/object/3d-print-${externalId}`;
   if (provider === "snapmaker") return snapmakerModelUrl(externalId);
+  if (provider === "makeronline") return makeronlineModelUrl(externalId);
   return `https://www.thingiverse.com/thing:${externalId}`;
 }
 
@@ -145,6 +166,7 @@ export function modelIdFromUrl(provider: string, url: string): string | null {
     printables: /\/model\/(\d+)/,
     myminifactory: /\/object\/(?:[^/]*-)?(\d+)/,
     snapmaker: /\/model\/(\d+)/,
+    makeronline: /\/model\/(?:[^/#]+\/)?(\d+)/,
   };
   const pattern = patterns[provider] ?? /thing:(\d+)/;
   return url.match(pattern)?.[1] ?? null;
@@ -216,10 +238,13 @@ export async function enableSync(userId: string, input: EnableSyncInput): Promis
   if (!source)
     throw new HttpError(
       400,
-      "Only MakerWorld, Printables, Thingiverse and MyMiniFactory collections, Thingiverse or your own Printables likes, and your own Snapmaker Space likes and bookmarks, can be synced",
+      "Only MakerWorld, Printables, Thingiverse, MyMiniFactory and MakerOnline collections, Thingiverse or your own Printables and MakerOnline likes, and your own Snapmaker Space likes and bookmarks, can be synced",
     );
   if (source.provider === "printables" && source.likesOf) await assertOwnPrintablesLikes(userId, source.likesOf);
   if (source.provider === "snapmaker") await assertOwnSnapmakerList(userId, source.url);
+  if (source.provider === "makeronline" && source.externalId === MAKERONLINE_LIKES_KEY) {
+    await assertMakeronlineConnected(userId);
+  }
   const knownIds = [...new Set(input.knownIds.map((id) => id.trim()).filter(Boolean))];
 
   const existing = await findSyncForSource(userId, source);
@@ -258,7 +283,9 @@ export async function enableSync(userId: string, input: EnableSyncInput): Promis
       ? likesCollectionName(source.likesOf, source.provider)
       : snapmakerList
         ? snapmakerListName(snapmakerList)
-        : input.title?.trim() || `${providerName(source.provider)} Collection ${source.externalId}`;
+        : source.provider === "makeronline" && source.externalId === MAKERONLINE_LIKES_KEY
+          ? MAKERONLINE_LIKES_NAME
+          : input.title?.trim() || `${providerName(source.provider)} Collection ${source.externalId}`;
     let found: (CollectionSync & { collection: Collection }) | null = null;
     for (const name of collectionNamesFor(title, source.provider)) {
       const collection = await findOrCreateCollectionByName(userId, name);
@@ -332,6 +359,16 @@ async function assertOwnSnapmakerList(userId: string, url: string): Promise<void
     throw new HttpError(
       400,
       "Snapmaker Space shows likes and bookmarks to their owner only, so only your own can be synced, once Snapmaker is connected",
+    );
+  }
+}
+
+/** MakerOnline's likes page names no user, so a sync reads whoever's token Thingport has: there has to be one. */
+async function assertMakeronlineConnected(userId: string): Promise<void> {
+  if (!(await getUserMakeronlineToken(userId))) {
+    throw new HttpError(
+      400,
+      "MakerOnline shows likes to their owner only: connect MakerOnline first, or visit it with Thingport Grab",
     );
   }
 }
@@ -424,7 +461,8 @@ export async function disableSync(userId: string, collectionId: string): Promise
 }
 
 /** Applies to checks and models found from now on; models already waiting in the import queue
- *  keep the profile scope they were queued with. Only MakerWorld and Snapmaker models have print profiles. */
+ *  keep the profile scope they were queued with. Only MakerWorld, Snapmaker and MakerOnline models have print
+ *  profiles. */
 export async function updateSyncSettings(
   userId: string,
   collectionId: string,
@@ -432,7 +470,7 @@ export async function updateSyncSettings(
 ): Promise<CollectionSyncOut> {
   const sync = await ownedSync(userId, collectionId);
   if (settings.profileScope && !hasProfiles(sync.provider)) {
-    throw new HttpError(400, "Only MakerWorld and Snapmaker Space models have print profiles to pick");
+    throw new HttpError(400, "Only MakerWorld, Snapmaker Space and MakerOnline models have print profiles to pick");
   }
   const updated = await prisma.collectionSync.update({
     where: { id: sync.id },

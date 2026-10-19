@@ -1,7 +1,7 @@
 Thingport Grab {{version}}. Changes in this version: {{changes}}
 
 WHAT IT DOES
-Imports 3D-printing models from MakerWorld, Printables, Thingiverse and, once turned on, MyMiniFactory and Snapmaker Space into the user's own self-hosted Thingport server (open source: https://github.com/TautvydasDerzinskas/Thingport). It has no servers of its own and sends nothing to the developer or any third party.
+Imports 3D-printing models from MakerWorld, Printables, Thingiverse and, once turned on, MyMiniFactory, Snapmaker Space and MakerOnline into the user's own self-hosted Thingport server (open source: https://github.com/TautvydasDerzinskas/Thingport). It has no servers of its own and sends nothing to the developer or any third party.
 
 HOW TO TEST
 1. A Thingport server is required. {{testServer}}
@@ -11,10 +11,10 @@ HOW TO TEST
 
 PERMISSIONS
 - storage: the server address, sign-in and recent imports.
-- cookies: reads the MakerWorld session cookie, on makerworld.com only, which MakerWorld requires for downloads, and the MyMiniFactory session cookie, on myminifactory.com only, which downloads the user's bought models from their own library, and reads and renews the Snapmaker Space sign-in cookies, on snapmaker.com only, which Snapmaker requires for any download. The MakerWorld and MyMiniFactory cookies and the Snapmaker access token are sent only to the user's own server; the Snapmaker refresh token is sent only to Snapmaker's own sign-in service (id.snapmaker.com), to renew the sign-in.
+- cookies: reads the MakerWorld session cookie, on makerworld.com only, which MakerWorld requires for downloads, and the MyMiniFactory session cookie, on myminifactory.com only, which downloads the user's bought models from their own library, and reads and renews the Snapmaker Space sign-in cookies, on snapmaker.com only, which Snapmaker requires for any download, and the MakerOnline sign-in cookie, on makeronline.com only, which reads the user's likes and private collections. The MakerWorld and MyMiniFactory cookies and the Snapmaker and MakerOnline access tokens are sent only to the user's own server; the Snapmaker refresh token is sent only to Snapmaker's own sign-in service (id.snapmaker.com), to renew the sign-in.
 - downloads: reads the link from a download MakerWorld's page starts, then cancels it.
 - alarms: renews the Snapmaker Space sign-in every few hours, as it lasts a day; only once the user has turned Snapmaker Space on.
-- scripting: registers the content script on MyMiniFactory and Snapmaker Space, and on model sites added in later versions, once the user allows them.
-- host access: the three model sites; the user's own server address (requested at setup); and, optionally, newer model sites (such as MyMiniFactory and Snapmaker Space), each requested only when the user clicks "Enable" next to it under Providers in the popup, so model sites added in later versions need no new required permission. The content script is only ever registered on supported model sites.
+- scripting: registers the content script on MyMiniFactory, Snapmaker Space and MakerOnline, and on model sites added in later versions, once the user allows them. On MakerOnline it also runs a function in the page itself (world: MAIN) that calls the site's own download endpoint, as its Download button does: MakerOnline signs file links only for requests carrying a token from its own in-page security script.
+- host access: the three model sites; the user's own server address (requested at setup); and, optionally, newer model sites (such as MyMiniFactory, Snapmaker Space and MakerOnline), each requested only when the user clicks "Enable" next to it under Providers in the popup, so model sites added in later versions need no new required permission. The content script is only ever registered on supported model sites.
 
 The code isn't minified or obfuscated. Documentation: https://thingport.net/docs/grab/ Privacy policy: https://github.com/TautvydasDerzinskas/Thingport/blob/main/extension/PRIVACY.md

@@ -19,6 +19,7 @@ import { getPrintablesToken, printablesPushDue, pushPrintables, reportProviderAc
 import { getRecentImports } from "./recentImports";
 import { syncMyminifactorySession } from "./myminifactorySession";
 import { scheduleSnapmakerRenewal, SNAPMAKER_ALARM, syncSnapmakerSession } from "./snapmakerSession";
+import { importMakeronlineModel, runWaitingImports, syncMakeronlineSession } from "./makeronline";
 import { onPairingTabClosed, onPairingTabUrl, startPairing } from "./pairing";
 import { openSetup } from "./setup";
 import { setTabIconState } from "./tabIcon";
@@ -40,6 +41,9 @@ listen<BackgroundMessages>({
   REPORT_PROVIDER_ACCOUNT: ({ provider, value }) => reportProviderAccount(provider, value),
   SYNC_MYMINIFACTORY_SESSION: () => syncMyminifactorySession(),
   SYNC_SNAPMAKER_SESSION: () => syncSnapmakerSession(),
+  SYNC_MAKERONLINE_SESSION: () => syncMakeronlineSession(),
+  IMPORT_MAKERONLINE_MODEL: (payload, sender) => importMakeronlineModel(senderTabId(sender), payload),
+  RUN_MAKERONLINE_WAITING: (_payload, sender) => runWaitingImports(senderTabId(sender)),
   PRINTABLES_PUSH_DUE: ({ now }) => printablesPushDue({ now }),
   PUSH_PRINTABLES: (push) => pushPrintables(push),
   OPEN_SETUP: (_payload, sender) => openSetup(sender.tab?.id),

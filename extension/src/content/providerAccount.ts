@@ -4,6 +4,7 @@
 
 import { request, send } from "../shared/messages";
 import { printablesToken, readMe, readPrintables } from "./printables";
+import { providerEnabled } from "./providerSettings";
 import { sleep } from "./runtime";
 
 // The header is drawn after load; give up quietly if it never shows (e.g. signed out).
@@ -72,8 +73,20 @@ async function syncPrintables(): Promise<void> {
   }
 }
 
+/** Sends the MakerOnline sign-in on, then imports what waits for Grab: this page can sign its files. */
+async function syncMakeronline(): Promise<void> {
+  if (!(await providerEnabled("makeronline"))) return;
+  const { userId } = await request("SYNC_MAKERONLINE_SESSION").catch(() => ({ userId: null }));
+  if (userId) await send("RUN_MAKERONLINE_WAITING");
+}
+
 export function captureProviderAccount(hostname: string): void {
   if (captured) return;
+  if (/(^|\.)makeronline\.com$/i.test(hostname)) {
+    captured = true;
+    void syncMakeronline();
+    return;
+  }
   if (hostname === "space.snapmaker.com") {
     captured = true;
     // Its sign-in downloads the files, and lasts a day: kept fresh by the background, and sent on.

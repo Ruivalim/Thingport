@@ -35,6 +35,8 @@ import {
   type SnapmakerList,
 } from "./snapmakerApi";
 import { getUserSnapmakerToken, SNAPMAKER_CONNECT } from "./snapmakerSessionService";
+import { parseMakeronlineModelUrl } from "./makeronlineApi";
+import { queueGrabImport } from "./grabImportService";
 import { upsertAuthorFromImport } from "./authorService";
 import { extractZipEntriesToPrints } from "./zipService";
 import { fetchThingiverseCollectionTitle } from "./thingiverseApi";
@@ -1001,6 +1003,8 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
     let processed = (await countJobItems(jobId, "DONE")) + (await countJobItems(jobId, "FAILED"));
     // The models this run brought in new, for a sync's notification.
     const newPrintIds: string[] = [];
+    // MakerOnline links, handed to Thingport Grab: only it can get their files.
+    let waitingForGrab = 0;
 
     for (const [index, item] of items.entries()) {
       if (index > 0 && body.itemDelayMs) await sleep(body.itemDelayMs);
@@ -1011,6 +1015,20 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
       }
       const options = parseQueuedLinkOptions(item.payload);
       const itemBody: LinksImportJobBody = options.scope ? { ...body, scope: options.scope } : body;
+      if (parseMakeronlineModelUrl(item.url)) {
+        await queueGrabImport(userId, item.url, {
+          scope: itemBody.scope,
+          collectionId: options.collection_id,
+          categoryId: body.category_id,
+          tags: body.tags,
+          notes: body.notes,
+        });
+        waitingForGrab++;
+        await updateJobItem(item.id, { status: "DONE", errorMessage: null }).catch(() => undefined);
+        processed++;
+        await updateJob(jobId, { processed }).catch(() => undefined);
+        continue;
+      }
       await updateJobItem(item.id, { status: "RUNNING" }).catch(() => undefined);
       let attempts = item.attempts;
       let itemError: string | null = null;
@@ -1155,6 +1173,11 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
 
     const bodyParts: string[] = [];
     if (profilesProcessed) bodyParts.push(`${profilesImported} of ${profilesProcessed} print profiles imported`);
+    if (waitingForGrab) {
+      bodyParts.push(
+        `${waitingForGrab} from MakerOnline wait for Thingport Grab, which imports them the next time you open makeronline.com`,
+      );
+    }
     if (alreadyInLibrary) bodyParts.push(`${alreadyInLibrary} already in your library`);
     if (stopReason === "rateLimited") {
       bodyParts.push(

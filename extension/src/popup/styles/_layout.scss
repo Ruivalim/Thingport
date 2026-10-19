@@ -164,6 +164,24 @@ body {
     font-size: t.$font-size-xs;
   }
 
+  // Not available yet: faded, with the button greyed out.
+  &--soon {
+    > svg,
+    .site__name {
+      opacity: 0.5;
+    }
+
+    > svg {
+      filter: grayscale(1);
+    }
+  }
+
+  &__soon {
+    display: inline-flex;
+    flex-shrink: 0;
+    cursor: default;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     &__tick--new {
       animation: none;

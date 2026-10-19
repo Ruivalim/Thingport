@@ -16,6 +16,12 @@ export const IMPORT_PROVIDER_INFO: Record<string, ImportProviderInfo> = {
     color: "text.primary",
     textColor: (theme) => (theme.palette.mode === "dark" ? "#FFFFFF" : theme.palette.background.paper),
   },
+  // MakerOnline's mark is black and white too.
+  makeronline: {
+    label: "MakerOnline",
+    color: "text.primary",
+    textColor: (theme) => (theme.palette.mode === "dark" ? "#FFFFFF" : theme.palette.background.paper),
+  },
   // Direct uploads (source_provider is null). Monochrome so it doesn't compete with provider badges;
   // dark mode uses flat white for contrast against the chip.
   thingport: {

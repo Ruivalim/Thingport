@@ -12,7 +12,14 @@ import type { ImportProvider } from "../api/settings";
 
 const ICON_SIZE = 18;
 const BUBBLE_SIZE = 10;
-const LOGO_PROVIDERS = new Set<string>(["makerworld", "thingiverse", "printables", "myminifactory", "snapmaker"]);
+const LOGO_PROVIDERS = new Set<string>([
+  "makerworld",
+  "thingiverse",
+  "printables",
+  "myminifactory",
+  "snapmaker",
+  "makeronline",
+]);
 
 /** The provider's logo with a small green tick, slim enough for a toolbar row. Opens the
  *  collection's sync configuration. */

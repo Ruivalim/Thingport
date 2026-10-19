@@ -1,5 +1,6 @@
-// Thingiverse, Printables, MyMiniFactory and Snapmaker Space import directly; other links go through /import/inspect
-// first, like the web app's useUploadImport.tsx.
+// Thingiverse, Printables, MyMiniFactory, Snapmaker Space and MakerOnline import directly; other links go through
+// /import/inspect first, like the web app's useUploadImport.tsx. MakerOnline's files are signed on its own page first
+// (see background/makeronline.ts).
 
 import type { FillGapsResult, InspectResult, SourceGap, ZipEntriesResult } from "../../shared/api";
 import { request } from "../../shared/messages";
@@ -17,6 +18,7 @@ import {
 } from "../makerworld/pageData";
 import { api, escapeHtml } from "../runtime";
 import { loadSnapmakerProfiles } from "../snapmaker";
+import { loadMakeronlineProfiles } from "../makeronline";
 import { onPanelAction, panelQuery, panelQueryAll, renderPanel } from "../shell";
 import { collectionIdFor, collectionPickerHtml, readCollectionChoice, wireCollectionPicker } from "./collectionPicker";
 import { errorHtml, statusHtml, successHtml } from "./results";
@@ -48,11 +50,12 @@ function isPaidMyminifactoryObject(): boolean {
 // Several profile resolutions in a quick burst still look automated to MakerWorld.
 const PROFILE_GAP_MS = 2000;
 
-/** The print profile ids a scope brings, the page's own first: MakerWorld's from its page data, Snapmaker's from its
- *  API. Null on other sites, or when they can't be read. */
+/** The print profile ids a scope brings, the page's own first: MakerWorld's from its page data, Snapmaker's and
+ *  MakerOnline's from their APIs. Null on other sites, or when they can't be read. */
 async function profileIdsFor(): Promise<((scope: MakerworldProfileScope) => string[]) | null> {
   const { url, classification } = ctx();
   if (classification.provider === "snapmaker" && classification.type === "model") return loadSnapmakerProfiles(url);
+  if (classification.provider === "makeronline" && classification.type === "model") return loadMakeronlineProfiles(url);
   if (classification.provider !== "makerworld" || classification.type !== "model") return null;
   const page = await loadMakerworldDesignForPage(url);
   return page ? (scope) => makerworldProfileIds(page.design, scope, page.requestedInstanceId) : null;
@@ -88,9 +91,10 @@ function importHeading(): string {
   return title ? `Import "${escapeHtml(title)}"` : "Import this model";
 }
 
-/** Admins only: the same import, but waiting paused in the instance's import queue. */
+/** Admins only: the same import, but waiting paused in the instance's import queue. Not on MakerOnline: the queue
+ *  can't get its files, so it would only hand the link back to Grab. */
 function queueButtonHtml(): string {
-  return ctx().canQueue
+  return ctx().canQueue && ctx().classification.provider !== "makeronline"
     ? `<button class="tg-btn tg-btn--secondary" type="button" data-action="queue">Add to the queue</button>`
     : "";
 }
@@ -134,7 +138,8 @@ export async function loadSingleItem(): Promise<void> {
     (provider === "thingiverse" && type === "thing") ||
     (provider === "printables" && type === "model") ||
     (provider === "myminifactory" && type === "object") ||
-    (provider === "snapmaker" && type === "model");
+    (provider === "snapmaker" && type === "model") ||
+    (provider === "makeronline" && type === "model");
 
   let zipFilename: string | null = null;
   if (skipInspect) {
@@ -295,6 +300,10 @@ async function runDirectImport(opts?: { entries?: string[] }): Promise<void> {
   const choice = readCollectionChoice();
   if (choice === "missing-name") return;
   const scope = selectedProfileScope();
+  if (ctx().classification.provider === "makeronline") {
+    await runMakeronlineImport(scope, await collectionIdFor(choice));
+    return;
+  }
   if (scope !== "url") {
     await runProfilesImport(scope, await collectionIdFor(choice));
     return;
@@ -325,6 +334,28 @@ async function runDirectImport(opts?: { entries?: string[] }): Promise<void> {
     }
   } catch (err) {
     renderBlockedError(err, "url", collectionId);
+  }
+}
+
+/** Every profile the scope picks comes down in one import: the page signs their files, the instance makes one model
+ *  of them. */
+async function runMakeronlineImport(scope: MakerworldProfileScope, collectionId: string | null): Promise<void> {
+  const { url, instanceUrl, title } = ctx();
+  renderFunStatus(importingPhrases("makeronline"));
+  try {
+    const print = await request("IMPORT_MAKERONLINE_MODEL", { url, scope, collectionId, title: title ?? null });
+    const link = print ? `${instanceUrl}/models/${print.id}` : `${instanceUrl}/models`;
+    if (print?.import_outcome === "profile_added") {
+      renderPanel(successHtml(link, "Added the print profiles' files to the model you already had.", "Profile added"));
+    } else if (print?.import_outcome === "already_imported") {
+      renderPanel(
+        successHtml(link, "These files were already on the model -- nothing new was added.", "Already in your library"),
+      );
+    } else {
+      renderPanel(successHtml(link));
+    }
+  } catch (err) {
+    renderPanel(errorHtml(err));
   }
 }
 

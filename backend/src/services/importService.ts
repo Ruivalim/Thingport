@@ -93,11 +93,17 @@ import {
   type SnapmakerFile,
 } from "./snapmakerApi";
 import { getUserSnapmakerToken, markSnapmakerTokenRejected, SNAPMAKER_CONNECT } from "./snapmakerSessionService";
+import { isMakeronlineFileHost, parseMakeronlineModelUrl, resolveMakeronlineModel } from "./makeronlineApi";
+import { clearGrabImports } from "./grabImportService";
 
 /** An import refused because the user's MyMiniFactory session has expired. */
 export const MYMINIFACTORY_SESSION_CODE = "myminifactory_session";
 /** An import refused because the user hasn't connected Snapmaker, or their sign-in has run out. */
 export const SNAPMAKER_SESSION_CODE = "snapmaker_session";
+/** A MakerOnline import that came without the signed file links only Thingport Grab can get. */
+export const MAKERONLINE_GRAB_CODE = "makeronline_grab";
+export const MAKERONLINE_NEEDS_GRAB =
+  "MakerOnline only gives its files to its own pages: import it with Thingport Grab on makeronline.com.";
 import { listZipEntries, readZipEntry } from "../utils/zipReader";
 import { getMyminifactoryApiKey, getThingiverseAccessToken } from "./settingsService";
 import { upsertAuthorFromImport } from "./authorService";
@@ -133,6 +139,9 @@ export type ImportRequestBody = ImportCookies & {
   resolved_download_url?: string | null;
   /** The MakerWorld profile resolved_download_url downloads, when known. */
   resolved_instance_id?: string | null;
+  /** MakerOnline's files, their links signed by Thingport Grab on a makeronline.com page; `profile_id` tags a print
+   *  profile's 3MF. */
+  resolved_files?: { url: string; name: string; profile_id?: string | null }[] | null;
   /** The page's MakerWorld design data, so the backend needn't fetch a Cloudflare-gated page.
    *  Client-supplied -- see makerworldMetaFromExtension. */
   makerworld_design?: Record<string, unknown> | null;
@@ -583,6 +592,7 @@ const CATEGORY_SITE_CAT_IDS_FIELD = {
   printables: "printablesCatIds",
   myminifactory: "myminifactoryCatIds",
   snapmaker: "snapmakerCatIds",
+  makeronline: "makeronlineCatIds",
 } as const;
 
 /** Auto-categorizes an import when a category's `*CatIds` for this site overlap the model's own
@@ -622,13 +632,16 @@ export function identifySourceModel(url: string): { provider: string; externalId
   if (myminifactory) return { provider: "myminifactory", externalId: myminifactory.objectId };
   const snapmaker = parseSnapmakerModelUrl(url);
   if (snapmaker) return { provider: "snapmaker", externalId: snapmaker.modelId };
+  const makeronline = parseMakeronlineModelUrl(url);
+  if (makeronline) return { provider: "makeronline", externalId: makeronline.modelId };
   return null;
 }
 
-/** The print profile a MakerWorld or Snapmaker link names, if any. */
+/** The print profile a MakerWorld, Snapmaker or MakerOnline link names, if any. */
 function requestedProfileOf(provider: string, url: string): string | null {
   if (provider === "makerworld") return parseMakerworldModelUrl(url)?.requestedInstanceId ?? null;
   if (provider === "snapmaker") return parseSnapmakerModelUrl(url)?.requestedProfileId ?? null;
+  if (provider === "makeronline") return parseMakeronlineModelUrl(url)?.requestedProfileId ?? null;
   return null;
 }
 
@@ -674,6 +687,7 @@ export function buildImportSourceUrl(provider: string | null, externalId: string
   // MyMiniFactory redirects an object id with any slug, or none, to its page.
   if (provider === "myminifactory") return `https://www.myminifactory.com/object/3d-print-${externalId}`;
   if (provider === "snapmaker") return `https://space.snapmaker.com/en/model/${externalId}`;
+  if (provider === "makeronline") return `https://www.makeronline.com/en/model/${externalId}`;
   return null;
 }
 
@@ -1240,10 +1254,26 @@ const SNAPMAKER_BLOCKED =
   "Snapmaker blocked the file download (rate limit). This usually clears after a while -- wait, then retry the same import.";
 
 /** One of a Snapmaker model's signed files; a zip is unpacked into its model files. Null when it didn't download. */
-async function downloadSnapmakerFile(file: SnapmakerFile): Promise<NewPlateInput[] | null> {
-  if (!isSnapmakerFileHost(new URL(file.url).hostname)) return null;
+function downloadSnapmakerFile(file: SnapmakerFile): Promise<NewPlateInput[] | null> {
+  return downloadSignedFile(file, isSnapmakerFileHost, SNAPMAKER_BLOCKED);
+}
+
+/** A provider's signed file link, on one of its own hosts; a zip is unpacked into its model files. Null when it
+ *  didn't download. */
+async function downloadSignedFile(
+  file: { url: string; name: string },
+  isFileHost: (hostname: string) => boolean,
+  blockedMessage: string,
+): Promise<NewPlateInput[] | null> {
+  let hostname: string;
+  try {
+    hostname = new URL(file.url).hostname;
+  } catch {
+    return null;
+  }
+  if (!isFileHost(hostname)) return null;
   const result = await downloadPlainFileToTemp(file.url, file.name);
-  if (result && "rateLimited" in result) throw new HttpError(429, SNAPMAKER_BLOCKED);
+  if (result && "rateLimited" in result) throw new HttpError(429, blockedMessage);
   if (!result) return null;
   const ext = path.extname(result.input.filename).toLowerCase();
   if (ext === ".zip") {
@@ -1326,6 +1356,19 @@ async function importSnapmakerModel(
   }
   if (!downloaded.length) throw new HttpError(400, "This Snapmaker model has no files Thingport can import.");
 
+  return createSourcedPrint(userId, source, body, resolved, downloaded, `snapmaker-${source.externalId}`);
+}
+
+/** A new print from a provider model whose files are downloaded: its metadata, author, category and gallery. Removes
+ *  the temp files either way. */
+async function createSourcedPrint(
+  userId: string,
+  source: { provider: string; externalId: string },
+  body: ImportRequestBody,
+  resolved: { meta: Partial<ImportedPageMetadata>; galleryImages: { url: string; filename: string }[] },
+  downloaded: NewPlateInput[],
+  nameHint: string,
+): Promise<ImportResult> {
   const { meta, galleryImages } = resolved;
   try {
     const author = await upsertAuthorFromImport(meta.author ?? null);
@@ -1345,7 +1388,7 @@ async function importSnapmakerModel(
     };
     let created: { print: Print; plates: Plate[] };
     try {
-      created = await createPrint(userId, printMeta, meta.title || `snapmaker-${source.externalId}`, downloaded);
+      created = await createPrint(userId, printMeta, meta.title || nameHint, downloaded);
     } catch (err) {
       // Race guard: a concurrent import of the same source model won.
       if (isUniqueConstraintError(err)) {
@@ -1398,6 +1441,84 @@ async function addSnapmakerProfileToPrint(
   return addProfilePlate(existing, profile, wanted);
 }
 
+const MAKERONLINE_BLOCKED =
+  "MakerOnline blocked the file download (rate limit). This usually clears after a while -- wait, then try again.";
+
+/** MakerOnline's files as Grab signed them: a profile's 3MF tagged with the profile, a model's own files untagged.
+ *  Throws once nothing came down, since the signed links run out quickly. */
+async function downloadMakeronlineFiles(
+  files: NonNullable<ImportRequestBody["resolved_files"]>,
+): Promise<NewPlateInput[]> {
+  const downloaded: NewPlateInput[] = [];
+  try {
+    for (const file of files) {
+      const inputs = (await downloadSignedFile(file, isMakeronlineFileHost, MAKERONLINE_BLOCKED)) ?? [];
+      if (!file.profile_id) {
+        downloaded.push(...inputs);
+        continue;
+      }
+      // A profile is one 3MF; anything else it unpacked to is dropped.
+      await Promise.all(
+        inputs.slice(1).map((input) => fs.rm(input.tempFilePath!, { force: true }).catch(() => undefined)),
+      );
+      if (inputs[0]) downloaded.push({ ...inputs[0], sourceInstanceId: file.profile_id });
+    }
+  } catch (err) {
+    await Promise.all(downloaded.map((input) => fs.rm(input.tempFilePath!, { force: true }).catch(() => undefined)));
+    throw err;
+  }
+  if (!downloaded.length) {
+    throw new HttpError(
+      400,
+      "Couldn't download this model's files from MakerOnline: the signed links may have run out. Try again from its page.",
+    );
+  }
+  return downloaded;
+}
+
+/** Like Snapmaker: a model is one print, each print profile its 3MF on a plate of its own, tagged with the profile,
+ *  and a model without profiles brings its model files. The details come from MakerOnline's public API; the files
+ *  only with links Grab signed (see grabImportService.ts). */
+async function importMakeronlineModel(
+  userId: string,
+  source: { provider: string; externalId: string },
+  body: ImportRequestBody,
+): Promise<ImportResult> {
+  if (!body.resolved_files?.length) throw new HttpError(409, MAKERONLINE_NEEDS_GRAB, MAKERONLINE_GRAB_CODE);
+  const resolved = await resolveMakeronlineModel(source.externalId);
+  if (!resolved) throw new HttpError(404, "This MakerOnline model could not be found, or isn't public.");
+  const downloaded = await downloadMakeronlineFiles(body.resolved_files);
+  return createSourcedPrint(userId, source, body, resolved, downloaded, `makeronline-${source.externalId}`);
+}
+
+/** Re-import of a MakerOnline model with print profiles it doesn't have yet: each becomes another plate. Anything
+ *  else is already in the library, and needs no download. */
+async function addMakeronlineProfilesToPrint(
+  existing: ExistingImportedPrint,
+  body: ImportRequestBody,
+): Promise<ImportResult> {
+  const have = new Set(existing.plates.map((plate) => plate.sourceInstanceId));
+  const wanted = (body.resolved_files ?? []).filter((file) => file.profile_id && !have.has(file.profile_id));
+  if (!wanted.length) return { ...existing, alreadyImported: true };
+  const inputs = await downloadMakeronlineFiles(wanted);
+  let current: ExistingImportedPrint = existing;
+  let profileAdded = false;
+  try {
+    for (const input of inputs) {
+      const result = await addProfilePlate(current, input, input.sourceInstanceId!);
+      profileAdded ||= Boolean(result.profileAdded);
+      current = result;
+    }
+  } finally {
+    for (const input of inputs) {
+      if (input.tempFilePath && fsSync.existsSync(input.tempFilePath)) {
+        await fs.rm(input.tempFilePath, { force: true }).catch(() => undefined);
+      }
+    }
+  }
+  return profileAdded ? { ...current, alreadyImported: false, profileAdded } : { ...current, alreadyImported: true };
+}
+
 type ImportResult = {
   print: Print;
   plates: Plate[];
@@ -1410,19 +1531,29 @@ type ImportResult = {
 
 /** Returns the existing print with `alreadyImported: true` instead of re-downloading a model
  * this user already imported. Every import path comes through here, so each new model is recorded
- * as one activity, whether it came alone or in a job. */
-export async function importPrintFromUrl(userId: string, url: string, body: ImportRequestBody): Promise<ImportResult> {
+ * as one activity, whether it came alone or in a job. `keepGrabImports`: the caller clears what
+ * waits for Grab itself, once it's done with it. */
+export async function importPrintFromUrl(
+  userId: string,
+  url: string,
+  body: ImportRequestBody,
+  { keepGrabImports = false } = {},
+): Promise<ImportResult> {
   const result = await importNewOrExisting(userId, url, body);
+  // However it came in, nothing need wait for Grab to bring it.
+  if (!keepGrabImports && result.print.sourceProvider === "makeronline" && result.print.sourceExternalId) {
+    await clearGrabImports(userId, result.print.sourceExternalId).catch(() => undefined);
+  }
   if (!result.alreadyImported && !result.profileAdded)
     void recordActivity(userId, "import", result.print.id, result.print.name);
   return result;
 }
 
 /** Providers whose re-import of a model may add a print profile, so fetches. */
-const PROFILE_PROVIDERS = new Set(["makerworld", "snapmaker"]);
+const PROFILE_PROVIDERS = new Set(["makerworld", "snapmaker", "makeronline"]);
 
-/** Refuses a link from a provider an admin turned off, unless it's a model the user already has (MakerWorld and
- *  Snapmaker add a profile, so fetch). */
+/** Refuses a link from a provider an admin turned off, unless it's a model the user already has (MakerWorld, Snapmaker
+ *  and MakerOnline add a profile, so fetch). */
 export async function assertCanImportUrl(userId: string, url: string): Promise<void> {
   const source = identifySourceModel(url);
   if (source && !PROFILE_PROVIDERS.has(source.provider) && (await findExistingImportedPrint(userId, source))) return;
@@ -1437,6 +1568,7 @@ async function importNewOrExisting(userId: string, url: string, body: ImportRequ
   if (existing && !PROFILE_PROVIDERS.has(source!.provider)) return { ...existing, alreadyImported: true };
   await assertUrlProviderEnabled(url);
   if (existing && source?.provider === "snapmaker") return addSnapmakerProfileToPrint(existing, url, body);
+  if (existing && source?.provider === "makeronline") return addMakeronlineProfilesToPrint(existing, body);
   if (existing) return addMakerworldProfileToPrint(existing, url, body);
 
   if (source?.provider === "thingiverse") {
@@ -1450,6 +1582,9 @@ async function importNewOrExisting(userId: string, url: string, body: ImportRequ
   }
   if (source?.provider === "snapmaker") {
     return importSnapmakerModel(userId, source, url, body);
+  }
+  if (source?.provider === "makeronline") {
+    return importMakeronlineModel(userId, source, body);
   }
 
   const { tempPath, filename, mime, meta } = await downloadImportToTemp(url, body);

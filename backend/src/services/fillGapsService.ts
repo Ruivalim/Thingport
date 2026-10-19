@@ -20,6 +20,7 @@ import { parsePrintablesModelUrl, resolvePrintablesModel } from "./printablesApi
 import { getMyminifactoryApiKey, getThingiverseAccessToken } from "./settingsService";
 import { MyminifactoryAuthError, MyminifactoryRateLimitError, resolveMyminifactoryObject } from "./myminifactoryApi";
 import { resolveSnapmakerModel } from "./snapmakerApi";
+import { resolveMakeronlineModel } from "./makeronlineApi";
 import { getUserMakerworldCookie } from "./makerworldCookieService";
 import { upsertAuthorFromImport } from "./authorService";
 import { emptyGaps, openSourceGaps, type SourceGap } from "./sourceGaps";
@@ -100,6 +101,12 @@ export async function fetchSourceMeta(userId: string, print: Print, sourceUrl: s
   if (provider === "snapmaker") {
     const resolved = await resolveSnapmakerModel(externalId);
     if (!resolved) throw new HttpError(404, "This Snapmaker model could not be found, or isn't public.");
+    return { ...emptyImportedPageMetadata(), ...resolved.meta, galleryImages: resolved.galleryImages };
+  }
+
+  if (provider === "makeronline") {
+    const resolved = await resolveMakeronlineModel(externalId);
+    if (!resolved) throw new HttpError(404, "This MakerOnline model could not be found, or isn't public.");
     return { ...emptyImportedPageMetadata(), ...resolved.meta, galleryImages: resolved.galleryImages };
   }
 

@@ -78,6 +78,14 @@ model User {
   snapmakerUserId          String?
   // When Snapmaker last turned the token down.
   snapmakerRejectedAt      DateTime?
+  // The user's MakerOnline access token (a JWT, valid about 90 days), from its mo_access_token cookie. It reads
+  // models, likes and collections; files only download through Thingport Grab (see GrabImport).
+  makeronlineToken         String?
+  makeronlineTokenExpires  DateTime?
+  // Their MakerOnline user id, from the token: their likes are synced under it.
+  makeronlineUserId        String?
+  // When MakerOnline last turned the token down.
+  makeronlineRejectedAt    DateTime?
   slicer                   String?
   // "light" | "dark" | "system"; null means never set.
   themePreference          String?
@@ -102,6 +110,7 @@ model User {
   collectionSyncs          CollectionSync[]
   providerListings         ProviderListing[]
   importJobs               ImportJob[]
+  grabImports              GrabImport[]
   notifications            Notification[]
   systemReceipts           SystemReceipt[]
   logs                     Log[]
@@ -150,6 +159,7 @@ model Category {
   printablesCatIds    Int[]      @default([])
   myminifactoryCatIds Int[]      @default([])
   snapmakerCatIds     Int[]      @default([])
+  makeronlineCatIds   Int[]      @default([])
   prints              Print[]
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
@@ -161,6 +171,7 @@ model Category {
   @@index([printablesCatIds], type: Gin)
   @@index([myminifactoryCatIds], type: Gin)
   @@index([snapmakerCatIds], type: Gin)
+  @@index([makeronlineCatIds], type: Gin)
 }
 
 model Print {
@@ -289,6 +300,29 @@ model ProviderListing {
   updatedAt DateTime @updatedAt
 
   @@unique([userId, provider, key])
+}
+
+/// An import waiting for Thingport Grab. MakerOnline signs its download links only for a page its own anti-bot script
+/// runs on, so a MakerOnline import started in the app, the queue or a sync waits here until Grab, on the next
+/// makeronline.com page it sees, signs the files and imports it.
+model GrabImport {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// The model's page, with `#profileId-<id>` when it names a print profile.
+  url          String
+  /// "url" | "designer" | "all", as for MakerWorld.
+  scope        String   @default("url")
+  collectionId String?
+  categoryId   String?
+  tags         String[] @default([])
+  notes        String?
+  attempts     Int      @default(0)
+  lastError    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, url])
 }
 
 enum BookmarkType {

@@ -1,7 +1,7 @@
 # Thingport Grab
 
 A browser extension for Chrome, Edge and Firefox that imports MakerWorld, Thingiverse, Printables
-MyMiniFactory and Snapmaker Space models into your self-hosted Thingport instance without leaving the provider's site.
+MyMiniFactory, Snapmaker Space and MakerOnline models into your self-hosted Thingport instance without leaving the provider's site.
 Visiting a model, collection, or Thingiverse Likes page shows a floating Thingport icon; clicking it
 opens a small panel to pick what to import (and, for a single model, an optional destination
 collection), then imports it the same way Thingport's own "+ Add > Import" does.
@@ -191,12 +191,21 @@ Grab may renew it: a Snapmaker sign-in can be renewed once, and renewing it twic
 own profile's **Interactions** tab, the panel imports your likes or bookmarks (a switch picks which), and can keep
 either in sync.
 
+### MakerOnline: files only through Grab
+
+MakerOnline gives its files only to its own pages: its download call needs a token its in-page security script makes.
+So Grab gets each file's link signed from the page itself, the way its Download button does, and hands the links to
+Thingport. A MakerOnline import started anywhere else -- a link pasted in Thingport, a collection imported there, a
+synced collection's new models -- waits on your instance, and Grab imports it on the next makeronline.com page you open.
+Opening MakerOnline signed in also connects your account, for your likes and private collections. Firefox needs
+version 128 or newer for this.
+
 ## What counts as "importable"
 
 - A single model page (MakerWorld, a Thingiverse Thing, a Printables Model, a MyMiniFactory object, a Snapmaker Space
-  model) -- hidden automatically once you've already imported that exact page.
-- A MakerWorld collection, a Thingiverse Collection or Likes page, a Printables or MyMiniFactory collection, or your
-  own Snapmaker Space likes and bookmarks -- lets you import the listed designs in one go.
+  or MakerOnline model) -- hidden automatically once you've already imported that exact page.
+- A MakerWorld collection, a Thingiverse Collection or Likes page, a Printables, MyMiniFactory or MakerOnline
+  collection, your MakerOnline likes, or your own Snapmaker Space likes and bookmarks -- lets you import the listed designs in one go.
 
 Picking a destination collection is only offered for a single-model import; a batch import instead
 lands in Thingport's own auto-named collection for that batch (e.g. "Thingiverse likes (@username)"), matching
