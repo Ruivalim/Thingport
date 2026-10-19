@@ -8,13 +8,19 @@ import { apiCall, requireConfig } from "./api";
 const SITE = "https://thangs.com";
 const JWT = /^eyJ[\w-]+\.eyJ[\w-]+\.[\w-]+$/;
 
-async function cookieValue(name: string): Promise<string> {
+/** The cookie's token, "" when there is none, or undefined when it couldn't be read. */
+async function cookieValue(name: string): Promise<string | undefined> {
+  let raw: string | undefined;
   try {
-    const cookie = await chrome.cookies.get({ url: SITE, name });
-    const value = cookie?.value ? decodeURIComponent(cookie.value) : "";
+    raw = (await chrome.cookies.get({ url: SITE, name }))?.value;
+  } catch {
+    return undefined; // Not readable: no reason to think the user signed out.
+  }
+  try {
+    const value = raw ? decodeURIComponent(raw) : "";
     return JWT.test(value) ? value : "";
   } catch {
-    return ""; // Unreadable, or malformed percent-encoding: not a token.
+    return ""; // Malformed percent-encoding: not a token.
   }
 }
 
@@ -23,6 +29,7 @@ export async function syncThangsSession(): Promise<void> {
   const config = await requireConfig().catch(() => null);
   if (!config) return;
   const [token, refreshToken] = await Promise.all([cookieValue("accessToken"), cookieValue("refreshToken")]);
+  if (token === undefined || refreshToken === undefined) return;
   // Per Thingport account, so switching the extension to another one sends it there too.
   const account = `${config.instanceUrl} ${config.email}`;
   const last = config.lastSyncedThangsSession;

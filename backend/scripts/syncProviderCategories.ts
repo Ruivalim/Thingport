@@ -47,7 +47,8 @@ async function json(
   init: { method?: "GET" | "POST"; body?: string; headers?: Record<string, string> } = {},
 ) {
   const res = await browserFetch(url, { ...init, headers: { Accept: "application/json", ...init.headers } });
-  if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+  // Without the query string, which can carry an API key.
+  if (!res.ok) throw new Error(`${url.split("?")[0]}: HTTP ${res.status}`);
   return res.json() as Promise<unknown>;
 }
 
@@ -178,7 +179,10 @@ const FETCHERS: Record<string, () => Promise<Entry[]>> = {
   let failed = false;
   for (const [provider, fetch] of Object.entries(FETCHERS)) {
     try {
-      catalog[provider] = await fetch();
+      const entries = await fetch();
+      // A changed payload shape reads as no categories rather than an error.
+      if (!entries.length) throw new Error("no categories in the response");
+      catalog[provider] = entries;
       console.log(`${provider}: ${catalog[provider].length} categories`);
     } catch (err) {
       failed = true;
