@@ -504,8 +504,25 @@ export type ImportedPageMetadata = {
   makerworldProfile?: MakerworldProfileRef;
 };
 
-/** `coverUrl`: the profile's own picture on MakerWorld, which becomes its plate's thumbnail. */
-export type MakerworldProfileRef = { instanceId: string | null; coverUrl?: string | null };
+/** `coverUrl`: the profile's own picture on MakerWorld, which becomes its plate's thumbnail. `titles`: every profile's
+ *  name by id, which tells the design's profile files apart when they share a filename. */
+export type MakerworldProfileRef = {
+  instanceId: string | null;
+  coverUrl?: string | null;
+  titles?: Record<string, string>;
+};
+
+/** Every profile's name, by id. */
+export function makerworldInstanceTitles(design: unknown): Record<string, string> {
+  const instances = design && typeof design === "object" ? (design as Record<string, unknown>).instances : null;
+  const titles: Record<string, string> = {};
+  for (const inst of Array.isArray(instances) ? instances : []) {
+    if (!inst || typeof inst !== "object") continue;
+    const { id, title } = inst as Record<string, unknown>;
+    if (id != null && typeof title === "string" && title.trim()) titles[String(id)] = title.trim();
+  }
+  return titles;
+}
 
 /** A profile's own picture: its `cover`, else the first of its `pictures`. */
 export function makerworldInstanceCover(design: unknown, instanceId: string | null): string | null {
@@ -655,7 +672,11 @@ export async function resolveMakerworldDownloadUrl(
   let design: unknown = null;
   const asDefault = (downloadUrl: string) => ({
     downloadUrl,
-    profile: { instanceId: defaultInstanceId, coverUrl: makerworldInstanceCover(design, defaultInstanceId) },
+    profile: {
+      instanceId: defaultInstanceId,
+      coverUrl: makerworldInstanceCover(design, defaultInstanceId),
+      titles: makerworldInstanceTitles(design),
+    },
   });
   if (nextData) {
     design = getPath(nextData, "props", "pageProps", "design");
@@ -672,8 +693,10 @@ export async function resolveMakerworldDownloadUrl(
 
   if (instanceId) {
     const url = await fetchMakerworldInstanceDownloadUrl(instanceId, pageUrl, makerworldCookie);
-    if (url)
-      return { downloadUrl: url, profile: { instanceId, coverUrl: makerworldInstanceCover(design, instanceId) } };
+    if (url) {
+      const coverUrl = makerworldInstanceCover(design, instanceId);
+      return { downloadUrl: url, profile: { instanceId, coverUrl, titles: makerworldInstanceTitles(design) } };
+    }
   }
 
   const modelId = designId || makerworldModelIdFromUrl(pageUrl);

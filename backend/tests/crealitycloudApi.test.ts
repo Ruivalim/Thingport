@@ -165,6 +165,8 @@ const PROFILES = [
     secondName: "0.2mm layer, 2 walls",
     printerName: "Ender-3 V3 Plus",
     isAuth: true,
+    covers: [{ url: "https://pic2-cdn.creality.com/crealityCloud/upload/profile.webp" }],
+    thumbnail: "https://pic2-cdn.creality.com/pic/plate.png",
     userInfo: { userId: 4247093750 },
   },
   {
@@ -172,6 +174,7 @@ const PROFILES = [
     secondName: "0.16mm layer",
     printerName: "SPARKX i7",
     isAuth: false,
+    thumbnail: "https://pic2-cdn.creality.com/pic/other-plate.png",
     userInfo: { userId: 4055423748 },
   },
 ];
@@ -197,6 +200,11 @@ describe("Creality Cloud model details", () => {
     expect(resolved.profiles.map((p) => [p.title, p.designers])).toEqual([
       ["0.2mm layer, 2 walls (Ender-3 V3 Plus)", true],
       ["0.16mm layer (SPARKX i7)", false],
+    ]);
+    // A profile's own picture, else its plate's render.
+    expect(resolved.profiles.map((p) => p.coverUrl)).toEqual([
+      "https://pic2-cdn.creality.com/crealityCloud/upload/profile.webp",
+      "https://pic2-cdn.creality.com/pic/other-plate.png",
     ]);
   });
 

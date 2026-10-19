@@ -104,6 +104,7 @@ const DETAIL = {
       id: 176077,
       title: "Kobra X profile",
       user_id: "designer-uuid",
+      main_image: "https://cdn-acop.makeronline.com/asop/profile.png",
       files: [
         { key: "13d314", file_name: "scraper.3mf", print_profile_id: 176077 },
         { key: "13d314", file_name: "scraper.3mf", print_profile_id: 176077 },
@@ -134,9 +135,9 @@ describe("MakerOnline model details", () => {
       handle: "3DPrintOfficial_1",
       links: ["https://www.makeronline.com/en/user/personalInfo/designer-uuid.html"],
     });
-    expect(profiles.map((p) => [p.id, p.fileKey])).toEqual([
-      ["176077", "13d314"],
-      ["215390", "d1aee5"],
+    expect(profiles.map((p) => [p.id, p.fileKey, p.coverUrl])).toEqual([
+      ["176077", "13d314", "https://cdn-acop.makeronline.com/asop/profile.png"],
+      ["215390", "d1aee5", null],
     ]);
     expect(modelFiles).toHaveLength(2);
   });

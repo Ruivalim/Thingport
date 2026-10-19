@@ -8,6 +8,7 @@ import {
 import {
   makerworldAuthorFromDesignCreator,
   makerworldInstanceCover,
+  makerworldInstanceTitles,
   makerworldMetaFromDesign,
   type ImportedAuthorInfo,
   type ImportedPageMetadata,
@@ -390,6 +391,7 @@ export async function resolveMakerworldViaCloudApi(
       makerworldProfile: {
         instanceId: selected.id != null ? String(selected.id) : null,
         coverUrl: makerworldInstanceCover(design, selected.id != null ? String(selected.id) : null),
+        titles: makerworldInstanceTitles(design),
       },
     },
   };

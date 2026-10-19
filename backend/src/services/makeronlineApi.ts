@@ -128,6 +128,8 @@ export type MakeronlineProfile = {
   /** The profile's 3MF; all its plates share it. */
   fileKey: string | null;
   fileName: string | null;
+  /** The profile's own picture, which becomes its file's thumbnail. */
+  coverUrl: string | null;
 };
 
 /** One of the model's own files (STLs and the like), as the download call names it. */
@@ -208,6 +210,7 @@ export function makeronlineMetaFromDetail(detail: Record<string, unknown>): Make
           creatorId: str(profile.user_id),
           fileKey: str(file?.key),
           fileName: str(file?.file_name),
+          coverUrl: str(profile.main_image),
         },
       ];
     },

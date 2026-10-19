@@ -162,6 +162,7 @@ const DETAIL = {
       id: "2109988470411608064",
       settingOutId: "G6354239",
       settingName: "0.2mm layer, 2 walls, 15% infill",
+      settingCoverImgUrl: "https://np.nexprint.com/images/1/profile.png",
       userId: "2109966715818881024",
       isCreator: true,
       open: true,
@@ -196,9 +197,9 @@ describe("NexPrint model details", () => {
       name: "Cute Animals",
       links: ["https://www.nexprint.com/en/U0030208991/home"],
     });
-    expect(resolved.profiles.map((p) => [p.id, p.designers])).toEqual([
-      ["G6354239", true],
-      ["G6354240", false],
+    expect(resolved.profiles.map((p) => [p.id, p.designers, p.coverUrl])).toEqual([
+      ["G6354239", true, "https://np.nexprint.com/images/1/profile.png"],
+      ["G6354240", false, null],
     ]);
     // The profile's 3MF isn't counted again as a model file.
     expect(resolved.files).toEqual([{ fileId: "2109986422412034999", name: "Dog.stl" }]);
