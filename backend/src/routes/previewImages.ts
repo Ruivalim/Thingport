@@ -7,9 +7,8 @@ import { HttpError } from "../utils/fileUtils";
 import { parseBody } from "../utils/validate";
 import { asyncHandler } from "../utils/asyncHandler";
 import { thumbnailUpload } from "../uploadMiddleware";
-import { addPreviewImage, previewImagePath } from "../services/previewImageService";
+import { addPreviewImage, preferImageOverRenders, previewImagePath } from "../services/previewImageService";
 import { printOutById } from "../services/printLoader";
-import { plateThumbExists, saveThumbFromBytes } from "../services/printService";
 
 const router = Router();
 router.use(requireAuth);
@@ -22,14 +21,16 @@ router.post(
     if (!files.length) throw new HttpError(400, "No files uploaded");
     const print = await prisma.print.findFirst({ where: { id: req.params.id, userId: req.userId } });
     if (!print) throw new HttpError(404, "Print not found");
-    // As with an import's gallery, the first image becomes the card thumbnail when the first plate has
-    // none, so the model isn't rendered for one.
+    // As with an import's gallery, the first image becomes the cover and card thumbnail in place of our render.
     const firstPlate = await prisma.plate.findFirst({ where: { printId: print.id }, orderBy: { position: "asc" } });
-    let thumbSeeded = !firstPlate || plateThumbExists(firstPlate.id);
+    let preferred = false;
     // Undecodable files are skipped rather than failing the batch.
     for (const file of files) {
       const added = await addPreviewImage(print.id, file.buffer);
-      if (added && !thumbSeeded) thumbSeeded = await saveThumbFromBytes(firstPlate!.id, file.buffer);
+      if (added && !preferred) {
+        preferred = true;
+        await preferImageOverRenders(print.id, firstPlate?.id, file.buffer);
+      }
     }
     res.json({ print: await printOutById(req.userId!, print.id) });
   }),

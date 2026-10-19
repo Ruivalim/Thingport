@@ -151,8 +151,8 @@ import {
   type NewPlateInput,
   type PrintMetaInput,
 } from "./printCreation";
-import { availablePlateFilename, plateThumbReplaceable, relocatePrint, saveThumbFromBytes } from "./printService";
-import { addPreviewImage, removeGeneratedPreviewImages } from "./previewImageService";
+import { availablePlateFilename, relocatePrint, saveThumbFromBytes } from "./printService";
+import { addPreviewImage, preferImageOverRenders } from "./previewImageService";
 import { localizeDescriptionImages } from "./descriptionImageService";
 import { prisma } from "../db";
 import { recordActivity } from "./activityService";
@@ -782,8 +782,7 @@ export async function attachImportedPreviewImages(
     const added = await addPreviewImage(printId, buf);
     if (added && !firstAdded) {
       firstAdded = true;
-      await removeGeneratedPreviewImages(printId);
-      if (plateId && (await plateThumbReplaceable(plateId))) await saveThumbFromBytes(plateId, buf);
+      await preferImageOverRenders(printId, plateId, buf);
     }
   }
 }
