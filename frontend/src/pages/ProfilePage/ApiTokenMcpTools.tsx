@@ -9,6 +9,7 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { authApi, type ApiTokenInfo, type McpToolInfo } from "../../api/auth";
 import { UnauthorizedError } from "../../api/client";
+import { useConfirm } from "../../components/ConfirmProvider";
 
 type Props = {
   info: ApiTokenInfo;
@@ -20,6 +21,7 @@ type Props = {
  *  unsaved state to lose; a refused save puts the box back. */
 export default function ApiTokenMcpTools({ info, onChange, onUnauthorized }: Props) {
   const { t, i18n } = useTranslation(["app", "common"]);
+  const confirm = useConfirm();
   const [saving, setSaving] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   // Ahead of the server while a save is in flight; back in step with it once the save answers.
@@ -33,10 +35,20 @@ export default function ApiTokenMcpTools({ info, onChange, onUnauthorized }: Pro
     return i18n.exists(key, { ns: "app" }) ? t(key) : tool[part];
   };
 
-  const toggle = async (name: string, on: boolean) => {
+  const toggle = async (tool: McpToolInfo, on: boolean) => {
+    const name = tool.name;
+    // Reading needs no second thought; letting an assistant change the library does.
+    if (on && !tool.read_only) {
+      const ok = await confirm({
+        title: t("profile.apiToken.mcp.writeConfirmTitle", { tool: label(tool, "title") }),
+        message: t("profile.apiToken.mcp.writeConfirmMessage"),
+        confirmLabel: t("profile.apiToken.mcp.writeConfirm"),
+      });
+      if (!ok) return;
+    }
     const next = info.available_mcp_tools
-      .map((tool) => tool.name)
-      .filter((tool) => (tool === name ? on : enabled.has(tool)));
+      .map((available) => available.name)
+      .filter((other) => (other === name ? on : enabled.has(other)));
     setSelected(next);
     setSaving(name);
     setError(null);
@@ -70,7 +82,7 @@ export default function ApiTokenMcpTools({ info, onChange, onUnauthorized }: Pro
                 sx={{ pt: 0.25 }}
                 checked={enabled.has(tool.name)}
                 disabled={saving !== null}
-                onChange={(e) => void toggle(tool.name, e.target.checked)}
+                onChange={(e) => void toggle(tool, e.target.checked)}
               />
             }
             label={

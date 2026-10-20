@@ -246,8 +246,27 @@
             "library_stats": {
               "title": "Library stats",
               "description": "Your totals, most viewed, most printed and newest models."
+            },
+            "get_import_status": {
+              "title": "Check an import",
+              "description": "Follow an import that's still running."
+            },
+            "import_model": {
+              "title": "Import a model",
+              "description": "Import a model from a link, as + Add > Import does."
+            },
+            "create_collection": {
+              "title": "Create a collection",
+              "description": "Make a new, empty collection."
+            },
+            "add_to_collection": {
+              "title": "Add to a collection",
+              "description": "Put models from your library in one of your collections."
             }
-          }
+          },
+          "writeConfirmTitle": "Let the assistant use “{{tool}}”?",
+          "writeConfirmMessage": "This tool changes your library. An assistant connected with this token will be able to use it without asking you each time. Nothing it does deletes models.",
+          "writeConfirm": "Turn on"
         }
       },
       "language": {

@@ -247,8 +247,27 @@
             "library_stats": {
               "title": "Bibliotekos statistika",
               "description": "Jūsų suvestinė, daugiausiai peržiūrėti, spausdinti ir naujausi modeliai."
+            },
+            "get_import_status": {
+              "title": "Importo būsena",
+              "description": "Sekti importą, kuris dar vyksta."
+            },
+            "import_model": {
+              "title": "Importuoti modelį",
+              "description": "Importuoti modelį iš nuorodos, kaip + Pridėti > Importuoti."
+            },
+            "create_collection": {
+              "title": "Sukurti kolekciją",
+              "description": "Sukurti naują, tuščią kolekciją."
+            },
+            "add_to_collection": {
+              "title": "Įtraukti į kolekciją",
+              "description": "Įdėti bibliotekos modelius į vieną iš jūsų kolekcijų."
             }
-          }
+          },
+          "writeConfirmTitle": "Leisti asistentui naudoti „{{tool}}“?",
+          "writeConfirmMessage": "Šis įrankis keičia jūsų biblioteką. Su šiuo raktu prijungtas asistentas galės jį naudoti kiekvieną kartą jūsų neklausdamas. Jis niekada netrina modelių.",
+          "writeConfirm": "Įjungti"
         }
       },
       "language": {
