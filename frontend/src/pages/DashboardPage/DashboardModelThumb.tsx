@@ -16,8 +16,9 @@ const SIZE = 40;
  */
 export default function DashboardModelThumb({ model }: { model: DashboardModel }) {
   const [preference] = useCardPreview();
-  const [renderUnavailable, setRenderUnavailable] = useState(false);
-  const onUnavailable = useCallback(() => setRenderUnavailable(true), []);
+  // The render that couldn't be shown, so a new one for this row still gets its try.
+  const [failedRender, setFailedRender] = useState<string | null>(null);
+  const onUnavailable = useCallback(() => setFailedRender(model.render_url), [model.render_url]);
 
   // Hidden until the choice is known, so the lists don't flash the wrong picture.
   if (preference === null) return <ListItemAvatar sx={{ minWidth: 48 }} />;
@@ -28,7 +29,9 @@ export default function DashboardModelThumb({ model }: { model: DashboardModel }
     </Avatar>
   );
   const renderUrl =
-    model.render_url && !renderUnavailable && (preference === "renders" || !photo) ? model.render_url : null;
+    model.render_url && model.render_url !== failedRender && (preference === "renders" || !photo)
+      ? model.render_url
+      : null;
   return (
     <ListItemAvatar sx={{ minWidth: 48 }}>
       {renderUrl ? (

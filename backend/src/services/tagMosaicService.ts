@@ -78,7 +78,7 @@ function renderCover(plateId: string | null): Picture | null {
 }
 
 /** Each of `tags`' pictures of each kind, from its newest models that have one; joins images and plates for those
- *  alone, once for every kind. */
+ *  alone, in one query every kind shares. */
 export async function tagPictures(
   prints: TaggedPrint[],
   tags: string[],
