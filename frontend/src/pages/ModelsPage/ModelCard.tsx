@@ -170,7 +170,11 @@ export default function ModelCard({
         )}
       </Box>
 
-      <ProviderBadge provider={item.source_provider} sx={{ position: "absolute", top: 8, left: 8 }} />
+      <ProviderBadge
+        provider={item.source_provider}
+        interactive={!selectMode}
+        sx={{ position: "absolute", top: 8, left: 8 }}
+      />
 
       {selectMode && (
         <Box

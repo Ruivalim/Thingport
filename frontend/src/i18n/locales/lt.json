@@ -3088,6 +3088,7 @@
       "aiActions": "DI veiksmai",
       "improveDescriptions": "Patobulinti aprašymus naudojant DI",
       "aiRunActive": "DI jau vykdo užduotį",
+      "aiTooMany": "DI užduočiai pažymėkite ne daugiau kaip {{max}} modelių",
       "addToCollectionTitle_one": "Pridėti {{count}} modelį prie kolekcijos",
       "addToCollectionTitle_few": "Pridėti {{count}} modelius prie kolekcijos",
       "addToCollectionTitle_other": "Pridėti {{count}} modelių prie kolekcijos",

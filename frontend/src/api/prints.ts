@@ -149,6 +149,15 @@ export type DownloadZipSummary = {
   size_bytes: number;
 };
 
+/** The most ids one bulk request (delete, favourite, an AI run) accepts. */
+export const BULK_LIMIT = 500;
+
+function bulkChunks(ids: string[]): string[][] {
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += BULK_LIMIT) chunks.push(ids.slice(i, i + BULK_LIMIT));
+  return chunks;
+}
+
 export const printsApi = {
   fileUrl: (rel: string) => {
     if (!rel) return rel;
@@ -452,25 +461,36 @@ export const printsApi = {
 
   /** Each model on its own: the ones that fail are counted, the rest are still deleted. */
   bulkDelete: async (ids: string[]): Promise<{ deleted: string[]; failed: number }> => {
-    const res = await fetch(`${apiBase()}/prints/delete`, {
-      method: "POST",
-      headers: authHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ print_ids: ids }),
-    });
-    if (res.status === 401) throw new UnauthorizedError();
-    if (!res.ok) throw new Error(await readErrorMessage(res, "Delete failed"));
-    return res.json();
+    const result = { deleted: [] as string[], failed: 0 };
+    for (const chunk of bulkChunks(ids)) {
+      const res = await fetch(`${apiBase()}/prints/delete`, {
+        method: "POST",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ print_ids: chunk }),
+      });
+      if (res.status === 401) throw new UnauthorizedError();
+      if (!res.ok) throw new Error(await readErrorMessage(res, "Delete failed"));
+      const part = (await res.json()) as { deleted: string[]; failed: number };
+      result.deleted.push(...part.deleted);
+      result.failed += part.failed;
+    }
+    return result;
   },
 
   bulkFavorite: async (ids: string[], favorite: boolean): Promise<Print[]> => {
-    const res = await fetch(`${apiBase()}/prints/favorite`, {
-      method: "POST",
-      headers: authHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ print_ids: ids, favorite }),
-    });
-    if (res.status === 401) throw new UnauthorizedError();
-    if (!res.ok) throw new Error(await readErrorMessage(res, favorite ? "Failed to favorite" : "Failed to unfavorite"));
-    return ((await res.json()) as { prints: Print[] }).prints;
+    const prints: Print[] = [];
+    for (const chunk of bulkChunks(ids)) {
+      const res = await fetch(`${apiBase()}/prints/favorite`, {
+        method: "POST",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ print_ids: chunk, favorite }),
+      });
+      if (res.status === 401) throw new UnauthorizedError();
+      if (!res.ok)
+        throw new Error(await readErrorMessage(res, favorite ? "Failed to favorite" : "Failed to unfavorite"));
+      prints.push(...((await res.json()) as { prints: Print[] }).prints);
+    }
+    return prints;
   },
 
   updateCategory: async (id: string, category_id: string | null) => {

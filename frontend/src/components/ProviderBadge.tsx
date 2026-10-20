@@ -24,15 +24,18 @@ type Props = {
   provider: string | null | undefined;
   /** The badge's width and height, in px. */
   size?: number;
+  /** Off while the card it sits on is a selectable checkbox: no tab stop, and clicks reach the card. */
+  interactive?: boolean;
   sx?: SxProps<Theme>;
 };
 
 /** Where a model came from, as the provider's logo on a round badge; its chip shows on hover or focus. A click opens
  *  the provider's About dialog; a direct upload's Thingport badge has none. */
-export default function ProviderBadge({ provider, size = 28, sx }: Props) {
+export default function ProviderBadge({ provider, size = 28, interactive = true, sx }: Props) {
   const { t } = useTranslation(["models", "app"]);
   const theme = useTheme();
-  const openAbout = useProviderAbout(provider);
+  const about = useProviderAbout(provider);
+  const openAbout = interactive ? about : undefined;
   const info = printProviderInfo(provider);
   const label = provider ? t("card.importedFrom", { provider: info.label }) : t("card.uploadedDirectly");
   const logoSize = Math.round(size * 0.6);
@@ -57,7 +60,7 @@ export default function ProviderBadge({ provider, size = 28, sx }: Props) {
       slotProps={{ tooltip: { sx: { bgcolor: "transparent", p: 0, boxShadow: 3, borderRadius: 1 } } }}
     >
       <Box
-        tabIndex={0}
+        tabIndex={interactive ? 0 : undefined}
         {...(openAbout && {
           role: "button",
           "aria-label": `${label}. ${t("app:providerAbout.aboutName", { name: info.label })}`,
@@ -86,6 +89,7 @@ export default function ProviderBadge({ provider, size = 28, sx }: Props) {
             borderColor: "divider",
             boxShadow: 2,
             cursor: openAbout ? "pointer" : "default",
+            ...(!interactive && { pointerEvents: "none" }),
             transition: "transform 150ms ease",
             "&:hover, &:focus-visible": { transform: "scale(1.08)" },
             "&:focus-visible": { outline: `2px solid ${theme.palette.primary.main}`, outlineOffset: 2 },

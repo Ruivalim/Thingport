@@ -25,7 +25,7 @@ import AutoFixNormalIcon from "@mui/icons-material/AutoFixNormal";
 import SelectAllIcon from "@mui/icons-material/SelectAll";
 import DeselectIcon from "@mui/icons-material/Deselect";
 import { UnauthorizedError } from "../../api/client";
-import { type Print, printsApi } from "../../api/prints";
+import { BULK_LIMIT, type Print, printsApi } from "../../api/prints";
 import { AiCategorizationError, aiCategorizationApi } from "../../api/aiCategorization";
 import { aiDescriptionsApi } from "../../api/aiDescriptions";
 import { collectionsApi } from "../../api/collections";
@@ -85,6 +85,8 @@ export default function ModelSelectionToolbar({
   const allSelected = count > 0 && count === total;
   const allFavorite = count > 0 && selected.every((item) => item.is_favorite);
   const disabled = count === 0 || busy !== null;
+  // An AI run is one request, so unlike delete and favourite it can't be split.
+  const tooManyForAi = count > BULK_LIMIT;
 
   // Both statuses are cached for the session, so this costs nothing after the first grid.
   useEffect(() => {
@@ -185,12 +187,15 @@ export default function ModelSelectionToolbar({
         item.category_source !== "rule",
     ).length;
     const includeManual =
-      handPicked > 0 &&
-      (await confirm({
-        message: t("models:selection.confirmManual", { count: handPicked }),
-        confirmLabel: t("models:selection.includeManual"),
-        cancelLabel: t("models:selection.skipManual"),
-      }));
+      handPicked > 0
+        ? await confirm({
+            message: t("models:selection.confirmManual", { count: handPicked }),
+            confirmLabel: t("models:selection.includeManual"),
+            cancelLabel: t("models:selection.skipManual"),
+          })
+        : false;
+    // Dismissed: neither "include" nor "skip", so nothing runs.
+    if (includeManual === null) return;
     setBusy("ai");
     try {
       await categorization.startRun({
@@ -232,6 +237,13 @@ export default function ModelSelectionToolbar({
       </span>
     </Tooltip>
   );
+
+  const aiHint = (running: boolean) =>
+    running
+      ? t("models:selection.aiRunActive")
+      : tooManyForAi
+        ? t("models:selection.aiTooMany", { max: BULK_LIMIT })
+        : undefined;
 
   const favoriteLabel = allFavorite ? t("models:detail.removeFromFavorites") : t("models:detail.addToFavorites");
   const selectAllLabel = allSelected
@@ -330,21 +342,21 @@ export default function ModelSelectionToolbar({
 
       <Menu anchorEl={aiMenuAnchor} open={Boolean(aiMenuAnchor)} onClose={() => setAiMenuAnchor(null)}>
         {aiEnabled && (
-          <MenuItem onClick={() => void categorize()} disabled={categorization.running}>
+          <MenuItem onClick={() => void categorize()} disabled={categorization.running || tooManyForAi}>
             <ListItemIcon>
               <AutoAwesomeIcon fontSize="small" />
             </ListItemIcon>
-            <ListItemText secondary={categorization.running ? t("models:selection.aiRunActive") : undefined}>
+            <ListItemText secondary={aiHint(categorization.running)}>
               {t("models:aiCategorization.categorize")}
             </ListItemText>
           </MenuItem>
         )}
         {descriptionsEnabled && (
-          <MenuItem onClick={() => void improveDescriptions()} disabled={descriptions.running}>
+          <MenuItem onClick={() => void improveDescriptions()} disabled={descriptions.running || tooManyForAi}>
             <ListItemIcon>
               <AutoFixNormalIcon fontSize="small" />
             </ListItemIcon>
-            <ListItemText secondary={descriptions.running ? t("models:selection.aiRunActive") : undefined}>
+            <ListItemText secondary={aiHint(descriptions.running)}>
               {t("models:selection.improveDescriptions")}
             </ListItemText>
           </MenuItem>

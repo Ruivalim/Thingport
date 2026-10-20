@@ -3012,6 +3012,7 @@
       "aiActions": "AI actions",
       "improveDescriptions": "Improve descriptions with AI",
       "aiRunActive": "An AI run is already in progress",
+      "aiTooMany": "Select up to {{max}} models for an AI run",
       "addToCollectionTitle_one": "Add {{count}} model to a collection",
       "addToCollectionTitle_other": "Add {{count}} models to a collection",
       "downloadTitle_one": "Download {{count}} model",
