@@ -8,10 +8,10 @@ import Stack from "@mui/material/Stack";
 import Avatar from "@mui/material/Avatar";
 import Typography from "@mui/material/Typography";
 import Tooltip from "@mui/material/Tooltip";
-import { alpha, useTheme } from "@mui/material/styles";
+import { useTheme } from "@mui/material/styles";
+import SelectionCheck from "../../components/selection/SelectionCheck";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import PrintIcon from "@mui/icons-material/Print";
-import CheckIcon from "@mui/icons-material/Check";
 import { type Print, printsApi } from "../../api/prints";
 import { type PreviewMode } from "../../api/settings";
 import { type ResolvedTheme } from "../../constants/settingsOptions";
@@ -178,40 +178,7 @@ export default function ModelCard({
         sx={{ position: "absolute", top: 8, left: 8 }}
       />
 
-      {selectMode && (
-        <Box
-          aria-hidden
-          sx={{
-            position: "absolute",
-            top: 8,
-            right: 8,
-            width: 24,
-            height: 24,
-            borderRadius: "50%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            border: 2,
-            borderColor: selected ? "primary.main" : "background.paper",
-            // A scrim, so the empty circle shows on light and dark previews alike.
-            bgcolor: selected ? "primary.main" : alpha(muiTheme.palette.common.black, 0.25),
-            color: "primary.contrastText",
-            boxShadow: 1,
-            transition: "background-color .15s ease, border-color .15s ease",
-            "@media (prefers-reduced-motion: reduce)": { transition: "none" },
-          }}
-        >
-          <CheckIcon
-            sx={{
-              fontSize: 16,
-              opacity: selected ? 1 : 0,
-              transform: selected ? "scale(1)" : "scale(0.4)",
-              transition: "opacity 150ms ease, transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1)",
-              "@media (prefers-reduced-motion: reduce)": { transition: "none" },
-            }}
-          />
-        </Box>
-      )}
+      {selectMode && <SelectionCheck selected={selected} />}
 
       {!selectMode && (
         <Stack
