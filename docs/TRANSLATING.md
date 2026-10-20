@@ -31,16 +31,18 @@ To improve an existing language, edit its file the same way; the commit type is 
 
 ## Plurals
 
-Text that depends on a number has one key per plural form, ending in `_one`, `_few`, `_many` or `_other`:
+Text that depends on a number has one key per plural form, ending in `_zero`, `_one`, `_two`, `_few`, `_many`
+or `_other`:
 
 ```json
 "minutesAgo_one": "{{count}} minute ago",
 "minutesAgo_other": "{{count}} minutes ago"
 ```
 
-Use the forms your language needs, which aren't always English's: Lithuanian, for example, adds `_few`. Check your
-language in the [Unicode plural rules](https://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html)
-and add or drop forms to match.
+Use the forms your language needs, which aren't always English's: Lithuanian, for example, adds `_few`, and Arabic
+and Welsh also use `_zero` and `_two`. Check your language in the
+[Unicode plural rules](https://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html) and add or
+drop forms to match; `i18n:check` below lists any form your language is missing.
 
 ## Check your translation
 

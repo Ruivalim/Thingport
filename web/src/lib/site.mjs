@@ -291,7 +291,7 @@ export const DOCS = [
     group: "Features",
     title: "Themes and languages",
     nav: "Themes and languages",
-    description: "Light, dark or system theme, in English or Lithuanian.",
+    description: "Light, dark or system theme, in any language Thingport is translated into.",
   },
   {
     slug: "guides/system-health",
