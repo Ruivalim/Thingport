@@ -46,7 +46,8 @@ import { settingsApi, type PreviewMode } from "./api/settings";
 import { clearToken, clearUser, readToken, readUser, storeToken, storeUser } from "./utils/auth";
 import { type AppSettings, type MakerWorldSettings, loadSettings, saveSettings } from "./utils/settings";
 import { useResolvedTheme } from "./hooks/useResolvedTheme";
-import type { ResolvedTheme, ThemeSelection } from "./constants/settingsOptions";
+import { setCachedAccentColor, useAccentColor } from "./hooks/useAccentColor";
+import { DEFAULT_ACCENT, type ResolvedTheme, type ThemeSelection } from "./constants/settingsOptions";
 import { buildTheme } from "./theme";
 
 const DEFAULT_REFRESH_SECONDS = 6 * 60 * 60; // 6 hours
@@ -309,7 +310,8 @@ export default function App() {
   // Server-persisted so it follows the account across devices.
   const [themeSelection, setThemeSelection] = React.useState<ThemeSelection>("light");
   const resolvedTheme = useResolvedTheme(themeSelection);
-  const muiTheme = React.useMemo(() => buildTheme(resolvedTheme), [resolvedTheme]);
+  const accent = useAccentColor();
+  const muiTheme = React.useMemo(() => buildTheme(resolvedTheme, accent), [resolvedTheme, accent]);
   // index.html's theme-color tags follow the OS; this makes the title bar follow the theme
   // actually shown, which can be a manual light/dark choice.
   React.useEffect(() => {
@@ -330,18 +332,29 @@ export default function App() {
     })();
   }, [token]);
   React.useEffect(() => {
-    if (!token) return;
+    // The accent is the account's, so another account signing in on this tab doesn't inherit it.
+    if (!token) {
+      setCachedAccentColor(DEFAULT_ACCENT);
+      return;
+    }
+    let active = true;
     (async () => {
       try {
-        const { theme } = await settingsApi.getTheme();
-        // Null means never set; keep the current theme.
-        if (theme) setThemeSelection(theme);
+        const saved = await settingsApi.getTheme();
+        // An answer for a token that's since changed belongs to someone else's session.
+        if (!active) return;
+        // Null means never set: the theme stays as it is, the accent is the default.
+        if (saved.theme) setThemeSelection(saved.theme);
+        setCachedAccentColor(saved.accent ?? DEFAULT_ACCENT);
       } catch {}
     })();
+    return () => {
+      active = false;
+    };
   }, [token]);
   const handleThemeChange = React.useCallback((selected: ThemeSelection) => {
     setThemeSelection(selected);
-    void settingsApi.updateTheme(selected).catch(() => {});
+    void settingsApi.updateTheme({ theme: selected }).catch(() => {});
   }, []);
   React.useEffect(() => {
     saveSettings(settings);

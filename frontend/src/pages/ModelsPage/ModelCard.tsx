@@ -276,7 +276,7 @@ export default function ModelCard({
                 minWidth: 0,
                 color: "#858585",
                 ...((author || showViewerAsAuthor) && !selectMode
-                  ? { cursor: "pointer", "&:hover": { color: "#00b800" } }
+                  ? { cursor: "pointer", "&:hover": { color: "primary.main" } }
                   : undefined),
               }}
               onClick={(e) => {

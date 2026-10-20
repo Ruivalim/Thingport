@@ -111,7 +111,12 @@ import {
   setConsumeSettings,
 } from "../services/consumeService";
 import { CONSUME_DIR } from "../config";
-import { THEME_SELECTIONS, getUserTheme, setUserTheme } from "../services/themePreferenceService";
+import {
+  ACCENT_COLORS,
+  THEME_SELECTIONS,
+  getUserThemePreferences,
+  setUserThemePreferences,
+} from "../services/themePreferenceService";
 import { getUserAuthorPreviewEnabled, setUserAuthorPreviewEnabled } from "../services/authorPreviewPreferenceService";
 import { checkForUpdates } from "../services/versionService";
 import { getWeatherLocation, setWeatherLocation, weatherLocationSchema } from "../services/weatherLocationService";
@@ -968,17 +973,19 @@ router.patch(
 router.get(
   "/settings/theme",
   asyncHandler(async (req, res) => {
-    res.json({ theme: await getUserTheme(req.userId!) });
+    res.json(await getUserThemePreferences(req.userId!));
   }),
 );
 
-const themeSettingsSchema = z.object({ theme: z.enum(THEME_SELECTIONS).nullable() });
+const themeSettingsSchema = z.object({
+  theme: z.enum(THEME_SELECTIONS).nullable().optional(),
+  accent: z.enum(ACCENT_COLORS).nullable().optional(),
+});
 router.patch(
   "/settings/theme",
   asyncHandler(async (req, res) => {
     const body = parseBody(themeSettingsSchema, req.body);
-    const theme = await setUserTheme(req.userId!, body.theme);
-    res.json({ theme });
+    res.json(await setUserThemePreferences(req.userId!, body));
   }),
 );
 

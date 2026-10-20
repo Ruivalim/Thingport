@@ -1640,7 +1640,17 @@
         "system": "Pagal sistemą"
       },
       "on": "Įjungta",
-      "off": "Išjungta"
+      "off": "Išjungta",
+      "accent": "Akcento spalva",
+      "accentFailed": "Nepavyko išsaugoti akcento spalvos.",
+      "accents": {
+        "green": "Thingport žalia",
+        "blue": "Thingiverse mėlyna",
+        "orange": "Printables oranžinė",
+        "amber": "Thangs geltona",
+        "teal": "MyMiniFactory žydra",
+        "purple": "Cults3D violetinė"
+      }
     },
     "configuration": {
       "title": "Konfigūracija",

@@ -1574,7 +1574,17 @@
         "system": "System"
       },
       "on": "On",
-      "off": "Off"
+      "off": "Off",
+      "accent": "Accent color",
+      "accentFailed": "Couldn't save the accent color.",
+      "accents": {
+        "green": "Thingport green",
+        "blue": "Thingiverse blue",
+        "orange": "Printables orange",
+        "amber": "Thangs yellow",
+        "teal": "MyMiniFactory teal",
+        "purple": "Cults3D purple"
+      }
     },
     "configuration": {
       "title": "Configuration",

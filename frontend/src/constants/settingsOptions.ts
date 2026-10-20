@@ -29,6 +29,10 @@ export const NORMALIZE_3MF_SLICER_IDS: ReadonlySet<string> = new Set([
 /** "system" follows prefers-color-scheme; resolve with useResolvedTheme before rendering. */
 export type ThemeSelection = "light" | "dark" | "system";
 export type ResolvedTheme = "light" | "dark";
+/** Kept in sync by hand with the backend's ACCENT_COLORS. Thingport green first, the rest from providers' brands. */
+export const ACCENT_COLORS = ["green", "blue", "orange", "amber", "teal", "purple"] as const;
+export type AccentColor = (typeof ACCENT_COLORS)[number];
+export const DEFAULT_ACCENT: AccentColor = "green";
 export type ThemeOption = { id: ThemeSelection; label: string; description: string };
 
 export const THEME_OPTIONS: ThemeOption[] = [
