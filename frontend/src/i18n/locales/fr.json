@@ -1592,7 +1592,7 @@
         "images": "Images",
         "renders": "Rendus 3D",
         "failed": "Impossible d’enregistrer le choix pour les cartes des modèles.",
-        "help": "Ce que les cartes des modèles affichent en premier. Images : les images fournies avec le modèle, ou un rendu 3D s’il n’en a pas. Rendus 3D : un rendu de chaque modèle dans votre couleur d’accent, ou ses images si le fichier ne peut pas être dessiné."
+        "help": "Ce que les cartes des modèles affichent en premier. Images : les images fournies avec le modèle, ou un rendu 3D s’il n’en a pas. Rendus 3D : un rendu de chaque modèle dans votre couleur de rendu, ou ses images si le fichier ne peut pas être dessiné."
       },
       "hoverSlideshow": {
         "heading": "Diaporama au survol",

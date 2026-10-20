@@ -1579,7 +1579,7 @@
         "images": "Images",
         "renders": "3D renders",
         "failed": "Couldn't save the model card choice.",
-        "help": "What model cards show first. Images: the pictures a model came with, or a 3D render where it has none. 3D renders: a render of every model in your accent color, or its pictures where the file can't be drawn."
+        "help": "What model cards show first. Images: the pictures a model came with, or a 3D render where it has none. 3D renders: a render of every model in your render color, or its pictures where the file can't be drawn."
       },
       "hoverSlideshow": {
         "heading": "Hover slideshow",

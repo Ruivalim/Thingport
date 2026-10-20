@@ -24,7 +24,7 @@ import {
 } from "../../../hooks/useAccentColor";
 import { setCachedAuthorPreviewEnabled, useAuthorPreviewEnabled } from "../../../hooks/useAuthorPreviewEnabled";
 import { useCardPreview } from "../../../hooks/useCardPreview";
-import { setCachedHoverSlideshowEnabled, useHoverSlideshowEnabled } from "../../../hooks/useHoverSlideshowEnabled";
+import { useHoverSlideshowEnabled } from "../../../hooks/useHoverSlideshowEnabled";
 import { accentSwatch, renderSwatch } from "../../../theme";
 import ColorSwatches from "../../controls/ColorSwatches";
 import Segmented from "../../controls/Segmented";
@@ -52,12 +52,19 @@ export default function AppearancePanel({ theme, onThemeChange, onUnauthorized }
   const [accentError, setAccentError] = React.useState<string | null>(null);
   const renderColor = useRenderColor();
   const [renderColorError, setRenderColorError] = React.useState<string | null>(null);
-  // Like the accent's: only the latest pick's failure may put the colour back.
-  const latestRenderColorSave = React.useRef(0);
-  // Picks can overlap; only the latest one's failure may put the accent back.
+  // Picks can overlap; only the latest one's failure may put the accent, or the render colour, back.
   const latestAccentSave = React.useRef(0);
+  const latestRenderColorSave = React.useRef(0);
+  // Accent and render colour saves go one at a time and in order, as a new accent clears the render colour on the
+  // server: one sent first but answered later would otherwise undo a newer pick.
+  const themeSaves = React.useRef<Promise<unknown>>(Promise.resolve());
+  const queueThemeSave = (patch: Parameters<typeof settingsApi.updateTheme>[0]) => {
+    const request = themeSaves.current.then(() => settingsApi.updateTheme(patch));
+    themeSaves.current = request.catch(() => undefined);
+    return request;
+  };
   const [cardPreviewError, setCardPreviewError] = React.useState<string | null>(null);
-  const hoverSlideshow = useHoverSlideshowEnabled();
+  const [hoverSlideshow, setHoverSlideshow] = useHoverSlideshowEnabled();
   const [hoverSlideshowError, setHoverSlideshowError] = React.useState<string | null>(null);
 
   const changeCardPreview = async (next: CardPreview) => {
@@ -74,17 +81,19 @@ export default function AppearancePanel({ theme, onThemeChange, onUnauthorized }
     const previous = accent;
     const previousRender = getCachedRenderColor();
     const save = ++latestAccentSave.current;
+    const renderSave = latestRenderColorSave.current;
     setAccentError(null);
     // The whole app recolours straight away, renders included, as the server puts the render colour back to
     // following the accent; put both back if the save fails.
     setCachedAccentColor(next);
     setCachedRenderColor(null);
     try {
-      await settingsApi.updateTheme({ accent: next });
+      await queueThemeSave({ accent: next });
     } catch (err) {
       if (save !== latestAccentSave.current) return;
       setCachedAccentColor(previous);
-      setCachedRenderColor(previousRender);
+      // A render colour picked since is newer than the one this save cleared.
+      if (renderSave === latestRenderColorSave.current) setCachedRenderColor(previousRender);
       if (err instanceof UnauthorizedError) onUnauthorized?.();
       else setAccentError(t("appearance.accentFailed"));
     }
@@ -96,7 +105,7 @@ export default function AppearancePanel({ theme, onThemeChange, onUnauthorized }
     setRenderColorError(null);
     setCachedRenderColor(next);
     try {
-      await settingsApi.updateTheme({ renderColor: next });
+      await queueThemeSave({ renderColor: next });
     } catch (err) {
       if (save !== latestRenderColorSave.current) return;
       setCachedRenderColor(previous);
@@ -107,13 +116,9 @@ export default function AppearancePanel({ theme, onThemeChange, onUnauthorized }
 
   const toggleHoverSlideshow = async (enabled: boolean) => {
     setHoverSlideshowError(null);
-    // Shown straight away; put back if the save fails.
-    setCachedHoverSlideshowEnabled(enabled);
     try {
-      const res = await settingsApi.updateHoverSlideshow(enabled);
-      setCachedHoverSlideshowEnabled(res.enabled);
+      await setHoverSlideshow(enabled);
     } catch (err) {
-      setCachedHoverSlideshowEnabled(!enabled);
       if (err instanceof UnauthorizedError) onUnauthorized?.();
       else setHoverSlideshowError(t("appearance.hoverSlideshow.failed"));
     }

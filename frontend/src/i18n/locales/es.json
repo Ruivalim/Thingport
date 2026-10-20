@@ -1579,7 +1579,7 @@
         "images": "Imágenes",
         "renders": "Renders 3D",
         "failed": "No se pudo guardar la opción de las tarjetas de modelos.",
-        "help": "Lo que muestran primero las tarjetas de modelos. Imágenes: las imágenes que trae el modelo, o un render 3D si no tiene ninguna. Renders 3D: un render de cada modelo en tu color de acento, o sus imágenes si el archivo no se puede dibujar."
+        "help": "Lo que muestran primero las tarjetas de modelos. Imágenes: las imágenes que trae el modelo, o un render 3D si no tiene ninguna. Renders 3D: un render de cada modelo en tu color del render, o sus imágenes si el archivo no se puede dibujar."
       },
       "hoverSlideshow": {
         "heading": "Presentación al pasar el cursor",

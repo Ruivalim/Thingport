@@ -73,13 +73,15 @@ function ProviderRow({ provider, countLabel }: { provider: string | null; countL
     </>
   );
   return openAbout ? (
-    <ListItemButton
-      onClick={openAbout}
-      aria-label={`${name}, ${countLabel}. ${t("providerAbout.aboutName", { name })}`}
-      sx={{ borderRadius: 1, px: 1 }}
-    >
-      {content}
-    </ListItemButton>
+    <ListItem disablePadding>
+      <ListItemButton
+        onClick={openAbout}
+        aria-label={`${name}, ${countLabel}. ${t("providerAbout.aboutName", { name })}`}
+        sx={{ borderRadius: 1, px: 1 }}
+      >
+        {content}
+      </ListItemButton>
+    </ListItem>
   ) : (
     <ListItem sx={{ px: 1 }}>{content}</ListItem>
   );

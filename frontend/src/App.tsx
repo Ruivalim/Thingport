@@ -48,6 +48,7 @@ import { type AppSettings, type MakerWorldSettings, loadSettings, saveSettings }
 import { useResolvedTheme } from "./hooks/useResolvedTheme";
 import { setCachedAccentColor, setCachedRenderColor, useAccentColor } from "./hooks/useAccentColor";
 import { resetCardPreview } from "./hooks/useCardPreview";
+import { resetHoverSlideshowEnabled } from "./hooks/useHoverSlideshowEnabled";
 import { DEFAULT_ACCENT, type ResolvedTheme, type ThemeSelection } from "./constants/settingsOptions";
 import { buildTheme } from "./theme";
 
@@ -367,6 +368,7 @@ export default function App() {
 
   const handleLogin = (tok: string, ttl: number, loggedInUser: AuthUser) => {
     resetCardPreview();
+    resetHoverSlideshowEnabled();
     storeToken(tok);
     storeUser(loggedInUser);
     setToken(tok);
