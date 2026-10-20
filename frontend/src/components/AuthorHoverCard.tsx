@@ -101,7 +101,7 @@ function AuthorPreviewCard({ authorId, viewer }: CardProps) {
         sx={{
           position: "relative",
           height: COVER_HEIGHT,
-          bgcolor: providerInfo?.color ?? "primary.main",
+          bgcolor: providerInfo && !providerInfo.outlined ? providerInfo.color : "primary.main",
           backgroundImage: coverUrl
             ? `url("${coverUrl}")`
             : "linear-gradient(135deg, rgba(255,255,255,0.18), rgba(0,0,0,0.25))",

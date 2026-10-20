@@ -1,4 +1,4 @@
-import type { AiConnection } from "@prisma/client";
+import type { AiConnection, ReasoningEffort } from "@prisma/client";
 import { currentStorageMove, startStorageMove, type StorageMoveRun } from "../services/storageMoveService";
 import { assertSavableStorageTemplate, storageTemplateProblems } from "../services/storageTemplateRules";
 import { Router } from "express";
@@ -27,6 +27,8 @@ import {
   setSimplifyPreviews,
   setSmtpSettings,
   setThingiverseAccessToken,
+  getMyminifactoryApiKey,
+  setMyminifactoryApiKey,
   type SmtpSettings,
   getAiCategorizationPrefs,
   setAiCategorizationPrefs,
@@ -48,6 +50,45 @@ import {
 import { getMakerworldConnection, setUserMakerworldCookie } from "../services/makerworldCookieService";
 import { type MakerworldCookieCheck, verifyMakerworldCookie } from "../services/makerworldCloudApi";
 import { verifyThingiverseAccessToken } from "../services/thingiverseApi";
+import { checkMyminifactoryApiKey, checkMyminifactorySession } from "../services/myminifactoryApi";
+import {
+  getMyminifactoryConnection,
+  normalizeMyminifactoryCookie,
+  setUserMyminifactoryCookie,
+} from "../services/myminifactorySessionService";
+import { checkSnapmakerToken } from "../services/snapmakerApi";
+import {
+  getSnapmakerConnection,
+  normalizeSnapmakerToken,
+  setUserSnapmakerToken,
+} from "../services/snapmakerSessionService";
+import { checkMakeronlineToken } from "../services/makeronlineApi";
+import {
+  getMakeronlineConnection,
+  normalizeMakeronlineToken,
+  setUserMakeronlineToken,
+} from "../services/makeronlineSessionService";
+import { checkCrealitycloudAuth } from "../services/crealitycloudApi";
+import {
+  getCrealitycloudConnection,
+  normalizeCrealitycloudSession,
+  setUserCrealitycloudSession,
+} from "../services/crealitycloudSessionService";
+import { checkNexprintAuth } from "../services/nexprintApi";
+import {
+  getNexprintConnection,
+  normalizeNexprintSession,
+  setUserNexprintSession,
+} from "../services/nexprintSessionService";
+import { checkThangsAuth, refreshThangsToken, ThangsAuthError } from "../services/thangsApi";
+import { getThangsConnection, normalizeThangsSession, setUserThangsSession } from "../services/thangsSessionService";
+import { checkCults3dCredentials } from "../services/cults3dApi";
+import {
+  getCults3dConnection,
+  normalizeCults3dBrowser,
+  setUserCults3dBrowser,
+  setUserCults3dCredentials,
+} from "../services/cults3dSessionService";
 import { SLICER_IDS, getUserSlicer, setUserSlicer } from "../services/slicerPreferenceService";
 import { CATEGORIES_VIEWS, getCategoriesView, setCategoriesView } from "../services/categoriesViewService";
 import {
@@ -346,6 +387,37 @@ router.post(
   }),
 );
 
+// Like Thingiverse's: readable by every user, and GET only says whether a key is set.
+router.get(
+  "/settings/myminifactory",
+  asyncHandler(async (_req, res) => {
+    res.json({ configured: Boolean(await getMyminifactoryApiKey()) });
+  }),
+);
+
+const MYMINIFACTORY_KEY_PROBLEMS = {
+  rejected: "MyMiniFactory rejected this API key. Check it in your MyMiniFactory account settings and try again.",
+  blocked:
+    "MyMiniFactory blocked the check (rate limit or Cloudflare challenge), so the key couldn't be verified. Wait a while and try again.",
+  unreachable: "Couldn't reach MyMiniFactory to verify this API key. Try again in a moment.",
+} as const;
+
+const myminifactorySettingsSchema = z.object({ api_key: z.string().nullable() });
+router.post(
+  "/settings/myminifactory",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const body = parseBody(myminifactorySettingsSchema, req.body);
+    const trimmed = (body.api_key ?? "").trim();
+    if (trimmed) {
+      const result = await checkMyminifactoryApiKey(trimmed);
+      if (result !== "ok") throw new HttpError(422, MYMINIFACTORY_KEY_PROBLEMS[result]);
+    }
+    await setMyminifactoryApiKey(body.api_key);
+    res.json({ configured: Boolean(trimmed) });
+  }),
+);
+
 function smtpSettingsOut(smtp: SmtpSettings) {
   return {
     host: smtp.host,
@@ -528,6 +600,350 @@ router.patch(
     }
     const configured = await setUserMakerworldCookie(req.userId!, body.cookie, { verified });
     res.json({ configured });
+  }),
+);
+
+// Per-user, beside the instance's MyMiniFactory API key: the session that downloads paid and login-only models.
+router.get(
+  "/settings/myminifactory-session",
+  asyncHandler(async (req, res) => {
+    const connection = await getMyminifactoryConnection(req.userId!);
+    res.json({ configured: connection !== "disconnected", expired: connection === "expired" });
+  }),
+);
+
+// `verify` is opt-in, as for MakerWorld: Thingport Grab sends a session it just read from a signed-in browser.
+const myminifactorySessionSchema = z.object({
+  cookie: z.string().max(10_000).nullable(),
+  verify: z.boolean().optional(),
+});
+router.patch(
+  "/settings/myminifactory-session",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(myminifactorySessionSchema, req.body);
+    const cookie = normalizeMyminifactoryCookie(body.cookie);
+    if ((body.cookie ?? "").trim() && !cookie) {
+      throw new HttpError(422, "That doesn't look like a MyMiniFactory session: paste the PHPSESSID cookie's value.");
+    }
+    let verified = false;
+    if (body.verify && cookie) {
+      const check = await checkMyminifactorySession(cookie);
+      if (check === "rejected") {
+        throw new HttpError(
+          422,
+          "MyMiniFactory didn't accept this session -- it may have expired. Copy a fresh PHPSESSID from a signed-in myminifactory.com tab and try again.",
+        );
+      }
+      // 503, not 422: nothing is known to be wrong with the session.
+      if (check === "unreachable")
+        throw new HttpError(503, "Couldn't reach MyMiniFactory to check this session. Try again in a moment.");
+      verified = true;
+    }
+    const configured = await setUserMyminifactoryCookie(req.userId!, cookie, { verified });
+    res.json({ configured });
+  }),
+);
+
+// Per-user: the Snapmaker access token, which Thingport Grab keeps sending as the browser's login is refreshed.
+router.get(
+  "/settings/snapmaker-session",
+  asyncHandler(async (req, res) => {
+    const connection = await getSnapmakerConnection(req.userId!);
+    res.json({ configured: connection !== "disconnected", expired: connection === "expired" });
+  }),
+);
+
+// `verify` is opt-in, as for MyMiniFactory: Thingport Grab sends a token it just read from a signed-in browser.
+const snapmakerSessionSchema = z.object({
+  token: z.string().max(10_000).nullable(),
+  verify: z.boolean().optional(),
+});
+router.patch(
+  "/settings/snapmaker-session",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(snapmakerSessionSchema, req.body);
+    const token = normalizeSnapmakerToken(body.token);
+    if ((body.token ?? "").trim() && !token) {
+      throw new HttpError(
+        422,
+        "That doesn't look like a Snapmaker sign-in: paste the login_access_token cookie's value.",
+      );
+    }
+    if (token?.expiresAt && token.expiresAt.getTime() <= Date.now()) {
+      throw new HttpError(422, "This Snapmaker sign-in has already expired. Copy a fresh one from a signed-in tab.");
+    }
+    if (body.verify && token) {
+      const check = await checkSnapmakerToken(token.token);
+      if (check === "rejected") {
+        throw new HttpError(
+          422,
+          "Snapmaker didn't accept this sign-in -- it may have expired. Copy a fresh login_access_token from a signed-in space.snapmaker.com tab and try again.",
+        );
+      }
+      // 503, not 422: nothing is known to be wrong with the token.
+      if (check === "unreachable")
+        throw new HttpError(503, "Couldn't reach Snapmaker to check this sign-in. Try again in a moment.");
+    }
+    const configured = await setUserSnapmakerToken(req.userId!, token);
+    res.json({ configured });
+  }),
+);
+
+// Per-user: the MakerOnline access token, which Thingport Grab sends whenever the browser's changes.
+router.get(
+  "/settings/makeronline-session",
+  asyncHandler(async (req, res) => {
+    const connection = await getMakeronlineConnection(req.userId!);
+    res.json({ configured: connection !== "disconnected", expired: connection === "expired" });
+  }),
+);
+
+const makeronlineSessionSchema = z.object({
+  token: z.string().max(10_000).nullable(),
+  verify: z.boolean().optional(),
+});
+router.patch(
+  "/settings/makeronline-session",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(makeronlineSessionSchema, req.body);
+    const token = normalizeMakeronlineToken(body.token);
+    if ((body.token ?? "").trim() && !token) {
+      throw new HttpError(
+        422,
+        "That doesn't look like a MakerOnline sign-in: paste the mo_access_token cookie's value.",
+      );
+    }
+    if (token?.expiresAt && token.expiresAt.getTime() <= Date.now()) {
+      throw new HttpError(422, "This MakerOnline sign-in has already expired. Copy a fresh one from a signed-in tab.");
+    }
+    if (body.verify && token) {
+      const check = await checkMakeronlineToken(token.token);
+      if (check === "rejected") {
+        throw new HttpError(
+          422,
+          "MakerOnline didn't accept this sign-in -- it may have expired. Copy a fresh mo_access_token from a signed-in makeronline.com tab and try again.",
+        );
+      }
+      // 503, not 422: nothing is known to be wrong with the token.
+      if (check === "unreachable")
+        throw new HttpError(503, "Couldn't reach MakerOnline to check this sign-in. Try again in a moment.");
+      token.userId = check.userId;
+    }
+    const configured = await setUserMakeronlineToken(req.userId!, token);
+    res.json({ configured });
+  }),
+);
+
+// Per-user: the Creality Cloud sign-in, which Thingport Grab sends whenever the browser's changes.
+router.get(
+  "/settings/crealitycloud-session",
+  asyncHandler(async (req, res) => {
+    const connection = await getCrealitycloudConnection(req.userId!);
+    res.json({ configured: connection !== "disconnected", expired: connection === "expired" });
+  }),
+);
+
+// `expires_at`: the model_token cookie's own expiry, which Grab can read; it's only shown, as the token may outlive it.
+const crealitycloudSessionSchema = z.object({
+  token: z.string().max(10_000).nullable(),
+  expires_at: z.string().datetime().nullable().optional(),
+  verify: z.boolean().optional(),
+});
+router.patch(
+  "/settings/crealitycloud-session",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(crealitycloudSessionSchema, req.body);
+    const session = normalizeCrealitycloudSession(body.token, body.expires_at ? new Date(body.expires_at) : null);
+    if ((body.token ?? "").trim() && !session) {
+      throw new HttpError(
+        422,
+        "That doesn't look like a Creality Cloud sign-in: paste the Cookie header of a signed-in crealitycloud.com request (it has model_token and model_user_id).",
+      );
+    }
+    if (body.verify && session) {
+      const check = await checkCrealitycloudAuth(session);
+      if (check === "rejected") {
+        throw new HttpError(
+          422,
+          "Creality Cloud didn't accept this sign-in -- it may have expired. Copy the cookies from a signed-in crealitycloud.com tab and try again.",
+        );
+      }
+      // 503, not 422: nothing is known to be wrong with the sign-in.
+      if (check === "unreachable")
+        throw new HttpError(503, "Couldn't reach Creality Cloud to check this sign-in. Try again in a moment.");
+    }
+    const configured = await setUserCrealitycloudSession(req.userId!, session);
+    res.json({ configured });
+  }),
+);
+
+// Per-user: the NexPrint sign-in, which Thingport Grab sends whenever the browser's changes.
+router.get(
+  "/settings/nexprint-session",
+  asyncHandler(async (req, res) => {
+    const connection = await getNexprintConnection(req.userId!);
+    res.json({ configured: connection !== "disconnected", expired: connection === "expired" });
+  }),
+);
+
+// `expires_at`: the auth_token cookie's own expiry, which Grab can read; it's only shown, as the token may outlive it.
+const nexprintSessionSchema = z.object({
+  token: z.string().max(10_000).nullable(),
+  expires_at: z.string().datetime().nullable().optional(),
+  verify: z.boolean().optional(),
+});
+router.patch(
+  "/settings/nexprint-session",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(nexprintSessionSchema, req.body);
+    const session = normalizeNexprintSession(body.token, body.expires_at ? new Date(body.expires_at) : null);
+    if ((body.token ?? "").trim() && !session) {
+      throw new HttpError(
+        422,
+        "That doesn't look like a NexPrint sign-in: paste the auth_token cookie, or the Authorization header of a signed-in nexprint.com request.",
+      );
+    }
+    if (body.verify && session) {
+      const check = await checkNexprintAuth(session.token);
+      if (check === "rejected") {
+        throw new HttpError(
+          422,
+          "NexPrint didn't accept this sign-in -- it may have expired. Copy it again from a signed-in nexprint.com tab and try again.",
+        );
+      }
+      // 503, not 422: nothing is known to be wrong with the sign-in.
+      if (check === "unreachable")
+        throw new HttpError(503, "Couldn't reach NexPrint to check this sign-in. Try again in a moment.");
+    }
+    const configured = await setUserNexprintSession(req.userId!, session);
+    res.json({ configured });
+  }),
+);
+
+// Per-user: the Thangs sign-in, which Thingport Grab sends whenever the browser's changes. Thingport renews the access
+// token itself from the refresh token.
+router.get(
+  "/settings/thangs-session",
+  asyncHandler(async (req, res) => {
+    const connection = await getThangsConnection(req.userId!);
+    res.json({ configured: connection !== "disconnected", expired: connection === "expired" });
+  }),
+);
+
+// `token`: the access token, or anything with it in (a Cookie header, copied request headers); `refresh_token` the
+// refresh token, which may come in `token` as well. Either one alone will do.
+const thangsSessionSchema = z.object({
+  token: z.string().max(20_000).nullable(),
+  refresh_token: z.string().max(10_000).nullable().optional(),
+  verify: z.boolean().optional(),
+});
+router.patch(
+  "/settings/thangs-session",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(thangsSessionSchema, req.body);
+    const raw = [body.token, body.refresh_token].filter(Boolean).join(" ");
+    let session = normalizeThangsSession(raw);
+    if (raw.trim() && !session) {
+      throw new HttpError(
+        422,
+        "That doesn't look like a Thangs sign-in: paste the accessToken or refreshToken cookie, or the Authorization header of a signed-in thangs.com request.",
+      );
+    }
+    if (body.verify && session) {
+      const rejected = new HttpError(
+        422,
+        "Thangs didn't accept this sign-in -- it may have expired. Copy it again from a signed-in thangs.com tab and try again.",
+      );
+      // 503, not 422: nothing is known to be wrong with the sign-in.
+      const unreachable = new HttpError(503, "Couldn't reach Thangs to check this sign-in. Try again in a moment.");
+      const expired = !session.expiresAt || session.expiresAt.getTime() <= Date.now();
+      if (session.refreshToken && (!session.token || expired)) {
+        try {
+          const renewed = await refreshThangsToken(session.refreshToken);
+          session = { ...session, token: renewed.token, expiresAt: renewed.expiresAt };
+        } catch (err) {
+          throw err instanceof ThangsAuthError ? rejected : unreachable;
+        }
+      }
+      const check = await checkThangsAuth(session.token!);
+      if (check === "rejected") throw rejected;
+      if (check === "unreachable") throw unreachable;
+    }
+    const configured = await setUserThangsSession(req.userId!, session);
+    res.json({ configured });
+  }),
+);
+
+// Per-user: Cults3D's API credentials, the user's nickname and an API key made on the site, and the browser's sign-in,
+// which Thingport Grab sends whenever it changes.
+router.get(
+  "/settings/cults3d",
+  asyncHandler(async (req, res) => {
+    const connection = await getCults3dConnection(req.userId!);
+    res.json({
+      configured: connection.api !== "disconnected",
+      expired: connection.api === "expired",
+      nick: connection.nick,
+      session_configured: connection.site !== "disconnected",
+      session_expired: connection.site === "expired",
+    });
+  }),
+);
+
+const cults3dCredentialsSchema = z.object({
+  nick: z.string().trim().max(100).nullable(),
+  api_key: z.string().trim().max(200).nullable(),
+  verify: z.boolean().optional(),
+});
+router.patch(
+  "/settings/cults3d",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(cults3dCredentialsSchema, req.body);
+    if (!body.nick || !body.api_key) {
+      if (body.nick || body.api_key) throw new HttpError(422, "Enter both your Cults3D nickname and the API key.");
+      await setUserCults3dCredentials(req.userId!, null);
+      res.json({ configured: false, nick: null });
+      return;
+    }
+    let nick = body.nick.replace(/^@/, "");
+    if (body.verify) {
+      const check = await checkCults3dCredentials({ nick, apiKey: body.api_key });
+      if (check === "rejected") {
+        throw new HttpError(
+          422,
+          "Cults3D didn't accept this nickname and API key. Check both -- the nickname's capitals count -- or make a " +
+            "new key at cults3d.com/en/api/keys.",
+        );
+      }
+      // 503, not 422: nothing is known to be wrong with them.
+      if (check === "unreachable")
+        throw new HttpError(503, "Couldn't reach Cults3D to check them. Try again in a moment.");
+      nick = check.nick;
+    }
+    await setUserCults3dCredentials(req.userId!, { nick, apiKey: body.api_key });
+    res.json({ configured: true, nick });
+  }),
+);
+
+// `session`: a Cookie header with _session_id (and cf_clearance), or a signed-in cults3d.com request's copied headers;
+// `user_agent` the browser's, when `session` doesn't carry it. Null forgets it.
+const cults3dSessionSchema = z.object({
+  session: z.string().max(20_000).nullable(),
+  user_agent: z.string().max(1000).nullable().optional(),
+});
+router.patch(
+  "/settings/cults3d-session",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(cults3dSessionSchema, req.body);
+    const browser = normalizeCults3dBrowser(body.session, body.user_agent);
+    if (body.session?.trim() && !browser) {
+      throw new HttpError(
+        422,
+        "That doesn't look like a Cults3D sign-in: paste the request headers of a signed-in cults3d.com page, with its _session_id cookie.",
+      );
+    }
+    await setUserCults3dBrowser(req.userId!, browser);
+    res.json({ configured: !!browser });
   }),
 );
 
@@ -834,7 +1250,7 @@ function aiConnectionOut(connection: AiConnection) {
     has_api_key: Boolean(connection.apiKey),
     timeout_ms: connection.timeoutMs,
     concurrency: connection.concurrency,
-    thinking: connection.thinking,
+    reasoning_effort: connection.reasoningEffort,
     is_default: connection.isDefault,
   };
 }
@@ -854,13 +1270,20 @@ const aiConnectionFields = {
   api_key: z.string().nullable().optional(),
   timeout_ms: z.number().int().min(1000).max(300000),
   concurrency: z.number().int().min(1).max(4),
-  thinking: z.boolean(),
+  // Null sends no reasoning_effort at all.
+  reasoning_effort: z.enum(["none", "low", "medium", "high"]).nullable(),
 };
 
 /** A saved AI (or the defaults, for a new one) with the form's values on top. */
 async function providerFrom(
   id: string | undefined,
-  body: Partial<{ base_url: string; model: string; api_key: string | null; timeout_ms: number; thinking: boolean }>,
+  body: Partial<{
+    base_url: string;
+    model: string;
+    api_key: string | null;
+    timeout_ms: number;
+    reasoning_effort: ReasoningEffort | null;
+  }>,
 ) {
   const saved = id ? await getAiConnection(id) : null;
   return {
@@ -868,7 +1291,10 @@ async function providerFrom(
     model: body.model ?? saved?.model ?? null,
     apiKey: body.api_key !== undefined ? body.api_key || null : (saved?.apiKey ?? DEFAULT_AI_PROVIDER.apiKey),
     timeoutMs: body.timeout_ms ?? saved?.timeoutMs ?? DEFAULT_AI_PROVIDER.timeoutMs,
-    thinking: body.thinking ?? saved?.thinking ?? DEFAULT_AI_PROVIDER.thinking,
+    reasoningEffort:
+      body.reasoning_effort !== undefined
+        ? body.reasoning_effort
+        : (saved?.reasoningEffort ?? DEFAULT_AI_PROVIDER.reasoningEffort),
   };
 }
 
@@ -884,7 +1310,7 @@ const aiConnectionCreateSchema = z
     ...aiConnectionFields,
     timeout_ms: aiConnectionFields.timeout_ms.optional(),
     concurrency: aiConnectionFields.concurrency.optional(),
-    thinking: aiConnectionFields.thinking.optional(),
+    reasoning_effort: aiConnectionFields.reasoning_effort.optional(),
   })
   .strict();
 router.post(
@@ -899,7 +1325,7 @@ router.post(
       model: provider.model!,
       apiKey: provider.apiKey,
       timeoutMs: provider.timeoutMs,
-      thinking: provider.thinking,
+      reasoningEffort: provider.reasoningEffort,
       concurrency: body.concurrency ?? DEFAULT_AI_PROVIDER.concurrency,
     });
     res.status(201).json(aiConnectionOut(connection));
@@ -913,7 +1339,7 @@ router.patch(
   asyncHandler(async (req, res) => {
     const body = parseBody(aiConnectionUpdateSchema, req.body);
     const provider = await providerFrom(req.params.id, body);
-    // Concurrency and thinking don't change whether it answers.
+    // Concurrency and reasoning effort don't change whether it answers.
     if (
       body.base_url !== undefined ||
       body.model !== undefined ||
@@ -928,7 +1354,7 @@ router.patch(
       ...(body.api_key !== undefined ? { apiKey: provider.apiKey } : {}),
       ...(body.timeout_ms !== undefined ? { timeoutMs: body.timeout_ms } : {}),
       ...(body.concurrency !== undefined ? { concurrency: body.concurrency } : {}),
-      ...(body.thinking !== undefined ? { thinking: body.thinking } : {}),
+      ...(body.reasoning_effort !== undefined ? { reasoningEffort: body.reasoning_effort } : {}),
     });
     res.json(aiConnectionOut(connection));
   }),

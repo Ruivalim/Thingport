@@ -492,8 +492,16 @@ export async function aiCategorizationCounts(userId: string) {
   return counts;
 }
 
-/** Which models a run takes. `manual` also takes older categories, which may have been picked by hand. */
-export type AiRunScope = { uncategorized: boolean; folders: boolean; ai: boolean; rule: boolean; manual: boolean };
+/** Which models a run takes. `manual` also takes older categories, which may have been picked by hand.
+ *  `printIds` narrows it to the models picked in a grid; the flags still apply to those. */
+export type AiRunScope = {
+  uncategorized: boolean;
+  folders: boolean;
+  ai: boolean;
+  rule: boolean;
+  manual: boolean;
+  printIds?: string[];
+};
 
 export function startAiCategorizationRun(userId: string, scope: AiRunScope): AiCategorizationRun | null {
   const running = runs.get(userId);
@@ -513,7 +521,7 @@ export function startAiCategorizationRun(userId: string, scope: AiRunScope): AiC
     lastError: null,
   };
   runs.set(userId, run);
-  log.info("run started", { user: userId, ...scope });
+  log.info("run started", { user: userId, ...scope, printIds: scope.printIds?.length });
   void runAiCategorization(userId, run, scope)
     .catch((error) => {
       run.failed++;
@@ -547,7 +555,7 @@ export function startAiCategorizationRun(userId: string, scope: AiRunScope): AiC
 
 async function runAiCategorization(userId: string, run: AiCategorizationRun, scope: AiRunScope): Promise<void> {
   const prints = await prisma.print.findMany({
-    where: { userId },
+    where: { userId, ...(scope.printIds ? { id: { in: scope.printIds } } : {}) },
     include: { category: { select: { kind: true } } },
     orderBy: { createdAt: "asc" },
   });

@@ -14,6 +14,14 @@ export const PROVIDER_ACCENTS: Record<BrowsableProvider, string> = {
   makerworld: "#00AE42",
   printables: "#FA6831",
   thingiverse: "#5575FE",
+  myminifactory: "#00C4A6",
+  snapmaker: "#0C63E2",
+  // Anycubic's blue, for the same reason: MakerOnline's own mark is black and white.
+  makeronline: "#1F7AE0",
+  crealitycloud: "#1AC686",
+  nexprint: "#7A55E3",
+  thangs: "#FFBC00",
+  cults3d: "#822EF5",
 };
 
 type Props = {
@@ -37,11 +45,9 @@ function Thumb({ src, sx }: { src: string | undefined; sx?: object }) {
 
 function ModelCount({ count, provider }: { count: number; provider: BrowsableProvider }) {
   const { t } = useTranslation("models");
-  return (
-    <>
-      {t(provider === "thingiverse" ? "collections.sync.browse.things" : "collections.sync.browse.models", { count })}
-    </>
-  );
+  // Each site's own word for what it holds.
+  const noun = provider === "thingiverse" ? "things" : provider === "myminifactory" ? "objects" : "models";
+  return <>{t(`collections.sync.browse.${noun}`, { count })}</>;
 }
 
 /** MakerWorld: a 2x2 mosaic, "+N" over the last tile, the deck edges below. */
@@ -212,19 +218,298 @@ function ThingiverseTile({ collection }: { collection: ProviderCollection }) {
   );
 }
 
+// MyMiniFactory's card: name and count, then the cover model large, then a row of three more.
+function MyMiniFactoryTile({ collection }: { collection: ProviderCollection }) {
+  const [cover, ...rest] = collection.thumbnails;
+  return (
+    <Box
+      sx={{
+        borderRadius: "4px",
+        border: 1,
+        borderColor: "divider",
+        borderBottom: `3px solid ${PROVIDER_ACCENTS.myminifactory}`,
+        bgcolor: "background.paper",
+        p: 1.25,
+      }}
+    >
+      <Typography noWrap sx={{ fontWeight: 700, fontSize: "0.875rem" }}>
+        {collection.name}
+      </Typography>
+      <Box sx={{ display: "flex", alignItems: "center", fontSize: "0.8rem", color: "text.secondary" }}>
+        <ModelCount count={collection.model_count} provider="myminifactory" />
+        {collection.private && <LockOutlinedIcon sx={{ fontSize: 14, ml: "auto" }} />}
+      </Box>
+      <Thumb src={cover} sx={{ aspectRatio: "16 / 9", mt: 1, borderRadius: "2px" }} />
+      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "4px", mt: "4px" }}>
+        {[0, 1, 2].map((i) => (
+          <Thumb key={i} src={rest[i]} sx={{ aspectRatio: "1 / 1", borderRadius: "2px" }} />
+        ))}
+      </Box>
+    </Box>
+  );
+}
+
+// Snapmaker Space's model card: the newest model large, a row of three more, then name and count.
+function SnapmakerTile({ collection }: { collection: ProviderCollection }) {
+  const [cover, ...rest] = collection.thumbnails;
+  return (
+    <Box
+      sx={{
+        borderRadius: "12px",
+        border: 1,
+        borderColor: "divider",
+        bgcolor: "background.paper",
+        overflow: "hidden",
+      }}
+    >
+      <Thumb src={cover} sx={{ aspectRatio: "4 / 3" }} />
+      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "2px", mt: "2px" }}>
+        {[0, 1, 2].map((i) => (
+          <Thumb key={i} src={rest[i]} sx={{ aspectRatio: "1 / 1" }} />
+        ))}
+      </Box>
+      <Box sx={{ px: 1.25, py: 1 }}>
+        <Typography noWrap sx={{ fontWeight: 600, fontSize: "0.875rem" }}>
+          {collection.name}
+        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", fontSize: "0.8rem", color: "text.secondary" }}>
+          <ModelCount count={collection.model_count} provider="snapmaker" />
+          {collection.private && <LockOutlinedIcon sx={{ fontSize: 14, ml: "auto" }} />}
+        </Box>
+      </Box>
+    </Box>
+  );
+}
+
+// MakerOnline's collection card: four covers in a square grid, then name and count.
+function MakeronlineTile({ collection }: { collection: ProviderCollection }) {
+  return (
+    <Box
+      sx={{
+        borderRadius: "12px",
+        border: 1,
+        borderColor: "divider",
+        bgcolor: "background.paper",
+        overflow: "hidden",
+      }}
+    >
+      <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px" }}>
+        {[0, 1, 2, 3].map((i) => (
+          <Thumb key={i} src={collection.thumbnails[i]} sx={{ aspectRatio: "1 / 1" }} />
+        ))}
+      </Box>
+      <Box sx={{ px: 1.25, py: 1 }}>
+        <Typography noWrap sx={{ fontWeight: 600, fontSize: "0.875rem" }}>
+          {collection.name}
+        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", fontSize: "0.8rem", color: "text.secondary" }}>
+          <ModelCount count={collection.model_count} provider="makeronline" />
+          {collection.private && <LockOutlinedIcon sx={{ fontSize: 14, ml: "auto" }} />}
+        </Box>
+      </Box>
+    </Box>
+  );
+}
+
+// Creality Cloud's collection card: one large cover beside two stacked ones, under its green.
+function CrealitycloudTile({ collection }: { collection: ProviderCollection }) {
+  return (
+    <Box
+      sx={{
+        borderRadius: "12px",
+        border: 1,
+        borderColor: "divider",
+        borderTop: `3px solid ${PROVIDER_ACCENTS.crealitycloud}`,
+        bgcolor: "background.paper",
+        overflow: "hidden",
+      }}
+    >
+      <Box sx={{ display: "grid", gridTemplateColumns: "2fr 1fr", gridTemplateRows: "1fr 1fr", gap: "2px" }}>
+        <Thumb src={collection.thumbnails[0]} sx={{ gridRow: "span 2", height: "100%", aspectRatio: "1 / 1" }} />
+        <Thumb src={collection.thumbnails[1]} sx={{ height: "100%" }} />
+        <Thumb src={collection.thumbnails[2]} sx={{ height: "100%" }} />
+      </Box>
+      <Box sx={{ px: 1.25, py: 1 }}>
+        <Typography noWrap sx={{ fontWeight: 600, fontSize: "0.875rem" }}>
+          {collection.name}
+        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", fontSize: "0.8rem", color: "text.secondary" }}>
+          <ModelCount count={collection.model_count} provider="crealitycloud" />
+          {collection.private && <LockOutlinedIcon sx={{ fontSize: 14, ml: "auto" }} />}
+        </Box>
+      </Box>
+    </Box>
+  );
+}
+
+// The gradient its title sits on: dark in both themes, so the white text reads over any cover.
+const NEXPRINT_SCRIM = "linear-gradient(to top, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0) 70%)";
+
+/** NexPrint: one cover, its first model's, with the name over it, edged in its purple. */
+function NexprintTile({ collection }: { collection: ProviderCollection }) {
+  return (
+    <Box
+      sx={{
+        position: "relative",
+        borderRadius: "10px",
+        overflow: "hidden",
+        borderLeft: `3px solid ${PROVIDER_ACCENTS.nexprint}`,
+        bgcolor: "background.paper",
+      }}
+    >
+      <Thumb src={collection.thumbnails[0]} sx={{ aspectRatio: "4 / 3" }} />
+      <Box
+        sx={{
+          position: "absolute",
+          inset: 0,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "flex-end",
+          px: 1.25,
+          py: 1,
+          backgroundImage: NEXPRINT_SCRIM,
+          color: "common.white",
+        }}
+      >
+        <Typography noWrap sx={{ fontWeight: 700, fontSize: "0.875rem" }}>
+          {collection.name}
+        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", fontSize: "0.75rem", opacity: 0.85 }}>
+          <ModelCount count={collection.model_count} provider="nexprint" />
+          {collection.private && <LockOutlinedIcon sx={{ fontSize: 14, ml: "auto" }} />}
+        </Box>
+      </Box>
+    </Box>
+  );
+}
+
+/** Thangs: its one cover, the count in a pill of its yellow over the corner, the name below. */
+function ThangsTile({ collection }: { collection: ProviderCollection }) {
+  return (
+    <Box
+      sx={{
+        borderRadius: "8px",
+        border: 1,
+        borderColor: "divider",
+        bgcolor: "background.paper",
+        overflow: "hidden",
+      }}
+    >
+      <Box sx={{ position: "relative" }}>
+        <Thumb src={collection.thumbnails[0]} sx={{ aspectRatio: "4 / 3" }} />
+        <Box
+          sx={{
+            position: "absolute",
+            top: 8,
+            left: 8,
+            px: 1,
+            py: 0.25,
+            borderRadius: "999px",
+            bgcolor: PROVIDER_ACCENTS.thangs,
+            // Its yellow is light in both themes.
+            color: "common.black",
+            fontSize: "0.7rem",
+            fontWeight: 700,
+          }}
+        >
+          <ModelCount count={collection.model_count} provider="thangs" />
+        </Box>
+      </Box>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, px: 1.25, py: 1 }}>
+        <Typography noWrap sx={{ flex: 1, fontWeight: 700, fontSize: "0.875rem" }}>
+          {collection.name}
+        </Typography>
+        {collection.private && <LockOutlinedIcon sx={{ fontSize: 14, color: "text.secondary" }} />}
+      </Box>
+    </Box>
+  );
+}
+
+/** Cults3D: a big cover beside two small ones, the name and a count in its purple below. */
+function Cults3dTile({ collection }: { collection: ProviderCollection }) {
+  return (
+    <Box
+      sx={{
+        borderRadius: "10px",
+        border: 1,
+        borderColor: "divider",
+        bgcolor: "background.paper",
+        overflow: "hidden",
+      }}
+    >
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: "2fr 1fr",
+          gridTemplateRows: "1fr 1fr",
+          gap: "2px",
+          aspectRatio: "4 / 3",
+        }}
+      >
+        <Box sx={{ gridRow: "1 / 3", minHeight: 0, overflow: "hidden" }}>
+          <Thumb src={collection.thumbnails[0]} sx={{ height: "100%" }} />
+        </Box>
+        {[1, 2].map((i) => (
+          <Box key={i} sx={{ minHeight: 0, overflow: "hidden" }}>
+            <Thumb src={collection.thumbnails[i]} sx={{ height: "100%" }} />
+          </Box>
+        ))}
+      </Box>
+      <Box sx={{ px: 1.25, py: 1 }}>
+        <Typography noWrap sx={{ fontWeight: 700, fontSize: "0.875rem" }}>
+          {collection.name}
+        </Typography>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 0.5,
+            mt: 0.25,
+            fontSize: "0.75rem",
+            fontWeight: 600,
+            // Its purple is too dark to read on the dark theme's paper; a lighter shade of it there.
+            color: (theme) => (theme.palette.mode === "dark" ? "#B48CFA" : PROVIDER_ACCENTS.cults3d),
+          }}
+        >
+          <ModelCount count={collection.model_count} provider="cults3d" />
+          {collection.private && <LockOutlinedIcon sx={{ fontSize: 14, ml: "auto", color: "text.secondary" }} />}
+        </Box>
+      </Box>
+    </Box>
+  );
+}
+
 const TILES: Record<BrowsableProvider, (props: { collection: ProviderCollection }) => JSX.Element> = {
   makerworld: MakerWorldTile,
   printables: PrintablesTile,
   thingiverse: ThingiverseTile,
+  myminifactory: MyMiniFactoryTile,
+  snapmaker: SnapmakerTile,
+  makeronline: MakeronlineTile,
+  crealitycloud: CrealitycloudTile,
+  nexprint: NexprintTile,
+  thangs: ThangsTile,
+  cults3d: Cults3dTile,
 };
+
+/** The name to show: a user's likes, and Snapmaker's likes and bookmarks, come named in English by the instance, as
+ *  do MakerOnline's, Creality Cloud's and Thangs' likes. */
+function displayName(provider: BrowsableProvider, collection: ProviderCollection, t: (key: string) => string): string {
+  if (collection.likes) return t("collections.sync.browse.likes");
+  if (provider === "snapmaker" && collection.id.startsWith("likes-")) return t("collections.sync.browse.likes");
+  if (provider === "snapmaker" && collection.id.startsWith("bookmarks-")) return t("collections.sync.browse.bookmarks");
+  if (provider === "makeronline" && collection.id === "likes") return t("collections.sync.browse.likes");
+  if (provider === "crealitycloud" && collection.id.startsWith("likes-")) return t("collections.sync.browse.likes");
+  if (provider === "thangs" && collection.id === "likes") return t("collections.sync.browse.likes");
+  return collection.name;
+}
 
 /** A provider's collection to pick, drawn in that provider's colours and manner. One already synced
  *  with another Thingport collection can't be picked, and says with which. */
 export default function ProviderCollectionTile({ provider, collection: given, selected, onSelect }: Props) {
   const { t } = useTranslation("models");
   const Tile = TILES[provider];
-  // A user's likes come as a collection the instance names in English.
-  const collection = given.likes ? { ...given, name: t("collections.sync.browse.likes") } : given;
+  const collection = { ...given, name: displayName(provider, given, t) };
   const taken = collection.synced !== null;
   return (
     <Box>
@@ -285,6 +570,26 @@ export function ProviderCollectionTileSkeleton({ provider }: { provider: Browsab
       <Skeleton variant="text" sx={{ fontSize: "0.75rem", width: "40%" }} />
     </>
   );
+  if (provider === "cults3d") {
+    return (
+      <Box aria-hidden sx={{ borderRadius: "10px", border: 1, borderColor: "divider", overflow: "hidden" }}>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: "2fr 1fr",
+            gridTemplateRows: "1fr 1fr",
+            gap: "2px",
+            aspectRatio: "4 / 3",
+          }}
+        >
+          <Skeleton variant="rectangular" sx={{ gridRow: "1 / 3", width: "100%", height: "100%" }} />
+          <Skeleton variant="rectangular" sx={{ width: "100%", height: "100%" }} />
+          <Skeleton variant="rectangular" sx={{ width: "100%", height: "100%" }} />
+        </Box>
+        <Box sx={{ px: 1.25, py: 1 }}>{lines}</Box>
+      </Box>
+    );
+  }
   if (provider === "makerworld") {
     return (
       <Box aria-hidden sx={{ borderRadius: "12px", border: 1, borderColor: "divider", overflow: "hidden", mb: "11px" }}>
@@ -315,6 +620,85 @@ export function ProviderCollectionTileSkeleton({ provider }: { provider: Browsab
           ))}
         </Box>
         {lines}
+      </Box>
+    );
+  }
+  if (provider === "makeronline") {
+    return (
+      <Box aria-hidden sx={{ borderRadius: "12px", border: 1, borderColor: "divider", overflow: "hidden" }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px" }}>
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} variant="rectangular" sx={{ width: "100%", height: "auto", aspectRatio: "1 / 1" }} />
+          ))}
+        </Box>
+        <Box sx={{ px: 1.25, py: 1 }}>{lines}</Box>
+      </Box>
+    );
+  }
+  if (provider === "thangs") {
+    return (
+      <Box aria-hidden sx={{ borderRadius: "8px", border: 1, borderColor: "divider", overflow: "hidden" }}>
+        <Skeleton variant="rectangular" sx={{ width: "100%", height: "auto", aspectRatio: "4 / 3" }} />
+        <Box sx={{ px: 1.25, py: 1 }}>
+          <Skeleton variant="text" sx={{ fontSize: "0.875rem", width: "70%" }} />
+        </Box>
+      </Box>
+    );
+  }
+  if (provider === "nexprint") {
+    return (
+      <Box aria-hidden sx={{ borderRadius: "10px", overflow: "hidden" }}>
+        <Skeleton variant="rectangular" sx={{ width: "100%", height: "auto", aspectRatio: "4 / 3" }} />
+      </Box>
+    );
+  }
+  if (provider === "crealitycloud") {
+    return (
+      <Box aria-hidden sx={{ borderRadius: "12px", border: 1, borderColor: "divider", overflow: "hidden" }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: "2fr 1fr", gridTemplateRows: "1fr 1fr", gap: "2px" }}>
+          <Skeleton
+            variant="rectangular"
+            sx={{ gridRow: "span 2", width: "100%", height: "100%", aspectRatio: "1 / 1" }}
+          />
+          <Skeleton variant="rectangular" sx={{ width: "100%", height: "100%" }} />
+          <Skeleton variant="rectangular" sx={{ width: "100%", height: "100%" }} />
+        </Box>
+        <Box sx={{ px: 1.25, py: 1 }}>{lines}</Box>
+      </Box>
+    );
+  }
+  if (provider === "snapmaker") {
+    return (
+      <Box aria-hidden sx={{ borderRadius: "12px", border: 1, borderColor: "divider", overflow: "hidden" }}>
+        <Skeleton variant="rectangular" sx={{ width: "100%", height: "auto", aspectRatio: "4 / 3" }} />
+        <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "2px", mt: "2px" }}>
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} variant="rectangular" sx={{ width: "100%", height: "auto", aspectRatio: "1 / 1" }} />
+          ))}
+        </Box>
+        <Box sx={{ px: 1.25, py: 1 }}>{lines}</Box>
+      </Box>
+    );
+  }
+  if (provider === "myminifactory") {
+    return (
+      <Box
+        aria-hidden
+        sx={{
+          borderRadius: "4px",
+          border: 1,
+          borderColor: "divider",
+          borderBottom: `3px solid ${PROVIDER_ACCENTS.myminifactory}`,
+          p: 1.25,
+        }}
+      >
+        {lines}
+        <Skeleton variant="rectangular" sx={{ width: "100%", height: "auto", aspectRatio: "16 / 9", mt: 1 }} />
+        <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "4px", mt: "4px" }}>
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} variant="rectangular" sx={{ width: "100%", height: "auto", aspectRatio: "1 / 1" }} />
+          ))}
+        </Box>
       </Box>
     );
   }

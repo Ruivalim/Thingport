@@ -31,7 +31,7 @@ from the places where you discover them.
 
 ## About
 
-To put it simply, if you're into 3D printing, you probably look for models across multiple platforms, with **MakerWorld, Printables, and Thingiverse** being some of the most popular ones. And, if you're anything like me, you've probably built up quite a collection of bookmarked models across these sites.
+To put it simply, if you're into 3D printing, you probably look for models across multiple platforms, with **MakerWorld, Printables, Thingiverse, and MyMiniFactory** being some of the most popular ones. And, if you're anything like me, you've probably built up quite a collection of bookmarked models across these sites.
 
 But there's a problem.
 
@@ -90,7 +90,7 @@ No more worrying about losing access to your favourite models. Your library stay
   <tr>
     <td width="33%"><a href="extension/docs/screenshots/panel-makerworld.jpg" target="_blank"><img src="extension/docs/screenshots/panel-makerworld.jpg" width="100%" alt="Thingport Grab on MakerWorld"></a><br><sub><b>Thingport Grab — MakerWorld</b></sub></td>
     <td width="33%"><a href="extension/docs/screenshots/collection-makerworld.jpg" target="_blank"><img src="extension/docs/screenshots/collection-makerworld.jpg" width="100%" alt="Thingport Grab syncing a MakerWorld collection"></a><br><sub><b>Thingport Grab — Sync a Collection</b></sub></td>
-    <td width="33%"></td>
+    <td width="33%"><a href="extension/docs/screenshots/panel-myminifactory.jpg" target="_blank"><img src="extension/docs/screenshots/panel-myminifactory.jpg" width="100%" alt="Thingport Grab on MyMiniFactory"></a><br><sub><b>Thingport Grab — MyMiniFactory</b></sub></td>
   </tr>
 </table>
 
@@ -278,7 +278,8 @@ To have Thingport import whatever you drop into a folder on the server, uncommen
 
 ## Features
 
-- **[Import from MakerWorld, Printables and Thingiverse](docs/features/importing.md)**
+- **[Import from MakerWorld, Printables, Thingiverse, MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud, NexPrint, Thangs and Cults3D](docs/features/importing.md)**
+- **[Import bookmarklet](docs/guides/bookmarklet.md)**
 - **[Synced collections](docs/guides/synced-collections.md)**
 - **[Bring your existing library](docs/guides/existing-library.md)**
 - **[Consume folder](docs/guides/consume-folder.md)**
@@ -306,11 +307,11 @@ To have Thingport import whatever you drop into a folder on the server, uncommen
 Thingport ships two small companion tools, each downloadable from the in-app Download page or GitHub Releases:
 
 - **[Thingport Bridge](bridge/README.md)** — a lightweight desktop helper that makes "Open in {Slicer}" work for slicers (Bambu Studio, PrusaSlicer, Cura, Anycubic Slicer Next) whose own URL-protocol handlers won't accept a link from a self-hosted domain.
-- **[Thingport Grab](extension/README.md)** — a browser extension for Chrome, Edge and Firefox that imports MakerWorld, Thingiverse, and Printables models straight from their own pages, without leaving the site (see the screenshots above). Even without a Thingport instance, it adds a "Download normalized" button to MakerWorld model pages that converts Bambu Studio projects into 3MFs other slicers open with their colours and settings. Get it from the [Chrome Web Store](https://chromewebstore.google.com/detail/nmblahmglpbplmfcggghdgohohlaeiee), [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/thingport-grab/) or [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/kahfidpmojfocohinlmglnfoaimocbol).
+- **[Thingport Grab](extension/README.md)** — a browser extension for Chrome, Edge and Firefox that imports MakerWorld, Printables, Thingiverse, MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud, NexPrint, Thangs and Cults3D models straight from their own pages, without leaving the site (see the screenshots above). Even without a Thingport instance, it adds a "Download normalized" button to MakerWorld model pages that converts Bambu Studio projects into 3MFs other slicers open with their colours and settings. Get it from the [Chrome Web Store](https://chromewebstore.google.com/detail/nmblahmglpbplmfcggghdgohohlaeiee), [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/thingport-grab/) or [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/kahfidpmojfocohinlmglnfoaimocbol).
 
 ## Provider Setup
 
-Printables imports work with no setup. MakerWorld and Thingiverse each need a credential from your own account first. Connect them under **Configuration → Providers** (from the user menu): right-click a provider to connect or disconnect it. Admins can turn any provider off for the whole instance under **Administration → Providers**. See **[docs/PROVIDER_SETUP.md](docs/PROVIDER_SETUP.md)** for how to create a Thingiverse App Token and how to grab a MakerWorld session cookie.
+MakerWorld needs each user's session cookie, Printables works with no setup, and Thingiverse needs an App Token an admin sets once for the whole instance. The newer sites each need their own sign-in or key, mostly handed over by [Thingport Grab](extension/README.md); MakerOnline's files come only through Grab, and Printables, Thingiverse and MyMiniFactory work best with FlareSolverr. Connect them under **Configuration → Providers** (from the user menu): right-click a provider to connect it, or choose **About** for what it needs. Admins can turn any provider off for the whole instance under **Administration → Providers**. See **[docs/PROVIDER_SETUP.md](docs/PROVIDER_SETUP.md)** for a comparison of all ten, and a setup page for each.
 
 ## Contributing
 

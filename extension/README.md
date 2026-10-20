@@ -1,7 +1,7 @@
 # Thingport Grab
 
-A browser extension for Chrome, Edge and Firefox that imports MakerWorld, Thingiverse, and
-Printables models into your self-hosted Thingport instance without leaving the provider's site.
+A browser extension for Chrome, Edge and Firefox that imports MakerWorld, Printables, Thingiverse,
+MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud, NexPrint, Thangs and Cults3D models into your self-hosted Thingport instance without leaving the provider's site.
 Visiting a model, collection, or Thingiverse Likes page shows a floating Thingport icon; clicking it
 opens a small panel to pick what to import (and, for a single model, an optional destination
 collection), then imports it the same way Thingport's own "+ Add > Import" does.
@@ -34,6 +34,10 @@ it stores and sends.
     <td width="50%"><a href="docs/screenshots/collection-makerworld.jpg"><img src="docs/screenshots/collection-makerworld.jpg" alt="Guided import of a MakerWorld collection, waiting 30 seconds between models"></a><br><sub><b>MakerWorld collection</b> -- guided import, paced between models</sub></td>
   </tr>
   <tr>
+    <td width="50%"><a href="docs/screenshots/panel-myminifactory.jpg"><img src="docs/screenshots/panel-myminifactory.jpg" alt="Import panel on a MyMiniFactory object page"></a><br><sub><b>MyMiniFactory</b> -- import panel on a free model's page</sub></td>
+    <td width="50%"><a href="docs/screenshots/collection-myminifactory.jpg"><img src="docs/screenshots/collection-myminifactory.jpg" alt="Import panel on a MyMiniFactory collection, with sync ticked"></a><br><sub><b>MyMiniFactory collection</b> -- pick models, keep it in sync</sub></td>
+  </tr>
+  <tr>
     <td width="50%"><a href="docs/screenshots/setup-dialog-makerworld.jpg"><img src="docs/screenshots/setup-dialog-makerworld.jpg" alt="Setup dialog opened from the grayed-out icon"></a><br><sub><b>Not set up yet</b> -- the grayed-out icon's setup dialog</sub></td>
     <td width="50%"></td>
   </tr>
@@ -60,7 +64,7 @@ keeps it up to date from then on. Other Chromium browsers that install from the 
 <details>
 <summary>Alternative: install the Chrome build by hand</summary>
 
-Only needed if you can't use the store, e.g. to try a build before it's been published there:
+Only needed if you can't use the store, e.g. to get a release before the store's review lets it through:
 
 1. Download `thingport-grab-chrome.zip` from the
    [`extension-latest` release](https://github.com/TautvydasDerzinskas/Thingport/releases/tag/extension-latest)
@@ -82,10 +86,10 @@ keeps it up to date from then on.
 <details>
 <summary>Alternative: install the Firefox build by hand</summary>
 
-Only needed if you can't use the store, e.g. to try a build before it's been published there.
+Only needed if you can't use the store, e.g. to get a release before the store's review lets it through.
 Firefox refuses to install _any_ unsigned extension outside of Developer Edition/Nightly, so this
 is a Mozilla-signed `.xpi` rather than a zip -- CI signs one for self-distribution (the "unlisted"
-channel) on every push to `main` (see [Releases](CONTRIBUTING.md#releases-ci) in the development
+channel) with every release (see [Releases](CONTRIBUTING.md#releases-ci) in the development
 guide):
 
 1. Download `thingport-grab-firefox.xpi` from the
@@ -105,7 +109,7 @@ it up to date from then on.
 <details>
 <summary>Alternative: install the Edge build by hand</summary>
 
-Only needed if you can't use the store, e.g. to try a build before it's been published there:
+Only needed if you can't use the store, e.g. to get a release before the store's review lets it through:
 
 1. Download `thingport-grab-edge.zip` from the
    [`extension-latest` release](https://github.com/TautvydasDerzinskas/Thingport/releases/tag/extension-latest)
@@ -166,12 +170,74 @@ account doesn't already have a MakerWorld cookie saved, the extension also conne
 Configuration > Providers for you, so the plain web app's own imports benefit too, not just ones started
 from the extension.
 
+### MyMiniFactory and newer sites: allow them once
+
+Sites added after MakerWorld, Printables and Thingiverse, starting with MyMiniFactory, need one click first. The
+popup lists every site Grab supports under **Providers**: a green tick means it already runs there, and **Enable** next to a
+newer site asks your browser for access to that site alone. (An update that added each site to the extension itself
+would have the browser switch the extension off for everyone until they approved it, every time.) The button comes
+back only if you take the access back in your browser's extension settings.
+
+Opening MyMiniFactory while signed in also connects your MyMiniFactory account to Thingport, so the models you
+bought, and free ones that only download when signed in, import from your library. On a paid model you haven't
+bought, the panel says so instead of offering an import.
+
+### Snapmaker Space: a sign-in Grab keeps fresh
+
+Snapmaker gives its files only to signed-in users, and its sign-in lasts a day. Opening space.snapmaker.com while
+signed in connects your account to Thingport, and from then on Grab renews the sign-in every few hours while the
+browser is open -- for the browser and Thingport together, writing the new one back into the site's own cookies. Only
+Grab may renew it: a Snapmaker sign-in can be renewed once, and renewing it twice would sign the browser out. On your
+own profile's **Interactions** tab, the panel imports your likes or bookmarks (a switch picks which), and can keep
+either in sync.
+
+### MakerOnline: files only through Grab
+
+MakerOnline gives its files only to its own pages: its download call needs a token its in-page security script makes.
+So Grab gets each file's link signed from the page itself, the way its Download button does, and hands the links to
+Thingport. A MakerOnline import started anywhere else -- a link pasted in Thingport, a collection imported there, a
+synced collection's new models -- waits on your instance, and Grab imports it on the next makeronline.com page you open.
+Opening MakerOnline signed in also connects your account, for your likes and private collections. Firefox needs
+version 128 or newer for this.
+
+### Creality Cloud: a week-long sign-in
+
+Creality Cloud gives its files and your likes only to a signed-in user, and its sign-in lasts a week from when you
+signed in there; the site never renews it. Opening crealitycloud.com signed in connects your account to Thingport, and
+sends the new sign-in each time you sign in there again. On your own **Likes** page, or any collection page, the panel
+imports the listed models and can keep them in sync.
+
+### NexPrint: a sign-in the site keeps fresh
+
+NexPrint gives its files only to a signed-in user. Opening nexprint.com signed in connects your account to Thingport,
+and sends the new token whenever the site renews it. On a collection, open on its owner's page, the panel imports the
+listed models and can keep them in sync; NexPrint has no page of liked models, so there are no likes to import.
+
+### Thangs: a sign-in Thingport keeps renewed
+
+Thangs gives its files only to a signed-in user. Opening thangs.com signed in connects your account to Thingport, which
+renews the sign-in itself for about a year. On a model page the panel first asks Thangs whether your account may
+download it, which costs none of your daily downloads, and says so up front for a model sold only as a print, or a paid
+one you don't own. On your own **Liked** page, or any collection page, the panel imports the listed models and can keep
+them in sync.
+
+### Cults3D: your API key, and the browser's sign-in
+
+Thingport reads Cults3D with your own API key, which you enter once in **Configuration > Providers**. Its files sit
+behind a Cloudflare check only your browser passes, so opening cults3d.com signed in sends Thingport the sign-in and
+the clearance Cloudflare gave this browser; your instance then downloads as this browser would. That only works while
+your instance reaches the internet from the same address as the browser, as it does at home. A free model you haven't
+downloaded yet is added to your Cults3D downloads first, as its own Download button does; on a paid one you don't own,
+the panel says so up front. On anyone's likes page, or one of your own printlists, the panel imports the listed
+models and can keep them in sync.
+
 ## What counts as "importable"
 
-- A single model page (MakerWorld, a Thingiverse Thing, a Printables Model) -- hidden automatically
-  once you've already imported that exact page.
-- A MakerWorld collection, a Thingiverse Collection or Likes page, or a Printables collection --
-  lets you import the listed designs in one go.
+- A single model page (MakerWorld, a Thingiverse Thing, a Printables Model, a MyMiniFactory object, a Snapmaker Space,
+  MakerOnline, Creality Cloud, NexPrint, Thangs or Cults3D model) -- hidden automatically once you've already imported that exact page.
+- A MakerWorld collection, a Thingiverse Collection or Likes page, a Printables, MyMiniFactory, MakerOnline, Creality
+  Cloud, NexPrint, Thangs or Cults3D collection, your MakerOnline, Creality Cloud or Thangs likes, anyone's Cults3D likes,
+  or your own Snapmaker Space likes and bookmarks -- lets you import the listed designs in one go.
 
 Picking a destination collection is only offered for a single-model import; a batch import instead
 lands in Thingport's own auto-named collection for that batch (e.g. "Thingiverse likes (@username)"), matching
@@ -182,7 +248,7 @@ just stops showing progress, it doesn't cancel anything.
 
 ### Synced collections
 
-On a MakerWorld, Printables or Thingiverse collection page, the panel's **Keep this collection in
+On a MakerWorld, Printables, Thingiverse or MyMiniFactory collection page, the panel's **Keep this collection in
 sync** box (off by default) links the collection to its Thingport counterpart. A Thingiverse user's
 Likes page works the same way (**Keep these likes in sync**), filing into "Thingiverse likes
 (@username)" and picking up models they like later. Thingport then checks

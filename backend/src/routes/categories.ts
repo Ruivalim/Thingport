@@ -165,7 +165,8 @@ function parseCatIdsInput(raw: string | null | undefined): number[] {
   const ids: number[] = [];
   const seen = new Set<number>();
   for (const token of tokens) {
-    if (!/^\d+$/.test(token) || token.length > 15) {
+    // NexPrint's ids are 16 digits; isSafeInteger below still catches anything too large.
+    if (!/^\d+$/.test(token) || token.length > 16) {
       throw new HttpError(400, `Invalid category id "${token}" -- use numbers separated by ";", e.g. 800;71;1001`);
     }
     const id = Number(token);
@@ -183,13 +184,56 @@ function parseCatIdsInput(raw: string | null | undefined): number[] {
   return ids;
 }
 
+/** Thangs' category paths, "Parent;Parent/Child", as written on the site: blank clears, duplicates are dropped. */
+function parseCatPathsInput(raw: string | null | undefined): string[] {
+  const paths = [
+    ...new Set(
+      (raw ?? "")
+        .split(";")
+        .map((path) =>
+          path
+            .split("/")
+            .map((part) => part.trim())
+            .join("/"),
+        )
+        .filter(Boolean),
+    ),
+  ];
+  for (const path of paths) {
+    if (path.length > 200 || path.split("/").some((part) => !part)) {
+      throw new HttpError(
+        400,
+        `Invalid category path "${path}" -- use paths separated by ";", e.g. Toys & Games/Puzzles`,
+      );
+    }
+  }
+  if (paths.length > MAX_CAT_IDS) {
+    throw new HttpError(400, `Too many category paths -- at most ${MAX_CAT_IDS} allowed`);
+  }
+  return paths;
+}
+
 const catIdsField = z.string().trim().max(1000).nullable().optional();
+const catPathsField = z.string().trim().max(5000).nullable().optional();
+
+/** A field the request leaves out is left as it is (Prisma skips undefined), so a client from before a provider was
+ *  added can't wipe that provider's ids; blank or null still clears them. */
+function catIdsUpdate(raw: string | null | undefined): number[] | undefined {
+  return raw === undefined ? undefined : parseCatIdsInput(raw);
+}
 const categoryMetaSchema = z.object({
   meta_title: z.string().trim().max(200).nullable().optional(),
   meta_description: z.string().trim().max(2000).nullable().optional(),
   makerworld_cat_ids: catIdsField,
   thingiverse_cat_ids: catIdsField,
   printables_cat_ids: catIdsField,
+  myminifactory_cat_ids: catIdsField,
+  snapmaker_cat_ids: catIdsField,
+  makeronline_cat_ids: catIdsField,
+  crealitycloud_cat_ids: catIdsField,
+  nexprint_cat_ids: catIdsField,
+  thangs_cat_ids: catPathsField,
+  cults3d_cat_ids: catIdsField,
 });
 
 router.patch(
@@ -203,9 +247,16 @@ router.patch(
       data: {
         metaTitle: body.meta_title || null,
         metaDescription: body.meta_description || null,
-        makerworldCatIds: parseCatIdsInput(body.makerworld_cat_ids),
-        thingiverseCatIds: parseCatIdsInput(body.thingiverse_cat_ids),
-        printablesCatIds: parseCatIdsInput(body.printables_cat_ids),
+        makerworldCatIds: catIdsUpdate(body.makerworld_cat_ids),
+        thingiverseCatIds: catIdsUpdate(body.thingiverse_cat_ids),
+        printablesCatIds: catIdsUpdate(body.printables_cat_ids),
+        myminifactoryCatIds: catIdsUpdate(body.myminifactory_cat_ids),
+        snapmakerCatIds: catIdsUpdate(body.snapmaker_cat_ids),
+        makeronlineCatIds: catIdsUpdate(body.makeronline_cat_ids),
+        crealitycloudCatIds: catIdsUpdate(body.crealitycloud_cat_ids),
+        nexprintCatIds: catIdsUpdate(body.nexprint_cat_ids)?.map(String),
+        thangsCatIds: body.thangs_cat_ids === undefined ? undefined : parseCatPathsInput(body.thangs_cat_ids),
+        cults3dCatIds: catIdsUpdate(body.cults3d_cat_ids),
       },
     });
     res.json(toCategoryOut(updated));

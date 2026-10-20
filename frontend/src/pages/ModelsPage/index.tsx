@@ -22,6 +22,8 @@ import SortTabs from "./SortTabs";
 import ModelsManagerDialog, { type ModelsManagerSection } from "./ModelsManagerDialog";
 import { CardSkeletons } from "../../components/media/CardSkeleton";
 import { cardGridSx } from "../../components/media/cardGrid";
+import ModelSelectionToolbar from "../../components/modelSelection/ModelSelectionToolbar";
+import { replacePrints, useModelSelection } from "../../hooks/useModelSelection";
 
 const PAGE_SIZE = 24;
 
@@ -57,6 +59,7 @@ export default function ModelsPage({
   const [loadingMore, setLoadingMore] = useState(false);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(false);
+  const selection = useModelSelection(items);
   const [searchParams, setSearchParams] = useSearchParams();
   const [categoriesView, setCategoriesView] = useCategoriesView();
   const panelKind = categoriesView === "folders" ? "folder" : "category";
@@ -262,9 +265,19 @@ export default function ModelsPage({
 
   return (
     <Stack spacing={2} sx={{ maxWidth: "1920px", mx: "auto" }}>
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
+      <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 2, rowGap: 1 }}>
         <CategoriesViewToggle value={categoriesView} onChange={switchCategoriesView} />
-        <SortTabs value={sortMode} onChange={setSortMode} />
+        <ModelSelectionToolbar
+          selection={selection}
+          total={items.length}
+          hasMore={hasMore}
+          onDeleted={(ids) => setItems((prev) => prev.filter((i) => !ids.includes(i.id)))}
+          onUpdated={(updated) => setItems((prev) => replacePrints(prev, updated))}
+          onUnauthorized={onUnauthorized}
+        />
+        <Box sx={{ ml: "auto" }}>
+          <SortTabs value={sortMode} onChange={setSortMode} />
+        </Box>
       </Box>
       <ModelsManagerDialog
         open={managerSection}
@@ -315,6 +328,9 @@ export default function ModelsPage({
                     onUpdated={(updated) => setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)))}
                     onUnauthorized={onUnauthorized}
                     viewer={viewer}
+                    selectMode={selection.active}
+                    selected={selection.isSelected(item.id)}
+                    onToggleSelect={(range) => selection.toggle(item.id, range)}
                   />
                 ))}
                 {loadingMore && <CardSkeletons count={5} />}

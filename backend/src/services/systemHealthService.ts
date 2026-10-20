@@ -15,8 +15,14 @@ import { clientLastSeen } from "./clientActivityService";
 import { listAiProviderModels } from "./aiCategorizationService";
 import { resolveAiConnection } from "./aiConnectionService";
 import { testFlaresolverr } from "./flaresolverr";
-import { getFlaresolverrUrl, getSmtpSettings, getThingiverseAccessToken } from "./settingsService";
+import {
+  getFlaresolverrUrl,
+  getMyminifactoryApiKey,
+  getSmtpSettings,
+  getThingiverseAccessToken,
+} from "./settingsService";
 import { checkThingiverseAccessToken } from "./thingiverseApi";
+import { checkMyminifactoryApiKey } from "./myminifactoryApi";
 import { isProviderEnabled } from "./providerSettingsService";
 
 // Administration's System Health: each component Thingport relies on, tested only when an admin asks. Results are
@@ -30,6 +36,7 @@ export const HEALTH_COMPONENTS = [
   "internet",
   "flaresolverr",
   "thingiverse",
+  "myminifactory",
   "grab",
   "ai",
   "smtp",
@@ -194,6 +201,19 @@ async function checkThingiverse(): Promise<Found> {
   return found("error", "unreachable");
 }
 
+async function checkMyminifactory(): Promise<Found> {
+  if (!(await isProviderEnabled("myminifactory"))) return found("not_configured", "disabled");
+  const apiKey = await getMyminifactoryApiKey();
+  if (!apiKey) return found("not_configured", "not_configured");
+  const start = Date.now();
+  const result = await checkMyminifactoryApiKey(apiKey);
+  const latency_ms = Date.now() - start;
+  if (result === "ok") return { ...found("ok", "ok"), latency_ms };
+  if (result === "rejected") return found("error", "token_rejected");
+  if (result === "blocked") return found("warning", "blocked", { flaresolverr: (await getFlaresolverrUrl()) ? 1 : 0 });
+  return found("error", "unreachable");
+}
+
 async function checkAi(): Promise<Found> {
   const connection = await resolveAiConnection(null);
   if (!connection) return found("not_configured", "not_configured");
@@ -251,6 +271,7 @@ const CHECKS: Record<HealthComponent, () => Promise<Found>> = {
   internet: checkInternet,
   flaresolverr: checkFlaresolverr,
   thingiverse: checkThingiverse,
+  myminifactory: checkMyminifactory,
   grab: checkGrab,
   ai: checkAi,
   smtp: checkSmtp,

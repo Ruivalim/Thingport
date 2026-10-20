@@ -17,9 +17,17 @@ import {
 } from "./makerworldJob";
 import { getPrintablesToken, printablesPushDue, pushPrintables, reportProviderAccount } from "./providerAccounts";
 import { getRecentImports } from "./recentImports";
+import { syncMyminifactorySession } from "./myminifactorySession";
+import { scheduleSnapmakerRenewal, SNAPMAKER_ALARM, syncSnapmakerSession } from "./snapmakerSession";
+import { importMakeronlineModel, runWaitingImports, syncMakeronlineSession } from "./makeronline";
+import { syncCrealitycloudSession } from "./crealitycloudSession";
+import { syncNexprintSession } from "./nexprintSession";
+import { syncThangsSession } from "./thangsSession";
+import { syncCults3dSession } from "./cults3dSession";
 import { onPairingTabClosed, onPairingTabUrl, startPairing } from "./pairing";
 import { openSetup } from "./setup";
 import { setTabIconState } from "./tabIcon";
+import { injectIntoOpenTabs, OPTIONAL_SITES, siteEnabled, syncSiteScripts } from "../shared/optionalSites";
 
 function senderTabId(sender: chrome.runtime.MessageSender): number {
   if (!sender.tab?.id) throw new Error("This action is only available from a page");
@@ -35,6 +43,15 @@ listen<BackgroundMessages>({
   CHECK_CONNECTION: () => checkConnection(),
   GET_PRINTABLES_TOKEN: () => getPrintablesToken(),
   REPORT_PROVIDER_ACCOUNT: ({ provider, value }) => reportProviderAccount(provider, value),
+  SYNC_MYMINIFACTORY_SESSION: () => syncMyminifactorySession(),
+  SYNC_SNAPMAKER_SESSION: () => syncSnapmakerSession(),
+  SYNC_MAKERONLINE_SESSION: () => syncMakeronlineSession(),
+  SYNC_CREALITYCLOUD_SESSION: () => syncCrealitycloudSession(),
+  SYNC_NEXPRINT_SESSION: () => syncNexprintSession(),
+  SYNC_THANGS_SESSION: () => syncThangsSession(),
+  SYNC_CULTS3D_SESSION: () => syncCults3dSession(),
+  IMPORT_MAKERONLINE_MODEL: (payload, sender) => importMakeronlineModel(senderTabId(sender), payload),
+  RUN_MAKERONLINE_WAITING: (_payload, sender) => runWaitingImports(senderTabId(sender)),
   PRINTABLES_PUSH_DUE: ({ now }) => printablesPushDue({ now }),
   PUSH_PRINTABLES: (push) => pushPrintables(push),
   OPEN_SETUP: (_payload, sender) => openSetup(sender.tab?.id),
@@ -70,6 +87,27 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 // Before the user reaches a provider page, so the toolbar badge already shows a broken connection.
 chrome.runtime.onStartup.addListener(() => void checkConnection());
 chrome.runtime.onInstalled.addListener(() => void checkConnection());
+
+// Optional sites: on every wake (a Firefox event page loses its registrations with the browser session), and
+// whenever access is granted or taken back, from the popup or the browser's own settings. Tabs already open on a
+// site get Grab straight away; it doesn't run twice in one.
+void syncSiteScripts();
+chrome.permissions.onAdded.addListener(() => {
+  void syncSiteScripts().then(async () => {
+    for (const site of OPTIONAL_SITES) if (await siteEnabled(site)) await injectIntoOpenTabs(site);
+  });
+  void scheduleSnapmakerRenewal();
+});
+chrome.permissions.onRemoved.addListener(() => {
+  void syncSiteScripts();
+  void scheduleSnapmakerRenewal();
+});
+
+// Snapmaker's sign-in lasts a day: renewed on a timer too, so syncs keep working on days Snapmaker isn't visited.
+void scheduleSnapmakerRenewal();
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === SNAPMAKER_ALARM) void syncSnapmakerSession();
+});
 
 chrome.tabs.onRemoved.addListener((tabId) => {
   void dropJobIfForTab(tabId);

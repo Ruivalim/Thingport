@@ -14,6 +14,7 @@ export const DASHBOARD_WIDGETS = [
   "clock",
   "weather",
   "featuredModel",
+  "activityHeatmap",
 ] as const;
 export type DashboardWidgetId = (typeof DASHBOARD_WIDGETS)[number];
 export type DashboardWidgets = Partial<Record<DashboardWidgetId, boolean>>;

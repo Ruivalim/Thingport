@@ -160,6 +160,7 @@ const runSchema = z.object({
   include_ai: z.boolean(),
   include_rule: z.boolean(),
   include_manual: z.boolean(),
+  print_ids: z.array(z.string()).min(1).max(500).optional(),
 });
 router.post(
   "/ai-categorization/run",
@@ -173,6 +174,7 @@ router.post(
       ai: body.include_ai,
       rule: body.include_rule,
       manual: body.include_manual,
+      printIds: body.print_ids,
     });
     if (!run) throw new HttpError(409, "AI categorization run is already active", "running");
     res.status(202).json({ run: runOut(run) });

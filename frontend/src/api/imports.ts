@@ -181,6 +181,48 @@ export const importsApi = {
     return res.json();
   },
 
+  /** fromMakerworldProfiles for a Snapmaker Space model. */
+  fromSnapmakerProfiles: async (
+    payload: ImportLinkPayload & { scope: Exclude<MakerworldProfileScope, "url"> },
+  ): Promise<{ job_id: string }> => {
+    const res = await fetch(`${apiBase()}/import/snapmaker-profiles`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Import failed"));
+    return res.json();
+  },
+
+  /** fromMakerworldProfiles for a Creality Cloud model. */
+  fromCrealitycloudProfiles: async (
+    payload: ImportLinkPayload & { scope: Exclude<MakerworldProfileScope, "url"> },
+  ): Promise<{ job_id: string }> => {
+    const res = await fetch(`${apiBase()}/import/crealitycloud-profiles`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Import failed"));
+    return res.json();
+  },
+
+  /** fromMakerworldProfiles for a NexPrint model. */
+  fromNexprintProfiles: async (
+    payload: ImportLinkPayload & { scope: Exclude<MakerworldProfileScope, "url"> },
+  ): Promise<{ job_id: string }> => {
+    const res = await fetch(`${apiBase()}/import/nexprint-profiles`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Import failed"));
+    return res.json();
+  },
+
   /** Returns immediately; ImportJobContext polls the job. A pasted list of links, imported one at
    *  a time; what fails can be rerun with retryImportJob. */
   fromLinks: async (
@@ -324,6 +366,201 @@ export const importsApi = {
       const message = await readErrorMessage(res, "Printables Collection import failed");
       throw new Error(message);
     }
+    return res.json();
+  },
+
+  listMyminifactoryCollectionEntries: async (payload: ImportLinkPayload): Promise<ImportCollectionEntriesResult> => {
+    const res = await fetch(`${apiBase()}/import/myminifactory-collection/entries`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) {
+      throw new UnauthorizedError();
+    }
+    if (!res.ok) {
+      const message = await readErrorMessage(res, "Could not load this collection");
+      throw new Error(message);
+    }
+    return res.json();
+  },
+
+  /** Returns immediately; ImportJobContext polls the job. */
+  fromMyminifactoryCollection: async (
+    payload: ImportLinkPayload & { object_ids: string[] },
+  ): Promise<{ job_id: string }> => {
+    const res = await fetch(`${apiBase()}/import/myminifactory-collection`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) {
+      throw new UnauthorizedError();
+    }
+    if (!res.ok) {
+      const message = await readErrorMessage(res, "MyMiniFactory collection import failed");
+      throw new Error(message);
+    }
+    return res.json();
+  },
+
+  /** The user's own Snapmaker Space likes or bookmarks, read with their sign-in. */
+  listSnapmakerListEntries: async (payload: ImportLinkPayload): Promise<ImportCollectionEntriesResult> => {
+    const res = await fetch(`${apiBase()}/import/snapmaker-list/entries`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Could not load this collection"));
+    return res.json();
+  },
+
+  /** Returns immediately; ImportJobContext polls the job. */
+  fromSnapmakerList: async (payload: ImportLinkPayload & { model_ids: string[] }): Promise<{ job_id: string }> => {
+    const res = await fetch(`${apiBase()}/import/snapmaker-list`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Snapmaker Space import failed"));
+    return res.json();
+  },
+
+  /** A Creality Cloud collection, or the user's own likes. */
+  listCrealitycloudListEntries: async (payload: ImportLinkPayload): Promise<ImportCollectionEntriesResult> => {
+    const res = await fetch(`${apiBase()}/import/crealitycloud-list/entries`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Could not load this collection"));
+    return res.json();
+  },
+
+  /** Returns immediately; ImportJobContext polls the job. */
+  fromCrealitycloudList: async (payload: ImportLinkPayload & { model_ids: string[] }): Promise<{ job_id: string }> => {
+    const res = await fetch(`${apiBase()}/import/crealitycloud-list`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Creality Cloud import failed"));
+    return res.json();
+  },
+
+  /** A NexPrint collection, private ones too. */
+  listNexprintCollectionEntries: async (payload: ImportLinkPayload): Promise<ImportCollectionEntriesResult> => {
+    const res = await fetch(`${apiBase()}/import/nexprint-collection/entries`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Could not load this collection"));
+    return res.json();
+  },
+
+  /** Returns immediately; ImportJobContext polls the job. */
+  fromNexprintCollection: async (payload: ImportLinkPayload & { model_ids: string[] }): Promise<{ job_id: string }> => {
+    const res = await fetch(`${apiBase()}/import/nexprint-collection`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "NexPrint import failed"));
+    return res.json();
+  },
+
+  /** The user's Thangs likes, or a collection, read with their Thangs sign-in. */
+  listThangsListEntries: async (payload: ImportLinkPayload): Promise<ImportCollectionEntriesResult> => {
+    const res = await fetch(`${apiBase()}/import/thangs-list/entries`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Could not load this list"));
+    return res.json();
+  },
+
+  /** Returns immediately; ImportJobContext polls the job. */
+  fromThangsList: async (payload: ImportLinkPayload & { model_ids: string[] }): Promise<{ job_id: string }> => {
+    const res = await fetch(`${apiBase()}/import/thangs-list`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Thangs import failed"));
+    return res.json();
+  },
+
+  /** A Cults3D user's likes, or one of the user's printlists, read with their API key. */
+  listCults3dListEntries: async (payload: ImportLinkPayload): Promise<ImportCollectionEntriesResult> => {
+    const res = await fetch(`${apiBase()}/import/cults3d-list/entries`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Could not load this list"));
+    return res.json();
+  },
+
+  /** Returns immediately; ImportJobContext polls the job. */
+  fromCults3dList: async (payload: ImportLinkPayload & { model_ids: string[] }): Promise<{ job_id: string }> => {
+    const res = await fetch(`${apiBase()}/import/cults3d-list`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Cults3D import failed"));
+    return res.json();
+  },
+
+  /** MakerOnline gives its files only to its own pages: the link waits for Thingport Grab's next visit there. */
+  queueMakeronline: async (
+    payload: ImportLinkPayload & { scope: MakerworldProfileScope },
+  ): Promise<{ queued: number }> => {
+    const res = await fetch(`${apiBase()}/import/makeronline/queue`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "MakerOnline import failed"));
+    return res.json();
+  },
+
+  /** A MakerOnline collection, or the user's own likes. */
+  listMakeronlineListEntries: async (payload: ImportLinkPayload): Promise<ImportCollectionEntriesResult> => {
+    const res = await fetch(`${apiBase()}/import/makeronline-list/entries`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Could not load this collection"));
+    return res.json();
+  },
+
+  /** The picked models wait for Thingport Grab, filed into a collection named after the list. */
+  queueMakeronlineList: async (
+    payload: ImportLinkPayload & { model_ids: string[] },
+  ): Promise<{ queued: number; collection_id: string }> => {
+    const res = await fetch(`${apiBase()}/import/makeronline-list`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "MakerOnline import failed"));
     return res.json();
   },
 

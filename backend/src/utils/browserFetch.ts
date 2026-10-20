@@ -1,7 +1,7 @@
 import { Impit } from "impit";
 
-// Thingiverse's Cloudflare challenges clients by their TLS handshake, whatever the headers or
-// cookies, and Node's fetch is on its list. impit sends Chrome's handshake and headers.
+// Thingiverse's, MyMiniFactory's and Thangs' Cloudflare challenge clients by their TLS handshake, whatever the
+// headers or cookies, and Node's fetch is on its list. impit sends Chrome's handshake and headers.
 const following = new Impit({ browser: "chrome", timeout: null });
 const manual = new Impit({ browser: "chrome", timeout: null, followRedirects: false });
 
@@ -11,7 +11,9 @@ const NULL_BODY_STATUSES = new Set([204, 205, 304]);
 export function needsBrowserFetch(url: string): boolean {
   try {
     const host = new URL(url).hostname.toLowerCase();
-    return host === "thingiverse.com" || host.endsWith(".thingiverse.com");
+    return ["thingiverse.com", "myminifactory.com", "thangs.com"].some(
+      (domain) => host === domain || host.endsWith(`.${domain}`),
+    );
   } catch {
     return false;
   }
@@ -23,11 +25,20 @@ export function needsBrowserFetch(url: string): boolean {
 export async function browserFetch(
   url: string,
   {
+    method = "GET",
+    body,
     headers = {},
     timeoutMs,
     signal,
     redirect = "follow",
-  }: { headers?: Record<string, string>; timeoutMs?: number; signal?: AbortSignal; redirect?: "follow" | "manual" },
+  }: {
+    method?: "GET" | "POST";
+    body?: string;
+    headers?: Record<string, string>;
+    timeoutMs?: number;
+    signal?: AbortSignal;
+    redirect?: "follow" | "manual";
+  },
 ): Promise<Response> {
   const sent = Object.fromEntries(Object.entries(headers).filter(([name]) => name.toLowerCase() !== "user-agent"));
   const controller = new AbortController();
@@ -36,10 +47,10 @@ export async function browserFetch(
   const timeout = timeoutMs ? setTimeout(onAbort, timeoutMs) : undefined;
   try {
     const client = redirect === "follow" ? following : manual;
-    const res = await client.fetch(url, { headers: sent, signal: controller.signal });
+    const res = await client.fetch(url, { method, body, headers: sent, signal: controller.signal });
     // A standard Response, so callers and helpers typed for fetch's take it as is.
-    const body = NULL_BODY_STATUSES.has(res.status) ? null : res.body;
-    const out = new Response(body, { status: res.status, statusText: res.statusText, headers: res.headers });
+    const resBody = NULL_BODY_STATUSES.has(res.status) ? null : res.body;
+    const out = new Response(resBody, { status: res.status, statusText: res.statusText, headers: res.headers });
     Object.defineProperty(out, "url", { value: res.url || url });
     return out;
   } finally {

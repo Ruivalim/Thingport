@@ -4,12 +4,18 @@ import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
+import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
 import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
 import type { Category, CategoryMetaInput } from "../../api/categories";
+import HelpTip from "../../components/HelpTip";
+import { SectionLabel } from "../../components/Layout/ConfigurationDialog/parts";
+import ProviderCategoryMappings, {
+  type MappedProvider,
+} from "../../components/categoryMapping/ProviderCategoryMappings";
 
 type Props = {
   category: Category;
@@ -19,16 +25,25 @@ type Props = {
   onSave: (meta: CategoryMetaInput) => Promise<void>;
 };
 
-/** Blank fields clear the metadata. Imports whose site category id matches any listed id
- *  (";"-separated) land in this category. Validation errors show inline and keep the edits. */
+/** Blank fields clear the metadata. Imports whose site category matches one picked for its provider land in this
+ *  category. Validation errors show inline and keep the edits. */
 export default function CategoryMetaDialog({ category, showSiteCatIds, onClose, onSave }: Props) {
   const { t } = useTranslation(["models", "common"]);
   const untitledLabel = t("models:categories.untitled");
   const [title, setTitle] = useState(category.meta_title ?? "");
   const [description, setDescription] = useState(category.meta_description ?? "");
-  const [makerworldCatIds, setMakerworldCatIds] = useState(category.makerworld_cat_ids);
-  const [thingiverseCatIds, setThingiverseCatIds] = useState(category.thingiverse_cat_ids);
-  const [printablesCatIds, setPrintablesCatIds] = useState(category.printables_cat_ids);
+  const [catIds, setCatIds] = useState<Record<MappedProvider, string>>({
+    makerworld: category.makerworld_cat_ids,
+    thingiverse: category.thingiverse_cat_ids,
+    printables: category.printables_cat_ids,
+    myminifactory: category.myminifactory_cat_ids,
+    snapmaker: category.snapmaker_cat_ids,
+    makeronline: category.makeronline_cat_ids,
+    crealitycloud: category.crealitycloud_cat_ids,
+    nexprint: category.nexprint_cat_ids,
+    thangs: category.thangs_cat_ids,
+    cults3d: category.cults3d_cat_ids,
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,9 +54,16 @@ export default function CategoryMetaDialog({ category, showSiteCatIds, onClose, 
       await onSave({
         metaTitle: title.trim() || null,
         metaDescription: description.trim() || null,
-        makerworldCatIds,
-        thingiverseCatIds,
-        printablesCatIds,
+        makerworldCatIds: catIds.makerworld,
+        thingiverseCatIds: catIds.thingiverse,
+        printablesCatIds: catIds.printables,
+        myminifactoryCatIds: catIds.myminifactory,
+        snapmakerCatIds: catIds.snapmaker,
+        makeronlineCatIds: catIds.makeronline,
+        crealitycloudCatIds: catIds.crealitycloud,
+        nexprintCatIds: catIds.nexprint,
+        thangsCatIds: catIds.thangs,
+        cults3dCatIds: catIds.cults3d,
       });
       onClose();
     } catch (err) {
@@ -77,35 +99,20 @@ export default function CategoryMetaDialog({ category, showSiteCatIds, onClose, 
             disabled={saving}
           />
           {showSiteCatIds && (
-            <Stack direction="row" spacing={2}>
-              <TextField
-                label={t("models:categories.manager.makerworldCatIdLabel")}
-                placeholder={t("models:categories.manager.catIdsPlaceholder") ?? undefined}
-                helperText={t("models:categories.manager.catIdsHelp")}
-                fullWidth
-                value={makerworldCatIds}
-                onChange={(e) => setMakerworldCatIds(e.target.value)}
+            <Box>
+              <SectionLabel>
+                {t("models:categories.manager.mapping.heading")}
+                <HelpTip
+                  text={t("models:categories.manager.mapping.help", { category: category.name || untitledLabel })}
+                />
+              </SectionLabel>
+              <ProviderCategoryMappings
+                value={catIds}
+                onChange={(provider, value) => setCatIds((current) => ({ ...current, [provider]: value }))}
+                categoryName={category.name || untitledLabel}
                 disabled={saving}
               />
-              <TextField
-                label={t("models:categories.manager.thingiverseCatIdLabel")}
-                placeholder={t("models:categories.manager.catIdsPlaceholder") ?? undefined}
-                helperText={t("models:categories.manager.catIdsHelp")}
-                fullWidth
-                value={thingiverseCatIds}
-                onChange={(e) => setThingiverseCatIds(e.target.value)}
-                disabled={saving}
-              />
-              <TextField
-                label={t("models:categories.manager.printablesCatIdLabel")}
-                placeholder={t("models:categories.manager.catIdsPlaceholder") ?? undefined}
-                helperText={t("models:categories.manager.catIdsHelp")}
-                fullWidth
-                value={printablesCatIds}
-                onChange={(e) => setPrintablesCatIds(e.target.value)}
-                disabled={saving}
-              />
-            </Stack>
+            </Box>
           )}
           {error && <Alert severity="error">{error}</Alert>}
         </Stack>

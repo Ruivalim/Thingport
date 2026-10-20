@@ -75,6 +75,13 @@ export async function seedDefaultCategories(tx: Prisma.TransactionClient, userId
         makerworldCatIds: node.makerworldCatIds ?? [],
         thingiverseCatIds: node.thingiverseCatIds ?? [],
         printablesCatIds: node.printablesCatIds ?? [],
+        myminifactoryCatIds: node.myminifactoryCatIds ?? [],
+        snapmakerCatIds: node.snapmakerCatIds ?? [],
+        makeronlineCatIds: node.makeronlineCatIds ?? [],
+        crealitycloudCatIds: node.crealitycloudCatIds ?? [],
+        nexprintCatIds: node.nexprintCatIds ?? [],
+        thangsCatIds: node.thangsCatIds ?? [],
+        cults3dCatIds: node.cults3dCatIds ?? [],
       },
     });
     let i = 0;

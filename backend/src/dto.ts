@@ -178,6 +178,13 @@ export type CategoryOut = {
   makerworld_cat_ids: string;
   thingiverse_cat_ids: string;
   printables_cat_ids: string;
+  myminifactory_cat_ids: string;
+  snapmaker_cat_ids: string;
+  makeronline_cat_ids: string;
+  crealitycloud_cat_ids: string;
+  nexprint_cat_ids: string;
+  thangs_cat_ids: string;
+  cults3d_cat_ids: string;
 };
 
 function plateThumbUrl(plateId: string): string | null {
@@ -386,12 +393,13 @@ export type CollectionSyncOut = {
 // A Likes sync's externalId; collection ids are numeric, so the two never collide.
 export const LIKES_ID_PREFIX = "likes:";
 
-/** The user whose likes a sync follows (on Thingiverse or Printables), as written in its page
+/** The user whose likes a sync follows (on Thingiverse, Printables or Cults3D), as written in its page
  *  address, or null for a collection sync. */
 export function syncLikesUsername(sync: { externalId: string; sourceUrl: string }): string | null {
   if (!sync.externalId.startsWith(LIKES_ID_PREFIX)) return null;
-  // Printables writes its profile paths as "/@handle".
-  const fromUrl = new URL(sync.sourceUrl).pathname.split("/").find(Boolean)?.replace(/^@/, "");
+  const parts = new URL(sync.sourceUrl).pathname.split("/").filter(Boolean);
+  // Printables writes its profile paths as "/@handle"; Cults3D's are "/en/users/<nick>/likes".
+  const fromUrl = (/^[a-z]{2}$/.test(parts[0] ?? "") && parts.length === 4 ? parts[2] : parts[0])?.replace(/^@/, "");
   return fromUrl ? decodeURIComponent(fromUrl) : sync.externalId.slice(LIKES_ID_PREFIX.length);
 }
 
@@ -454,7 +462,7 @@ export function toSystemCollectionOut(
   };
 }
 
-function formatCatIds(ids: number[]): string {
+function formatCatIds(ids: (number | string)[]): string {
   return ids.join(";");
 }
 
@@ -471,6 +479,13 @@ export function toCategoryOut(category: Category): CategoryOut {
     makerworld_cat_ids: formatCatIds(category.makerworldCatIds),
     thingiverse_cat_ids: formatCatIds(category.thingiverseCatIds),
     printables_cat_ids: formatCatIds(category.printablesCatIds),
+    myminifactory_cat_ids: formatCatIds(category.myminifactoryCatIds),
+    snapmaker_cat_ids: formatCatIds(category.snapmakerCatIds),
+    makeronline_cat_ids: formatCatIds(category.makeronlineCatIds),
+    crealitycloud_cat_ids: formatCatIds(category.crealitycloudCatIds),
+    nexprint_cat_ids: formatCatIds(category.nexprintCatIds),
+    thangs_cat_ids: formatCatIds(category.thangsCatIds),
+    cults3d_cat_ids: formatCatIds(category.cults3dCatIds),
   };
 }
 

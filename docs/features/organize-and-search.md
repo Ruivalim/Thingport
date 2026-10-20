@@ -8,8 +8,9 @@ Each model can sit in one **category** or one **folder**, both nested as deep as
 top of the Models page.
 
 - **Categories** sort models by what they are, such as Tools > Measuring or Toys & Games > Puzzles. Imported models are
-  placed by the source site's own category, through the provider category IDs each of your categories matches. The
-  optional [AI categorization](../guides/ai.md) can sort the rest.
+  placed by the source site's own category: each of your categories lists, per site, which of that site's categories
+  land in it. Change them from a category's details, with **Manage** next to each site, by picking the site's
+  categories by name. The optional [AI categorization](../guides/ai.md) can sort the rest.
 - **Folders** are your own tree, the way you'd lay it out on disk. [Uploading a folder](../guides/upload-folders.md)
   keeps its structure as folders.
 
@@ -18,8 +19,8 @@ Manage both from **Manage categories & folders** on the Models page. Deleting on
 ## Collections and tags
 
 - **Collections** group models however you like, and a model can be in as many as you want. Give a collection a
-  description and tags, or [sync it](../guides/synced-collections.md) with a collection on MakerWorld, Printables or
-  Thingiverse.
+  description and tags, or [sync it](../guides/synced-collections.md) with a collection on MakerWorld, Printables,
+  Thingiverse or MyMiniFactory.
 - **Tags** come with imported models, and you can add your own. Browse every tag with a picture made from its models,
   hide tags used only once, or delete a tag from every model at once.
 - **Favourites** and your **Browsing history** are kept as collections of their own.

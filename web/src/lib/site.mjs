@@ -7,7 +7,7 @@ export const BRANCH = "main";
 export const SITE_NAME = "Thingport";
 export const TAGLINE = "Your personal 3D model library";
 export const SITE_DESCRIPTION =
-  "Thingport is a free, open-source, self-hosted library for your 3D printing models. Import from MakerWorld, Printables and Thingiverse, preview STL, 3MF, STEP and OBJ files in your browser, and keep everything organized in one place.";
+  "Thingport is a free, open-source, self-hosted library for your 3D printing models. Import from MakerWorld, Printables, Thingiverse and MyMiniFactory, preview STL, 3MF, STEP and OBJ files in your browser, and keep everything organized in one place.";
 
 export const LINKS = {
   github: REPO_URL,
@@ -34,9 +34,93 @@ export const DOCS = [
     slug: "providers",
     source: "docs/PROVIDER_SETUP.md",
     group: "Getting started",
-    title: "Provider setup",
-    nav: "Provider setup",
-    description: "Connect MakerWorld and Thingiverse so Thingport can import from them. Printables needs no setup.",
+    title: "Providers",
+    nav: "Providers",
+    description:
+      "What each model site needs, side by side: sign-ins, Thingport Grab and FlareSolverr, and what it imports.",
+  },
+  {
+    slug: "providers/makerworld",
+    source: "docs/providers/makerworld.md",
+    group: "Providers",
+    title: "MakerWorld",
+    nav: "MakerWorld",
+    description: "Import MakerWorld models with their print profiles, using your own session cookie.",
+  },
+  {
+    slug: "providers/printables",
+    source: "docs/providers/printables.md",
+    group: "Providers",
+    title: "Printables",
+    nav: "Printables",
+    description:
+      "Import Printables models and collections with no setup; your likes and private collections through Thingport Grab.",
+  },
+  {
+    slug: "providers/thingiverse",
+    source: "docs/providers/thingiverse.md",
+    group: "Providers",
+    title: "Thingiverse",
+    nav: "Thingiverse",
+    description: "Import Thingiverse things, collections and likes with an App Token an admin sets once.",
+  },
+  {
+    slug: "providers/myminifactory",
+    source: "docs/providers/myminifactory.md",
+    group: "Providers",
+    title: "MyMiniFactory",
+    nav: "MyMiniFactory",
+    description:
+      "Import free MyMiniFactory models with an admin's API key, and the ones you bought with your own sign-in.",
+  },
+  {
+    slug: "providers/snapmaker-space",
+    source: "docs/providers/snapmaker-space.md",
+    group: "Providers",
+    title: "Snapmaker Space",
+    nav: "Snapmaker Space",
+    description:
+      "Import Snapmaker Space models, likes and bookmarks with your sign-in, which Thingport Grab keeps alive.",
+  },
+  {
+    slug: "providers/makeronline",
+    source: "docs/providers/makeronline.md",
+    group: "Providers",
+    title: "MakerOnline",
+    nav: "MakerOnline",
+    description: "Import MakerOnline models and collections; their files always come through Thingport Grab.",
+  },
+  {
+    slug: "providers/creality-cloud",
+    source: "docs/providers/creality-cloud.md",
+    group: "Providers",
+    title: "Creality Cloud",
+    nav: "Creality Cloud",
+    description: "Import Creality Cloud models with print profiles, collections and likes with your own sign-in.",
+  },
+  {
+    slug: "providers/nexprint",
+    source: "docs/providers/nexprint.md",
+    group: "Providers",
+    title: "NexPrint",
+    nav: "NexPrint",
+    description: "Import NexPrint models with print profiles and collections with your own sign-in.",
+  },
+  {
+    slug: "providers/thangs",
+    source: "docs/providers/thangs.md",
+    group: "Providers",
+    title: "Thangs",
+    nav: "Thangs",
+    description: "Import free and owned Thangs models, likes and collections with your own sign-in.",
+  },
+  {
+    slug: "providers/cults3d",
+    source: "docs/providers/cults3d.md",
+    group: "Providers",
+    title: "Cults3D",
+    nav: "Cults3D",
+    description: "Import free and bought Cults3D models, likes and printlists with your API key and browser sign-in.",
   },
   {
     slug: "guides/existing-library",
@@ -80,13 +164,22 @@ export const DOCS = [
     title: "Synced collections",
     nav: "Synced collections",
     description:
-      "Link a MakerWorld, Printables or Thingiverse collection to Thingport, and models added to it later are imported on their own.",
+      "Link a MakerWorld, Printables, Thingiverse or MyMiniFactory collection to Thingport, and models added to it later are imported on their own.",
+  },
+  {
+    slug: "guides/bookmarklet",
+    source: "docs/guides/bookmarklet.md",
+    group: "Add your library",
+    title: "Import with a bookmarklet",
+    nav: "Bookmarklet",
+    description:
+      "An alternative to Thingport Grab: a bookmark that opens Thingport's import dialog with the model page you're on, in any browser.",
   },
   {
     slug: "features/importing",
     source: "docs/features/importing.md",
     group: "Features",
-    title: "Import from MakerWorld, Printables and Thingiverse",
+    title: "Import from MakerWorld, Printables, Thingiverse and MyMiniFactory",
     nav: "Importing",
     description:
       "Import models, collections and likes with their files, photos, description, tags and author, by link or with Thingport Grab.",
@@ -198,7 +291,7 @@ export const DOCS = [
     group: "Features",
     title: "Themes and languages",
     nav: "Themes and languages",
-    description: "Light, dark or system theme, in English or Lithuanian.",
+    description: "Light, dark or system theme, in any language Thingport is translated into.",
   },
   {
     slug: "guides/system-health",
@@ -207,7 +300,7 @@ export const DOCS = [
     title: "System Health",
     nav: "System Health",
     description:
-      "Check that the database, storage, memory, FlareSolverr, Thingiverse, AI and email all work, and fix what doesn't.",
+      "Check that the database, storage, memory, FlareSolverr, Thingiverse, MyMiniFactory, AI and email all work, and fix what doesn't.",
   },
   {
     slug: "guides/ai",
@@ -257,7 +350,7 @@ export const DOCS = [
     group: "Companion apps",
     title: "Thingport Grab browser extension",
     nav: "Thingport Grab",
-    description: "Import MakerWorld, Printables and Thingiverse models straight from their own pages.",
+    description: "Import MakerWorld, Printables, Thingiverse and MyMiniFactory models straight from their own pages.",
   },
   {
     slug: "grab/privacy",
@@ -300,6 +393,14 @@ export const DOCS = [
     title: "Development setup",
     nav: "Development",
     description: "Run Thingport locally with hot reload, and run the test suites.",
+  },
+  {
+    slug: "translating",
+    source: "docs/TRANSLATING.md",
+    group: "Contributing",
+    title: "Translating Thingport",
+    nav: "Translating",
+    description: "Add a language or improve one by translating a single JSON file; it appears in the app on its own.",
   },
   {
     slug: "grab/development",

@@ -15,6 +15,7 @@ import { StorageMoveProvider } from "./StorageMoveContext";
 import BackToTopButton from "./BackToTopButton";
 import { ConfirmProvider } from "../ConfirmProvider";
 import { ToastProvider } from "../ToastProvider";
+import { ProviderAboutProvider } from "../providerAbout/ProviderAboutProvider";
 import { PageHeaderContext, type PageHeader } from "./PageHeaderContext";
 import { NavigationHistoryProvider, useSmartBack } from "./NavigationHistoryContext";
 import { ImportJobProvider } from "./ImportJobContext";
@@ -236,7 +237,9 @@ export default function AppLayout({ muiTheme, onUnauthorized, ...shellProps }: A
         <ConfirmProvider>
           <ToastProvider>
             <NotificationsProvider onUnauthorized={onUnauthorized}>
-              <AppLayoutShell onUnauthorized={onUnauthorized} {...shellProps} />
+              <ProviderAboutProvider>
+                <AppLayoutShell onUnauthorized={onUnauthorized} {...shellProps} />
+              </ProviderAboutProvider>
             </NotificationsProvider>
           </ToastProvider>
         </ConfirmProvider>

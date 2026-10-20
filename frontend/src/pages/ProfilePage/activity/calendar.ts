@@ -11,6 +11,21 @@ function toIso(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
+type WeekInfoLocale = Intl.Locale & { getWeekInfo?: () => { firstDay: number }; weekInfo?: { firstDay: number } };
+
+/** Sunday (0) or Monday (1), as the language's locale starts its week; a Saturday start is shown as Monday. */
+export function weekStartFor(language: string): 0 | 1 {
+  try {
+    const locale = new Intl.Locale(language) as WeekInfoLocale;
+    const firstDay = (locale.getWeekInfo?.() ?? locale.weekInfo)?.firstDay;
+    if (firstDay) return firstDay === 7 ? 0 : 1;
+  } catch {
+    // An unknown tag falls through to the guess below.
+  }
+  // Without week info (Firefox), only English keeps the US Sunday start.
+  return language.startsWith("en") ? 0 : 1;
+}
+
 export function addDays(iso: string, days: number): string {
   return toIso(new Date(toDate(iso).getTime() + days * DAY_MS));
 }

@@ -65,6 +65,7 @@ describe("system health", () => {
       "internet",
       "flaresolverr",
       "thingiverse",
+      "myminifactory",
       "grab",
       "ai",
       "smtp",

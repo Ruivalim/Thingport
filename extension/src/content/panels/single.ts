@@ -1,5 +1,6 @@
-// Thingiverse and Printables import directly; other links go through /import/inspect first, like
-// the web app's useUploadImport.tsx.
+// Thingiverse, Printables, MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud, NexPrint, Thangs and Cults3D
+// import directly; other links go through /import/inspect first, like the web app's useUploadImport.tsx. MakerOnline's
+// files are signed on its own page first (see background/makeronline.ts).
 
 import type { FillGapsResult, InspectResult, SourceGap, ZipEntriesResult } from "../../shared/api";
 import { request } from "../../shared/messages";
@@ -16,6 +17,12 @@ import {
   type MakerworldProfileScope,
 } from "../makerworld/pageData";
 import { api, escapeHtml } from "../runtime";
+import { loadSnapmakerProfiles } from "../snapmaker";
+import { loadMakeronlineProfiles } from "../makeronline";
+import { loadCrealitycloudProfiles } from "../crealitycloud";
+import { loadNexprintProfiles } from "../nexprint";
+import { thangsDownloadBlock } from "../thangs";
+import { isUnboughtCults3dModel } from "../cults3d";
 import { onPanelAction, panelQuery, panelQueryAll, renderPanel } from "../shell";
 import { collectionIdFor, collectionPickerHtml, readCollectionChoice, wireCollectionPicker } from "./collectionPicker";
 import { errorHtml, statusHtml, successHtml } from "./results";
@@ -37,18 +44,38 @@ function guessPageTitle(): string | null {
   return og || document.title.trim() || null;
 }
 
+/** A MyMiniFactory object the user hasn't bought: its page has a cart button where free and bought ones have their
+ *  download button. A bought one imports from the user's library. */
+function isPaidMyminifactoryObject(): boolean {
+  const { provider } = ctx().classification;
+  return provider === "myminifactory" && !document.querySelector('[data-component-name="DownloadButton"]');
+}
+
 // Several profile resolutions in a quick burst still look automated to MakerWorld.
 const PROFILE_GAP_MS = 2000;
 
+/** The print profile ids a scope brings, the page's own first: MakerWorld's from its page data, Snapmaker's,
+ *  MakerOnline's, Creality Cloud's and NexPrint's from their APIs. Null on other sites, or when they can't be read. */
+async function profileIdsFor(): Promise<((scope: MakerworldProfileScope) => string[]) | null> {
+  const { url, classification } = ctx();
+  if (classification.provider === "snapmaker" && classification.type === "model") return loadSnapmakerProfiles(url);
+  if (classification.provider === "makeronline" && classification.type === "model") return loadMakeronlineProfiles(url);
+  if (classification.provider === "crealitycloud" && classification.type === "model") {
+    return loadCrealitycloudProfiles(url);
+  }
+  if (classification.provider === "nexprint" && classification.type === "model") return loadNexprintProfiles(url);
+  if (classification.provider !== "makerworld" || classification.type !== "model") return null;
+  const page = await loadMakerworldDesignForPage(url);
+  return page ? (scope) => makerworldProfileIds(page.design, scope, page.requestedInstanceId) : null;
+}
+
 /** The page's selected profile first, then "designer's" and "all" where they'd import more. */
 async function profilesPickerHtml(): Promise<string> {
-  const { url, classification } = ctx();
-  if (classification.provider !== "makerworld" || classification.type !== "model") return "";
-  const page = await loadMakerworldDesignForPage(url);
-  if (!page) return "";
-  const all = makerworldProfileIds(page.design, "all", page.requestedInstanceId).length;
+  const ids = await profileIdsFor();
+  if (!ids) return "";
+  const all = ids("all").length;
   if (all < 2) return "";
-  const designer = makerworldProfileIds(page.design, "designer", page.requestedInstanceId).length;
+  const designer = ids("designer").length;
   const options = [`<option value="url">Currently selected print profile</option>`];
   if (designer > 1) options.push(`<option value="designer">All designer print profiles (${designer})</option>`);
   if (all > designer) options.push(`<option value="all">Designer &amp; community print profiles (${all})</option>`);
@@ -64,6 +91,13 @@ function selectedProfileScope(): MakerworldProfileScope {
 }
 
 function profileUrl(url: string, instanceId: string): string {
+  // NexPrint's own links name a profile in their query.
+  if (ctx().classification.provider === "nexprint") {
+    const named = new URL(url);
+    named.hash = "";
+    named.searchParams.set("printConfigId", instanceId);
+    return named.toString();
+  }
   return `${url.split("#")[0]}#profileId-${instanceId}`;
 }
 
@@ -72,9 +106,10 @@ function importHeading(): string {
   return title ? `Import "${escapeHtml(title)}"` : "Import this model";
 }
 
-/** Admins only: the same import, but waiting paused in the instance's import queue. */
+/** Admins only: the same import, but waiting paused in the instance's import queue. Not on MakerOnline: the queue
+ *  can't get its files, so it would only hand the link back to Grab. */
 function queueButtonHtml(): string {
-  return ctx().canQueue
+  return ctx().canQueue && ctx().classification.provider !== "makeronline"
     ? `<button class="tg-btn tg-btn--secondary" type="button" data-action="queue">Add to the queue</button>`
     : "";
 }
@@ -106,9 +141,40 @@ export async function loadSingleItem(): Promise<void> {
     return;
   }
   const { provider, type } = ctx().classification;
+  if (isPaidMyminifactoryObject()) {
+    renderPanel(`
+      <div class="tg-title">Paid model</div>
+      <div class="tg-hint">Buy it on MyMiniFactory first. Once it's in your library, Thingport imports it from there.</div>
+    `);
+    return;
+  }
+  if (provider === "cults3d" && isUnboughtCults3dModel()) {
+    renderPanel(`
+      <div class="tg-title">Paid model</div>
+      <div class="tg-hint">Buy it on Cults3D first. Once it's in your downloads, Thingport imports it from there.</div>
+    `);
+    return;
+  }
   renderFunStatus(checkingLinkPhrases(provider));
+  // Thangs counts every download against the account's daily ones, so one it would refuse isn't tried.
+  const thangsBlock = provider === "thangs" ? await thangsDownloadBlock(ctx().url) : null;
+  if (thangsBlock) {
+    renderPanel(`
+      <div class="tg-title">${escapeHtml(thangsBlock.title)}</div>
+      <div class="tg-hint">${escapeHtml(thangsBlock.hint)}</div>
+    `);
+    return;
+  }
   const skipInspect =
-    (provider === "thingiverse" && type === "thing") || (provider === "printables" && type === "model");
+    (provider === "thingiverse" && type === "thing") ||
+    (provider === "printables" && type === "model") ||
+    (provider === "myminifactory" && type === "object") ||
+    (provider === "snapmaker" && type === "model") ||
+    (provider === "makeronline" && type === "model") ||
+    (provider === "crealitycloud" && type === "model") ||
+    (provider === "nexprint" && type === "model") ||
+    (provider === "thangs" && type === "model") ||
+    (provider === "cults3d" && type === "model");
 
   let zipFilename: string | null = null;
   if (skipInspect) {
@@ -269,6 +335,10 @@ async function runDirectImport(opts?: { entries?: string[] }): Promise<void> {
   const choice = readCollectionChoice();
   if (choice === "missing-name") return;
   const scope = selectedProfileScope();
+  if (ctx().classification.provider === "makeronline") {
+    await runMakeronlineImport(scope, await collectionIdFor(choice));
+    return;
+  }
   if (scope !== "url") {
     await runProfilesImport(scope, await collectionIdFor(choice));
     return;
@@ -302,6 +372,28 @@ async function runDirectImport(opts?: { entries?: string[] }): Promise<void> {
   }
 }
 
+/** Every profile the scope picks comes down in one import: the page signs their files, the instance makes one model
+ *  of them. */
+async function runMakeronlineImport(scope: MakerworldProfileScope, collectionId: string | null): Promise<void> {
+  const { url, instanceUrl, title } = ctx();
+  renderFunStatus(importingPhrases("makeronline"));
+  try {
+    const print = await request("IMPORT_MAKERONLINE_MODEL", { url, scope, collectionId, title: title ?? null });
+    const link = print ? `${instanceUrl}/models/${print.id}` : `${instanceUrl}/models`;
+    if (print?.import_outcome === "profile_added") {
+      renderPanel(successHtml(link, "Added the print profiles' files to the model you already had.", "Profile added"));
+    } else if (print?.import_outcome === "already_imported") {
+      renderPanel(
+        successHtml(link, "These files were already on the model -- nothing new was added.", "Already in your library"),
+      );
+    } else {
+      renderPanel(successHtml(link));
+    }
+  } catch (err) {
+    renderPanel(errorHtml(err));
+  }
+}
+
 /** A CAPTCHA or the daily limit won't clear by clicking Import again, so an admin can park the
  *  link in the queue with the same choices instead, and start it once MakerWorld lets go. The
  *  backend's errors arrive as plain text, hence the message check. */
@@ -325,9 +417,9 @@ function nullUnlessBlocking(err: unknown): null {
 /** The first profile creates (or finds) the model; later ones are added as files. Stops on a
  *  CAPTCHA or the daily download limit, which would fail every later one. */
 async function runProfilesImport(scope: MakerworldProfileScope, collectionId: string | null): Promise<void> {
-  const { url, instanceUrl, title } = ctx();
-  const page = await loadMakerworldDesignForPage(url);
-  const ids = page ? makerworldProfileIds(page.design, scope, page.requestedInstanceId) : [];
+  const { url, instanceUrl, title, classification } = ctx();
+  const makerworld = classification.provider === "makerworld";
+  const ids = (await profileIdsFor())?.(scope) ?? [];
   if (!ids.length) {
     renderPanel(errorHtml(new Error("Couldn't read this model's print profiles. Reload the page and try again.")));
     return;
@@ -341,14 +433,17 @@ async function runProfilesImport(scope: MakerworldProfileScope, collectionId: st
   for (const [index, instanceId] of ids.entries()) {
     renderPanel(statusHtml(`Importing print profile ${index + 1} of ${ids.length}…`));
     if (index > 0) await new Promise((resolve) => setTimeout(resolve, PROFILE_GAP_MS));
-    // The page's Download button gives exactly the link's profile.
+    // The page's Download button gives exactly the link's profile. Snapmaker's and Creality Cloud's the instance
+    // fetches itself.
     try {
-      const resolved =
-        index === 0
+      const resolved = !makerworld
+        ? null
+        : index === 0
           ? await resolveMakerworldDownloadUrl(url).catch(nullUnlessBlocking)
           : await resolveMakerworldProfileDownload(url, instanceId).catch(nullUnlessBlocking);
       const print = await request("IMPORT_SINGLE", {
-        url: index === 0 ? url : profileUrl(url, instanceId),
+        // MakerWorld's page link carries its profile; the others' is named, so a model already in the library gets it.
+        url: index === 0 && makerworld ? url : profileUrl(url, instanceId),
         collectionId,
         resolved,
         title,

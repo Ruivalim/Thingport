@@ -161,6 +161,13 @@ export default function LogsPage({ onUnauthorized }: Props) {
           makerworld: "MakerWorld",
           printables: "Printables",
           thingiverse: "Thingiverse",
+          myminifactory: "MyMiniFactory",
+          snapmaker: "Snapmaker Space",
+          makeronline: "MakerOnline",
+          crealitycloud: "Creality Cloud",
+          nexprint: "NexPrint",
+          thangs: "Thangs",
+          cults3d: "Cults3D",
         };
         const provider = typeof d.provider === "string" ? (names[d.provider] ?? d.provider) : "";
         return t(d.enabled ? "adminSettings.logs.providerOn" : "adminSettings.logs.providerOff", { provider });

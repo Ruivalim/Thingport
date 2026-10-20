@@ -15,9 +15,12 @@ export type ConfirmOptions = {
   destructive?: boolean;
 };
 
-type PendingConfirm = ConfirmOptions & { resolve: (result: boolean) => void };
+/** true: confirmed; false: the cancel button; null: dismissed (Escape or a click outside). */
+export type ConfirmResult = boolean | null;
 
-const ConfirmContext = React.createContext<((options: ConfirmOptions) => Promise<boolean>) | null>(null);
+type PendingConfirm = ConfirmOptions & { resolve: (result: ConfirmResult) => void };
+
+const ConfirmContext = React.createContext<((options: ConfirmOptions) => Promise<ConfirmResult>) | null>(null);
 
 /** Replaces `window.confirm` with one shared dialog. Mounted once in AppLayout. */
 export function ConfirmProvider({ children }: { children: React.ReactNode }) {
@@ -25,12 +28,12 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   const [pending, setPending] = React.useState<PendingConfirm | null>(null);
 
   const confirm = React.useCallback((options: ConfirmOptions) => {
-    return new Promise<boolean>((resolve) => {
+    return new Promise<ConfirmResult>((resolve) => {
       setPending({ ...options, resolve });
     });
   }, []);
 
-  const settle = (result: boolean) => {
+  const settle = (result: ConfirmResult) => {
     pending?.resolve(result);
     setPending(null);
   };
@@ -38,7 +41,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   return (
     <ConfirmContext.Provider value={confirm}>
       {children}
-      <Dialog open={Boolean(pending)} onClose={() => settle(false)} maxWidth="xs" fullWidth>
+      <Dialog open={Boolean(pending)} onClose={() => settle(null)} maxWidth="xs" fullWidth>
         <DialogTitle>{pending?.title || t("confirm")}</DialogTitle>
         <DialogContent>
           <DialogContentText>{pending?.message}</DialogContentText>
@@ -54,7 +57,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Resolves true/false with the user's choice. */
+/** Resolves with the user's choice; a dismissal is falsy too, so `if (!confirmed)` treats it as cancel. */
 export function useConfirm() {
   const confirm = React.useContext(ConfirmContext);
   if (!confirm) throw new Error("useConfirm must be used within a ConfirmProvider");

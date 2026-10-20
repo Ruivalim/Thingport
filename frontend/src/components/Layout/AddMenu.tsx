@@ -4,6 +4,7 @@ import CaptchaField from "../CaptchaField";
 import { useCaptchaSettings } from "../../hooks/useCaptchaSettings";
 import React from "react";
 import { useTranslation } from "react-i18next";
+import { useLocation, useNavigate } from "react-router-dom";
 import Button from "@mui/material/Button";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
@@ -17,31 +18,57 @@ import TextField from "@mui/material/TextField";
 import CircularProgress from "@mui/material/CircularProgress";
 import Tooltip from "@mui/material/Tooltip";
 import Stack from "@mui/material/Stack";
-import Chip from "@mui/material/Chip";
+import IconButton from "@mui/material/IconButton";
 import Alert from "@mui/material/Alert";
 import Typography from "@mui/material/Typography";
 import AddIcon from "@mui/icons-material/Add";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import DriveFolderUploadIcon from "@mui/icons-material/DriveFolderUpload";
 import LinkIcon from "@mui/icons-material/Link";
+import BookmarkAddOutlinedIcon from "@mui/icons-material/BookmarkAddOutlined";
+import BookmarkletGuideDialog from "../BookmarkletGuideDialog";
 import { useUploadImport } from "../uploads/useUploadImport";
 import { useImportJob } from "./ImportJobContext";
 import { useToast } from "../ToastProvider";
 import { IMPORT_PROVIDER_INFO } from "../../constants/importProviders";
+import { COMING_SOON_PROVIDERS, ProviderLogo } from "./ConfigurationDialog/providerLogos";
 import {
   detectImportProvider,
   IMPORT_LINK_EXAMPLES,
   isMakerworldCollectionUrl,
   isMakerworldModelUrl,
+  isMyminifactoryCollectionUrl,
   isPrintablesCollectionUrl,
+  isSnapmakerListUrl,
+  isSnapmakerModelUrl,
+  isMakeronlineListUrl,
+  isMakeronlineModelUrl,
+  isCrealitycloudListUrl,
+  isCrealitycloudModelUrl,
+  isNexprintCollectionUrl,
+  isNexprintModelUrl,
+  isThangsListUrl,
+  isCults3dListUrl,
   isThingiverseCollectionUrl,
   isThingiverseLikesUrl,
   type ImportProviderKey,
 } from "../../utils/importLinkDetection";
 import type { MakerworldProfileScope } from "../../api/imports";
 import { allProvidersOff, useDisabledProviders } from "../../hooks/useDisabledProviders";
+import { readImportLink } from "../../utils/bookmarklet";
 
-const IMPORT_PROVIDERS: ImportProviderKey[] = ["makerworld", "thingiverse", "printables"];
+const IMPORT_PROVIDERS: ImportProviderKey[] = [
+  "makerworld",
+  "thingiverse",
+  "printables",
+  "myminifactory",
+  "snapmaker",
+  "makeronline",
+  "crealitycloud",
+  "nexprint",
+  "thangs",
+  "cults3d",
+];
 
 /** What the search palette's !import command calls. */
 export type AddMenuHandle = {
@@ -73,6 +100,7 @@ const AddMenu = React.forwardRef<AddMenuHandle, Props>(function AddMenu(
   const [linkValue, setLinkValue] = React.useState("");
   const [exampleProvider, setExampleProvider] = React.useState<ImportProviderKey | null>(null);
   const [profileScope, setProfileScope] = React.useState<MakerworldProfileScope>("url");
+  const [bookmarkletGuideOpen, setBookmarkletGuideOpen] = React.useState(false);
   const { isImporting } = useImportJob();
   const upload = useUploadImport({ categoryId, makerworldCookie, onUploaded, onUnauthorized });
   const captchaSettings = useCaptchaSettings();
@@ -104,10 +132,25 @@ const AddMenu = React.forwardRef<AddMenuHandle, Props>(function AddMenu(
           isMakerworldCollectionUrl(link) ||
           isThingiverseLikesUrl(link) ||
           isThingiverseCollectionUrl(link) ||
-          isPrintablesCollectionUrl(link),
+          isPrintablesCollectionUrl(link) ||
+          isMyminifactoryCollectionUrl(link) ||
+          isSnapmakerListUrl(link) ||
+          isMakeronlineListUrl(link) ||
+          isCrealitycloudListUrl(link) ||
+          isNexprintCollectionUrl(link) ||
+          isThangsListUrl(link) ||
+          isCults3dListUrl(link),
       )
     : isMakerworldCollectionUrl(linkValue);
-  const isMakerworldModel = links.some((link) => isMakerworldModelUrl(link));
+  // Models with print profiles to pick between.
+  const hasProfiles = links.some(
+    (link) =>
+      isMakerworldModelUrl(link) ||
+      isSnapmakerModelUrl(link) ||
+      isMakeronlineModelUrl(link) ||
+      isCrealitycloudModelUrl(link) ||
+      isNexprintModelUrl(link),
+  );
 
   const closeMenu = () => setAnchorEl(null);
 
@@ -144,6 +187,18 @@ const AddMenu = React.forwardRef<AddMenuHandle, Props>(function AddMenu(
     },
   }));
 
+  // The bookmarklet's /import?url=: the dialog opens filled in, so the import is one click away.
+  const location = useLocation();
+  const navigate = useNavigate();
+  React.useEffect(() => {
+    const link = readImportLink(location.pathname, location.search);
+    if (link === null) return;
+    navigate("/", { replace: true });
+    if (upload.isBusy || isImporting) showToast({ message: t("addMenu.disabledWhileImporting"), severity: "info" });
+    else openImport(link);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, location.search]);
+
   const closeImport = () => {
     if (upload.importing) return;
     setImportOpen(false);
@@ -154,11 +209,11 @@ const AddMenu = React.forwardRef<AddMenuHandle, Props>(function AddMenu(
     if (needsCaptcha && !captcha?.captcha_answer.trim()) return;
     // Each captcha works once; reopening shows a fresh one.
     if (isBatch) {
-      await upload.submitImportMany(links, needsCaptcha ? captcha : null, isMakerworldModel ? profileScope : "url");
+      await upload.submitImportMany(links, needsCaptcha ? captcha : null, hasProfiles ? profileScope : "url");
       setImportOpen(false);
       return;
     }
-    await upload.submitImport(linkValue, needsCaptcha ? captcha : null, isMakerworldModel ? profileScope : "url");
+    await upload.submitImport(linkValue, needsCaptcha ? captcha : null, hasProfiles ? profileScope : "url");
     setImportOpen(false);
   };
 
@@ -206,22 +261,55 @@ const AddMenu = React.forwardRef<AddMenuHandle, Props>(function AddMenu(
       <Dialog open={importOpen} onClose={closeImport} fullWidth maxWidth="sm">
         <DialogTitle>{t("addMenu.importTitle")}</DialogTitle>
         <DialogContent>
-          <Stack direction="row" spacing={1} sx={{ mb: 1.5 }}>
+          <Stack direction="row" spacing={0.5} sx={{ mb: 1.5, flexWrap: "wrap" }}>
             {IMPORT_PROVIDERS.filter((key) => !disabledProviders.has(key)).map((key) => {
-              const info = IMPORT_PROVIDER_INFO[key];
-              const active = detectedProviders.has(key);
+              const label = IMPORT_PROVIDER_INFO[key].label;
+              // Lit when a pasted link is from it, or its example links are open.
+              const lit = detectedProviders.has(key) || exampleProvider === key;
               return (
-                <Chip
-                  key={key}
-                  label={info.label}
-                  size="small"
-                  onClick={() => setExampleProvider((prev) => (prev === key ? null : key))}
-                  sx={{
-                    fontWeight: 600,
-                    bgcolor: active ? info.color : "action.disabledBackground",
-                    color: active ? (info.textColor ?? "#fff") : "text.disabled",
-                  }}
-                />
+                <Tooltip key={key} title={label}>
+                  <IconButton
+                    size="small"
+                    aria-label={label}
+                    aria-pressed={exampleProvider === key}
+                    onClick={() => setExampleProvider((prev) => (prev === key ? null : key))}
+                    sx={{
+                      p: 0.75,
+                      "& svg": {
+                        filter: lit ? "none" : "grayscale(1)",
+                        opacity: lit ? 1 : 0.45,
+                        transform: lit ? "scale(1.1)" : "none",
+                        transition: "filter 150ms, opacity 150ms, transform 150ms",
+                        "@media (prefers-reduced-motion: reduce)": { transition: "none" },
+                      },
+                      "&:hover svg, &:focus-visible svg": { filter: "none", opacity: 1 },
+                    }}
+                  >
+                    <ProviderLogo id={key} size={22} />
+                  </IconButton>
+                </Tooltip>
+              );
+            })}
+            {COMING_SOON_PROVIDERS.map(({ id, name }) => {
+              const label = `${name}: ${t("providers.comingSoon")}`;
+              return (
+                <Tooltip key={id} title={label}>
+                  {/* aria-disabled rather than disabled, so hover and focus still show the tooltip. */}
+                  <IconButton
+                    size="small"
+                    aria-label={label}
+                    aria-disabled="true"
+                    disableRipple
+                    sx={{
+                      p: 0.75,
+                      cursor: "default",
+                      "&:hover": { bgcolor: "transparent" },
+                      "& svg": { filter: "grayscale(1)", opacity: 0.2 },
+                    }}
+                  >
+                    <ProviderLogo id={id} size={22} />
+                  </IconButton>
+                </Tooltip>
               );
             })}
           </Stack>
@@ -268,7 +356,7 @@ const AddMenu = React.forwardRef<AddMenuHandle, Props>(function AddMenu(
               {t("addMenu.linksDetected", { count: links.length })}
             </Typography>
           )}
-          {isMakerworldModel && (
+          {hasProfiles && (
             <TextField
               select
               fullWidth
@@ -293,6 +381,14 @@ const AddMenu = React.forwardRef<AddMenuHandle, Props>(function AddMenu(
           )}
         </DialogContent>
         <DialogActions>
+          <Button
+            size="small"
+            startIcon={<BookmarkAddOutlinedIcon fontSize="small" />}
+            onClick={() => setBookmarkletGuideOpen(true)}
+            sx={{ mr: "auto" }}
+          >
+            {t("bookmarklet.guide.open")}
+          </Button>
           <Button onClick={closeImport} disabled={upload.importing}>
             {t("common:cancel")}
           </Button>
@@ -312,6 +408,15 @@ const AddMenu = React.forwardRef<AddMenuHandle, Props>(function AddMenu(
         </DialogActions>
       </Dialog>
 
+      <BookmarkletGuideDialog
+        open={bookmarkletGuideOpen}
+        onClose={() => setBookmarkletGuideOpen(false)}
+        onGetExtension={() => {
+          setBookmarkletGuideOpen(false);
+          setImportOpen(false);
+          navigate("/downloads");
+        }}
+      />
       {upload.modals}
     </>
   );

@@ -19,6 +19,14 @@ enum CategorySource {
   LEGACY
 }
 
+/// What an AI connection sends as reasoning_effort, spelled the way providers expect it.
+enum ReasoningEffort {
+  none
+  low
+  medium
+  high
+}
+
 model User {
   id                       String            @id @default(cuid())
   email                    String            @unique
@@ -56,6 +64,66 @@ model User {
   // private collections and likes are refused until they give one again.
   printablesPushOff        Boolean           @default(false)
   thingiverseUsername      String?
+  myminifactoryUsername    String?
+  // Per-user, beside the instance-wide API key: the MyMiniFactory session (PHPSESSID) that downloads
+  // paid and login-only models from the user's own library.
+  myminifactoryCookie      String?
+  // When MyMiniFactory last turned the session down.
+  myminifactoryRejectedAt  DateTime?
+  // The user's Snapmaker access token (a JWT, valid a day). Snapmaker's refresh tokens work once, so Thingport never
+  // refreshes it itself: Thingport Grab keeps the browser's login fresh and sends each new one here.
+  snapmakerToken           String?
+  snapmakerTokenExpiresAt  DateTime?
+  // Their Snapmaker user id, from the token: their likes and bookmarks are synced under it.
+  snapmakerUserId          String?
+  // When Snapmaker last turned the token down.
+  snapmakerRejectedAt      DateTime?
+  // The user's MakerOnline access token (a JWT, valid about 90 days), from its mo_access_token cookie. It reads
+  // models, likes and collections; files only download through Thingport Grab (see GrabImport).
+  makeronlineToken         String?
+  makeronlineTokenExpires  DateTime?
+  // Their MakerOnline user id, from the token: their likes are synced under it.
+  makeronlineUserId        String?
+  // When MakerOnline last turned the token down.
+  makeronlineRejectedAt    DateTime?
+  // The user's Creality Cloud token, from its model_token cookie. The site sets it once at sign-in for 7 days and
+  // never renews it; Thingport Grab sends each new one here.
+  crealitycloudToken       String?
+  crealitycloudExpiresAt   DateTime?
+  // Their Creality Cloud user id (model_user_id): their likes are synced under it.
+  crealitycloudUserId      String?
+  // When Creality Cloud last turned the token down.
+  crealitycloudRejectedAt  DateTime?
+  // The user's NexPrint token, from its auth_token cookie, sent as a Bearer token. The site keeps the cookie for a
+  // week and renews it as it refreshes the token; Thingport Grab sends each new one here.
+  nexprintToken            String?
+  nexprintExpiresAt        DateTime?
+  // When NexPrint last turned the token down.
+  nexprintRejectedAt       DateTime?
+  // The user's Thangs sign-in: the accessToken cookie (a 7-day JWT, sent as a Bearer token) and the refreshToken
+  // cookie that renews it, which lasts about a year and isn't replaced on use. Thingport renews the access token
+  // itself; Thingport Grab sends both whenever the browser's change.
+  thangsToken              String?
+  thangsRefreshToken       String?
+  // The access token's own expiry, from its JWT.
+  thangsExpiresAt          DateTime?
+  thangsUserId             String?
+  // When Thangs last turned the sign-in down, refresh token included.
+  thangsRejectedAt         DateTime?
+  // The user's Cults3D API credentials (their nickname and an API key they made on the site), which read models,
+  // likes, printlists and orders without Cloudflare in the way.
+  cults3dNick              String?
+  cults3dApiKey            String?
+  // When Cults3D last turned the API key down.
+  cults3dApiRejectedAt     DateTime?
+  // The browser's Cults3D sign-in, sent by Thingport Grab: the _session_id cookie (20 days, renewed on use), and the
+  // cf_clearance cookie with the User-Agent it was issued to, which the site's Cloudflare wants for the order and
+  // download pages. The clearance only holds from the browser's own IP address.
+  cults3dSession           String?
+  cults3dClearance         String?
+  cults3dUserAgent         String?
+  // When Cults3D last answered the session with its sign-in page.
+  cults3dSessionRejectedAt DateTime?
   slicer                   String?
   // "light" | "dark" | "system"; null means never set.
   themePreference          String?
@@ -80,6 +148,7 @@ model User {
   collectionSyncs          CollectionSync[]
   providerListings         ProviderListing[]
   importJobs               ImportJob[]
+  grabImports              GrabImport[]
   notifications            Notification[]
   systemReceipts           SystemReceipt[]
   logs                     Log[]
@@ -106,35 +175,51 @@ model Invitation {
 }
 
 model Category {
-  id                String     @id @default(cuid())
-  userId            String
-  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name              String
-  tags              String[]   @default([])
+  id                  String     @id @default(cuid())
+  userId              String
+  user                User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name                String
+  tags                String[]   @default([])
   // "category" (the starter categories imports sort into) or "folder" (the user's own tree, e.g.
   // from uploading folders). Always the same as the top-level ancestor's.
-  kind              String     @default("folder")
-  parentId          String?
-  parent            Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
-  children          Category[] @relation("CategoryTree")
+  kind                String     @default("folder")
+  parentId            String?
+  parent              Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children            Category[] @relation("CategoryTree")
   // Order among siblings. No unique index: Postgres treats NULL parentIds as distinct.
-  position          Int        @default(0)
-  metaTitle         String?
-  metaDescription   String?
+  position            Int        @default(0)
+  metaTitle           String?
+  metaDescription     String?
   // Imports whose site category id matches any of these land in this category. Each site has its
   // own id namespace.
-  makerworldCatIds  Int[]      @default([])
-  thingiverseCatIds Int[]      @default([])
-  printablesCatIds  Int[]      @default([])
-  prints            Print[]
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
+  makerworldCatIds    Int[]      @default([])
+  thingiverseCatIds   Int[]      @default([])
+  printablesCatIds    Int[]      @default([])
+  myminifactoryCatIds Int[]      @default([])
+  snapmakerCatIds     Int[]      @default([])
+  makeronlineCatIds   Int[]      @default([])
+  crealitycloudCatIds Int[]      @default([])
+  // Text: NexPrint's ids are 16 digits, past Int, and a BigInt would break JSON serialization of the row.
+  nexprintCatIds      String[]   @default([])
+  // Thangs has no category ids, only paths: "Tools & Organizers", or "Tools & Organizers/Multiboard".
+  thangsCatIds        String[]   @default([])
+  cults3dCatIds       Int[]      @default([])
+  prints              Print[]
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
 
   @@index([userId, parentId, position])
   @@index([tags], type: Gin)
   @@index([makerworldCatIds], type: Gin)
   @@index([thingiverseCatIds], type: Gin)
   @@index([printablesCatIds], type: Gin)
+  @@index([myminifactoryCatIds], type: Gin)
+  @@index([snapmakerCatIds], type: Gin)
+  @@index([makeronlineCatIds], type: Gin)
+  @@index([crealitycloudCatIds], type: Gin)
+  @@index([nexprintCatIds], type: Gin)
+  @@index([thangsCatIds], type: Gin)
+  @@index([cults3dCatIds], type: Gin)
 }
 
 model Print {
@@ -263,6 +348,29 @@ model ProviderListing {
   updatedAt DateTime @updatedAt
 
   @@unique([userId, provider, key])
+}
+
+/// An import waiting for Thingport Grab. MakerOnline signs its download links only for a page its own anti-bot script
+/// runs on, so a MakerOnline import started in the app, the queue or a sync waits here until Grab, on the next
+/// makeronline.com page it sees, signs the files and imports it.
+model GrabImport {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// The model's page, with `#profileId-<id>` when it names a print profile.
+  url          String
+  /// "url" | "designer" | "all", as for MakerWorld.
+  scope        String   @default("url")
+  collectionId String?
+  categoryId   String?
+  tags         String[] @default([])
+  notes        String?
+  attempts     Int      @default(0)
+  lastError    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, url])
 }
 
 enum BookmarkType {
@@ -530,20 +638,20 @@ model Setting {
 
 /// An OpenAI-compatible AI service. Features use the default one unless set to another.
 model AiConnection {
-  id          String   @id @default(cuid())
-  baseUrl     String
+  id              String           @id @default(cuid())
+  baseUrl         String
   /// Write-only: the API only ever says whether one is set.
-  apiKey      String?
-  model       String
-  timeoutMs   Int      @default(60000)
+  apiKey          String?
+  model           String
+  timeoutMs       Int              @default(60000)
   /// How many requests may wait on this provider at once.
-  concurrency Int      @default(1)
-  /// Off asks a reasoning model to skip thinking, which on a CPU takes minutes.
-  thinking    Boolean  @default(true)
-  isDefault   Boolean  @default(false)
-  position    Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  concurrency     Int              @default(1)
+  /// Sent as reasoning_effort. Null sends nothing, leaving it to the provider.
+  reasoningEffort ReasoningEffort?
+  isDefault       Boolean          @default(false)
+  position        Int              @default(0)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 }
 
 /// An OpenID Connect identity provider (Authentik, PocketID, ...) people can sign in with.

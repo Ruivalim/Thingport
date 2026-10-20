@@ -141,7 +141,7 @@ async function enable(baseUrl: string, patch: Partial<AiCategorizationPrefs & Ai
     model: "local",
     timeoutMs: 1000,
     concurrency: 1,
-    thinking: true,
+    reasoningEffort: null,
     ...connection,
   });
   await setAiCategorizationPrefs({ enabled: true, mode, threshold, onImport, sendImage, aiConnectionId: null });
@@ -363,12 +363,18 @@ describe("AI categorization", () => {
     const tuned = await request(app)
       .patch(`/api/settings/ai-connections/${saved.body.id}`)
       .set(auth())
-      .send({ concurrency: 2, thinking: false });
-    expect(tuned.body).toMatchObject({ base_url: liveUrl, concurrency: 2, thinking: false });
+      .send({ concurrency: 2, reasoning_effort: "low" });
+    expect(tuned.body).toMatchObject({ base_url: liveUrl, concurrency: 2, reasoning_effort: "low" });
   });
 
   it("makes exactly one of two AIs added at the same moment the default", async () => {
-    const fields = { apiKey: null, timeoutMs: 1000, concurrency: 1, thinking: true, baseUrl: "http://127.0.0.1:9/v1" };
+    const fields = {
+      apiKey: null,
+      timeoutMs: 1000,
+      concurrency: 1,
+      reasoningEffort: null,
+      baseUrl: "http://127.0.0.1:9/v1",
+    };
     const added = await Promise.all([
       createAiConnection({ ...fields, model: "first" }),
       createAiConnection({ ...fields, model: "second" }),
@@ -380,7 +386,7 @@ describe("AI categorization", () => {
   it("makes the first AI the default, moves the role on delete, and lets categorization pick one", async () => {
     const defaultUrl = await startProvider(() => ({ category_id: null, confidence: 1, reason: "default" }));
     const first = await enable(defaultUrl);
-    const fields = { apiKey: null, timeoutMs: 1000, concurrency: 1, thinking: true };
+    const fields = { apiKey: null, timeoutMs: 1000, concurrency: 1, reasoningEffort: null };
     const second = await createAiConnection({ ...fields, baseUrl: "http://127.0.0.1:9/v1", model: "other" });
     expect([first.isDefault, second.isDefault]).toEqual([true, false]);
 
@@ -438,7 +444,7 @@ describe("AI categorization", () => {
         model: "qwen3:8b",
         timeoutMs: 1000,
         concurrency: 1,
-        thinking: true,
+        reasoningEffort: null,
       });
       const listed = await request(app).post("/api/settings/ai-connections/models").set(auth()).send({ id: saved.id });
       // Sorted, without duplicates or entries that aren't models.
@@ -801,7 +807,7 @@ describe("AI categorization", () => {
     });
   });
 
-  it("asks a reasoning model not to think only when thinking is turned off", async () => {
+  it("sends the connection's reasoning effort, and nothing when it is left to the provider", async () => {
     const bodies: Record<string, unknown>[] = [];
     const baseUrl = await startProvider((body) => {
       bodies.push(body);
@@ -816,17 +822,26 @@ describe("AI categorization", () => {
           .send({})
       ).status;
 
+    const setEffort = (reasoning_effort: unknown) =>
+      request(app).patch(`/api/settings/ai-connections/${connection.id}`).set(auth()).send({ reasoning_effort });
+
     expect(await recategorize()).toBe(200);
     expect(bodies[0]).not.toHaveProperty("reasoning_effort");
 
-    const off = await request(app)
-      .patch(`/api/settings/ai-connections/${connection.id}`)
-      .set(auth())
-      .send({ thinking: false });
-    expect(off.status).toBe(200);
-    expect(off.body.thinking).toBe(false);
+    // gpt-oss can't stop reasoning and ignores "none", so it needs one of the others.
+    for (const effort of ["none", "low", "medium", "high"]) {
+      const set = await setEffort(effort);
+      expect(set.status).toBe(200);
+      expect(set.body.reasoning_effort).toBe(effort);
+      expect(await recategorize()).toBe(200);
+      expect(bodies.at(-1)?.reasoning_effort).toBe(effort);
+    }
+
+    expect((await setEffort("max")).status).toBe(400);
+    const cleared = await setEffort(null);
+    expect(cleared.body.reasoning_effort).toBeNull();
     expect(await recategorize()).toBe(200);
-    expect(bodies[1].reasoning_effort).toBe("none");
+    expect(bodies.at(-1)).not.toHaveProperty("reasoning_effort");
   });
 
   it("asks again without reasoning_effort when a strict provider rejects it, and remembers that", async () => {
@@ -838,7 +853,7 @@ describe("AI categorization", () => {
         ? { status: 400, content: "Unsupported parameter: 'reasoning_effort' is not supported with this model." }
         : { category_id: null, confidence: 1, reason: "none" };
     });
-    await enable(baseUrl, { thinking: false });
+    await enable(baseUrl, { reasoningEffort: "low" });
     const recategorize = async () =>
       (
         await request(app)
@@ -859,7 +874,7 @@ describe("AI categorization", () => {
       bodies.push(body);
       return { status: 400, content: "The model `missing` does not exist" };
     });
-    await enable(baseUrl, { thinking: false });
+    await enable(baseUrl, { reasoningEffort: "none" });
     for (let i = 0; i < 2; i++) {
       const failed = await request(app)
         .post(`/api/print/${(await print()).id}/recategorize`)

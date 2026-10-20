@@ -124,7 +124,9 @@ export const aiDescriptionsApi = {
   bulk: (action: "accept" | "reject", printIds: string[]): Promise<{ done: number; failed: number }> =>
     request("/ai-descriptions/suggestions/bulk", "POST", { action, print_ids: printIds }),
   runState: (): Promise<{ run: AiDescriptionRun | null }> => request("/ai-descriptions/run"),
-  startRun: (): Promise<{ run: AiDescriptionRun }> => request("/ai-descriptions/run", "POST", {}),
+  /** Every model, or only `printIds`. */
+  startRun: (printIds?: string[]): Promise<{ run: AiDescriptionRun }> =>
+    request("/ai-descriptions/run", "POST", printIds ? { print_ids: printIds } : {}),
   cancelRun: (): Promise<{ run: AiDescriptionRun | null }> => request("/ai-descriptions/run/cancel", "POST", {}),
   status: cachedStatus,
 };

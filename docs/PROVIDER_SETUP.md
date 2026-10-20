@@ -1,46 +1,75 @@
-# Provider setup
+# Providers
 
-Importing from **Printables** works out of the box (its public API needs no credential). **MakerWorld** and **Thingiverse** each need a credential from your own account before Thingport can import from them.
+Thingport imports from ten model sites. **MakerWorld**, **Printables** and **Thingiverse** are the main ones and have
+been supported the longest; the rest came later. Each has a page of its own with what it imports, what it needs and how
+to connect it:
 
-Connect them under **Configuration → Providers**: open the user menu (your avatar, top right) and choose **Configuration**, or click one of the provider chips at the bottom of that menu. Right-click a provider to connect or disconnect it, or double-click one that isn't connected yet. A green tick means it's connected. A provider your admin has [turned off](#turning-a-provider-off) isn't listed.
+- <img src="assets/providers/makerworld.svg" alt="" width="18" height="18" align="absmiddle"> [MakerWorld](providers/makerworld.md) -- your own session cookie; Thingport Grab connects it for you.
+- <img src="assets/providers/printables.svg" alt="" width="18" height="18" align="absmiddle"> [Printables](providers/printables.md) -- works out of the box.
+- <img src="assets/providers/thingiverse.svg" alt="" width="18" height="18" align="absmiddle"> [Thingiverse](providers/thingiverse.md) -- one App Token, set by an admin.
+- <img src="assets/providers/myminifactory.svg" alt="" width="18" height="18" align="absmiddle"> [MyMiniFactory](providers/myminifactory.md) -- one API key, set by an admin; your own sign-in for paid models.
+- <img src="assets/providers/snapmaker-space.svg" alt="" width="18" height="18" align="absmiddle"> [Snapmaker Space](providers/snapmaker-space.md) -- your own sign-in, which only Thingport Grab keeps alive.
+- <img src="assets/providers/makeronline.svg" alt="" width="18" height="18" align="absmiddle"> [MakerOnline](providers/makeronline.md) -- its files come only through Thingport Grab.
+- <img src="assets/providers/creality-cloud.svg" alt="" width="18" height="18" align="absmiddle"> [Creality Cloud](providers/creality-cloud.md) -- your own sign-in, for a week at a time.
+- <img src="assets/providers/nexprint.svg" alt="" width="18" height="18" align="absmiddle"> [NexPrint](providers/nexprint.md) -- your own sign-in, renewed as you use the site.
+- <img src="assets/providers/thangs.svg" alt="" width="18" height="18" align="absmiddle"> [Thangs](providers/thangs.md) -- your own sign-in, which Thingport renews for about a year.
+- <img src="assets/providers/cults3d.svg" alt="" width="18" height="18" align="absmiddle"> [Cults3D](providers/cults3d.md) -- your own API key, and your browser's sign-in for files.
 
-![Configuration, Providers section with MakerWorld, Thingiverse and Printables connected](../frontend/src/assets/screenshots/11_configuration_providers.png)
+Inside Thingport, **About** in a provider's menu under **Configuration → Providers**, or a click on a model's provider
+badge, shows the same in short.
 
-## Thingiverse App Token
+## At a glance
 
-Instance-wide, admin-configured (Configuration > Providers > Thingiverse, or Administration > Providers > Thingiverse App Token) -- one token is shared by every user's Thingiverse imports. Other users see Thingiverse as connected once an admin has set it up.
+| Provider                                                                                                                                         | Sign-in                         | Thingport Grab | FlareSolverr | Collections | Likes | Sync | Print profiles |
+| ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------- | -------------- | ------------ | ----------- | ----- | ---- | -------------- |
+| <img src="assets/providers/makerworld.svg" alt="" width="18" height="18" align="absmiddle"> [MakerWorld](providers/makerworld.md)                | Your cookie                     | Recommended    | Optional     | ✓           |       | ✓    | ✓              |
+| <img src="assets/providers/printables.svg" alt="" width="18" height="18" align="absmiddle"> [Printables](providers/printables.md)                | None                            | Optional¹      | Recommended  | ✓           | ✓¹    | ✓    |                |
+| <img src="assets/providers/thingiverse.svg" alt="" width="18" height="18" align="absmiddle"> [Thingiverse](providers/thingiverse.md)             | Admin's App Token               | Optional       | Recommended  | ✓           | ✓     | ✓    |                |
+| <img src="assets/providers/myminifactory.svg" alt="" width="18" height="18" align="absmiddle"> [MyMiniFactory](providers/myminifactory.md)       | Admin's API key, yours for paid | Optional       | Recommended  | ✓           |       | ✓    |                |
+| <img src="assets/providers/snapmaker-space.svg" alt="" width="18" height="18" align="absmiddle"> [Snapmaker Space](providers/snapmaker-space.md) | Yours, for a day                | Recommended²   |              | Bookmarks   | ✓     | ✓    | ✓              |
+| <img src="assets/providers/makeronline.svg" alt="" width="18" height="18" align="absmiddle"> [MakerOnline](providers/makeronline.md)             | Yours, for likes only           | **Required**   |              | ✓           | ✓     | ✓    | ✓              |
+| <img src="assets/providers/creality-cloud.svg" alt="" width="18" height="18" align="absmiddle"> [Creality Cloud](providers/creality-cloud.md)    | Yours, for a week               | Recommended    |              | ✓           | ✓     | ✓    | ✓              |
+| <img src="assets/providers/nexprint.svg" alt="" width="18" height="18" align="absmiddle"> [NexPrint](providers/nexprint.md)                      | Yours                           | Recommended    |              | ✓           |       | ✓    | ✓              |
+| <img src="assets/providers/thangs.svg" alt="" width="18" height="18" align="absmiddle"> [Thangs](providers/thangs.md)                            | Yours, renewed for a year       | Recommended    | Optional     | ✓           | ✓     | ✓    |                |
+| <img src="assets/providers/cults3d.svg" alt="" width="18" height="18" align="absmiddle"> [Cults3D](providers/cults3d.md)                         | Your API key + browser sign-in  | Recommended³   |              | Printlists  | ✓     | ✓    |                |
 
-1. Sign in to your Thingiverse account, then go to [thingiverse.com/apps/create](https://www.thingiverse.com/apps/create).
-2. Register a new app. The name/description don't matter for this; pick whichever Application Type doesn't require a redirect URL (e.g. "Desktop" or "Mobile") -- a "Web App" asks for OAuth details you don't need here.
-3. Once created, Thingiverse shows an **App Token** for it. This is different from your Thingiverse login password -- it's a permanent credential tied to that registered app.
-4. Copy it, right-click **Thingiverse** in Thingport's **Configuration > Providers**, choose **Connect** and paste it. Thingport verifies the token against Thingiverse before storing it, so a mistyped or revoked token is rejected immediately with a clear error instead of only failing on the next import.
+1. Your private Printables collections and your likes are read by Grab, while you're on Printables.
+2. Snapmaker's sign-in lasts a day and only Grab renews it; without Grab you paste a new one every day.
+3. Cults3D's files need your browser's Cloudflare clearance, and Thingport on the same IP address as that browser.
 
-Treat this token like a password: anyone who has it can use it to act as your Thingiverse app. If it's ever exposed, revoke it from your Thingiverse account's Apps page and generate a new one.
+**Sign-in** is what Thingport needs before it can import; "yours" means each user connects their own account.
 
-## MakerWorld cookie
+## Dependencies
 
-Per-user (Configuration > Providers > MakerWorld) -- MakerWorld has no developer API, so importing from it runs as _your own_ logged-in MakerWorld session, captured as a cookie value.
+### Thingport Grab
 
-### Easiest: Thingport Grab
+[Thingport Grab](../extension/README.md) is Thingport's browser extension for Chrome, Edge and Firefox. Besides
+importing straight from a model's page, it hands your browser's sign-in to Thingport, so the sites that need one connect
+by just being visited, and stay connected. On MakerOnline it does the downloading itself, so there it's required.
+Sites after MakerWorld, Printables and Thingiverse need one click first: **Enable** next to the site in Grab's popup.
+Install it from the **Downloads** page.
 
-The [Thingport Grab](../extension/README.md) browser extension captures this automatically the first time you import something from a MakerWorld tab where you're already logged in -- there's nothing to copy by hand.
+### FlareSolverr
 
-### Manual: copy it from your browser
+Printables, Thingiverse and MyMiniFactory sit behind Cloudflare, which now and then challenges a server instead of
+answering it. [FlareSolverr](https://github.com/FlareSolverr/FlareSolverr) gets past those challenges with a real
+browser. It's part of the standard Docker Compose stack; its address is set under **Administration → Connections →
+FlareSolverr**, and [System Health](guides/system-health.md) checks it. Without it, imports and syncs from those sites
+fail whenever Cloudflare steps in. MakerWorld and Thangs use it only as a fallback, and it can't help with Cults3D.
 
-1. Log in at [makerworld.com](https://makerworld.com) in your browser.
-2. Open DevTools (`F12`, or `Cmd+Option+I` on macOS).
-3. Chrome/Edge: go to the **Application** tab > **Cookies** > `https://makerworld.com`. Firefox: **Storage** tab > **Cookies** > `https://makerworld.com`.
-4. Find the cookie named `token` and copy its **Value** column -- just that raw value, nothing else needs adding.
-5. Right-click **MakerWorld** in Thingport's **Configuration > Providers**, choose **Connect** and paste it. Thingport verifies it against MakerWorld before storing it, so a stale or mistyped paste is rejected immediately instead of only failing on the next import.
+## Connecting a provider
 
-If there's no cookie named `token` (MakerWorld occasionally renames things), use the **Network** tab instead: reload the page, click any request to `makerworld.com`, open its Request Headers, and copy the whole `cookie:` value. Thingport only pulls the `token=...` part out of it and ignores the rest, so pasting the entire header works too.
+Connect them under **Configuration → Providers**: open the user menu (your avatar, top right) and choose
+**Configuration**, or click one of the provider chips at the bottom of that menu. Right-click a provider to connect or
+disconnect it, or double-click one that isn't connected yet. A green tick means it's connected. A provider your admin
+has [turned off](#turning-a-provider-off) isn't listed.
 
-This is your own MakerWorld login session -- don't share it, and expect to redo this occasionally, since MakerWorld sessions eventually expire.
+![Configuration, Providers section with MakerWorld, Thingiverse, Printables and MyMiniFactory connected](../frontend/src/assets/screenshots/11_configuration_providers.png)
 
 ## Turning a provider off
 
-Admins choose which providers this Thingport imports from, under **Administration → Providers**. All three are on by
+Admins choose which providers this Thingport imports from, under **Administration → Providers**. All ten are on by
 default. Turn one off and nothing new comes from it for anyone: links to it, Thingport Grab and the import queue are
 refused, its synced collections pause, and background jobs skip it. It also disappears from everyone's
 **Configuration → Providers**. Models already imported from it stay as they are, and turning it back on picks up where
-it left off. The Thingiverse App Token is set on the same page.
+it left off. The Thingiverse App Token and the MyMiniFactory API key are set on the same page.

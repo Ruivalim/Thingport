@@ -1,10 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { alpha, type Theme } from "@mui/material/styles";
 import Box from "@mui/material/Box";
-import ButtonBase from "@mui/material/ButtonBase";
-import Typography from "@mui/material/Typography";
-import CheckIcon from "@mui/icons-material/Check";
 import type { DashboardLayout } from "../../api/settings";
+import SelectableTile from "../../components/controls/SelectableTile";
 import { DASHBOARD_LAYOUTS, PUZZLE_COLUMNS, PUZZLE_SKETCH, type LayoutDefinition } from "./layouts";
 import { DASHBOARD_WIDGETS } from "./widgets";
 
@@ -82,56 +80,16 @@ export default function LayoutPicker({ value, onChange }: Props) {
   const { t } = useTranslation("app");
   return (
     <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, 1fr)", sm: "repeat(3, 1fr)" }, gap: 1.5 }}>
-      {DASHBOARD_LAYOUTS.map((layout) => {
-        const selected = layout.id === value;
-        const label = t(`dashboard.widgets.layouts.${layout.id}`);
-        return (
-          <ButtonBase
-            key={layout.id}
-            aria-pressed={selected}
-            aria-label={label}
-            onClick={() => onChange(layout.id)}
-            sx={{
-              position: "relative",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "stretch",
-              gap: 1,
-              p: 1.25,
-              borderRadius: "10px",
-              border: 2,
-              borderColor: selected ? "primary.main" : "divider",
-              transition: "border-color 150ms",
-              "&:hover": { borderColor: selected ? "primary.main" : "text.disabled" },
-            }}
-          >
-            <LayoutSketch layout={layout} />
-            <Typography variant="caption" sx={{ textAlign: "center", lineHeight: 1.3 }}>
-              {label}
-            </Typography>
-            {selected && (
-              <Box
-                sx={{
-                  position: "absolute",
-                  top: -9,
-                  right: -9,
-                  width: 22,
-                  height: 22,
-                  borderRadius: "50%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  bgcolor: "success.main",
-                  color: "success.contrastText",
-                  boxShadow: 1,
-                }}
-              >
-                <CheckIcon sx={{ fontSize: 15 }} />
-              </Box>
-            )}
-          </ButtonBase>
-        );
-      })}
+      {DASHBOARD_LAYOUTS.map((layout) => (
+        <SelectableTile
+          key={layout.id}
+          selected={layout.id === value}
+          label={t(`dashboard.widgets.layouts.${layout.id}`)}
+          onClick={() => onChange(layout.id)}
+        >
+          <LayoutSketch layout={layout} />
+        </SelectableTile>
+      ))}
     </Box>
   );
 }

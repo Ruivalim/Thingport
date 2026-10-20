@@ -4,6 +4,7 @@ import path from "node:path";
 import sharp from "sharp";
 import { PREVIEWS } from "../config";
 import { prisma } from "../db";
+import { plateThumbReplaceable, saveThumbFromBytes } from "./printService";
 import type { PreviewImage } from "@prisma/client";
 
 export function previewImagePath(id: string): string {
@@ -70,6 +71,17 @@ export async function removeGeneratedPreviewImages(printId: string): Promise<voi
     remaining.map((img, idx) => prisma.previewImage.update({ where: { id: img.id }, data: { position: idx } })),
   );
   for (const img of generated) await fs.rm(previewImagePath(img.id), { force: true }).catch(() => undefined);
+}
+
+/** Call once a real image is added: it takes over from our own render, as the cover and, when the plate's thumb is
+ *  only that render (it can land first while the image is still uploading), as the thumb too. */
+export async function preferImageOverRenders(
+  printId: string,
+  plateId: string | null | undefined,
+  buffer: Buffer,
+): Promise<void> {
+  await removeGeneratedPreviewImages(printId);
+  if (plateId && (await plateThumbReplaceable(plateId))) await saveThumbFromBytes(plateId, buffer);
 }
 
 export async function deleteAllPreviewImages(printId: string): Promise<void> {

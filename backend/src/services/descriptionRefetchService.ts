@@ -6,15 +6,29 @@ import { localizeDescriptionImages } from "./descriptionImageService";
 import { fetchSourceMeta } from "./fillGapsService";
 import { buildImportSourceUrl } from "./importService";
 import { makerworldCaptchaCooloffActive, MakerworldAuthError, MakerworldCaptchaError } from "./makerworldCloudApi";
-import { getThingiverseAccessToken } from "./settingsService";
+import { getMyminifactoryApiKey, getThingiverseAccessToken } from "./settingsService";
+import { MyminifactoryAuthError, MyminifactoryRateLimitError } from "./myminifactoryApi";
 import { ThingiverseAuthError, ThingiverseRateLimitError } from "./thingiverseApi";
 import type { LookupProblem } from "./authorLinkingService";
 import { getDisabledProviders } from "./providerSettingsService";
+import { Cults3dAuthError, Cults3dRateLimitError } from "./cults3dApi";
+import { getUserCults3dCredentials } from "./cults3dSessionService";
 
 // Re-reads every imported model's description for one user from its source, replacing the stored
 // one, e.g. to bring models imported as plain text up to formatted descriptions with images.
 
-const SOURCE_PROVIDERS = ["makerworld", "thingiverse", "printables"] as const;
+const SOURCE_PROVIDERS = [
+  "makerworld",
+  "thingiverse",
+  "printables",
+  "myminifactory",
+  "snapmaker",
+  "makeronline",
+  "crealitycloud",
+  "nexprint",
+  "thangs",
+  "cults3d",
+] as const;
 type SourceProvider = (typeof SOURCE_PROVIDERS)[number];
 
 export type DescriptionRefetchRun = {
@@ -107,7 +121,12 @@ export async function runDescriptionRefetch(run: DescriptionRefetchRun): Promise
   // Only warned about for sites this user's models actually come from.
   const providers = new Set(prints.map((print) => print.sourceProvider));
   if (providers.has("thingiverse") && !(await getThingiverseAccessToken())) skip("thingiverse", "thingiverse_no_token");
+  if (providers.has("myminifactory") && !(await getMyminifactoryApiKey())) {
+    skip("myminifactory", "myminifactory_no_key");
+  }
   if (providers.has("makerworld") && makerworldCaptchaCooloffActive()) skip("makerworld", "makerworld_captcha");
+  // Read with the user's own key: none given, or one turned down, reads nothing.
+  if (providers.has("cults3d") && !(await getUserCults3dCredentials(run.userId))) skip("cults3d", "cults3d_no_key");
 
   for (const print of prints) {
     const provider = print.sourceProvider as SourceProvider;
@@ -139,6 +158,11 @@ export async function runDescriptionRefetch(run: DescriptionRefetchRun): Promise
       else if (err instanceof ThingiverseAuthError) skip("thingiverse", "thingiverse_token_rejected");
       // Cloudflare's 429 is sticky, so every further Thingiverse request would fail the same way.
       else if (err instanceof ThingiverseRateLimitError) skip("thingiverse", "thingiverse_rate_limited");
+      else if (err instanceof MyminifactoryAuthError) skip("myminifactory", "myminifactory_key_rejected");
+      else if (err instanceof MyminifactoryRateLimitError) skip("myminifactory", "myminifactory_rate_limited");
+      // fetchSourceMeta has already remembered the rejection.
+      else if (err instanceof Cults3dAuthError) skip("cults3d", "cults3d_key_rejected");
+      else if (err instanceof Cults3dRateLimitError) skip("cults3d", "cults3d_rate_limited");
       else console.warn(`Couldn't refetch the description of model ${print.id}`, err);
     }
     run.done++;

@@ -17,7 +17,15 @@ import {
 } from "./importResolvers";
 import { resolveThingiverseThing, ThingiverseAuthError, ThingiverseRateLimitError } from "./thingiverseApi";
 import { parsePrintablesModelUrl, resolvePrintablesModel } from "./printablesApi";
-import { getThingiverseAccessToken } from "./settingsService";
+import { getMyminifactoryApiKey, getThingiverseAccessToken } from "./settingsService";
+import { MyminifactoryAuthError, MyminifactoryRateLimitError, resolveMyminifactoryObject } from "./myminifactoryApi";
+import { resolveSnapmakerModel } from "./snapmakerApi";
+import { resolveMakeronlineModel } from "./makeronlineApi";
+import { resolveCrealitycloudModel } from "./crealitycloudApi";
+import { resolveNexprintModel } from "./nexprintApi";
+import { resolveThangsModel, ThangsBlockedError } from "./thangsApi";
+import { Cults3dAuthError, Cults3dRateLimitError, resolveCults3dModel } from "./cults3dApi";
+import { CULTS3D_CONNECT, getUserCults3dCredentials, markCults3dApiRejected } from "./cults3dSessionService";
 import { getUserMakerworldCookie } from "./makerworldCookieService";
 import { upsertAuthorFromImport } from "./authorService";
 import { emptyGaps, openSourceGaps, type SourceGap } from "./sourceGaps";
@@ -31,7 +39,7 @@ export type FillGapsResult = {
 };
 
 /** Reads the source's metadata. Nothing is downloaded but the images that fill an empty slot.
- *  Thingiverse's own errors are passed through, so callers can tell a rejected token apart. */
+ *  Thingiverse's and MyMiniFactory's own errors are passed through, so callers can tell a rejected token apart. */
 export async function fetchSourceMeta(userId: string, print: Print, sourceUrl: string): Promise<ImportedPageMetadata> {
   const provider = print.sourceProvider!;
   const externalId = print.sourceExternalId!;
@@ -80,6 +88,63 @@ export async function fetchSourceMeta(userId: string, print: Print, sourceUrl: s
       ...resolved.meta,
       galleryImages: resolved.galleryImages.map((image) => ({ url: image.url, filename: image.name })),
     };
+  }
+
+  if (provider === "myminifactory") {
+    const apiKey = await getMyminifactoryApiKey();
+    if (!apiKey) {
+      throw new HttpError(
+        503,
+        "MyMiniFactory import isn't configured for this instance yet -- ask an admin to add an API key in Administration > Providers.",
+      );
+    }
+    const resolved = await resolveMyminifactoryObject(externalId, apiKey);
+    if (!resolved) throw new HttpError(404, "This MyMiniFactory object could not be found, or isn't public.");
+    return { ...emptyImportedPageMetadata(), ...resolved.meta, galleryImages: resolved.galleryImages };
+  }
+
+  if (provider === "snapmaker") {
+    const resolved = await resolveSnapmakerModel(externalId);
+    if (!resolved) throw new HttpError(404, "This Snapmaker model could not be found, or isn't public.");
+    return { ...emptyImportedPageMetadata(), ...resolved.meta, galleryImages: resolved.galleryImages };
+  }
+
+  if (provider === "makeronline") {
+    const resolved = await resolveMakeronlineModel(externalId);
+    if (!resolved) throw new HttpError(404, "This MakerOnline model could not be found, or isn't public.");
+    return { ...emptyImportedPageMetadata(), ...resolved.meta, galleryImages: resolved.galleryImages };
+  }
+
+  if (provider === "crealitycloud") {
+    const resolved = await resolveCrealitycloudModel(externalId);
+    if (!resolved) throw new HttpError(404, "This Creality Cloud model could not be found, or isn't public.");
+    return { ...emptyImportedPageMetadata(), ...resolved.meta, galleryImages: resolved.galleryImages };
+  }
+
+  if (provider === "nexprint") {
+    const resolved = await resolveNexprintModel(externalId);
+    if (!resolved) throw new HttpError(404, "This NexPrint model could not be found, or isn't public.");
+    return { ...emptyImportedPageMetadata(), ...resolved.meta, galleryImages: resolved.galleryImages };
+  }
+
+  if (provider === "thangs") {
+    const resolved = await resolveThangsModel(externalId);
+    if (!resolved) throw new HttpError(404, "This Thangs model could not be found, or isn't public.");
+    return { ...emptyImportedPageMetadata(), ...resolved.meta, galleryImages: resolved.galleryImages };
+  }
+
+  if (provider === "cults3d") {
+    const credentials = await getUserCults3dCredentials(userId);
+    if (!credentials) throw new HttpError(400, CULTS3D_CONNECT);
+    let resolved;
+    try {
+      resolved = await resolveCults3dModel(externalId, credentials);
+    } catch (err) {
+      if (err instanceof Cults3dAuthError) await markCults3dApiRejected(userId);
+      throw err;
+    }
+    if (!resolved) throw new HttpError(404, "This Cults3D model could not be found, or isn't public.");
+    return { ...emptyImportedPageMetadata(), ...resolved.meta, galleryImages: resolved.galleryImages };
   }
 
   throw new HttpError(400, "This model has no source to fill its details from");
@@ -134,6 +199,11 @@ export async function fillSourceGaps(userId: string, printId: string): Promise<F
   } catch (err) {
     if (err instanceof ThingiverseRateLimitError) throw new HttpError(429, err.message);
     if (err instanceof ThingiverseAuthError) throw new HttpError(400, err.message);
+    if (err instanceof MyminifactoryRateLimitError) throw new HttpError(429, err.message);
+    if (err instanceof MyminifactoryAuthError) throw new HttpError(400, err.message);
+    if (err instanceof ThangsBlockedError) throw new HttpError(429, err.message);
+    if (err instanceof Cults3dRateLimitError) throw new HttpError(429, err.message);
+    if (err instanceof Cults3dAuthError) throw new HttpError(400, err.message);
     throw err;
   }
   const wanted = new Set(gaps);

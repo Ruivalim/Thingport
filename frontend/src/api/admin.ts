@@ -22,7 +22,16 @@ export type AdminUser = {
 };
 
 export type HealthComponent =
-  "database" | "storage" | "memory" | "internet" | "flaresolverr" | "thingiverse" | "grab" | "ai" | "smtp";
+  | "database"
+  | "storage"
+  | "memory"
+  | "internet"
+  | "flaresolverr"
+  | "thingiverse"
+  | "myminifactory"
+  | "grab"
+  | "ai"
+  | "smtp";
 export type HealthStatus = "ok" | "warning" | "error" | "not_configured";
 
 export type HealthResult = {
@@ -131,8 +140,14 @@ export type AuthorLookupProblem =
   | "thingiverse_no_token"
   | "thingiverse_token_rejected"
   | "thingiverse_rate_limited"
+  | "myminifactory_no_key"
+  | "myminifactory_key_rejected"
+  | "myminifactory_rate_limited"
   | "makerworld_captcha"
-  | "makerworld_login_rejected";
+  | "makerworld_login_rejected"
+  | "cults3d_no_key"
+  | "cults3d_key_rejected"
+  | "cults3d_rate_limited";
 
 export type AuthorLinkingRun = {
   running: boolean;

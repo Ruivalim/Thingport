@@ -9,7 +9,16 @@ type StartZipImportPayload = Parameters<typeof importsApi.zipFromLink>[0];
 type StartThingiverseLikesImportPayload = Parameters<typeof importsApi.fromThingiverseLikes>[0];
 type StartThingiverseCollectionImportPayload = Parameters<typeof importsApi.fromThingiverseCollection>[0];
 type StartPrintablesCollectionImportPayload = Parameters<typeof importsApi.fromPrintablesCollection>[0];
+type StartMyminifactoryCollectionImportPayload = Parameters<typeof importsApi.fromMyminifactoryCollection>[0];
 type StartMakerworldProfilesImportPayload = Parameters<typeof importsApi.fromMakerworldProfiles>[0];
+type StartSnapmakerProfilesImportPayload = Parameters<typeof importsApi.fromSnapmakerProfiles>[0];
+type StartSnapmakerListImportPayload = Parameters<typeof importsApi.fromSnapmakerList>[0];
+type StartCrealitycloudProfilesImportPayload = Parameters<typeof importsApi.fromCrealitycloudProfiles>[0];
+type StartCrealitycloudListImportPayload = Parameters<typeof importsApi.fromCrealitycloudList>[0];
+type StartNexprintProfilesImportPayload = Parameters<typeof importsApi.fromNexprintProfiles>[0];
+type StartNexprintCollectionImportPayload = Parameters<typeof importsApi.fromNexprintCollection>[0];
+type StartThangsListImportPayload = Parameters<typeof importsApi.fromThangsList>[0];
+type StartCults3dListImportPayload = Parameters<typeof importsApi.fromCults3dList>[0];
 type StartLinksImportPayload = Parameters<typeof importsApi.fromLinks>[0];
 
 type ImportJobContextValue = {
@@ -21,7 +30,16 @@ type ImportJobContextValue = {
   startThingiverseLikesImport: (payload: StartThingiverseLikesImportPayload) => Promise<void>;
   startThingiverseCollectionImport: (payload: StartThingiverseCollectionImportPayload) => Promise<void>;
   startPrintablesCollectionImport: (payload: StartPrintablesCollectionImportPayload) => Promise<void>;
+  startMyminifactoryCollectionImport: (payload: StartMyminifactoryCollectionImportPayload) => Promise<void>;
   startMakerworldProfilesImport: (payload: StartMakerworldProfilesImportPayload) => Promise<void>;
+  startSnapmakerProfilesImport: (payload: StartSnapmakerProfilesImportPayload) => Promise<void>;
+  startSnapmakerListImport: (payload: StartSnapmakerListImportPayload) => Promise<void>;
+  startCrealitycloudProfilesImport: (payload: StartCrealitycloudProfilesImportPayload) => Promise<void>;
+  startCrealitycloudListImport: (payload: StartCrealitycloudListImportPayload) => Promise<void>;
+  startNexprintProfilesImport: (payload: StartNexprintProfilesImportPayload) => Promise<void>;
+  startNexprintCollectionImport: (payload: StartNexprintCollectionImportPayload) => Promise<void>;
+  startThangsListImport: (payload: StartThangsListImportPayload) => Promise<void>;
+  startCults3dListImport: (payload: StartCults3dListImportPayload) => Promise<void>;
   startLinksImport: (payload: StartLinksImportPayload) => Promise<void>;
   /** Reruns the links that failed on the finished job shown in the progress bar. */
   retryJob: () => Promise<void>;
@@ -169,9 +187,99 @@ export function ImportJobProvider({
     [startPolling],
   );
 
+  const startMyminifactoryCollectionImport = useCallback(
+    async (payload: StartMyminifactoryCollectionImportPayload) => {
+      const { job_id } = await importsApi.fromMyminifactoryCollection(payload);
+      const job = await importsApi.getImportJob(job_id);
+      setActiveJob(job);
+      startPolling(job_id);
+    },
+    [startPolling],
+  );
+
   const startMakerworldProfilesImport = useCallback(
     async (payload: StartMakerworldProfilesImportPayload) => {
       const { job_id } = await importsApi.fromMakerworldProfiles(payload);
+      const job = await importsApi.getImportJob(job_id);
+      setActiveJob(job);
+      startPolling(job_id);
+    },
+    [startPolling],
+  );
+
+  const startSnapmakerProfilesImport = useCallback(
+    async (payload: StartSnapmakerProfilesImportPayload) => {
+      const { job_id } = await importsApi.fromSnapmakerProfiles(payload);
+      const job = await importsApi.getImportJob(job_id);
+      setActiveJob(job);
+      startPolling(job_id);
+    },
+    [startPolling],
+  );
+
+  const startSnapmakerListImport = useCallback(
+    async (payload: StartSnapmakerListImportPayload) => {
+      const { job_id } = await importsApi.fromSnapmakerList(payload);
+      const job = await importsApi.getImportJob(job_id);
+      setActiveJob(job);
+      startPolling(job_id);
+    },
+    [startPolling],
+  );
+
+  const startCrealitycloudProfilesImport = useCallback(
+    async (payload: StartCrealitycloudProfilesImportPayload) => {
+      const { job_id } = await importsApi.fromCrealitycloudProfiles(payload);
+      const job = await importsApi.getImportJob(job_id);
+      setActiveJob(job);
+      startPolling(job_id);
+    },
+    [startPolling],
+  );
+
+  const startCrealitycloudListImport = useCallback(
+    async (payload: StartCrealitycloudListImportPayload) => {
+      const { job_id } = await importsApi.fromCrealitycloudList(payload);
+      const job = await importsApi.getImportJob(job_id);
+      setActiveJob(job);
+      startPolling(job_id);
+    },
+    [startPolling],
+  );
+
+  const startNexprintProfilesImport = useCallback(
+    async (payload: StartNexprintProfilesImportPayload) => {
+      const { job_id } = await importsApi.fromNexprintProfiles(payload);
+      const job = await importsApi.getImportJob(job_id);
+      setActiveJob(job);
+      startPolling(job_id);
+    },
+    [startPolling],
+  );
+
+  const startNexprintCollectionImport = useCallback(
+    async (payload: StartNexprintCollectionImportPayload) => {
+      const { job_id } = await importsApi.fromNexprintCollection(payload);
+      const job = await importsApi.getImportJob(job_id);
+      setActiveJob(job);
+      startPolling(job_id);
+    },
+    [startPolling],
+  );
+
+  const startThangsListImport = useCallback(
+    async (payload: StartThangsListImportPayload) => {
+      const { job_id } = await importsApi.fromThangsList(payload);
+      const job = await importsApi.getImportJob(job_id);
+      setActiveJob(job);
+      startPolling(job_id);
+    },
+    [startPolling],
+  );
+
+  const startCults3dListImport = useCallback(
+    async (payload: StartCults3dListImportPayload) => {
+      const { job_id } = await importsApi.fromCults3dList(payload);
       const job = await importsApi.getImportJob(job_id);
       setActiveJob(job);
       startPolling(job_id);
@@ -211,7 +319,16 @@ export function ImportJobProvider({
       startThingiverseLikesImport,
       startThingiverseCollectionImport,
       startPrintablesCollectionImport,
+      startMyminifactoryCollectionImport,
       startMakerworldProfilesImport,
+      startSnapmakerProfilesImport,
+      startSnapmakerListImport,
+      startCrealitycloudProfilesImport,
+      startCrealitycloudListImport,
+      startNexprintProfilesImport,
+      startNexprintCollectionImport,
+      startThangsListImport,
+      startCults3dListImport,
       startLinksImport,
       retryJob,
       dismissJob,
@@ -223,7 +340,16 @@ export function ImportJobProvider({
       startThingiverseLikesImport,
       startThingiverseCollectionImport,
       startPrintablesCollectionImport,
+      startMyminifactoryCollectionImport,
       startMakerworldProfilesImport,
+      startSnapmakerProfilesImport,
+      startSnapmakerListImport,
+      startCrealitycloudProfilesImport,
+      startCrealitycloudListImport,
+      startNexprintProfilesImport,
+      startNexprintCollectionImport,
+      startThangsListImport,
+      startCults3dListImport,
       startLinksImport,
       retryJob,
       dismissJob,

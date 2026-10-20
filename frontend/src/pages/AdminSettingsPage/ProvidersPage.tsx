@@ -2,6 +2,8 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
+import ButtonBase from "@mui/material/ButtonBase";
+import Chip from "@mui/material/Chip";
 import Dialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
@@ -17,10 +19,11 @@ import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import { UnauthorizedError } from "../../api/client";
 import { type ImportProvider, type ProviderSetting, settingsApi } from "../../api/settings";
 import { useConfirm } from "../../components/ConfirmProvider";
-import { ProviderLogo } from "../../components/Layout/ConfigurationDialog/providerLogos";
+import { COMING_SOON_PROVIDERS, ProviderLogo } from "../../components/Layout/ConfigurationDialog/providerLogos";
 import SectionHeader from "../../components/SectionHeader";
 import { publishProviders } from "../../hooks/useDisabledProviders";
-import ThingiverseSection from "./ThingiverseSection";
+import { useProviderAbout } from "../../components/providerAbout/ProviderAboutProvider";
+import ProviderKeySection, { type KeyedProvider } from "./ProviderKeySection";
 
 type Props = {
   onUnauthorized?: () => void;
@@ -30,17 +33,32 @@ const NAMES: Record<ImportProvider, string> = {
   makerworld: "MakerWorld",
   printables: "Printables",
   thingiverse: "Thingiverse",
+  myminifactory: "MyMiniFactory",
+  snapmaker: "Snapmaker Space",
+  makeronline: "MakerOnline",
+  crealitycloud: "Creality Cloud",
+  nexprint: "NexPrint",
+  thangs: "Thangs",
+  cults3d: "Cults3D",
 };
 
-/** The sites Thingport imports from and syncs with: each can be turned off for everyone, and Thingiverse's token set. */
+const KEYED = new Set<ImportProvider>(["thingiverse", "myminifactory"]);
+const isKeyed = (provider: ImportProvider): provider is KeyedProvider => KEYED.has(provider);
+
+/** The sites Thingport imports from and syncs with: each can be turned off for everyone, and the instance keys of
+ *  the ones that need one set. */
 export default function ProvidersPage({ onUnauthorized }: Props) {
   const { t } = useTranslation(["app", "common"]);
   const confirm = useConfirm();
   const [providers, setProviders] = React.useState<ProviderSetting[] | null>(null);
   const [saving, setSaving] = React.useState<ImportProvider | null>(null);
   const [error, setError] = React.useState<string | null>(null);
-  const [tokenOpen, setTokenOpen] = React.useState(false);
-  const [tokenSet, setTokenSet] = React.useState<boolean | null>(null);
+  const [keyOpen, setKeyOpen] = React.useState<KeyedProvider | null>(null);
+  const [keySet, setKeySet] = React.useState<Partial<Record<KeyedProvider, boolean>>>({});
+  const onKeyConfigured = React.useCallback(
+    (configured: boolean) => keyOpen && setKeySet((current) => ({ ...current, [keyOpen]: configured })),
+    [keyOpen],
+  );
 
   const fail = React.useCallback(
     (err: unknown) => {
@@ -57,7 +75,11 @@ export default function ProvidersPage({ onUnauthorized }: Props) {
       (err: unknown) => active && fail(err),
     );
     settingsApi.getThingiverse().then(
-      (data) => active && setTokenSet(data.configured),
+      (data) => active && setKeySet((current) => ({ ...current, thingiverse: data.configured })),
+      () => undefined,
+    );
+    settingsApi.getMyminifactory().then(
+      (data) => active && setKeySet((current) => ({ ...current, myminifactory: data.configured })),
       () => undefined,
     );
     return () => {
@@ -98,8 +120,28 @@ export default function ProvidersPage({ onUnauthorized }: Props) {
         </Alert>
       )}
       <Paper variant="outlined" sx={{ borderRadius: "12px", overflow: "hidden" }}>
-        {(providers ?? (["makerworld", "printables", "thingiverse"] as const).map((id) => ({ id, enabled: true }))).map(
-          ({ id, enabled }) => (
+        {(
+          providers ??
+          (
+            [
+              "makerworld",
+              "printables",
+              "thingiverse",
+              "myminifactory",
+              "snapmaker",
+              "makeronline",
+              "crealitycloud",
+              "nexprint",
+              "thangs",
+              "cults3d",
+            ] as const
+          ).map((id) => ({
+            id,
+            enabled: true,
+          }))
+        ).map(({ id, enabled }) => {
+          const keySetHere = isKeyed(id) ? keySet[id] : undefined;
+          return (
             <Stack
               key={id}
               direction="row"
@@ -107,28 +149,29 @@ export default function ProvidersPage({ onUnauthorized }: Props) {
               alignItems="center"
               sx={{ px: 2, py: 1.5, "&:not(:last-of-type)": { borderBottom: 1, borderColor: "divider" } }}
             >
-              <Box sx={{ flexShrink: 0, lineHeight: 0, opacity: enabled ? 1 : 0.45 }}>
-                <ProviderLogo id={id} size={32} />
-              </Box>
+              <AboutButton id={id} name={NAMES[id]}>
+                <Box sx={{ flexShrink: 0, lineHeight: 0, opacity: enabled ? 1 : 0.45 }}>
+                  <ProviderLogo id={id} size={32} />
+                </Box>
+              </AboutButton>
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography variant="body1" fontWeight={600}>
-                  {NAMES[id]}
-                </Typography>
+                <AboutButton id={id} name={NAMES[id]} tabIndex={-1}>
+                  <Typography variant="body1" fontWeight={600}>
+                    {NAMES[id]}
+                  </Typography>
+                </AboutButton>
                 <Typography variant="body2" color="text.secondary">
                   {t(`adminSettings.providers.descriptions.${id}`)}
                 </Typography>
-                {id === "thingiverse" && tokenSet !== null && (
-                  <Typography variant="caption" color={tokenSet ? "success.main" : "warning.main"}>
-                    {t(tokenSet ? "adminSettings.providers.tokenSet" : "adminSettings.providers.tokenMissing")}
+                {isKeyed(id) && keySetHere !== undefined && (
+                  <Typography variant="caption" color={keySetHere ? "success.main" : "warning.main"}>
+                    {t(`adminSettings.providers.keyStatus.${id}.${keySetHere ? "set" : "missing"}`)}
                   </Typography>
                 )}
               </Box>
-              {id === "thingiverse" && (
-                <Tooltip title={t("adminSettings.providers.tokenSettings")}>
-                  <IconButton
-                    aria-label={t("adminSettings.providers.tokenSettings")}
-                    onClick={() => setTokenOpen(true)}
-                  >
+              {isKeyed(id) && (
+                <Tooltip title={t(`adminSettings.${id}.heading`)}>
+                  <IconButton aria-label={t(`adminSettings.${id}.heading`)} onClick={() => setKeyOpen(id)}>
                     <SettingsOutlinedIcon />
                   </IconButton>
                 </Tooltip>
@@ -150,25 +193,86 @@ export default function ProvidersPage({ onUnauthorized }: Props) {
                 <Skeleton variant="rounded" width={34} height={14} sx={{ mx: 1.5 }} />
               )}
             </Stack>
-          ),
-        )}
+          );
+        })}
+        {COMING_SOON_PROVIDERS.map(({ id, name }) => (
+          <Stack
+            key={id}
+            direction="row"
+            spacing={2}
+            alignItems="center"
+            aria-disabled="true"
+            sx={{ px: 2, py: 1.5, "&:not(:last-of-type)": { borderBottom: 1, borderColor: "divider" } }}
+          >
+            <Box sx={{ flexShrink: 0, lineHeight: 0, opacity: 0.45, filter: "grayscale(1)" }}>
+              <ProviderLogo id={id} size={32} />
+            </Box>
+            <Typography variant="body1" fontWeight={600} color="text.disabled" sx={{ flex: 1, minWidth: 0 }}>
+              {name}
+            </Typography>
+            <Chip size="small" variant="outlined" label={t("providers.comingSoon")} sx={{ color: "text.secondary" }} />
+          </Stack>
+        ))}
       </Paper>
 
-      <Dialog open={tokenOpen} onClose={() => setTokenOpen(false)} fullWidth maxWidth="sm">
+      <Dialog open={Boolean(keyOpen)} onClose={() => setKeyOpen(null)} fullWidth maxWidth="sm">
         <DialogTitle sx={{ pr: 6 }}>
-          {t("adminSettings.thingiverse.heading")}
+          {keyOpen && t(`adminSettings.${keyOpen}.heading`)}
           <IconButton
             aria-label={t("common:close")}
-            onClick={() => setTokenOpen(false)}
+            onClick={() => setKeyOpen(null)}
             sx={{ position: "absolute", right: 8, top: 8 }}
           >
             <CloseIcon />
           </IconButton>
         </DialogTitle>
         <DialogContent>
-          <ThingiverseSection onUnauthorized={onUnauthorized} onConfiguredChange={setTokenSet} />
+          {keyOpen && (
+            <ProviderKeySection
+              key={keyOpen}
+              provider={keyOpen}
+              onUnauthorized={onUnauthorized}
+              onConfiguredChange={onKeyConfigured}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </Stack>
+  );
+}
+
+/** The logo or name of a provider: opens its About dialog. The name repeats the logo's button, so it's skipped by Tab. */
+function AboutButton({
+  id,
+  name,
+  tabIndex,
+  children,
+}: {
+  id: ImportProvider;
+  name: string;
+  tabIndex?: number;
+  children: React.ReactNode;
+}) {
+  const { t } = useTranslation("app");
+  const openAbout = useProviderAbout(id);
+  if (!openAbout) return <>{children}</>;
+  return (
+    <Tooltip title={t("providerAbout.aboutName", { name })}>
+      <ButtonBase
+        onClick={openAbout}
+        tabIndex={tabIndex}
+        aria-label={t("providerAbout.aboutName", { name })}
+        sx={{
+          borderRadius: "8px",
+          textAlign: "left",
+          transition: "transform 150ms ease",
+          "&:hover": { transform: "translateY(-1px)", "& .MuiTypography-root": { textDecoration: "underline" } },
+          "&.Mui-focusVisible": { outline: 2, outlineColor: "primary.main", outlineOffset: 2 },
+          "@media (prefers-reduced-motion: reduce)": { transition: "none", "&:hover": { transform: "none" } },
+        }}
+      >
+        {children}
+      </ButtonBase>
+    </Tooltip>
   );
 }

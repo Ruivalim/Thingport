@@ -119,13 +119,15 @@ router.get(
   }),
 );
 
+const runSchema = z.object({ print_ids: z.array(z.string()).min(1).max(500).optional() });
 router.post(
   "/ai-descriptions/run",
   asyncHandler(async (req, res) => {
     if (!aiDescriptionsEnabled(await getAiDescriptionSettings())) {
       throw new HttpError(503, "Improved descriptions are off", "ai_disabled");
     }
-    const run = startAiDescriptionRun(req.userId!);
+    const { print_ids } = parseBody(runSchema, req.body ?? {});
+    const run = startAiDescriptionRun(req.userId!, print_ids);
     if (!run) throw new HttpError(409, "Improving descriptions is already running", "running");
     res.status(202).json({ run: runOut(run) });
   }),

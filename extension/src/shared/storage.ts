@@ -18,6 +18,20 @@ export const STORAGE_KEYS = {
   loginVerifiedAt: "loginVerifiedAt",
   // Lets the cookie sync skip a redundant PATCH.
   lastSyncedMakerworldCookie: "lastSyncedMakerworldCookie",
+  // The MyMiniFactory session last sent, and to which Thingport account.
+  lastSyncedMyminifactorySession: "lastSyncedMyminifactorySession",
+  // The Snapmaker access token last sent, and to which Thingport account.
+  lastSyncedSnapmakerToken: "lastSyncedSnapmakerToken",
+  // The MakerOnline access token last sent, and to which Thingport account.
+  lastSyncedMakeronlineToken: "lastSyncedMakeronlineToken",
+  // The Creality Cloud sign-in last sent, and to which Thingport account.
+  lastSyncedCrealitycloudSession: "lastSyncedCrealitycloudSession",
+  // The NexPrint token last sent, and to which Thingport account.
+  lastSyncedNexprintSession: "lastSyncedNexprintSession",
+  // The Thangs tokens last sent, and to which Thingport account.
+  lastSyncedThangsSession: "lastSyncedThangsSession",
+  // The Cults3D sign-in last sent, and to which Thingport account.
+  lastSyncedCults3dSession: "lastSyncedCults3dSession",
   // The Printables and Thingiverse usernames last sent to the instance, so unchanged ones aren't.
   lastSentProviderAccounts: "lastSentProviderAccounts",
   // When Printables' lists were last read and sent, so a burst of page loads reads them once.
@@ -40,6 +54,13 @@ export type StoredConfig = {
   tokenExpiresAt?: number;
   loginVerifiedAt?: number;
   lastSyncedMakerworldCookie?: string;
+  lastSyncedMyminifactorySession?: { account: string; value: string };
+  lastSyncedSnapmakerToken?: { account: string; value: string };
+  lastSyncedMakeronlineToken?: { account: string; value: string };
+  lastSyncedCrealitycloudSession?: { account: string; value: string };
+  lastSyncedNexprintSession?: { account: string; value: string };
+  lastSyncedThangsSession?: { account: string; value: string };
+  lastSyncedCults3dSession?: { account: string; value: string };
   /** `account` is the Thingport instance and email they were sent to. */
   lastSentProviderAccounts?: { account: string; values: Record<string, string> };
   lastPrintablesPushAt?: number;

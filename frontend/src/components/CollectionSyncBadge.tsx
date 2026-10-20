@@ -10,7 +10,18 @@ import { ProviderLogo, type ProviderId } from "./Layout/ConfigurationDialog/prov
 import { useDisabledProviders } from "../hooks/useDisabledProviders";
 import type { ImportProvider } from "../api/settings";
 
-const LOGO_PROVIDERS = new Set<string>(["makerworld", "thingiverse", "printables"]);
+const LOGO_PROVIDERS = new Set<string>([
+  "makerworld",
+  "thingiverse",
+  "printables",
+  "myminifactory",
+  "snapmaker",
+  "makeronline",
+  "crealitycloud",
+  "nexprint",
+  "thangs",
+  "cults3d",
+]);
 
 type Props = {
   sync: CollectionSync;

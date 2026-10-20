@@ -20,6 +20,7 @@ import { importProviderInfo } from "../../constants/importProviders";
 import HelpTip from "../../components/HelpTip";
 import Segmented from "../../components/controls/Segmented";
 import { SectionLabel } from "../../components/Layout/ConfigurationDialog/parts";
+import { ProviderLogo } from "../../components/Layout/ConfigurationDialog/providerLogos";
 import { useSlicerPreference } from "../../hooks/useSlicerPreference";
 import { useConfirm } from "../../components/ConfirmProvider";
 import { onConfigurationClosed, openConfiguration } from "../../utils/configurationEvents";
@@ -44,7 +45,26 @@ const PASTE_EXAMPLES: Record<BrowsableProvider, string> = {
   makerworld: "https://makerworld.com/en/collections/…",
   printables: "https://www.printables.com/@…/collections/…",
   thingiverse: "https://www.thingiverse.com/…/collections/…",
+  myminifactory: "https://www.myminifactory.com/users/…/collection/…",
+  snapmaker: "https://space.snapmaker.com/en/creator/…?tab=interactions&list=likes",
+  makeronline: "https://www.makeronline.com/en/user/collectionDetail/…/….html",
+  crealitycloud: "https://www.crealitycloud.com/collection/…",
+  nexprint: "https://www.nexprint.com/en/…/home?component=UserCollect&subComp=UserCollectDetail&collectionId=G…",
+  thangs: "https://thangs.com/designer/…/collection/…",
+  // Cults3D's API shows no one's printlists but the user's own, so someone else's means their likes.
+  cults3d: "https://cults3d.com/en/users/…/likes",
 };
+
+// Listed with the user's own sign-in, which already says who they are, so no username is asked for.
+const SIGNED_IN = new Set<BrowsableProvider>([
+  "makerworld",
+  "snapmaker",
+  "makeronline",
+  "crealitycloud",
+  "nexprint",
+  "thangs",
+  "cults3d",
+]);
 
 /** The one the user's slicer goes with, unless it isn't connected; then the first that is. Only from `available`,
  *  the ones an admin hasn't turned off. */
@@ -120,8 +140,9 @@ export default function SyncBrowse({ provider, onProviderChange, picked, onPick,
   }, [accounts, provider, slicer, onProviderChange, available]);
 
   const account = provider && accounts ? accounts[provider] : null;
-  const needsAccount = provider !== null && provider !== "makerworld" && account?.connected && !account.account;
-  const canList = Boolean(account?.connected && (provider === "makerworld" || account.account));
+  const signedIn = provider !== null && SIGNED_IN.has(provider);
+  const needsAccount = provider !== null && !signedIn && account?.connected && !account.account;
+  const canList = Boolean(account?.connected && (signedIn || account.account));
 
   useEffect(() => {
     if (!provider || !canList || collections[provider]) return;
@@ -266,7 +287,11 @@ export default function SyncBrowse({ provider, onProviderChange, picked, onPick,
             setEditingAccount(false);
             onProviderChange(next);
           }}
-          options={available.map((value) => ({ value, label: importProviderInfo(value)?.label ?? value }))}
+          options={available.map((value) => ({
+            value,
+            label: importProviderInfo(value)?.label ?? value,
+            icon: <ProviderLogo id={value} size={20} />,
+          }))}
         />
       </div>
 
@@ -349,7 +374,7 @@ export default function SyncBrowse({ provider, onProviderChange, picked, onPick,
       {canList && !editingAccount && (
         <Box>
           <SectionLabel>{t("models:collections.sync.browse.yoursLabel", { provider: name })}</SectionLabel>
-          {provider !== "makerworld" && account?.account && (
+          {!signedIn && account?.account && (
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
               {t(`models:collections.sync.browse.showing.${provider}`, { user: account.account })}
               {provider === "printables" && (

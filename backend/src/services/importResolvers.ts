@@ -488,14 +488,62 @@ export type ImportedPageMetadata = {
   galleryImages: { url: string; filename: string }[];
   /** Structured creator record; `creator` stays a plain display string. */
   author: ImportedAuthorInfo | null;
-  /** The site's own category ids; each site has its own id namespace. */
-  siteCategoryIds: number[];
-  categorySite: "makerworld" | "thingiverse" | "printables" | null;
+  /** The site's own category ids; each site has its own id namespace. Thangs', which has no ids, are category paths. */
+  siteCategoryIds: (number | string)[];
+  categorySite:
+    | "makerworld"
+    | "thingiverse"
+    | "printables"
+    | "myminifactory"
+    | "snapmaker"
+    | "makeronline"
+    | "crealitycloud"
+    | "nexprint"
+    | "thangs"
+    | "cults3d"
+    | null;
   /** Lets a second profile of an imported design be added as its own plate. MakerWorld only. */
   makerworldProfile?: MakerworldProfileRef;
 };
 
-export type MakerworldProfileRef = { instanceId: string | null };
+/** `coverUrl`: the profile's own picture on MakerWorld, which becomes its plate's thumbnail. `titles`: every profile's
+ *  name by id, which tells the design's profile files apart when they share a filename. */
+export type MakerworldProfileRef = {
+  instanceId: string | null;
+  coverUrl?: string | null;
+  titles?: Record<string, string>;
+};
+
+/** Every profile's name, by id. */
+export function makerworldInstanceTitles(design: unknown): Record<string, string> {
+  const instances = design && typeof design === "object" ? (design as Record<string, unknown>).instances : null;
+  const titles: Record<string, string> = {};
+  for (const inst of Array.isArray(instances) ? instances : []) {
+    if (!inst || typeof inst !== "object") continue;
+    const { id, title } = inst as Record<string, unknown>;
+    if (id != null && typeof title === "string" && title.trim()) titles[String(id)] = title.trim();
+  }
+  return titles;
+}
+
+/** A profile's own picture: its `cover`, else the first of its `pictures`. */
+export function makerworldInstanceCover(design: unknown, instanceId: string | null): string | null {
+  if (!instanceId || !design || typeof design !== "object") return null;
+  const instances = (design as Record<string, unknown>).instances;
+  if (!Array.isArray(instances)) return null;
+  const inst = instances.find(
+    (candidate) =>
+      candidate && typeof candidate === "object" && String((candidate as Record<string, unknown>).id) === instanceId,
+  ) as Record<string, unknown> | undefined;
+  if (!inst) return null;
+  const firstPicture = Array.isArray(inst.pictures)
+    ? (inst.pictures[0] as Record<string, unknown> | undefined)
+    : undefined;
+  for (const url of [inst.cover, firstPicture?.url]) {
+    if (typeof url === "string" && /^https:\/\//i.test(url.trim())) return url.trim();
+  }
+  return null;
+}
 
 export type ImportedAuthorInfo = {
   provider: string;
@@ -623,8 +671,17 @@ export async function resolveMakerworldDownloadUrl(
   let nonce: string | null = null;
   let instanceId: string | null = null;
   let defaultInstanceId: string | null = null;
-  const asDefault = (downloadUrl: string) => ({ downloadUrl, profile: { instanceId: defaultInstanceId } });
+  let design: unknown = null;
+  const asDefault = (downloadUrl: string) => ({
+    downloadUrl,
+    profile: {
+      instanceId: defaultInstanceId,
+      coverUrl: makerworldInstanceCover(design, defaultInstanceId),
+      titles: makerworldInstanceTitles(design),
+    },
+  });
   if (nextData) {
+    design = getPath(nextData, "props", "pageProps", "design");
     instanceId = makerworldInstanceIdFromNextData(nextData, requestedInstanceId);
     defaultInstanceId = makerworldInstanceIdFromNextData(nextData, null);
     // A generic URL in the page data belongs to the default profile.
@@ -638,7 +695,10 @@ export async function resolveMakerworldDownloadUrl(
 
   if (instanceId) {
     const url = await fetchMakerworldInstanceDownloadUrl(instanceId, pageUrl, makerworldCookie);
-    if (url) return { downloadUrl: url, profile: { instanceId } };
+    if (url) {
+      const coverUrl = makerworldInstanceCover(design, instanceId);
+      return { downloadUrl: url, profile: { instanceId, coverUrl, titles: makerworldInstanceTitles(design) } };
+    }
   }
 
   const modelId = designId || makerworldModelIdFromUrl(pageUrl);

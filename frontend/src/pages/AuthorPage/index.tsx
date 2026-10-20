@@ -20,13 +20,15 @@ import { useInfiniteScroll } from "../../hooks/useInfiniteScroll";
 import { useGravatarUrl } from "../../hooks/useGravatarUrl";
 import { useConfirm } from "../../components/ConfirmProvider";
 import { useToast } from "../../components/ToastProvider";
-import { importProviderInfo, printProviderInfo } from "../../constants/importProviders";
+import { importProviderInfo, printProviderInfo, providerChipSx } from "../../constants/importProviders";
 import { authorProfileUrl } from "../../utils/authorProfileUrl";
 import { SELF_AUTHOR_ID } from "../../constants/selfAuthor";
 import ModelCard from "../ModelsPage/ModelCard";
 import Skeleton from "@mui/material/Skeleton";
 import { CardSkeletons } from "../../components/media/CardSkeleton";
 import { cardGridSx } from "../../components/media/cardGrid";
+import ModelSelectionToolbar from "../../components/modelSelection/ModelSelectionToolbar";
+import { replacePrints, useModelSelection } from "../../hooks/useModelSelection";
 
 const PAGE_SIZE = 24;
 const COVER_HEIGHT = 184;
@@ -57,6 +59,7 @@ export default function AuthorPage({ theme, previewMode, onUnauthorized, viewer,
   const [loadingMore, setLoadingMore] = useState(false);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(false);
+  const selection = useModelSelection(items);
   // Authors the viewer has claimed: self-mode provider chips, and whether "It's me!" shows.
   const [myLinks, setMyLinks] = useState<Author[]>([]);
   const [linking, setLinking] = useState(false);
@@ -268,7 +271,7 @@ export default function AuthorPage({ theme, previewMode, onUnauthorized, viewer,
                           size="small"
                           clickable
                           onClick={() => navigate(`/authors/${linked.id}`)}
-                          sx={{ bgcolor: info.color, color: info.textColor ?? "#fff", fontWeight: 600 }}
+                          sx={{ ...providerChipSx(info), fontWeight: 600 }}
                         />
                       );
                     })}
@@ -291,9 +294,8 @@ export default function AuthorPage({ theme, previewMode, onUnauthorized, viewer,
                           fontSize: 12,
                           fontWeight: 600,
                           lineHeight: 1.6,
-                          color: "#fff",
                           textDecoration: "none",
-                          bgcolor: providerInfo.color,
+                          ...providerChipSx(providerInfo),
                         }}
                       >
                         {providerInfo.label}
@@ -327,9 +329,19 @@ export default function AuthorPage({ theme, previewMode, onUnauthorized, viewer,
           </Box>
 
           <Box sx={{ minWidth: 0, pt: 3, pb: 3 }}>
-            <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
-              {t("models:pageTitle")}
-            </Typography>
+            <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
+              <Typography variant="h6" fontWeight={700}>
+                {t("models:pageTitle")}
+              </Typography>
+              <ModelSelectionToolbar
+                selection={selection}
+                total={items.length}
+                hasMore={hasMore}
+                onDeleted={(ids) => setItems((prev) => prev.filter((i) => !ids.includes(i.id)))}
+                onUpdated={(updated) => setItems((prev) => replacePrints(prev, updated))}
+                onUnauthorized={onUnauthorized}
+              />
+            </Stack>
             {items.length ? (
               <Stack spacing={2}>
                 <Box sx={cardGridSx(5)}>
@@ -346,6 +358,9 @@ export default function AuthorPage({ theme, previewMode, onUnauthorized, viewer,
                       onUpdated={(updated) => setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)))}
                       onUnauthorized={onUnauthorized}
                       viewer={viewer}
+                      selectMode={selection.active}
+                      selected={selection.isSelected(item.id)}
+                      onToggleSelect={(range) => selection.toggle(item.id, range)}
                     />
                   ))}
                   {loadingMore && <CardSkeletons count={5} />}

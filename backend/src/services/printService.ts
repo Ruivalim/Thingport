@@ -356,9 +356,19 @@ export async function relocatePrint(print: PrintLike, plates: Plate[], template?
     if (oldExists) {
       await fs.mkdir(path.dirname(newPath), { recursive: true });
       await fs.rename(oldPath, newPath);
-      await pruneEmptyStorageDirs(path.dirname(oldPath));
     }
-    await prisma.plate.update({ where: { id: plate.id }, data: { storagePath: newRelative } });
+    try {
+      await prisma.plate.update({ where: { id: plate.id }, data: { storagePath: newRelative } });
+    } catch (err) {
+      // Put the file back, so the plate's stored path still finds it.
+      if (oldExists) {
+        await fs.mkdir(path.dirname(oldPath), { recursive: true });
+        await fs.rename(newPath, oldPath);
+        await pruneEmptyStorageDirs(path.dirname(newPath));
+      }
+      throw err;
+    }
+    if (oldExists) await pruneEmptyStorageDirs(path.dirname(oldPath));
   }
 }
 

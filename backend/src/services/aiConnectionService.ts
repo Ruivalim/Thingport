@@ -1,10 +1,13 @@
-import type { AiConnection, Prisma } from "@prisma/client";
+import type { AiConnection, Prisma, ReasoningEffort } from "@prisma/client";
 import { prisma } from "../db";
 import { HttpError } from "../utils/fileUtils";
 import { normalizeAiBaseUrl } from "./settingsService";
 
 /** What a request to a provider needs, whether the connection is saved or only typed into the form. */
-export type AiProvider = Pick<AiConnection, "baseUrl" | "apiKey" | "model" | "timeoutMs" | "concurrency" | "thinking">;
+export type AiProvider = Pick<
+  AiConnection,
+  "baseUrl" | "apiKey" | "model" | "timeoutMs" | "concurrency" | "reasoningEffort"
+>;
 
 export type AiConnectionInput = {
   baseUrl: string;
@@ -12,14 +15,14 @@ export type AiConnectionInput = {
   model: string;
   timeoutMs: number;
   concurrency: number;
-  thinking: boolean;
+  reasoningEffort: ReasoningEffort | null;
 };
 
 export const DEFAULT_AI_PROVIDER: Omit<AiProvider, "baseUrl" | "model"> = {
   apiKey: null,
   timeoutMs: 60000,
   concurrency: 1,
-  thinking: true,
+  reasoningEffort: null,
 };
 
 // Any number, as long as only the default's writers take it. Two AIs added at once would otherwise both count no
@@ -65,7 +68,7 @@ export async function resolveAiProvider(id: string | null | undefined): Promise<
     model: connection.model,
     timeoutMs: connection.timeoutMs,
     concurrency: connection.concurrency,
-    thinking: connection.thinking,
+    reasoningEffort: connection.reasoningEffort,
     connectionId: connection.id,
   };
 }

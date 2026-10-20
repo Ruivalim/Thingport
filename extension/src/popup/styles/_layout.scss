@@ -107,6 +107,99 @@ body {
   }
 }
 
+.sites {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site {
+  display: flex;
+  align-items: center;
+  gap: t.$space-2;
+  min-height: 24px;
+
+  > svg {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+  }
+
+  &__name {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__tick {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: t.c("accent");
+    color: t.c("on-accent");
+
+    svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    // Just enabled: pops in where the button was.
+    &--new {
+      animation: site-tick-in 0.25s ease-out;
+    }
+  }
+
+  &__enable {
+    @include m.button-base;
+    @include m.button-primary;
+    width: auto;
+    padding: 3px 10px;
+    border-radius: t.$radius-sm;
+    font-size: t.$font-size-xs;
+  }
+
+  // Not available yet: faded, with the button greyed out.
+  &--soon {
+    > svg,
+    .site__name {
+      opacity: 0.5;
+    }
+
+    > svg {
+      filter: grayscale(1);
+    }
+  }
+
+  &__soon {
+    display: inline-flex;
+    flex-shrink: 0;
+    cursor: default;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &__tick--new {
+      animation: none;
+    }
+  }
+}
+
+@keyframes site-tick-in {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .error {
   display: none;
   margin-top: t.$space-2;

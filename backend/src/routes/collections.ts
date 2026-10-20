@@ -277,6 +277,37 @@ router.post(
   }),
 );
 
+// Many at once, from a grid's multi-select. The prints themselves are untouched.
+router.delete(
+  "/collection/:id/items",
+  asyncHandler(async (req, res) => {
+    if (isSystemCollectionId(req.params.id)) {
+      throw new HttpError(400, "This collection can't be edited");
+    }
+    const body = parseBody(addItemsSchema, req.body);
+    const collection = await prisma.collection.findFirst({ where: { id: req.params.id, userId: req.userId } });
+    if (!collection) throw new HttpError(404, "Collection not found");
+    const prints = await prisma.print.findMany({
+      where: { id: { in: body.print_ids }, userId: req.userId },
+      select: { id: true },
+    });
+    const printIds = prints.map((p) => p.id);
+    const { count } = await prisma.collectionItem.deleteMany({
+      where: { collectionId: collection.id, printId: { in: printIds } },
+    });
+    await relocatePrintsForToken("collection", printIds);
+    res.json({ removed: count });
+    if (count) {
+      void createLog({
+        userId: req.userId!,
+        action: "collection_item_removed",
+        targetId: collection.id,
+        details: { name: collection.name, count },
+      });
+    }
+  }),
+);
+
 router.post(
   "/collection/:id/bookmark",
   asyncHandler(async (req, res) => {

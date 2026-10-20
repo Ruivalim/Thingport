@@ -17,7 +17,9 @@ import RecentlyAddedCard from "./RecentlyAddedCard";
 import ClockCard from "./ClockCard";
 import WeatherCard from "./WeatherCard";
 import FeaturedModelCard from "./FeaturedModelCard";
+import ActivityHeatmapCard from "./ActivityHeatmapCard";
 import type { DashboardSkeleton } from "./DashboardCardSkeleton";
+import type { PanelSketchKind } from "./PanelSketch";
 
 type WidgetContext = {
   summary: DashboardSummary;
@@ -34,6 +36,8 @@ export type DashboardWidget = {
   column: 0 | 1 | 2;
   /** Shown until the user switches it off. An optional widget can start hidden instead. */
   defaultEnabled: boolean;
+  /** Its drawing in the settings dialog's Panels picker. */
+  sketch: PanelSketchKind;
   /** Its placeholder while the summary loads. A widget without one fetches its own data, renders
    *  straight away, and mustn't read `summary`. */
   skeleton?: DashboardSkeleton;
@@ -47,6 +51,7 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
     labelKey: "dashboard.collectionCount.label",
     column: 0,
     defaultEnabled: true,
+    sketch: "count",
     skeleton: { kind: "count" },
     render: ({ summary, t, navigate }) => (
       <CountCard
@@ -62,6 +67,7 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
     labelKey: "dashboard.modelCount.label",
     column: 0,
     defaultEnabled: true,
+    sketch: "count",
     skeleton: { kind: "count" },
     render: ({ summary, t, navigate }) => (
       <CountCard
@@ -77,6 +83,7 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
     labelKey: "dashboard.authorCount.label",
     column: 0,
     defaultEnabled: true,
+    sketch: "count",
     skeleton: { kind: "count" },
     render: ({ summary, t }) => (
       <CountCard
@@ -91,6 +98,7 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
     labelKey: "dashboard.categoryCount.label",
     column: 0,
     defaultEnabled: true,
+    sketch: "count",
     skeleton: { kind: "count" },
     render: ({ summary, t, navigate }) => (
       <CountCard
@@ -106,13 +114,23 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
     labelKey: "dashboard.featuredModel.title",
     column: 1,
     defaultEnabled: false,
+    sketch: "featured",
     render: ({ onUnauthorized }) => <FeaturedModelCard onUnauthorized={onUnauthorized} />,
+  },
+  {
+    id: "activityHeatmap",
+    labelKey: "dashboard.activityHeatmap.title",
+    column: 1,
+    defaultEnabled: false,
+    sketch: "heatmap",
+    render: ({ onUnauthorized }) => <ActivityHeatmapCard onUnauthorized={onUnauthorized} />,
   },
   {
     id: "topViewed",
     labelKey: "dashboard.topViewed.title",
     column: 1,
     defaultEnabled: true,
+    sketch: "models",
     skeleton: { kind: "list", rows: 3, footer: true },
     render: ({ summary, t }) => (
       <ModelListCard
@@ -132,6 +150,7 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
     labelKey: "dashboard.topPrinted.title",
     column: 1,
     defaultEnabled: true,
+    sketch: "models",
     skeleton: { kind: "list", rows: 3, footer: true },
     render: ({ summary, t }) => (
       <ModelListCard
@@ -151,16 +170,18 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
     labelKey: "dashboard.recentlyAdded.title",
     column: 1,
     defaultEnabled: true,
+    sketch: "models",
     skeleton: { kind: "list", rows: 3 },
     render: ({ summary }) => <RecentlyAddedCard models={summary.recently_added} />,
   },
-  // The clock, weather and featured model are optional extras, off until the user switches them on.
+  // The clock, weather, featured model and activity heatmap are optional extras, off until the user switches them on.
   // Clock and weather sit together at the top of the right column, as panels rather than count boxes.
   {
     id: "clock",
     labelKey: "dashboard.clock.label",
     column: 2,
     defaultEnabled: false,
+    sketch: "clock",
     render: () => <ClockCard />,
   },
   {
@@ -168,6 +189,7 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
     labelKey: "dashboard.weather.label",
     column: 2,
     defaultEnabled: false,
+    sketch: "weather",
     render: () => <WeatherCard />,
   },
   {
@@ -175,6 +197,7 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
     labelKey: "dashboard.topAuthors.title",
     column: 2,
     defaultEnabled: true,
+    sketch: "authors",
     skeleton: { kind: "list", rows: 5, footer: true },
     render: ({ summary }) => <AuthorListCard authors={summary.top_authors} />,
   },
@@ -183,6 +206,7 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
     labelKey: "dashboard.topProviders.title",
     column: 2,
     defaultEnabled: true,
+    sketch: "providers",
     skeleton: { kind: "list", rows: 4, avatar: false },
     render: ({ summary }) => <ProviderListCard providers={summary.top_providers} />,
   },

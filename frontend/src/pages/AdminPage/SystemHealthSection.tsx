@@ -50,6 +50,7 @@ const COMPONENTS: Record<HealthComponent, ComponentInfo> = {
   internet: { icon: <LanguageIcon />, need: "recommended" },
   flaresolverr: { icon: <ShieldOutlinedIcon />, need: "recommended", settings: "/admin-connections?tab=flaresolverr" },
   thingiverse: { icon: <CloudOutlinedIcon />, need: "recommended", settings: "/admin-providers" },
+  myminifactory: { icon: <CloudOutlinedIcon />, need: "optional", settings: "/admin-providers" },
   grab: { icon: <ExtensionOutlinedIcon />, need: "recommended", download: "/downloads" },
   ai: { icon: <AutoAwesomeOutlinedIcon />, need: "optional", settings: "/admin-ai" },
   smtp: { icon: <MailOutlineIcon />, need: "optional", settings: "/admin-connections?tab=smtp" },

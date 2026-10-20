@@ -21,6 +21,7 @@ import VerifyEmailPage from "./pages/VerifyEmailPage";
 import OidcCallbackPage from "./pages/OidcCallbackPage";
 import ConnectGrabPage from "./pages/ConnectGrabPage";
 import { rememberReturnPath } from "./utils/returnPath";
+import { IMPORT_PATH } from "./utils/bookmarklet";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import ProfilePage from "./pages/ProfilePage";
 import ChangeEmailPage from "./pages/ProfilePage/ChangeEmailPage";
@@ -229,6 +230,8 @@ function AppShell({
         <Route path="/profile/password" element={<ChangePasswordPage onUnauthorized={onUnauthorized} />} />
         <Route path="/connect-grab" element={<ConnectGrabPage user={user} onUnauthorized={onUnauthorized} />} />
         <Route path="/downloads" element={<DownloadPage />} />
+        {/* The bookmarklet's link: AddMenu opens the import dialog with it and moves on to the home page. */}
+        <Route path={IMPORT_PATH} element={null} />
         <Route path="/notifications" element={<NotificationsPage onUnauthorized={onUnauthorized} />} />
         <Route
           path="/admin"
@@ -416,7 +419,7 @@ export default function App() {
   if ((authRequired && !token) || isOidcCallbackPath) {
     // Outside the router, so these pre-login links are matched against window.location.
     const isVerifyEmailPath = typeof window !== "undefined" && window.location.pathname === "/verify-email";
-    // Thingport Grab's approval page, reached signed out: single sign-on comes back here once signed in.
+    // Thingport Grab's approval page or a bookmarklet import, reached signed out: single sign-on comes back here.
     rememberReturnPath();
     const isResetPasswordPath = typeof window !== "undefined" && window.location.pathname === "/reset-password";
     const inviteParams =

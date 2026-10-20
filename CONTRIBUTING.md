@@ -9,7 +9,8 @@ Thanks for taking the time. Bug reports, fixes and features are all welcome.
   first so we can agree on the shape before you write it. It's no fun to have a large PR turned
   down over a design decision that could have been a two-message conversation.
 
-Getting the project running locally is covered in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+Getting the project running locally is covered in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). To translate
+Thingport into your language, see [docs/TRANSLATING.md](docs/TRANSLATING.md) -- it needs no code.
 
 ## Workflow
 

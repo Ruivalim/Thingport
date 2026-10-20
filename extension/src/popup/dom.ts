@@ -13,6 +13,7 @@ export const els = {
   enabledSwitch: byId<HTMLInputElement>("enabled-switch"),
   recentSection: byId("recent-section"),
   recentGrid: byId("recent-grid"),
+  sitesList: byId("sites-list"),
   configuredError: byId("configured-error"),
   setupForm: byId<HTMLFormElement>("setup-form"),
   instanceUrlInput: byId<HTMLInputElement>("instance-url"),

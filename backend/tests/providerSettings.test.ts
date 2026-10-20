@@ -30,25 +30,59 @@ beforeAll(async () => {
 
 // Files share one database: every provider is back on afterwards, even when a test fails.
 afterAll(async () => {
-  for (const provider of ["makerworld", "printables", "thingiverse"] as const) await setProviderEnabled(provider, true);
+  for (const provider of [
+    "makerworld",
+    "printables",
+    "thingiverse",
+    "myminifactory",
+    "snapmaker",
+    "makeronline",
+    "crealitycloud",
+    "nexprint",
+    "thangs",
+    "cults3d",
+  ] as const)
+    await setProviderEnabled(provider, true);
 });
 
 describe("turning providers off", () => {
   it("has every provider on, and only lets admins switch them", async () => {
     const res = await request(app).get("/api/settings/providers").set(as(member));
     expect(res.status).toBe(200);
-    expect(enabledMap(res.body)).toEqual({ makerworld: true, printables: true, thingiverse: true });
+    expect(enabledMap(res.body)).toEqual({
+      makerworld: true,
+      printables: true,
+      thingiverse: true,
+      myminifactory: true,
+      snapmaker: true,
+      makeronline: true,
+      crealitycloud: true,
+      nexprint: true,
+      thangs: true,
+      cults3d: true,
+    });
 
     expect(
       (await request(app).patch("/api/settings/providers/thingiverse").set(as(member)).send({ enabled: false })).status,
     ).toBe(403);
     expect(
-      (await request(app).patch("/api/settings/providers/cults3d").set(as(admin)).send({ enabled: false })).status,
+      (await request(app).patch("/api/settings/providers/no-such-site").set(as(admin)).send({ enabled: false })).status,
     ).toBe(404);
 
     const off = await request(app).patch("/api/settings/providers/thingiverse").set(as(admin)).send({ enabled: false });
     expect(off.status).toBe(200);
-    expect(enabledMap(off.body)).toEqual({ makerworld: true, printables: true, thingiverse: false });
+    expect(enabledMap(off.body)).toEqual({
+      makerworld: true,
+      printables: true,
+      thingiverse: false,
+      myminifactory: true,
+      snapmaker: true,
+      makeronline: true,
+      crealitycloud: true,
+      nexprint: true,
+      thangs: true,
+      cults3d: true,
+    });
   });
 
   it("refuses new imports from a provider that's off, and only from it", async () => {

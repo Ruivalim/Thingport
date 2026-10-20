@@ -70,7 +70,14 @@ function hasMeta(category: Category): boolean {
     category.meta_description ||
     category.makerworld_cat_ids ||
     category.thingiverse_cat_ids ||
-    category.printables_cat_ids,
+    category.printables_cat_ids ||
+    category.myminifactory_cat_ids ||
+    category.snapmaker_cat_ids ||
+    category.makeronline_cat_ids ||
+    category.crealitycloud_cat_ids ||
+    category.nexprint_cat_ids ||
+    category.thangs_cat_ids ||
+    category.cults3d_cat_ids,
   );
 }
 

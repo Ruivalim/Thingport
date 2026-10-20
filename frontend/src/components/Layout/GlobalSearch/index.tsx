@@ -44,7 +44,7 @@ import { UnauthorizedError } from "../../../api/client";
 import { type SearchResult, searchApi } from "../../../api/search";
 import { printsApi } from "../../../api/prints";
 import { IMPORT_PROVIDER_INFO } from "../../../constants/importProviders";
-import { SUPPORTED_LANGUAGES, type LanguageCode } from "../../../constants/languages";
+import { SUPPORTED_LANGUAGES } from "../../../constants/languages";
 import { detectImportProvider } from "../../../utils/importLinkDetection";
 import type { ThemeSelection } from "../../../constants/settingsOptions";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
@@ -128,12 +128,6 @@ const PAGE_ICONS: Record<PageId, ReactNode> = {
 function pageFor(entry: RecentEntry, pages: SearchPage[] = SEARCH_PAGES): SearchPage | undefined {
   return entry.kind === "page" ? pages.find((page) => page.path === entry.path) : undefined;
 }
-
-// Also matched: "!language lith", "!language lietuvių".
-const LANGUAGE_ALIASES: Record<LanguageCode, string> = {
-  en: "english",
-  lt: "lithuanian lietuvių",
-};
 
 // "auto" also matches "system".
 const THEMES: { theme: ThemeSelection; alias?: string; keywords: string[]; icon: ReactNode }[] = [
@@ -327,14 +321,15 @@ export default function GlobalSearch({
       icon,
       run: () => onThemeChange(target),
     })),
-    ...SUPPORTED_LANGUAGES.map(({ code, label }) => ({
+    // Also matched by either name: "!language lith", "!language lietuvių".
+    ...SUPPORTED_LANGUAGES.map(({ code, label, englishName }) => ({
       id: `language-${code}`,
       bang: "language",
       arg: code,
-      argAlias: LANGUAGE_ALIASES[code],
+      argAlias: [englishName, label].join(" ").toLowerCase(),
       // Named in itself, as in the profile's picker, so it's findable from any UI language.
       label: t("app:search.commands.language", { name: label }),
-      keywords: ["language", "kalba", ...LANGUAGE_ALIASES[code].split(" ")],
+      keywords: ["language", "kalba", ...`${englishName} ${label}`.toLowerCase().split(" ")],
       icon: <TranslateIcon />,
       run: () => void i18n.changeLanguage(code),
     })),

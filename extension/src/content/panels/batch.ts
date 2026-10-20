@@ -1,8 +1,13 @@
-// Batch flow for Thingiverse Likes/Collections and Printables Collections. MakerWorld collections
-// use the guided flow in makerworldCollection.ts.
+// Batch flow for Thingiverse Likes/Collections, Printables and MyMiniFactory Collections, Snapmaker Space likes and
+// bookmarks, MakerOnline collections and likes, Creality Cloud collections and likes, NexPrint collections, Thangs
+// collections and likes, and Cults3D printlists and likes.
+// MakerWorld collections use the guided flow in
+// makerworldCollection.ts.
 
 import type { BatchEntriesResult, ImportJob, SyncLookup } from "../../shared/api";
-import { ctx } from "../context";
+import { ctx, setContext } from "../context";
+import { parseSnapmakerListUrl, snapmakerListUrl, type SnapmakerList } from "../../shared/urls";
+import { request } from "../../shared/messages";
 import { api, escapeHtml, sleep } from "../runtime";
 import { isPanelMounted, onPanelAction, panelQueryAll, renderPanel } from "../shell";
 import { errorHtml, statusHtml, successHtml } from "./results";
@@ -11,7 +16,44 @@ import { applySyncToggle, loadSyncState, readSyncToggle, syncChangeNote, syncTog
 import { printablesToken, readCollectionForPanel } from "../printables";
 import { pushPrintablesNow } from "../providerAccount";
 
-type BatchKey = "thingiverse:likes" | "thingiverse:collection" | "printables:collection";
+type BatchKey =
+  | "thingiverse:likes"
+  | "thingiverse:collection"
+  | "printables:collection"
+  | "myminifactory:collection"
+  | "snapmaker:likes"
+  | "snapmaker:bookmarks"
+  | "makeronline:collection"
+  | "makeronline:likes"
+  | "crealitycloud:collection"
+  | "crealitycloud:likes"
+  | "nexprint:collection"
+  | "thangs:collection"
+  | "thangs:likes"
+  | "cults3d:collection"
+  | "cults3d:likes";
+
+const THANGS_LIST = { entries: "/import/thangs-list/entries", start: "/import/thangs-list", idField: "model_ids" };
+const CULTS3D_LIST = { entries: "/import/cults3d-list/entries", start: "/import/cults3d-list", idField: "model_ids" };
+
+const SNAPMAKER_LIST = {
+  entries: "/import/snapmaker-list/entries",
+  start: "/import/snapmaker-list",
+  idField: "model_ids",
+};
+
+// The picked models wait on the instance for Grab, which imports them from this very page right after.
+const MAKERONLINE_LIST = {
+  entries: "/import/makeronline-list/entries",
+  start: "/import/makeronline-list",
+  idField: "model_ids",
+};
+
+const CREALITYCLOUD_LIST = {
+  entries: "/import/crealitycloud-list/entries",
+  start: "/import/crealitycloud-list",
+  idField: "model_ids",
+};
 
 const BATCH_ENDPOINTS: Record<BatchKey, { entries: string; start: string; idField: string }> = {
   "thingiverse:likes": {
@@ -29,7 +71,59 @@ const BATCH_ENDPOINTS: Record<BatchKey, { entries: string; start: string; idFiel
     start: "/import/printables-collection",
     idField: "model_ids",
   },
+  "myminifactory:collection": {
+    entries: "/import/myminifactory-collection/entries",
+    start: "/import/myminifactory-collection",
+    idField: "object_ids",
+  },
+  "snapmaker:likes": SNAPMAKER_LIST,
+  "snapmaker:bookmarks": SNAPMAKER_LIST,
+  "makeronline:collection": MAKERONLINE_LIST,
+  "makeronline:likes": MAKERONLINE_LIST,
+  "crealitycloud:collection": CREALITYCLOUD_LIST,
+  "crealitycloud:likes": CREALITYCLOUD_LIST,
+  "nexprint:collection": {
+    entries: "/import/nexprint-collection/entries",
+    start: "/import/nexprint-collection",
+    idField: "model_ids",
+  },
+  "thangs:collection": THANGS_LIST,
+  "thangs:likes": THANGS_LIST,
+  "cults3d:collection": CULTS3D_LIST,
+  "cults3d:likes": CULTS3D_LIST,
 };
+
+const SNAPMAKER_LISTS: { list: SnapmakerList; label: string }[] = [
+  { list: "likes", label: "Likes" },
+  { list: "bookmarks", label: "Bookmarks" },
+];
+
+/** Snapmaker shows likes and bookmarks on one page without changing its address, so the panel picks which. */
+function snapmakerListSwitchHtml(): string {
+  const { classification } = ctx();
+  if (classification.provider !== "snapmaker" || classification.kind !== "batch") return "";
+  const options = SNAPMAKER_LISTS.map(
+    ({ list, label }) =>
+      `<button class="tg-segmented__option" type="button" data-action="list-${list}" aria-pressed="${classification.type === list}">${label}</button>`,
+  ).join("");
+  return `<div class="tg-segmented" role="group" aria-label="Which list">${options}</div>`;
+}
+
+function wireSnapmakerListSwitch(): void {
+  for (const { list } of SNAPMAKER_LISTS) {
+    onPanelAction(`list-${list}`, () => {
+      const current = ctx();
+      const userId = parseSnapmakerListUrl(current.url)?.userId;
+      if (!userId || (current.classification.kind === "batch" && current.classification.type === list)) return;
+      setContext({
+        ...current,
+        url: snapmakerListUrl(userId, list),
+        classification: { kind: "batch", provider: "snapmaker", type: list },
+      });
+      void loadBatchEntries();
+    });
+  }
+}
 
 function endpoints() {
   const { provider, type } = ctx().classification;
@@ -105,7 +199,8 @@ export async function loadBatchEntries(): Promise<void> {
   try {
     [result, sync] = await Promise.all([loadEntries(), loadSyncState()]);
   } catch (err) {
-    renderPanel(errorHtml(err));
+    renderPanel(`${snapmakerListSwitchHtml()}${errorHtml(err)}`);
+    wireSnapmakerListSwitch();
     return;
   }
   const allImported = result.entries.every((entry) => entry.already_imported);
@@ -122,6 +217,7 @@ export async function loadBatchEntries(): Promise<void> {
     .join("");
   const found = `${result.entries.length} models found${result.truncated ? " (more available on the site)" : ""}`;
   renderPanel(`
+    ${snapmakerListSwitchHtml()}
     <div class="tg-title">${escapeHtml(result.title || "Import models")}</div>
     <div class="tg-hint">${allImported && result.entries.length ? `${found}, all already in your library.` : found}</div>
     <div class="tg-entries">${rows}</div>
@@ -129,6 +225,7 @@ export async function loadBatchEntries(): Promise<void> {
     <button class="tg-btn" type="button" data-action="import">${allImported && sync ? "Save" : "Import selected"}</button>
   `);
   onPanelAction("import", () => void runBatchImport(result, sync));
+  wireSnapmakerListSwitch();
 }
 
 async function runBatchImport(result: PanelEntries, sync: SyncLookup | null): Promise<void> {
@@ -159,6 +256,23 @@ async function runBatchImport(result: PanelEntries, sync: SyncLookup | null): Pr
         ? `${instanceUrl}/models/collections/${target.collection_id}`
         : `${instanceUrl}/models`;
       renderPanel(successHtml(collectionLink, note ?? "Nothing new to import.", note ? "Saved" : "Nothing to import"));
+      return;
+    }
+    if (ctx().classification.provider === "makeronline") {
+      // Parked on the instance, then brought in from this page, which can sign their files.
+      const { collection_id } = await api<{ queued: number; collection_id: string }>("POST", start, {
+        url,
+        [idField]: ids,
+      });
+      renderPanel(statusHtml(`Importing ${ids.length} model${ids.length === 1 ? "" : "s"}…`));
+      const imported = await request("RUN_MAKERONLINE_WAITING");
+      renderPanel(
+        successHtml(
+          `${instanceUrl}/models/collections/${collection_id}`,
+          `Imported ${imported} model${imported === 1 ? "" : "s"}.${note ? ` ${note}` : ""}`,
+          imported ? undefined : "Nothing imported",
+        ),
+      );
       return;
     }
     const { job_id } = await api<{ job_id: string }>("POST", start, {

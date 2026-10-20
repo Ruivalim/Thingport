@@ -1,10 +1,12 @@
-// Reads who the user is signed in as on Printables and Thingiverse, once per tab, and tells the
+// Reads who the user is signed in as on Printables, Thingiverse and MyMiniFactory, once per tab, and tells the
 // background (see background/providerAccounts.ts). Only the signed-in account: these pages link to
 // plenty of other people's profiles too.
 
 import { request, send } from "../shared/messages";
 import { printablesToken, readMe, readPrintables } from "./printables";
+import { providerEnabled } from "./providerSettings";
 import { sleep } from "./runtime";
+import { cults3dSignedIn } from "./cults3d";
 
 // The header is drawn after load; give up quietly if it never shows (e.g. signed out).
 const HEADER_WAIT_MS = 15_000;
@@ -23,6 +25,18 @@ async function readThingiverseUsername(): Promise<string | null> {
     await sleep(HEADER_POLL_MS);
   }
   return null;
+}
+
+/** MyMiniFactory renders its top menu from data in the page, which names the signed-in user;
+ *  `userDetails` is null when signed out. */
+function readMyminifactoryUsername(): string | null {
+  try {
+    const data = document.querySelector('[data-component-name="TopMenu"]')?.textContent;
+    const user = data ? (JSON.parse(data) as { userDetails?: { username?: unknown } | null }).userDetails : null;
+    return typeof user?.username === "string" && user.username.trim() ? user.username.trim() : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Reads and sends what only the user sees on Printables, when it's time (or `now`). */
@@ -60,17 +74,70 @@ async function syncPrintables(): Promise<void> {
   }
 }
 
+/** Sends the MakerOnline sign-in on, then imports what waits for Grab: this page can sign its files. */
+async function syncMakeronline(): Promise<void> {
+  if (!(await providerEnabled("makeronline"))) return;
+  const { userId } = await request("SYNC_MAKERONLINE_SESSION").catch(() => ({ userId: null }));
+  if (userId) await send("RUN_MAKERONLINE_WAITING");
+}
+
 export function captureProviderAccount(hostname: string): void {
   if (captured) return;
+  if (/(^|\.)makeronline\.com$/i.test(hostname)) {
+    captured = true;
+    void syncMakeronline();
+    return;
+  }
+  if (/(^|\.)crealitycloud\.com$/i.test(hostname)) {
+    captured = true;
+    // Its sign-in downloads the files and reads the likes; a new one comes with each sign-in there.
+    void send("SYNC_CREALITYCLOUD_SESSION");
+    return;
+  }
+  if (/(^|\.)nexprint\.com$/i.test(hostname)) {
+    captured = true;
+    // Its sign-in downloads the files; the site renews it as it refreshes the token, and each new one is sent on.
+    void send("SYNC_NEXPRINT_SESSION");
+    return;
+  }
+  if (/(^|\.)cults3d\.com$/i.test(hostname)) {
+    captured = true;
+    // Its sign-in and Cloudflare clearance open the order and download pages; sent once they change, and only from a
+    // signed-in page.
+    if (cults3dSignedIn()) void send("SYNC_CULTS3D_SESSION");
+    return;
+  }
+  if (/(^|\.)thangs\.com$/i.test(hostname)) {
+    captured = true;
+    // Its sign-in downloads the files; Thingport renews it from the refresh token, so it's sent once it changes.
+    void send("SYNC_THANGS_SESSION");
+    return;
+  }
+  if (hostname === "space.snapmaker.com") {
+    captured = true;
+    // Its sign-in downloads the files, and lasts a day: kept fresh by the background, and sent on.
+    void send("SYNC_SNAPMAKER_SESSION");
+    return;
+  }
   const provider = hostname.endsWith("printables.com")
     ? "printables"
     : hostname.endsWith("thingiverse.com")
       ? "thingiverse"
-      : null;
+      : hostname.endsWith("myminifactory.com")
+        ? "myminifactory"
+        : null;
   if (!provider) return;
   captured = true;
   if (provider === "printables") {
     void syncPrintables();
+    return;
+  }
+  if (provider === "myminifactory") {
+    const value = readMyminifactoryUsername();
+    if (!value) return;
+    void send("REPORT_PROVIDER_ACCOUNT", { provider, value });
+    // Signed in: its session downloads the paid and login-only models in the user's library.
+    void send("SYNC_MYMINIFACTORY_SESSION");
     return;
   }
   void readThingiverseUsername().then((value) => {

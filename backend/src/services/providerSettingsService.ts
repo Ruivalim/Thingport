@@ -6,13 +6,31 @@ import { HttpError } from "../utils/fileUtils";
 // Grab, the queue, collection imports), its collection syncs pause, and background jobs leave it alone. Models
 // already imported from it stay as they are.
 
-export const PROVIDERS = ["makerworld", "printables", "thingiverse"] as const;
+export const PROVIDERS = [
+  "makerworld",
+  "printables",
+  "thingiverse",
+  "myminifactory",
+  "snapmaker",
+  "makeronline",
+  "crealitycloud",
+  "nexprint",
+  "thangs",
+  "cults3d",
+] as const;
 export type Provider = (typeof PROVIDERS)[number];
 
 const PROVIDER_NAMES: Record<Provider, string> = {
   makerworld: "MakerWorld",
   printables: "Printables",
   thingiverse: "Thingiverse",
+  myminifactory: "MyMiniFactory",
+  snapmaker: "Snapmaker Space",
+  makeronline: "MakerOnline",
+  crealitycloud: "Creality Cloud",
+  nexprint: "NexPrint",
+  thangs: "Thangs",
+  cults3d: "Cults3D",
 };
 
 const SETTING_KEY = "disabled_providers";

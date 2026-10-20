@@ -18,6 +18,13 @@ export type Category = {
   makerworld_cat_ids: string;
   thingiverse_cat_ids: string;
   printables_cat_ids: string;
+  myminifactory_cat_ids: string;
+  snapmaker_cat_ids: string;
+  makeronline_cat_ids: string;
+  crealitycloud_cat_ids: string;
+  nexprint_cat_ids: string;
+  thangs_cat_ids: string;
+  cults3d_cat_ids: string;
 };
 
 export type CategoryMetaInput = {
@@ -26,6 +33,13 @@ export type CategoryMetaInput = {
   makerworldCatIds: string;
   thingiverseCatIds: string;
   printablesCatIds: string;
+  myminifactoryCatIds: string;
+  snapmakerCatIds: string;
+  makeronlineCatIds: string;
+  crealitycloudCatIds: string;
+  nexprintCatIds: string;
+  thangsCatIds: string;
+  cults3dCatIds: string;
 };
 
 export const categoriesApi = {
@@ -72,6 +86,13 @@ export const categoriesApi = {
         makerworld_cat_ids: meta.makerworldCatIds,
         thingiverse_cat_ids: meta.thingiverseCatIds,
         printables_cat_ids: meta.printablesCatIds,
+        myminifactory_cat_ids: meta.myminifactoryCatIds,
+        snapmaker_cat_ids: meta.snapmakerCatIds,
+        makeronline_cat_ids: meta.makeronlineCatIds,
+        crealitycloud_cat_ids: meta.crealitycloudCatIds,
+        nexprint_cat_ids: meta.nexprintCatIds,
+        thangs_cat_ids: meta.thangsCatIds,
+        cults3d_cat_ids: meta.cults3dCatIds,
       }),
     });
     if (res.status === 401) throw new UnauthorizedError();
