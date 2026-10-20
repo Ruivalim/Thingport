@@ -1,5 +1,39 @@
 # Thingport frontend changelog
 
+# [thingport-frontend-v1.1.0](https://github.com/TautvydasDerzinskas/Thingport/compare/thingport-frontend-v1.0.1...thingport-frontend-v1.1.0) (2026-10-20)
+
+
+### Bug Fixes
+
+* allow preview image uploads on plain HTTP origins ([6e569a9](https://github.com/TautvydasDerzinskas/Thingport/commit/6e569a9e828ed854aa71da28fb6fd84ccf2c3b81))
+* fetch every day the widest heatmap card can show ([c8b9fa7](https://github.com/TautvydasDerzinskas/Thingport/commit/c8b9fa753fe37c2e222a98bce720e57a864f578e))
+* handle malformed tokens, add refresh concurrency control, and improve list URL validation ([44f4bf2](https://github.com/TautvydasDerzinskas/Thingport/commit/44f4bf26354675ce41ee0c7e2684d3fe9384e70f))
+* **i18n:** count plural forms only large round numbers use ([993c75c](https://github.com/TautvydasDerzinskas/Thingport/commit/993c75c82888d97a572e842b28b00b20d4a148d3))
+* **i18n:** require each locale's plural forms in i18n:check ([9630051](https://github.com/TautvydasDerzinskas/Thingport/commit/96300510b4dc8865fc74b6ea934a9bb484bd4956))
+* split bulk requests over 500, cancel on confirm dismissal, passive badge in select mode ([43463d0](https://github.com/TautvydasDerzinskas/Thingport/commit/43463d0268c29b1767ed22eeb619d1a5466aa9bd))
+
+
+### Features
+
+* add an About view for each provider ([e76fbf3](https://github.com/TautvydasDerzinskas/Thingport/commit/e76fbf3b5851a18e984fca722a3bb6865d5076ec))
+* add bookmarklet import ([8f3fc3d](https://github.com/TautvydasDerzinskas/Thingport/commit/8f3fc3d6e65b1bdbd67c1d14bc04195067e8f27e))
+* add coming soon providers ([b782407](https://github.com/TautvydasDerzinskas/Thingport/commit/b782407425986f6d0eeae62c1df59c3e7286afef))
+* add Cults3D provider ([930b9b4](https://github.com/TautvydasDerzinskas/Thingport/commit/930b9b48dba5c2375d4fccf2e59ced2965e87711))
+* add MyMiniFactory as a provider ([a7a9190](https://github.com/TautvydasDerzinskas/Thingport/commit/a7a91902a0f43d47741e8cb52c1ec294f143fadb))
+* add Thangs provider ([2591714](https://github.com/TautvydasDerzinskas/Thingport/commit/2591714c0cd44b086c0cb3c94d11e99c8262fe81))
+* enable Creality Cloud provider ([772b1ac](https://github.com/TautvydasDerzinskas/Thingport/commit/772b1acfef609796015b51db186012e717124bc5))
+* enable NextPrint provider ([4037151](https://github.com/TautvydasDerzinskas/Thingport/commit/4037151e4aaa6a744469b52ef60f999b343e085a))
+* **i18n:** add a language by dropping in its locale file ([10451a9](https://github.com/TautvydasDerzinskas/Thingport/commit/10451a9f113db75661b51a8d1e673048e07a8dc2))
+* multi-select models in grids with bulk actions ([fe5dbec](https://github.com/TautvydasDerzinskas/Thingport/commit/fe5dbecdc5a76ab43eec39a5dd432626a9eaf2f6)), closes [#91](https://github.com/TautvydasDerzinskas/Thingport/issues/91)
+* pick mapped provider categories by name ([87db3f0](https://github.com/TautvydasDerzinskas/Thingport/commit/87db3f0ff0346a2811ea4b4659056e9e5928df22))
+* preview dashboard panels as tiles and add an activity heatmap panel ([c65e712](https://github.com/TautvydasDerzinskas/Thingport/commit/c65e712a31c30c0c0621c440a50a4e3f256dfb42))
+* prioritize Thingport Grab in import guidance ([f7dda0a](https://github.com/TautvydasDerzinskas/Thingport/commit/f7dda0a21120854ef5a4a8343dbd38bb34cd47ec))
+* **providers:** enable MakerOnline provider ([5bf3457](https://github.com/TautvydasDerzinskas/Thingport/commit/5bf3457e8c5a5448c97f12fb0ac9101137884dca))
+* **providers:** enable Snapmaker Space provider ([ac5bf25](https://github.com/TautvydasDerzinskas/Thingport/commit/ac5bf253c7c3a09abd0ce90e8c24539004f0f879))
+* replace the AI Thinking toggle with a per-connection reasoning effort ([b30b0ce](https://github.com/TautvydasDerzinskas/Thingport/commit/b30b0cefd82691d391a9144d40efbd178ffbb331))
+* show collection descriptions in the category banner style ([27c42fe](https://github.com/TautvydasDerzinskas/Thingport/commit/27c42fe790e3433df7b16f55647d4f6e60b4112e))
+* show model sources as provider badges ([0aff9e9](https://github.com/TautvydasDerzinskas/Thingport/commit/0aff9e9a9e1ecb943fb402f93e4236d857f9f658))
+
 # [thingport-frontend-v1.0.1](https://github.com/TautvydasDerzinskas/Thingport/compare/thingport-frontend-v1.0.0...thingport-frontend-v1.0.1) (2026-10-17)
 
 
