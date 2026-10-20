@@ -1,16 +1,21 @@
 import { createHash } from "node:crypto";
+import fsSync from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
 import { TAG_MOSAICS } from "../config";
 import { prisma } from "../db";
 import { printCover } from "../dto";
+import { modelImagePath } from "./modelPreviewCache";
 import { normalizeTag } from "../utils/tagNormalization";
 
 // A tag's tile shows one picture built here from its newest models' pictures, rather than ten pictures
 // the browser fetches and lays out itself. It is made the first time it's asked for and kept on disk,
 // under a name that changes with the pictures in it, so tagging and untagging models, a new render or a
 // replaced image each give it a new URL with nothing to invalidate.
+//
+// "images" mosaics are the models' pictures. "renders" mosaics are their grey renders alone, laid out on
+// transparent, so the browser tints the whole tile with the render colour as it does a card.
 
 /** Pictures in a tag's mosaic, from its newest models. */
 export const TAG_MOSAIC_PICTURES = 10;
@@ -36,6 +41,7 @@ export const MOSAICS: string[][] = [
   ["aabc", "aade", "fghh", "fijj"],
 ];
 
+export type MosaicKind = "images" | "renders";
 type Picture = { url: string; file: string };
 export type TaggedPrint = { id: string; tags: string[] };
 
@@ -60,8 +66,23 @@ async function printsTagged(userId: string, tag: string): Promise<TaggedPrint[]>
   return rows.map((row) => ({ id: row.id, tags: [tag] }));
 }
 
+/** A plate's render, only once it's on disk: tags don't queue renders, which cards and uploads do. */
+function renderCover(plateId: string | null): Picture | null {
+  if (!plateId) return null;
+  const file = modelImagePath(plateId, "render");
+  try {
+    return { url: `/plate/${plateId}/render.png?v=${fsSync.statSync(file).mtimeMs}`, file };
+  } catch {
+    return null;
+  }
+}
+
 /** Each of `tags`' pictures, from its newest models that have one; joins images and plates for those alone. */
-export async function tagPictures(prints: TaggedPrint[], tags: string[]): Promise<Map<string, Picture[]>> {
+export async function tagPictures(
+  prints: TaggedPrint[],
+  tags: string[],
+  kind: MosaicKind = "images",
+): Promise<Map<string, Picture[]>> {
   const candidates = new Map(tags.map((tag) => [tag, [] as string[]]));
   for (const print of prints) {
     for (const tag of new Set(print.tags.map(normalizeTag))) {
@@ -83,7 +104,11 @@ export async function tagPictures(prints: TaggedPrint[], tags: string[]): Promis
   const coverOf = (id: string) => {
     if (!covers.has(id)) {
       const row = byId.get(id);
-      covers.set(id, row ? printCover(row.previewImages[0]?.id ?? null, row.plates[0]?.id ?? null) : null);
+      const plateId = row?.plates[0]?.id ?? null;
+      covers.set(
+        id,
+        !row ? null : kind === "renders" ? renderCover(plateId) : printCover(row.previewImages[0]?.id ?? null, plateId),
+      );
     }
     return covers.get(id);
   };
@@ -110,10 +135,14 @@ function mosaicVersion(pictures: Picture[]): string {
 }
 
 /** Where the tag's mosaic is served from, or null while none of its models has a picture. */
-export function tagMosaicUrl(tag: string, pictures: Picture[]): string | null {
+export function tagMosaicUrl(tag: string, pictures: Picture[], kind: MosaicKind = "images"): string | null {
   if (!pictures.length) return null;
-  return `/tags/${encodeURIComponent(tag)}/mosaic.webp?v=${mosaicVersion(pictures)}`;
+  const file = kind === "renders" ? "render-mosaic.webp" : "mosaic.webp";
+  return `/tags/${encodeURIComponent(tag)}/${file}?v=${mosaicVersion(pictures)}`;
 }
+
+// Render mosaics are named apart, so making one kind never clears the other as an older version.
+const RENDERS_INFIX = "r-";
 
 function userDir(userId: string): string {
   return path.join(TAG_MOSAICS, `u-${userId}`);
@@ -137,8 +166,9 @@ function cells(layout: string[]): [number, number, number, number][] {
   });
 }
 
-/** The mosaic of `pictures` (one to ten files), as a square WebP with see-through gaps. */
-export async function renderTagMosaic(pictures: { file: string }[]): Promise<Buffer> {
+/** The mosaic of `pictures` (one to ten files), as a square WebP with see-through gaps. Renders are fitted whole on
+ *  transparent rather than cropped to fill their cell. */
+export async function renderTagMosaic(pictures: { file: string }[], kind: MosaicKind = "images"): Promise<Buffer> {
   const layout = MOSAICS[pictures.length - 1];
   const step = (SIZE + GAP) / 4;
   const pieces = await Promise.all(
@@ -146,7 +176,14 @@ export async function renderTagMosaic(pictures: { file: string }[]): Promise<Buf
       const [x, y] = [Math.round(left * step), Math.round(top * step)];
       const w = Math.round((left + width) * step - GAP) - x;
       const h = Math.round((top + height) * step - GAP) - y;
-      const input = await sharp(pictures[index].file).rotate().resize(w, h, { fit: "cover" }).toBuffer();
+      const input = await sharp(pictures[index].file)
+        .rotate()
+        .resize(
+          w,
+          h,
+          kind === "renders" ? { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } } : { fit: "cover" },
+        )
+        .toBuffer();
       return { input, left: x, top: y };
     }),
   );
@@ -158,14 +195,18 @@ export async function renderTagMosaic(pictures: { file: string }[]): Promise<Buf
 }
 
 /** The tag's mosaic file, made now if its pictures have changed since it was last made; null with no pictures. */
-export async function ensureTagMosaic(userId: string, rawTag: string): Promise<string | null> {
+export async function ensureTagMosaic(
+  userId: string,
+  rawTag: string,
+  kind: MosaicKind = "images",
+): Promise<string | null> {
   const tag = normalizeTag(rawTag);
   if (!tag) return null;
-  const pictures = (await tagPictures(await printsTagged(userId, tag), [tag])).get(tag) ?? [];
+  const pictures = (await tagPictures(await printsTagged(userId, tag), [tag], kind)).get(tag) ?? [];
   if (!pictures.length) return null;
   const dir = userDir(userId);
   const prefix = tagPrefix(tag);
-  const file = path.join(dir, `${prefix}-${mosaicVersion(pictures)}.webp`);
+  const file = path.join(dir, `${prefix}-${kind === "renders" ? RENDERS_INFIX : ""}${mosaicVersion(pictures)}.webp`);
   try {
     await fs.access(file);
     return file;
@@ -175,9 +216,9 @@ export async function ensureTagMosaic(userId: string, rawTag: string): Promise<s
   await fs.mkdir(dir, { recursive: true });
   // Written aside and moved into place, so a request in the meantime never reads half a file.
   const temporary = `${file}.${process.pid}.${Date.now()}.tmp`;
-  await fs.writeFile(temporary, await renderTagMosaic(pictures));
+  await fs.writeFile(temporary, await renderTagMosaic(pictures, kind));
   await fs.rename(temporary, file);
-  await removeTagMosaics(userId, tag, file);
+  await removeTagMosaics(userId, tag, { keep: file, kind });
   return file;
 }
 
@@ -186,8 +227,13 @@ export async function removeUserTagMosaics(userId: string): Promise<void> {
   await fs.rm(userDir(userId), { recursive: true, force: true });
 }
 
-/** Drops the tag's mosaics, all but `keep`: older versions, or every one when the tag is deleted. */
-export async function removeTagMosaics(userId: string, rawTag: string, keep?: string): Promise<void> {
+/** Drops the tag's mosaics: with `older`, that kind's versions other than `older.keep`; without, every one, as when
+ *  the tag is deleted. */
+export async function removeTagMosaics(
+  userId: string,
+  rawTag: string,
+  older?: { keep: string; kind: MosaicKind },
+): Promise<void> {
   const dir = userDir(userId);
   const prefix = `${tagPrefix(normalizeTag(rawTag))}-`;
   let names: string[];
@@ -198,7 +244,12 @@ export async function removeTagMosaics(userId: string, rawTag: string, keep?: st
   }
   await Promise.all(
     names
-      .filter((name) => name.startsWith(prefix) && name.endsWith(".webp") && path.join(dir, name) !== keep)
+      .filter((name) => {
+        if (!name.startsWith(prefix) || !name.endsWith(".webp")) return false;
+        if (!older) return true;
+        const isRenders = name.startsWith(`${prefix}${RENDERS_INFIX}`);
+        return isRenders === (older.kind === "renders") && path.join(dir, name) !== older.keep;
+      })
       .map((name) => fs.rm(path.join(dir, name), { force: true })),
   );
 }

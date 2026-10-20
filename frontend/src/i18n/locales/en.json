@@ -512,8 +512,7 @@
         "allHidden": "Every dashboard box is hidden.",
         "sections": {
           "layout": "Layout",
-          "panels": "Panels",
-          "thumbnails": "Thumbnails"
+          "panels": "Panels"
         },
         "layoutSubtitle": "Choose how your dashboard arranges its boxes. The coloured part shows where the counts go.",
         "layouts": {
@@ -523,17 +522,6 @@
           "bottom": "Counts at the bottom, three columns",
           "topTwo": "Counts on top, two columns",
           "puzzle": "Puzzle"
-        },
-        "thumbnailsSubtitle": "The pictures beside models in the dashboard lists.",
-        "thumbnails": {
-          "none": "Hidden",
-          "photos": "Photos",
-          "monochrome": "Monochrome"
-        },
-        "thumbnailsHelp": {
-          "none": "The lists show names only.",
-          "photos": "Each model's preview image.",
-          "monochrome": "Each model drawn in one tone on a transparent background, made by the server the first time it's needed. Files it can't draw show their photo."
         }
       }
     },
@@ -1583,7 +1571,8 @@
         "orange": "Printables orange",
         "amber": "Thangs yellow",
         "teal": "MyMiniFactory teal",
-        "purple": "Cults3D purple"
+        "purple": "Cults3D purple",
+        "graphite": "Graphite"
       },
       "cardPreview": {
         "heading": "Model cards",
@@ -1591,6 +1580,17 @@
         "renders": "3D renders",
         "failed": "Couldn't save the model card choice.",
         "help": "What model cards show first. Images: the pictures a model came with, or a 3D render where it has none. 3D renders: a render of every model in your accent color, or its pictures where the file can't be drawn."
+      },
+      "hoverSlideshow": {
+        "heading": "Hover slideshow",
+        "failed": "Couldn't save the hover slideshow choice.",
+        "help": "Model cards cycle through a model's pictures while the pointer rests on them."
+      },
+      "renderColor": {
+        "heading": "Render color",
+        "light": "Light grey (no tint)",
+        "failed": "Couldn't save the render color.",
+        "help": "The color generated 3D renders and the 3D preview are drawn in. Picking an accent sets it to match; pick here to change it separately."
       }
     },
     "configuration": {

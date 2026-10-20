@@ -7,11 +7,25 @@ import Typography from "@mui/material/Typography";
 import { UnauthorizedError } from "../../../api/client";
 import { settingsApi, type CardPreview } from "../../../api/settings";
 import { matchLanguage, SUPPORTED_LANGUAGES } from "../../../constants/languages";
-import { ACCENT_COLORS, type AccentColor, type ThemeSelection } from "../../../constants/settingsOptions";
-import { setCachedAccentColor, useAccentColor } from "../../../hooks/useAccentColor";
+import {
+  ACCENT_COLORS,
+  RENDER_COLORS,
+  renderColorLabelKey,
+  type AccentColor,
+  type RenderColor,
+  type ThemeSelection,
+} from "../../../constants/settingsOptions";
+import {
+  getCachedRenderColor,
+  setCachedAccentColor,
+  setCachedRenderColor,
+  useAccentColor,
+  useRenderColor,
+} from "../../../hooks/useAccentColor";
 import { setCachedAuthorPreviewEnabled, useAuthorPreviewEnabled } from "../../../hooks/useAuthorPreviewEnabled";
 import { useCardPreview } from "../../../hooks/useCardPreview";
-import { accentSwatch } from "../../../theme";
+import { setCachedHoverSlideshowEnabled, useHoverSlideshowEnabled } from "../../../hooks/useHoverSlideshowEnabled";
+import { accentSwatch, renderSwatch } from "../../../theme";
 import ColorSwatches from "../../controls/ColorSwatches";
 import Segmented from "../../controls/Segmented";
 import HelpTip from "../../HelpTip";
@@ -27,7 +41,7 @@ type Props = {
   onUnauthorized?: () => void;
 };
 
-/** Theme, accent, model card pictures, language and author preview, each applied as it's changed. */
+/** Language, theme, accent, render colour, model card pictures and hover slideshow, and author preview, each applied as it's changed. */
 export default function AppearancePanel({ theme, onThemeChange, onUnauthorized }: Props) {
   const { t, i18n } = useTranslation("app");
   const authorPreview = useAuthorPreviewEnabled();
@@ -36,9 +50,15 @@ export default function AppearancePanel({ theme, onThemeChange, onUnauthorized }
   const accent = useAccentColor();
   const [cardPreview, setCardPreview] = useCardPreview();
   const [accentError, setAccentError] = React.useState<string | null>(null);
+  const renderColor = useRenderColor();
+  const [renderColorError, setRenderColorError] = React.useState<string | null>(null);
+  // Like the accent's: only the latest pick's failure may put the colour back.
+  const latestRenderColorSave = React.useRef(0);
   // Picks can overlap; only the latest one's failure may put the accent back.
   const latestAccentSave = React.useRef(0);
   const [cardPreviewError, setCardPreviewError] = React.useState<string | null>(null);
+  const hoverSlideshow = useHoverSlideshowEnabled();
+  const [hoverSlideshowError, setHoverSlideshowError] = React.useState<string | null>(null);
 
   const changeCardPreview = async (next: CardPreview) => {
     setCardPreviewError(null);
@@ -52,17 +72,50 @@ export default function AppearancePanel({ theme, onThemeChange, onUnauthorized }
 
   const changeAccent = async (next: AccentColor) => {
     const previous = accent;
+    const previousRender = getCachedRenderColor();
     const save = ++latestAccentSave.current;
     setAccentError(null);
-    // The whole app recolours straight away; put back if the save fails.
+    // The whole app recolours straight away, renders included, as the server puts the render colour back to
+    // following the accent; put both back if the save fails.
     setCachedAccentColor(next);
+    setCachedRenderColor(null);
     try {
       await settingsApi.updateTheme({ accent: next });
     } catch (err) {
       if (save !== latestAccentSave.current) return;
       setCachedAccentColor(previous);
+      setCachedRenderColor(previousRender);
       if (err instanceof UnauthorizedError) onUnauthorized?.();
       else setAccentError(t("appearance.accentFailed"));
+    }
+  };
+
+  const changeRenderColor = async (next: RenderColor) => {
+    const previous = getCachedRenderColor();
+    const save = ++latestRenderColorSave.current;
+    setRenderColorError(null);
+    setCachedRenderColor(next);
+    try {
+      await settingsApi.updateTheme({ renderColor: next });
+    } catch (err) {
+      if (save !== latestRenderColorSave.current) return;
+      setCachedRenderColor(previous);
+      if (err instanceof UnauthorizedError) onUnauthorized?.();
+      else setRenderColorError(t("appearance.renderColor.failed"));
+    }
+  };
+
+  const toggleHoverSlideshow = async (enabled: boolean) => {
+    setHoverSlideshowError(null);
+    // Shown straight away; put back if the save fails.
+    setCachedHoverSlideshowEnabled(enabled);
+    try {
+      const res = await settingsApi.updateHoverSlideshow(enabled);
+      setCachedHoverSlideshowEnabled(res.enabled);
+    } catch (err) {
+      setCachedHoverSlideshowEnabled(!enabled);
+      if (err instanceof UnauthorizedError) onUnauthorized?.();
+      else setHoverSlideshowError(t("appearance.hoverSlideshow.failed"));
     }
   };
 
@@ -84,6 +137,31 @@ export default function AppearancePanel({ theme, onThemeChange, onUnauthorized }
     <>
       <PanelHeader title={t("appearance.title")} subtitle={t("appearance.subtitle")} />
       <Stack spacing={2.5}>
+        <div>
+          <SectionLabel>{t("profile.language.heading")}</SectionLabel>
+          {SUPPORTED_LANGUAGES.length > MAX_SEGMENTED_LANGUAGES ? (
+            <Select
+              size="small"
+              value={language}
+              onChange={(e) => void i18n.changeLanguage(e.target.value)}
+              inputProps={{ "aria-label": t("profile.language.heading") }}
+              sx={{ minWidth: 200 }}
+            >
+              {SUPPORTED_LANGUAGES.map((lang) => (
+                <MenuItem key={lang.code} value={lang.code} lang={lang.code}>
+                  {lang.label}
+                </MenuItem>
+              ))}
+            </Select>
+          ) : (
+            <Segmented
+              label={t("profile.language.heading")}
+              value={language}
+              onChange={(code) => void i18n.changeLanguage(code)}
+              options={SUPPORTED_LANGUAGES.map((lang) => ({ value: lang.code, label: lang.label }))}
+            />
+          )}
+        </div>
         <div>
           <SectionLabel>{t("userMenu.theme")}</SectionLabel>
           <Segmented
@@ -112,6 +190,26 @@ export default function AppearancePanel({ theme, onThemeChange, onUnauthorized }
         </div>
         <div>
           <SectionLabel>
+            {t("appearance.renderColor.heading")}
+            <HelpTip text={t("appearance.renderColor.help")} />
+          </SectionLabel>
+          <ColorSwatches
+            label={t("appearance.renderColor.heading")}
+            value={renderColor}
+            onChange={(next) => void changeRenderColor(next)}
+            options={RENDER_COLORS.map((value) => {
+              const { color, contrast } = renderSwatch(value);
+              return { value, label: t(renderColorLabelKey(value)), color, contrast };
+            })}
+          />
+          {renderColorError && (
+            <Typography variant="caption" color="error" sx={{ display: "block", mt: 1 }}>
+              {renderColorError}
+            </Typography>
+          )}
+        </div>
+        <div>
+          <SectionLabel>
             {t("appearance.cardPreview.heading")}
             <HelpTip text={t("appearance.cardPreview.help")} />
           </SectionLabel>
@@ -132,28 +230,23 @@ export default function AppearancePanel({ theme, onThemeChange, onUnauthorized }
           )}
         </div>
         <div>
-          <SectionLabel>{t("profile.language.heading")}</SectionLabel>
-          {SUPPORTED_LANGUAGES.length > MAX_SEGMENTED_LANGUAGES ? (
-            <Select
-              size="small"
-              value={language}
-              onChange={(e) => void i18n.changeLanguage(e.target.value)}
-              inputProps={{ "aria-label": t("profile.language.heading") }}
-              sx={{ minWidth: 200 }}
-            >
-              {SUPPORTED_LANGUAGES.map((lang) => (
-                <MenuItem key={lang.code} value={lang.code} lang={lang.code}>
-                  {lang.label}
-                </MenuItem>
-              ))}
-            </Select>
-          ) : (
-            <Segmented
-              label={t("profile.language.heading")}
-              value={language}
-              onChange={(code) => void i18n.changeLanguage(code)}
-              options={SUPPORTED_LANGUAGES.map((lang) => ({ value: lang.code, label: lang.label }))}
-            />
+          <SectionLabel>
+            {t("appearance.hoverSlideshow.heading")}
+            <HelpTip text={t("appearance.hoverSlideshow.help")} />
+          </SectionLabel>
+          <Segmented
+            label={t("appearance.hoverSlideshow.heading")}
+            value={hoverSlideshow ? "on" : "off"}
+            onChange={(value) => void toggleHoverSlideshow(value === "on")}
+            options={[
+              { value: "on", label: t("appearance.on") },
+              { value: "off", label: t("appearance.off") },
+            ]}
+          />
+          {hoverSlideshowError && (
+            <Typography variant="caption" color="error" sx={{ display: "block", mt: 1 }}>
+              {hoverSlideshowError}
+            </Typography>
           )}
         </div>
         <div>

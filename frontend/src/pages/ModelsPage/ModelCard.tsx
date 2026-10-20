@@ -21,6 +21,7 @@ import { SELF_AUTHOR_ID } from "../../constants/selfAuthor";
 import { useGravatarUrl } from "../../hooks/useGravatarUrl";
 import StarToggle from "../../components/StarToggle";
 import HoverSlideshow from "../../components/media/HoverSlideshow";
+import { useHoverSlideshowEnabled } from "../../hooks/useHoverSlideshowEnabled";
 import AuthorHoverCard from "../../components/AuthorHoverCard";
 import RollingNumber from "../../components/RollingNumber";
 import { useFavoriteToggle } from "../../hooks/useFavoriteToggle";
@@ -97,6 +98,7 @@ export default function ModelCard({
   const authorAvatarUrl = author?.avatar_url || (showViewerAsAuthor ? viewerAvatarUrl : undefined);
   // Only mounted while hovered, so idle cards don't load images or tick.
   const [hovered, setHovered] = useState(false);
+  const slideshowEnabled = useHoverSlideshowEnabled();
   const contextMenu = useCardContextMenu();
   const toggleSelect = (event: React.MouseEvent | React.KeyboardEvent) => onToggleSelect?.(event.shiftKey);
   const slideshowImages =
@@ -165,7 +167,7 @@ export default function ModelCard({
         }}
       >
         {renderPreviewContent(item, "card", theme, t, previewMode)}
-        {hovered && !selectMode && slideshowImages.length > 0 && (
+        {hovered && slideshowEnabled && !selectMode && slideshowImages.length > 0 && (
           <HoverSlideshow images={slideshowImages} alt={item.title || item.name} />
         )}
       </Box>

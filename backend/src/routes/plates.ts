@@ -28,7 +28,6 @@ import {
   generateModelPreviewGlb,
   modelPreviewGlbPath,
   modelPreviewState,
-  generateModelImage,
   modelImagePath,
   modelImageState,
   type ModelImageKind,
@@ -211,8 +210,7 @@ function modelPictureHandler(kind: ModelImageKind) {
       }
       const srcPath = resolvePlateFilePath(plate);
       if (!srcPath) throw new HttpError(404, "Model file is missing", "PREVIEW_FAILED");
-      if (kind === "render") void generateCardRender(plate.id, srcPath, plate.filename);
-      else void generateModelImage(plate.id, srcPath, plate.filename);
+      void generateCardRender(plate.id, srcPath, plate.filename);
       const state = modelImageState(plate.id, kind);
       if (state === "unsupported") {
         throw new HttpError(404, "This file's layout can't be drawn by the server", "PREVIEW_UNSUPPORTED");
@@ -229,9 +227,7 @@ function modelPictureHandler(kind: ModelImageKind) {
   });
 }
 
-// The model drawn in one colour, for small slots like the dashboard lists.
-router.get("/plate/:plateId/model.png", modelPictureHandler("icon"));
-// The model in grey shading on transparent, which model cards tint with the accent.
+// The model in grey shading on transparent, which the browser tints with the render colour.
 router.get("/plate/:plateId/render.png", modelPictureHandler("render"));
 
 router.post(

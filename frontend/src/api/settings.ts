@@ -1,6 +1,6 @@
 import { authHeaders } from "../utils/auth";
 import { apiBase, assertOk, readErrorMessage, UnauthorizedError } from "./client";
-import type { AccentColor, ThemeSelection } from "../constants/settingsOptions";
+import type { AccentColor, RenderColor, ThemeSelection } from "../constants/settingsOptions";
 import { invalidateAiCategorizationStatus } from "./aiCategorization";
 
 export type StorageToken =
@@ -75,9 +75,8 @@ export type DashboardWidgetId =
 export type WeatherLocation = { lat: number; lon: number; name: string | null; source: "device" | "manual" };
 // Kept in sync by hand with the backend's DASHBOARD_LAYOUTS.
 export type DashboardLayout = "left" | "top" | "right" | "bottom" | "topTwo" | "puzzle";
-// Kept in sync by hand with the backend's DASHBOARD_THUMBNAILS.
-export type DashboardThumbnails = "none" | "photos" | "monochrome";
-/** What model cards lead with: the model's own pictures, or our render tinted with the accent. */
+/** What model pictures lead with, on cards, dashboard lists and tag tiles: the model's own pictures, or our render
+ *  tinted with the render colour. */
 export type CardPreview = "images" | "renders";
 /** Only the widgets the user has switched; the rest follow their default. */
 export type DashboardWidgetChoices = Partial<Record<DashboardWidgetId, boolean>>;
@@ -186,7 +185,12 @@ export const FRONTEND_VERSION: string = import.meta.env.VITE_APP_VERSION as stri
 
 export const FRONTEND_GIT_SHA: string | null = (import.meta.env.VITE_GIT_SHA as string | undefined) || null;
 
-export type ThemePreferences = { theme: ThemeSelection | null; accent: AccentColor | null };
+export type ThemePreferences = {
+  theme: ThemeSelection | null;
+  accent: AccentColor | null;
+  /** Null follows the accent. */
+  renderColor: RenderColor | null;
+};
 
 export const settingsApi = {
   getAiCategorization: async (): Promise<AiCategorizationSettings> => {
@@ -746,23 +750,6 @@ export const settingsApi = {
     return res.json();
   },
 
-  getDashboardThumbnails: async (): Promise<{ thumbnails: DashboardThumbnails }> => {
-    const res = await fetch(`${apiBase()}/settings/dashboard-thumbnails`, { headers: authHeaders() });
-    assertOk(res, "Failed to load the dashboard thumbnails setting");
-    return res.json();
-  },
-
-  updateDashboardThumbnails: async (thumbnails: DashboardThumbnails): Promise<{ thumbnails: DashboardThumbnails }> => {
-    const res = await fetch(`${apiBase()}/settings/dashboard-thumbnails`, {
-      method: "PATCH",
-      headers: authHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ thumbnails }),
-    });
-    if (res.status === 401) throw new UnauthorizedError();
-    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to update the dashboard thumbnails setting"));
-    return res.json();
-  },
-
   getCardPreview: async (): Promise<{ preview: CardPreview }> => {
     const res = await fetch(`${apiBase()}/settings/card-preview`, { headers: authHeaders() });
     assertOk(res, "Failed to load the model card preview setting");
@@ -829,6 +816,25 @@ export const settingsApi = {
     if (res.status === 401) throw new UnauthorizedError();
     if (!res.ok) {
       throw new Error(await readErrorMessage(res, "Failed to update author preview setting"));
+    }
+    return res.json();
+  },
+
+  getHoverSlideshow: async (): Promise<{ enabled: boolean }> => {
+    const res = await fetch(`${apiBase()}/settings/hover-slideshow`, { headers: authHeaders() });
+    assertOk(res, "Failed to load hover slideshow setting");
+    return res.json();
+  },
+
+  updateHoverSlideshow: async (enabled: boolean): Promise<{ enabled: boolean }> => {
+    const res = await fetch(`${apiBase()}/settings/hover-slideshow`, {
+      method: "PATCH",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ enabled }),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) {
+      throw new Error(await readErrorMessage(res, "Failed to update hover slideshow setting"));
     }
     return res.json();
   },

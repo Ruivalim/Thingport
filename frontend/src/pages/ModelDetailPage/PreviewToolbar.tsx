@@ -9,8 +9,8 @@ import GridOnIcon from "@mui/icons-material/GridOn";
 import ThreeSixtyIcon from "@mui/icons-material/ThreeSixty";
 import type { CameraView, RenderStyle } from "../../components/media/ModelViewer";
 import ColorSwatches from "../../components/controls/ColorSwatches";
-import { ACCENT_COLORS, type AccentColor } from "../../constants/settingsOptions";
-import { accentSwatch } from "../../theme";
+import { RENDER_COLORS, renderColorLabelKey, type RenderColor } from "../../constants/settingsOptions";
+import { renderSwatch } from "../../theme";
 
 const CAMERA_VIEWS: CameraView[] = ["topFront", "front", "side", "top", "bottom"];
 const RENDER_STYLES: RenderStyle[] = ["solid", "wire", "xray"];
@@ -20,8 +20,8 @@ type Props = {
   onCameraView: (view: CameraView) => void;
   renderStyle: RenderStyle;
   onRenderStyleChange: (style: RenderStyle) => void;
-  color: AccentColor;
-  onColorChange: (color: AccentColor) => void;
+  color: RenderColor;
+  onColorChange: (color: RenderColor) => void;
   showGrid: boolean;
   onShowGridChange: (show: boolean) => void;
   spin: boolean;
@@ -93,15 +93,15 @@ export default function PreviewToolbar({
 
         {sectionDivider}
 
-        {/* The accent palette, so the model can be seen in any of the app's colours. */}
+        {/* The render palette, so the model can be seen in any of the app's colours. */}
         <ColorSwatches
           bare
           label={t("models:detail.previewToolbar.color")}
           value={color}
           onChange={onColorChange}
-          options={ACCENT_COLORS.map((value) => {
-            const { color: swatch, contrast } = accentSwatch(value);
-            return { value, label: t(`app:appearance.accents.${value}`), color: swatch, contrast };
+          options={RENDER_COLORS.map((value) => {
+            const { color: swatch, contrast } = renderSwatch(value);
+            return { value, label: t(renderColorLabelKey(value)), color: swatch, contrast };
           })}
         />
 

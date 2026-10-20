@@ -265,26 +265,21 @@ async function renderPlateFile<T extends { status: string }>(
   return moved !== srcPath && fsSync.existsSync(moved) ? render(moved) : outcome;
 }
 
-// Pictures of a model, drawn on the server in one colour on transparent: an "icon" for small slots like the dashboard
-// lists, and a "render" for model cards. They share the GLB queue and memory limit, so the two never render at once,
-// but wait behind GLBs.
+// Pictures of a model, drawn on the server in one colour on transparent: a "render" for model cards, the dashboard
+// lists and tag mosaics. They share the GLB queue and memory limit, so they wait behind GLBs.
 
 /** Server-side picture formats; STEP needs a CAD kernel the server doesn't have. */
 export const MODEL_IMAGE_EXTS = new Set([".stl", ".obj", ".3mf"]);
-export type ModelImageKind = "icon" | "render";
+export type ModelImageKind = "render";
 type ModelImageKindDef = {
   /** Part of the filename, with a version, so changing a look regenerates older pictures on next request. */
   file: string;
   options: ModelImageOptions;
   timeoutSeconds: number;
 };
-// A dashboard icon isn't worth holding up the queue the way a model's own 3D preview is; a card's render is the
-// model's main picture, so a heavy model gets longer.
+// A card's render is the model's main picture, so a heavy model gets a while.
 const MODEL_IMAGE_KINDS: Record<ModelImageKind, ModelImageKindDef> = {
-  // Shading scales the colour down, so it comes out between near-black in shadow and charcoal in the light. The
-  // dashboard inverts it for the dark theme.
-  icon: { file: "image.v2", options: { size: 128, color: "#5a5a5a" }, timeoutSeconds: 20 },
-  // Grey shading the cards tint with the accent, so one picture serves every theme and accent.
+  // Grey shading the browser tints with the render colour, so one picture serves every theme and colour.
   render: {
     file: "render.v2",
     options: { size: 512, color: "#ffffff", view: "threeQuarter", ambient: 0.35, fill: 0.2 },
@@ -292,7 +287,7 @@ const MODEL_IMAGE_KINDS: Record<ModelImageKind, ModelImageKindDef> = {
   },
 };
 
-export function modelImagePath(plateId: string, kind: ModelImageKind = "icon"): string {
+export function modelImagePath(plateId: string, kind: ModelImageKind = "render"): string {
   return path.join(MODEL_PREVIEWS, `${plateId}.${MODEL_IMAGE_KINDS[kind].file}.png`);
 }
 function modelImageErrorPath(plateId: string, kind: ModelImageKind): string {
@@ -311,7 +306,7 @@ export async function generateModelImage(
   plateId: string,
   srcPath: string,
   filename: string,
-  kind: ModelImageKind = "icon",
+  kind: ModelImageKind = "render",
   onReady?: (imagePath: string) => Promise<void>,
 ): Promise<void> {
   const errorPath = modelImageErrorPath(plateId, kind);
@@ -369,7 +364,7 @@ export async function generateModelImage(
 /** "unsupported" is a file the renderer read but couldn't draw, e.g. a 3MF layout it doesn't know. */
 export function modelImageState(
   plateId: string,
-  kind: ModelImageKind = "icon",
+  kind: ModelImageKind = "render",
 ): "ready" | "generating" | "failed" | "unsupported" {
   if (fsSync.existsSync(modelImagePath(plateId, kind))) return "ready";
   if (imagesInFlight.has(`${kind}:${plateId}`)) return "generating";

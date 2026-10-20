@@ -14,6 +14,7 @@ import {
   removeTagMosaics,
   tagMosaicUrl,
   tagPictures,
+  type MosaicKind,
 } from "../services/tagMosaicService";
 
 const router = Router();
@@ -53,11 +54,9 @@ router.get(
       );
     const page = matching.slice(offset, offset + limit);
 
-    // Pictures for this page's tags alone, joined in one query.
-    const pictures = await tagPictures(
-      prints,
-      page.map(([name]) => name),
-    );
+    // Pictures for this page's tags alone, joined in one query; the browser picks which mosaic to show.
+    const names = page.map(([name]) => name);
+    const [pictures, renders] = await Promise.all([tagPictures(prints, names), tagPictures(prints, names, "renders")]);
 
     res.json({
       items: page.map(([name, count]) => ({
@@ -65,6 +64,7 @@ router.get(
         count,
         bookmarked: bookmarked.has(name),
         mosaic_url: tagMosaicUrl(name, pictures.get(name) ?? []),
+        render_mosaic_url: tagMosaicUrl(name, renders.get(name) ?? [], "renders"),
       })),
       total: matching.length,
       // Every tag, whatever its count: tells "none match the filter" from "no tags at all".
@@ -75,16 +75,17 @@ router.get(
 );
 
 // The tag's tile picture; its URL carries a version, so it's cached for good and asked for anew when it changes.
-router.get(
-  "/tags/:tag/mosaic.webp",
-  asyncHandler(async (req, res) => {
-    const file = await ensureTagMosaic(req.userId!, req.params.tag);
+function mosaicHandler(kind: MosaicKind) {
+  return asyncHandler(async (req, res) => {
+    const file = await ensureTagMosaic(req.userId!, req.params.tag, kind);
     if (!file) throw new HttpError(404, "Not found");
     res.setHeader("Content-Type", "image/webp");
     res.setHeader("Cache-Control", "private, max-age=31536000, immutable");
     res.sendFile(file);
-  }),
-);
+  });
+}
+router.get("/tags/:tag/mosaic.webp", mosaicHandler("images"));
+router.get("/tags/:tag/render-mosaic.webp", mosaicHandler("renders"));
 
 // Just the bookmarked names, without scanning every print like /tags/summary.
 

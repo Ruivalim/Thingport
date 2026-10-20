@@ -46,7 +46,7 @@ import { settingsApi, type PreviewMode } from "./api/settings";
 import { clearToken, clearUser, readToken, readUser, storeToken, storeUser } from "./utils/auth";
 import { type AppSettings, type MakerWorldSettings, loadSettings, saveSettings } from "./utils/settings";
 import { useResolvedTheme } from "./hooks/useResolvedTheme";
-import { setCachedAccentColor, useAccentColor } from "./hooks/useAccentColor";
+import { setCachedAccentColor, setCachedRenderColor, useAccentColor } from "./hooks/useAccentColor";
 import { resetCardPreview } from "./hooks/useCardPreview";
 import { DEFAULT_ACCENT, type ResolvedTheme, type ThemeSelection } from "./constants/settingsOptions";
 import { buildTheme } from "./theme";
@@ -336,6 +336,7 @@ export default function App() {
     // The accent is the account's, so another account signing in on this tab doesn't inherit it.
     if (!token) {
       setCachedAccentColor(DEFAULT_ACCENT);
+      setCachedRenderColor(null);
       return;
     }
     let active = true;
@@ -347,6 +348,7 @@ export default function App() {
         // Null means never set: the theme stays as it is, the accent is the default.
         if (saved.theme) setThemeSelection(saved.theme);
         setCachedAccentColor(saved.accent ?? DEFAULT_ACCENT);
+        setCachedRenderColor(saved.renderColor);
       } catch {}
     })();
     return () => {

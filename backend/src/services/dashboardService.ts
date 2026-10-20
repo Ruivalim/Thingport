@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { createHash } from "node:crypto";
 import { prisma } from "../db";
 import { RENDERABLE_MODEL_EXTS } from "../config";
-import { canRenderModelImage, modelImagePath } from "./modelPreviewCache";
+import { renderUrl } from "../dto";
 import { plateThumbExists, plateThumbPath } from "./printService";
 
 const TOP_MODELS_PREVIEW = 3;
@@ -15,8 +15,8 @@ export type DashboardModel = {
   id: string;
   name: string;
   thumbUrl: string | null;
-  /** The model drawn in one colour. Unversioned until it exists: asking for it queues it. */
-  modelImageUrl: string | null;
+  /** The first plate's render for the browser to tint. Unversioned until it exists: asking for it queues it. */
+  renderUrl: string | null;
   viewCount: number;
   printCount: number;
   createdAt: Date;
@@ -56,14 +56,6 @@ type PrintForModelSummary = {
   plates: { id: string; filename: string }[];
 };
 
-function modelImageUrl(plate: { id: string; filename: string }): string | null {
-  if (!canRenderModelImage(plate.filename)) return null;
-  const file = modelImagePath(plate.id);
-  return fs.existsSync(file)
-    ? `/plate/${plate.id}/model.png?v=${fs.statSync(file).mtimeMs}`
-    : `/plate/${plate.id}/model.png`;
-}
-
 export function toModelSummary(print: PrintForModelSummary): DashboardModel {
   const first = print.plates[0];
   const plateId = first?.id ?? null;
@@ -76,7 +68,7 @@ export function toModelSummary(print: PrintForModelSummary): DashboardModel {
     id: print.id,
     name: print.name,
     thumbUrl,
-    modelImageUrl: first ? modelImageUrl(first) : null,
+    renderUrl: first ? renderUrl(first) : null,
     viewCount: print.viewCount,
     printCount: print.printCount,
     createdAt: print.createdAt,

@@ -4,6 +4,8 @@ import Box from "@mui/material/Box";
 import Skeleton from "@mui/material/Skeleton";
 import { alpha } from "@mui/material/styles";
 import { printsApi } from "../../api/prints";
+import { useRenderColor } from "../../hooks/useAccentColor";
+import { renderSwatch } from "../../theme";
 
 // A render the server is still making is asked for again after these waits, then the card gives up on it. A heavy
 // model waits behind its own 3D preview in the server's queue, so this runs to a few minutes.
@@ -25,11 +27,12 @@ type Props = {
 };
 
 /**
- * The server's render of a model, in the theme's accent on a soft glow of it. The render is grey shading on
+ * The server's render of a model, in the user's render colour (the accent unless picked apart) on a soft glow of it. The render is grey shading on
  * transparent: the accent fills the model's silhouette and the shading is multiplied over it, so one picture serves
- * every theme and accent and a switch needs nothing new from the server.
+ * every theme and colour and a switch needs nothing new from the server.
  */
 export default function ModelRender({ url, alt, onUnavailable, placeholder }: Props) {
+  const tint = renderSwatch(useRenderColor()).color;
   // Failed loads so far; past the last retry the card falls back.
   const [attempt, setAttempt] = useState(0);
   const [waiting, setWaiting] = useState(false);
@@ -71,7 +74,7 @@ export default function ModelRender({ url, alt, onUnavailable, placeholder }: Pr
         // Its own stacking context, so the multiply only blends with the silhouette under it.
         isolation: "isolate",
         background: (theme) =>
-          `radial-gradient(circle at 50% 48%, ${alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.2 : 0.14)} 0%, transparent 68%)`,
+          `radial-gradient(circle at 50% 48%, ${alpha(tint, theme.palette.mode === "dark" ? 0.2 : 0.14)} 0%, transparent 68%)`,
       }}
     >
       {!loaded &&
@@ -83,7 +86,7 @@ export default function ModelRender({ url, alt, onUnavailable, placeholder }: Pr
           aria-hidden
           sx={{
             ...layerSx,
-            bgcolor: "primary.main",
+            bgcolor: tint,
             mask: `url("${src}") center / contain no-repeat`,
             WebkitMask: `url("${src}") center / contain no-repeat`,
             animation: `${fadeIn} 250ms ease-out`,
