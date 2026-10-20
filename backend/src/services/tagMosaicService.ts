@@ -67,9 +67,9 @@ async function printsTagged(userId: string, tag: string): Promise<TaggedPrint[]>
 }
 
 /** A plate's render, only once it's on disk: tags don't queue renders, which cards and uploads do. */
-function renderCover(plateId: string | null): Picture | null {
+function renderCover(plateId: string | null, home: string | null): Picture | null {
   if (!plateId) return null;
-  const file = modelImagePath(plateId, "render");
+  const file = modelImagePath(plateId, home, "render");
   try {
     return { url: `/plate/${plateId}/render.png?v=${fsSync.statSync(file).mtimeMs}`, file };
   } catch {
@@ -95,6 +95,7 @@ export async function tagPictures(
     where: { id: { in: [...new Set([...candidates.values()].flat())] } },
     select: {
       id: true,
+      assetsPath: true,
       previewImages: { orderBy: { position: "asc" }, take: 1, select: { id: true } },
       plates: { orderBy: { position: "asc" }, take: 1, select: { id: true } },
     },
@@ -113,8 +114,8 @@ export async function tagPictures(
           !row
             ? null
             : kind === "renders"
-              ? renderCover(plateId)
-              : printCover(row.previewImages[0]?.id ?? null, plateId),
+              ? renderCover(plateId, row.assetsPath)
+              : printCover(row.previewImages[0]?.id ?? null, plateId, row.assetsPath),
         );
       }
       return covers.get(id);

@@ -20,6 +20,7 @@ import {
   plateThumbPath,
   plateThumbReplaceable,
   relocatePrint,
+  removePlatePictures,
   saveThumbFromBytes,
 } from "../services/printService";
 import { addGeneratedPreviewImageIfNone, generateCardRender } from "../services/previewImageService";
@@ -84,7 +85,7 @@ router.delete(
       remaining.map((p, idx) => prisma.plate.update({ where: { id: p.id }, data: { position: idx } })),
     );
     await deletePlateFiles(target);
-    await fs.promises.rm(plateThumbPath(target.id), { force: true }).catch(() => undefined);
+    await removePlatePictures(target.id, print.assetsPath);
 
     if (target.position === 0) {
       await refreshAutoPreparedMetadata(print.id);
@@ -149,9 +150,10 @@ router.get(
   asyncHandler(async (req, res) => {
     const plate = await prisma.plate.findFirst({
       where: { id: req.params.plateId, print: { userId: req.userId } },
+      include: { print: { select: { assetsPath: true } } },
     });
     if (!plate) throw new HttpError(404, "Not found");
-    const thumbPath = plateThumbPath(plate.id);
+    const thumbPath = plateThumbPath(plate.id, plate.print.assetsPath);
     if (!fs.existsSync(thumbPath)) throw new HttpError(404, "Not found");
     res.setHeader("Content-Type", "image/jpeg");
     res.setHeader("Cache-Control", "private, max-age=31536000, immutable");
@@ -199,9 +201,10 @@ function modelPictureHandler(kind: ModelImageKind) {
   return asyncHandler(async (req, res) => {
     const plate = await prisma.plate.findFirst({
       where: { id: req.params.plateId, print: { userId: req.userId } },
+      include: { print: { select: { assetsPath: true } } },
     });
     if (!plate) throw new HttpError(404, "Not found");
-    const imagePath = modelImagePath(plate.id, kind);
+    const imagePath = modelImagePath(plate.id, plate.print.assetsPath, kind);
     if (!fs.existsSync(imagePath)) {
       if (!canRenderModelImage(plate.filename))
         throw new HttpError(404, "No picture for this file type", "PREVIEW_UNSUPPORTED");
@@ -211,7 +214,7 @@ function modelPictureHandler(kind: ModelImageKind) {
       const srcPath = resolvePlateFilePath(plate);
       if (!srcPath) throw new HttpError(404, "Model file is missing", "PREVIEW_FAILED");
       void generateCardRender(plate.id, srcPath, plate.filename);
-      const state = modelImageState(plate.id, kind);
+      const state = modelImageState(plate.id, plate.print.assetsPath, kind);
       if (state === "unsupported") {
         throw new HttpError(404, "This file's layout can't be drawn by the server", "PREVIEW_UNSUPPORTED");
       }

@@ -720,7 +720,7 @@
         "heading": "Estructura de almacenamiento",
         "subtitle": "Elige cómo se organizan en disco los archivos de modelos gestionados.",
         "templateHeading": "Estructura de carpetas",
-        "templateDesc": "Las carpetas en las que se guardan los archivos de cada modelo y cómo se nombran. Los archivos de cada usuario se guardan primero en una carpeta propia, así que un archivo acaba en, por ejemplo, <user>/Props/Workshop/Cable clip/Cable clip.3mf. Dos modelos pueden tener el mismo nombre si están en categorías distintas, así que la ruta debe incluir el ID del modelo, o bien la categoría o carpeta y el nombre del modelo; de lo contrario, sus archivos podrían acabar en la misma carpeta.",
+        "templateDesc": "Las carpetas en las que se guardan los archivos de cada modelo y cómo se nombran. Los archivos de cada usuario se guardan primero en una carpeta propia, así que un archivo acaba en, por ejemplo, <user>/Props/Workshop/Cable clip/Cable clip.3mf. Dos modelos pueden tener el mismo nombre si están en categorías distintas, así que la ruta debe incluir el ID del modelo, o bien la categoría o carpeta y el nombre del modelo; de lo contrario, sus archivos podrían acabar en la misma carpeta. Los archivos adjuntos de un modelo se guardan junto a sus archivos, y sus imágenes en una carpeta Images a su lado.",
         "templateLabel": "Plantilla",
         "save": "Guardar y mover archivos",
         "saving": "Guardando…",
@@ -1368,6 +1368,14 @@
         "folderSummary_one": "{{count}} archivo · {{size}}",
         "folderSummary_other": "{{count}} archivos · {{size}}",
         "ofModel": "modelo «{{name}}»",
+        "kind": {
+          "plate": "Archivo del modelo",
+          "file": "Archivo adjunto",
+          "image": "Imagen",
+          "description": "Imagen de la descripción",
+          "thumb": "Miniatura",
+          "render": "Render"
+        },
         "location": {
           "source": "En su origen",
           "missing": "Falta"

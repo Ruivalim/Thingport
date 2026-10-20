@@ -720,7 +720,7 @@
         "heading": "Structure de stockage",
         "subtitle": "Choisissez l’organisation sur le disque des fichiers de modèles gérés.",
         "templateHeading": "Structure des dossiers",
-        "templateDesc": "Les dossiers dans lesquels sont enregistrés les fichiers de chaque modèle, et la façon dont ils sont nommés. Les fichiers de chaque utilisateur sont d’abord rangés dans un dossier qui lui est propre ; un fichier se retrouve donc par exemple dans <user>/Props/Workshop/Cable clip/Cable clip.3mf. Deux modèles peuvent porter le même nom s’ils se trouvent dans des catégories différentes : le chemin doit donc inclure l’ID du modèle, ou bien la catégorie ou le dossier ainsi que le nom du modèle ; sans cela, leurs fichiers pourraient atterrir dans le même dossier.",
+        "templateDesc": "Les dossiers dans lesquels sont enregistrés les fichiers de chaque modèle, et la façon dont ils sont nommés. Les fichiers de chaque utilisateur sont d’abord rangés dans un dossier qui lui est propre ; un fichier se retrouve donc par exemple dans <user>/Props/Workshop/Cable clip/Cable clip.3mf. Deux modèles peuvent porter le même nom s’ils se trouvent dans des catégories différentes : le chemin doit donc inclure l’ID du modèle, ou bien la catégorie ou le dossier ainsi que le nom du modèle ; sans cela, leurs fichiers pourraient atterrir dans le même dossier. Les fichiers annexes d’un modèle sont rangés à côté de ses fichiers, et ses images dans un dossier Images juste à côté.",
         "templateLabel": "Gabarit",
         "save": "Enregistrer et déplacer les fichiers",
         "saving": "Enregistrement…",
@@ -1368,6 +1368,14 @@
         "folderSummary_one": "{{count}} fichier · {{size}}",
         "folderSummary_other": "{{count}} fichiers · {{size}}",
         "ofModel": "modèle « {{name}} »",
+        "kind": {
+          "plate": "Fichier du modèle",
+          "file": "Fichier annexe",
+          "image": "Image",
+          "description": "Image de la description",
+          "thumb": "Miniature",
+          "render": "Rendu"
+        },
         "location": {
           "source": "À sa source",
           "missing": "Manquant"

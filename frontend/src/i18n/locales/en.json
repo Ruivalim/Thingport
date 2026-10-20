@@ -720,7 +720,7 @@
         "heading": "Storage Structure",
         "subtitle": "Choose how managed model files are organized on disk.",
         "templateHeading": "Folder structure",
-        "templateDesc": "The folders each model's files are saved in, and how the files are named. Every user's files sit in a folder of their own first, so a file ends up at e.g. <user>/Props/Workshop/Cable clip/Cable clip.3mf. Two models can have the same name if they're in different categories, so the path must include Model ID, or both Category or folder and Model name; otherwise their files could land in the same folder.",
+        "templateDesc": "The folders each model's files are saved in, and how the files are named. Every user's files sit in a folder of their own first, so a file ends up at e.g. <user>/Props/Workshop/Cable clip/Cable clip.3mf. Two models can have the same name if they're in different categories, so the path must include Model ID, or both Category or folder and Model name; otherwise their files could land in the same folder. A model's supporting files go beside its model files, and its pictures in an Images folder next to them.",
         "templateLabel": "Template",
         "save": "Save & move files",
         "saving": "Saving…",
@@ -1368,6 +1368,14 @@
         "folderSummary_one": "{{count}} file · {{size}}",
         "folderSummary_other": "{{count}} files · {{size}}",
         "ofModel": "model \"{{name}}\"",
+        "kind": {
+          "plate": "Model file",
+          "file": "Supporting file",
+          "image": "Image",
+          "description": "Description image",
+          "thumb": "Thumbnail",
+          "render": "Render"
+        },
         "location": {
           "source": "At its source",
           "missing": "Missing"

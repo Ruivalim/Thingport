@@ -9,15 +9,19 @@ import { inspectPreparedPrint } from "./preparedPrint";
 import {
   availableModelName,
   availablePlateFilename,
+  ensureAssetHome,
   ensurePlateThumbnail,
   managedPlatePath,
-  plateThumbPath,
   pruneEmptyStorageDirs,
+  removeAssetHome,
+  assetOwnerIds,
+  removePlatePictures,
   renderPlateStoragePath,
   saveThumbFromFile,
 } from "./printService";
 import { generateModelPreviewGlb, canRenderModelImage } from "./modelPreviewCache";
 import { generateCardRender } from "./previewImageService";
+import { printAssetHome } from "./modelAssets";
 import { deleteNormalized3mf } from "./normalized3mfCache";
 import { getPreviewMode } from "./settingsService";
 import { Prisma } from "@prisma/client";
@@ -198,6 +202,9 @@ export async function createPrint(
       sourceExternalId: meta.sourceExternalId ?? null,
     },
   });
+  // Chosen now, though nothing is in it yet, so a null assetsPath only ever means a model from before (see
+  // storageMoveService). Failing here isn't fatal: the first picture tries again.
+  await ensureAssetHome(print.id).catch((err) => console.error("Couldn't choose a pictures folder", print.id, err));
 
   try {
     const plates: Plate[] = [];
@@ -237,14 +244,17 @@ export async function createPrint(
 async function discardPrint(printId: string): Promise<void> {
   try {
     const plates = await prisma.plate.findMany({ where: { printId } });
+    const home = await printAssetHome(printId);
+    const assetOwners = await assetOwnerIds(printId);
     await prisma.print.delete({ where: { id: printId } });
     for (const plate of plates) {
-      await fs.rm(plateThumbPath(plate.id), { force: true });
+      await removePlatePictures(plate.id, home);
       if (plate.sourcePath) continue;
       const managed = managedPlatePath(plate);
       await fs.rm(managed, { force: true });
       await pruneEmptyStorageDirs(path.dirname(managed));
     }
+    await removeAssetHome(home, assetOwners);
   } catch (err) {
     console.error("Failed to discard half-created print", printId, err);
   }

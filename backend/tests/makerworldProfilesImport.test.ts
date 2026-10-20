@@ -22,6 +22,7 @@ import { STORAGE } from "../src/config";
 import { prisma } from "../src/db";
 import { selectMakerworldProfiles } from "../src/services/makerworldCloudApi";
 import { plateThumbPath } from "../src/services/printService";
+import { plateAssetHome } from "../src/services/modelAssets";
 
 const app = createApp();
 const stamp = Date.now();
@@ -78,7 +79,7 @@ const PROFILE_COVERS: Record<string, Promise<Buffer>> = {
 
 /** The thumbnail's average colour, which survives the JPEG re-encode. */
 async function thumbColour(plateId: string): Promise<[number, number, number]> {
-  const { channels } = await sharp(plateThumbPath(plateId)).stats();
+  const { channels } = await sharp(plateThumbPath(plateId, await plateAssetHome(plateId))).stats();
   return [channels[0].mean, channels[1].mean, channels[2].mean].map(Math.round) as [number, number, number];
 }
 

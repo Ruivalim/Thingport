@@ -7,6 +7,17 @@ import { prisma } from "../db";
 import type { ModelImageOptions } from "./modelImageRender";
 import type { ModelPreviewWorkerInput, ModelPreviewWorkerResult } from "./modelPreviewWorker";
 import { getSimplifyPreviews } from "./settingsService";
+import {
+  assetExists,
+  assetPath,
+  assetTarget,
+  plateAssetHome,
+  plateRenderFile,
+  removeAsset,
+  RENDER_FILE_TAG,
+  type AssetHome,
+} from "./modelAssets";
+import { ensureAssetHome } from "./printService";
 import { workerBootstrap } from "../utils/workerBootstrap";
 
 // Renders run in a worker thread under memory and time limits, so a pathological .3mf can't take
@@ -281,14 +292,15 @@ type ModelImageKindDef = {
 const MODEL_IMAGE_KINDS: Record<ModelImageKind, ModelImageKindDef> = {
   // Grey shading the browser tints with the render colour, so one picture serves every theme and colour.
   render: {
-    file: "render.v2",
+    file: RENDER_FILE_TAG,
     options: { size: 512, color: "#ffffff", view: "threeQuarter", ambient: 0.35, fill: 0.2 },
     timeoutSeconds: 60,
   },
 };
 
-export function modelImagePath(plateId: string, kind: ModelImageKind = "render"): string {
-  return path.join(MODEL_PREVIEWS, `${plateId}.${MODEL_IMAGE_KINDS[kind].file}.png`);
+/** In the model's pictures folder (`home`, its Print.assetsPath); the failure markers stay with the GLB cache. */
+export function modelImagePath(plateId: string, home: AssetHome, kind: ModelImageKind = "render"): string {
+  return assetPath(home, plateRenderFile(plateId, MODEL_IMAGE_KINDS[kind].file));
 }
 function modelImageErrorPath(plateId: string, kind: ModelImageKind): string {
   return path.join(MODEL_PREVIEWS, `${plateId}.${MODEL_IMAGE_KINDS[kind].file}.error`);
@@ -311,9 +323,14 @@ export async function generateModelImage(
 ): Promise<void> {
   const errorPath = modelImageErrorPath(plateId, kind);
   const key = `${kind}:${plateId}`;
-  if (!canRenderModelImage(filename)) return;
-  const cachedPath = modelImagePath(plateId, kind);
-  if (fsSync.existsSync(cachedPath)) {
+  if (!canRenderModelImage(filename) || imagesInFlight.has(key)) return;
+  // Claimed before looking up where the picture is, so a second call meanwhile doesn't draw it again.
+  imagesInFlight.add(key);
+  const file = plateRenderFile(plateId, MODEL_IMAGE_KINDS[kind].file);
+  const cachedPath = assetPath(await plateAssetHome(plateId).catch(() => null), file);
+  if (fsSync.existsSync(cachedPath) || recentlyFailed(plateId, errorPath)) {
+    imagesInFlight.delete(key);
+    if (!fsSync.existsSync(cachedPath)) return;
     // Still run onReady, so a step that failed after an earlier render gets another go.
     try {
       await onReady?.(cachedPath);
@@ -322,11 +339,12 @@ export async function generateModelImage(
     }
     return;
   }
-  if (imagesInFlight.has(key) || recentlyFailed(plateId, errorPath)) return;
-  imagesInFlight.add(key);
   await scheduleRender("image", async () => {
-    const dest = cachedPath;
-    const tmp = `${dest}.${process.pid}.${Date.now()}.tmp`;
+    // Drawn beside the GLBs, and only then put in the model's folder: the model may move while it waits.
+    const tmp = path.join(
+      MODEL_PREVIEWS,
+      `${plateId}.${MODEL_IMAGE_KINDS[kind].file}.${process.pid}.${Date.now()}.tmp`,
+    );
     try {
       const outcome = await renderPlateFile(plateId, srcPath, (from) =>
         renderInWorker(
@@ -341,7 +359,13 @@ export async function generateModelImage(
         ),
       );
       if (outcome.status === "ok") {
+        const plate = await prisma.plate.findUnique({ where: { id: plateId }, select: { printId: true } });
+        // Deleted while it was drawn.
+        if (!plate) return;
+        const dest = assetTarget(await ensureAssetHome(plate.printId), file);
+        await fs.mkdir(path.dirname(dest), { recursive: true });
         await fs.rename(tmp, dest);
+        await removeAsset(null, file);
         await fs.rm(errorPath, { force: true });
         await onReady?.(dest);
       } else {
@@ -364,9 +388,10 @@ export async function generateModelImage(
 /** "unsupported" is a file the renderer read but couldn't draw, e.g. a 3MF layout it doesn't know. */
 export function modelImageState(
   plateId: string,
+  home: AssetHome,
   kind: ModelImageKind = "render",
 ): "ready" | "generating" | "failed" | "unsupported" {
-  if (fsSync.existsSync(modelImagePath(plateId, kind))) return "ready";
+  if (assetExists(home, plateRenderFile(plateId, MODEL_IMAGE_KINDS[kind].file))) return "ready";
   if (imagesInFlight.has(`${kind}:${plateId}`)) return "generating";
   const errorPath = modelImageErrorPath(plateId, kind);
   if (!recentlyFailed(plateId, errorPath)) return "generating";

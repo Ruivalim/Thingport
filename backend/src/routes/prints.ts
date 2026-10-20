@@ -10,7 +10,15 @@ import { parseBody } from "../utils/validate";
 import { asyncHandler } from "../utils/asyncHandler";
 import { modelUpload } from "../uploadMiddleware";
 import { createPrint, deletePlateFiles, resolvePlateFilePath, type NewPlateInput } from "../services/printCreation";
-import { plateThumbPath, relocatePrint, relocatePrintsForToken, uniqueModelName } from "../services/printService";
+import {
+  plateThumbPath,
+  relocatePrint,
+  relocatePrintsForToken,
+  removeAssetHome,
+  assetOwnerIds,
+  removePlatePictures,
+  uniqueModelName,
+} from "../services/printService";
 import { setPrintCategory } from "../services/printCategoryService";
 import { previewImagePath, deleteAllPreviewImages } from "../services/previewImageService";
 import {
@@ -488,9 +496,10 @@ router.get(
     const plate0 = await prisma.plate.findFirst({
       where: { printId: req.params.id, print: { userId: req.userId } },
       orderBy: { position: "asc" },
+      include: { print: { select: { assetsPath: true } } },
     });
     if (!plate0) throw new HttpError(404, "Not found");
-    const thumbPath = plateThumbPath(plate0.id);
+    const thumbPath = plateThumbPath(plate0.id, plate0.print.assetsPath);
     if (!fs.existsSync(thumbPath)) throw new HttpError(404, "Not found");
     res.setHeader("Content-Type", "image/jpeg");
     res.setHeader("Cache-Control", "private, max-age=31536000, immutable");
@@ -503,9 +512,10 @@ router.get(
   asyncHandler(async (req, res) => {
     const image = await prisma.descriptionImage.findFirst({
       where: { id: req.params.id, print: { userId: req.userId } },
+      include: { print: { select: { assetsPath: true } } },
     });
     if (!image) throw new HttpError(404, "Not found");
-    const filePath = descriptionImagePath(image.id);
+    const filePath = descriptionImagePath(image, image.print.assetsPath);
     if (!fs.existsSync(filePath)) throw new HttpError(404, "Not found");
     res.setHeader("Content-Type", image.mime);
     res.setHeader("X-Content-Type-Options", "nosniff");
@@ -519,9 +529,10 @@ router.get(
   asyncHandler(async (req, res) => {
     const image = await prisma.previewImage.findFirst({
       where: { id: req.params.id, print: { userId: req.userId } },
+      include: { print: { select: { assetsPath: true } } },
     });
     if (!image) throw new HttpError(404, "Not found");
-    const filePath = previewImagePath(image.id);
+    const filePath = previewImagePath(image.id, image.print.assetsPath);
     if (!fs.existsSync(filePath)) throw new HttpError(404, "Not found");
     res.setHeader("Content-Type", "image/jpeg");
     res.setHeader("Cache-Control", "private, max-age=31536000, immutable");
@@ -647,14 +658,16 @@ router.post(
 
 async function deletePrint(userId: string, printId: string): Promise<void> {
   const full = await loadFullPrint(userId, printId);
+  const assetOwners = await assetOwnerIds(printId);
   await deleteAllPrintFiles(printId);
   await deleteAllPreviewImages(printId);
   await deleteAllDescriptionImages(printId);
   await prisma.print.delete({ where: { id: printId } });
   for (const plate of full.plates) {
     await deletePlateFiles(plate);
-    await fs.promises.rm(plateThumbPath(plate.id), { force: true }).catch(() => undefined);
+    await removePlatePictures(plate.id, full.print.assetsPath);
   }
+  await removeAssetHome(full.print.assetsPath, assetOwners);
   void recordActivity(userId, "delete", printId, full.print.name);
   void createLog({
     userId,

@@ -727,7 +727,7 @@
         "heading": "Saugojimo struktūra",
         "subtitle": "Pasirinkite, kaip valdomi modelių failai tvarkomi diske.",
         "templateHeading": "Aplankų struktūra",
-        "templateDesc": "Aplankai, į kuriuos saugomi kiekvieno modelio failai, ir kaip failai pavadinami. Kiekvieno naudotojo failai pirmiausia būna jo paties aplanke, tad failas atsiduria, pvz., <naudotojas>/Props/Workshop/Cable clip/Cable clip.3mf. Skirtingose kategorijose du modeliai gali turėti tą patį pavadinimą, todėl kelyje turi būti Modelio ID arba ir Kategorija ar aplankas, ir Modelio pavadinimas – kitaip jų failai galėtų patekti į tą patį aplanką.",
+        "templateDesc": "Aplankai, į kuriuos saugomi kiekvieno modelio failai, ir kaip failai pavadinami. Kiekvieno naudotojo failai pirmiausia būna jo paties aplanke, tad failas atsiduria, pvz., <naudotojas>/Props/Workshop/Cable clip/Cable clip.3mf. Skirtingose kategorijose du modeliai gali turėti tą patį pavadinimą, todėl kelyje turi būti Modelio ID arba ir Kategorija ar aplankas, ir Modelio pavadinimas – kitaip jų failai galėtų patekti į tą patį aplanką. Papildomi modelio failai saugomi šalia jo failų, o paveikslėliai – greta esančiame aplanke Images.",
         "templateLabel": "Šablonas",
         "save": "Išsaugoti ir perkelti failus",
         "saving": "Saugoma…",
@@ -1403,6 +1403,14 @@
         "folderSummary_many": "{{count}} failo · {{size}}",
         "folderSummary_other": "{{count}} failų · {{size}}",
         "ofModel": "modelis „{{name}}“",
+        "kind": {
+          "plate": "Modelio failas",
+          "file": "Papildomas failas",
+          "image": "Paveikslėlis",
+          "description": "Aprašymo paveikslėlis",
+          "thumb": "Miniatiūra",
+          "render": "Atvaizdas"
+        },
         "location": {
           "source": "Šaltinyje",
           "missing": "Trūksta"

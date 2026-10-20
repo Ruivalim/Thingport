@@ -65,10 +65,14 @@ export async function previewPart(
   enabled: boolean,
 ): Promise<{ type: "image_url"; image_url: { url: string } } | null> {
   if (!enabled) return null;
-  const image = await prisma.previewImage.findFirst({ where: { printId }, orderBy: { position: "asc" } });
+  const image = await prisma.previewImage.findFirst({
+    where: { printId },
+    orderBy: { position: "asc" },
+    include: { print: { select: { assetsPath: true } } },
+  });
   if (!image) return null;
   try {
-    const data = await sharp(await fs.readFile(previewImagePath(image.id)))
+    const data = await sharp(await fs.readFile(previewImagePath(image.id, image.print.assetsPath)))
       .resize(512, 512, { fit: "inside" })
       .jpeg()
       .toBuffer();
