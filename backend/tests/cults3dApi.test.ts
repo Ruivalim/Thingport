@@ -285,6 +285,11 @@ describe("Cults3D orders and listings", () => {
     stubFetch(() => json({ data: { user: null } }));
     expect(await fetchCults3dLikes(CREDENTIALS, "nobody", new Set())).toBeNull();
   });
+
+  it("fails on errors beside partial data, rather than reading an errored field as missing", async () => {
+    stubFetch(() => json({ data: { user: null }, errors: [{ message: "Internal server error" }] }));
+    await expect(fetchCults3dLikes(CREDENTIALS, "someone", new Set())).rejects.toThrow(/Internal server error/);
+  });
 });
 
 describe("Cults3D downloads", () => {

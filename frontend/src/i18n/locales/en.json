@@ -879,7 +879,10 @@
           "myminifactory_key_rejected": "MyMiniFactory models were skipped: MyMiniFactory rejected the API key in Administration > Providers.",
           "myminifactory_rate_limited": "MyMiniFactory models were skipped: MyMiniFactory started blocking requests. It usually clears after a while — try again later.",
           "makerworld_captcha": "MakerWorld models were skipped: MakerWorld asked for a CAPTCHA, and blocks further requests for about 2 hours. Try again later.",
-          "makerworld_login_rejected": "MakerWorld models were skipped: MakerWorld rejected the saved MakerWorld login. Update it in Configuration > Providers."
+          "makerworld_login_rejected": "MakerWorld models were skipped: MakerWorld rejected the saved MakerWorld login. Update it in Configuration > Providers.",
+          "cults3d_no_key": "Cults3D models were skipped: their owner hasn't entered a Cults3D nickname and API key in Configuration > Providers.",
+          "cults3d_key_rejected": "Some Cults3D models were skipped: Cults3D rejected their owner's API key. They can enter a new one in Configuration > Providers.",
+          "cults3d_rate_limited": "Cults3D models were skipped: Cults3D's API rate limit was reached. It clears within a minute or so — try again then."
         },
         "refetchTitle": "Refetch model descriptions",
         "refetchDesc": "Replaces the description of every model a user imported from MakerWorld, Printables, Thingiverse or MyMiniFactory with the current one from that site, with its formatting and images. Use it to bring models imported before formatted descriptions were supported up to date. Changes the user made to those descriptions are lost. Models whose source is gone keep their description. It runs in the background — MakerWorld requests are spaced out to avoid its CAPTCHA, so a large library can take a while.",

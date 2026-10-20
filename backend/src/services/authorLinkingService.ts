@@ -23,8 +23,8 @@ import { resolveMakeronlineModel } from "./makeronlineApi";
 import { resolveCrealitycloudModel } from "./crealitycloudApi";
 import { resolveNexprintModel } from "./nexprintApi";
 import { resolveThangsModel } from "./thangsApi";
-import { resolveCults3dModel } from "./cults3dApi";
-import { getUserCults3dCredentials } from "./cults3dSessionService";
+import { Cults3dAuthError, Cults3dRateLimitError, resolveCults3dModel } from "./cults3dApi";
+import { getUserCults3dCredentials, markCults3dApiRejected } from "./cults3dSessionService";
 import { getDisabledProviders } from "./providerSettingsService";
 
 // Links models that only know their author by name: first by name matching, then by looking the
@@ -52,7 +52,10 @@ export type LookupProblem =
   | "myminifactory_key_rejected"
   | "myminifactory_rate_limited"
   | "makerworld_captcha"
-  | "makerworld_login_rejected";
+  | "makerworld_login_rejected"
+  | "cults3d_no_key"
+  | "cults3d_key_rejected"
+  | "cults3d_rate_limited";
 
 export type AuthorLinkingRun = {
   running: boolean;
@@ -167,6 +170,10 @@ export async function runAuthorLinking(run: AuthorLinkingRun): Promise<void> {
       else if (err instanceof ThingiverseRateLimitError) skip("thingiverse", "thingiverse_rate_limited");
       else if (err instanceof MyminifactoryAuthError) skip("myminifactory", "myminifactory_key_rejected");
       else if (err instanceof MyminifactoryRateLimitError) skip("myminifactory", "myminifactory_rate_limited");
+      // Each user's own key: one turned down only stops that user's lookups (see lookUpAuthor).
+      else if (err instanceof Cults3dAuthError) {
+        if (!run.problems.includes("cults3d_key_rejected")) run.problems.push("cults3d_key_rejected");
+      } else if (err instanceof Cults3dRateLimitError) skip("cults3d", "cults3d_rate_limited");
       else console.warn(`Couldn't look up the author of model ${candidate.printId}`, err);
     }
     const saved = author ? await upsertAuthorFromImport(author) : null;
@@ -228,7 +235,13 @@ async function lookUpAuthor(
       const credentials = await getUserCults3dCredentials(candidate.userId);
       if (!credentials) return null;
       await maybeSleep(IMPORT_COLLECTION_DELAY_MS);
-      return (await resolveCults3dModel(candidate.externalId, credentials))?.meta.author ?? null;
+      try {
+        return (await resolveCults3dModel(candidate.externalId, credentials))?.meta.author ?? null;
+      } catch (err) {
+        // Remembered, so the rest of this user's models don't ask with it again; other users' keys still work.
+        if (err instanceof Cults3dAuthError) await markCults3dApiRejected(candidate.userId);
+        throw err;
+      }
     }
     case "makerworld": {
       const cookie = await getUserMakerworldCookie(candidate.userId);

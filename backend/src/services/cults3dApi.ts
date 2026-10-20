@@ -269,7 +269,9 @@ async function graphql(
   }
   const body: unknown = await res.json().catch(() => null);
   const errors = isRecord(body) ? records(body.errors) : [];
-  if (!res.ok || !isRecord(body) || !isRecord(body.data)) {
+  // Partial data beside errors is a failure too: a field that errored reads as null, which would pass for a user or
+  // printlist that doesn't exist, and a sync unsyncs what's missing.
+  if (!res.ok || !isRecord(body) || !isRecord(body.data) || errors.length) {
     const message = errors.map((e) => str(e.message)).find(Boolean);
     throw new Error(`Cults3D's API failed${message ? `: ${message}` : ` (HTTP ${res.status})`}`);
   }

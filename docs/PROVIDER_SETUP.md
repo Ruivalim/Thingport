@@ -252,7 +252,7 @@ This is your own MakerWorld login session -- don't share it, and expect to redo 
 
 ## Turning a provider off
 
-Admins choose which providers this Thingport imports from, under **Administration → Providers**. All nine are on by
+Admins choose which providers this Thingport imports from, under **Administration → Providers**. All ten are on by
 default. Turn one off and nothing new comes from it for anyone: links to it, Thingport Grab and the import queue are
 refused, its synced collections pause, and background jobs skip it. It also disappears from everyone's
 **Configuration → Providers**. Models already imported from it stay as they are, and turning it back on picks up where

@@ -888,7 +888,10 @@
           "myminifactory_key_rejected": "MyMiniFactory modeliai praleisti: MyMiniFactory atmetė API raktą, nurodytą skiltyje Administravimas > Tiekėjai.",
           "myminifactory_rate_limited": "MyMiniFactory modeliai praleisti: MyMiniFactory pradėjo riboti užklausas. Paprastai tai praeina po kurio laiko — bandykite vėliau.",
           "makerworld_captcha": "MakerWorld modeliai praleisti: MakerWorld paprašė CAPTCHA ir maždaug 2 valandoms blokuoja tolesnes užklausas. Bandykite vėliau.",
-          "makerworld_login_rejected": "MakerWorld modeliai praleisti: MakerWorld atmetė išsaugotą MakerWorld prisijungimą. Atnaujinkite jį skiltyje Konfigūracija > Šaltiniai."
+          "makerworld_login_rejected": "MakerWorld modeliai praleisti: MakerWorld atmetė išsaugotą MakerWorld prisijungimą. Atnaujinkite jį skiltyje Konfigūracija > Šaltiniai.",
+          "cults3d_no_key": "Cults3D modeliai praleisti: jų savininkas neįvedė Cults3D slapyvardžio ir API rakto skiltyje Konfigūracija > Šaltiniai.",
+          "cults3d_key_rejected": "Kai kurie Cults3D modeliai praleisti: Cults3D atmetė jų savininko API raktą. Naują jis gali įvesti skiltyje Konfigūracija > Šaltiniai.",
+          "cults3d_rate_limited": "Cults3D modeliai praleisti: pasiektas Cults3D API užklausų limitas. Jis praeina maždaug per minutę — tada bandykite vėl."
         },
         "refetchTitle": "Iš naujo gauti modelių aprašymus",
         "refetchDesc": "Pakeičia kiekvieno naudotojo iš MakerWorld, Printables, Thingiverse ar MyMiniFactory importuoto modelio aprašymą dabartiniu aprašymu iš tos svetainės, su formatavimu ir paveikslėliais. Naudokite tai modeliams, importuotiems prieš atsirandant formatuotų aprašymų palaikymui, atnaujinti. Naudotojo atlikti tų aprašymų pakeitimai bus prarasti. Modeliai, kurių šaltinio nebėra, išlaiko savo aprašymą. Vykdoma fone — MakerWorld užklausos atliekamos su pertraukomis, kad būtų išvengta CAPTCHA, todėl didelė biblioteka gali užtrukti.",

@@ -20,6 +20,7 @@ import { importProviderInfo } from "../../constants/importProviders";
 import HelpTip from "../../components/HelpTip";
 import Segmented from "../../components/controls/Segmented";
 import { SectionLabel } from "../../components/Layout/ConfigurationDialog/parts";
+import { ProviderLogo } from "../../components/Layout/ConfigurationDialog/providerLogos";
 import { useSlicerPreference } from "../../hooks/useSlicerPreference";
 import { useConfirm } from "../../components/ConfirmProvider";
 import { onConfigurationClosed, openConfiguration } from "../../utils/configurationEvents";
@@ -286,7 +287,11 @@ export default function SyncBrowse({ provider, onProviderChange, picked, onPick,
             setEditingAccount(false);
             onProviderChange(next);
           }}
-          options={available.map((value) => ({ value, label: importProviderInfo(value)?.label ?? value }))}
+          options={available.map((value) => ({
+            value,
+            label: importProviderInfo(value)?.label ?? value,
+            icon: <ProviderLogo id={value} size={20} />,
+          }))}
         />
       </div>
 
