@@ -15,6 +15,12 @@ import { authApi, type ApiTokenInfo } from "../../api/auth";
 import { UnauthorizedError } from "../../api/client";
 import { useConfirm } from "../../components/ConfirmProvider";
 import { relativeTime } from "../../utils/relativeTime";
+import ApiTokenMcpTools from "./ApiTokenMcpTools";
+
+/** Same origin as the app: nginx (or Vite in dev) passes /api through to the backend. */
+function mcpEndpoint(): string {
+  return `${window.location.origin}/api/mcp`;
+}
 
 type Props = {
   onUnauthorized?: () => void;
@@ -177,9 +183,18 @@ export default function ApiTokenSection({ onUnauthorized }: Props) {
                 },
               }}
             />
+            <Typography variant="body2">{t("profile.apiToken.mcp.connect")}</Typography>
+            <Box
+              component="pre"
+              sx={{ m: 0, p: 1, borderRadius: 1, bgcolor: "action.hover", fontSize: "0.75rem", overflowX: "auto" }}
+            >
+              {`claude mcp add --transport http thingport ${mcpEndpoint()} \\\n  --header "Authorization: Bearer ${newToken}"`}
+            </Box>
           </Stack>
         </Alert>
       )}
+
+      {info?.configured && <ApiTokenMcpTools info={info} onChange={setInfo} onUnauthorized={onUnauthorized} />}
 
       {error && (
         <Alert severity="error" onClose={() => setError(null)}>

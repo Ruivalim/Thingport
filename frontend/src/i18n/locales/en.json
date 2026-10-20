@@ -189,7 +189,7 @@
       "backToProfile": "Back to Profile",
       "apiToken": {
         "heading": "API token",
-        "description": "Lets other apps and services connect to your Thingport library, with read-only access.",
+        "description": "Lets other apps, services and AI assistants connect to your Thingport library. Over the API it can only read.",
         "created": "created {{date}}",
         "lastUsed": "last used {{when}}",
         "neverUsed": "not used yet",
@@ -203,7 +203,52 @@
         "copyNow": "Copy your token now. It won't be shown again.",
         "copy": "Copy",
         "copied": "Copied",
-        "failed": "Something went wrong with your API token. Please try again."
+        "failed": "Something went wrong with your API token. Please try again.",
+        "mcp": {
+          "heading": "MCP tools",
+          "description": "What an AI assistant connected with this token (over MCP, at /api/mcp) may use. Changes apply straight away, without a new token.",
+          "connect": "To connect an AI assistant, for example Claude Code:",
+          "writes": "Changes your library",
+          "failed": "Couldn't save the token's MCP tools. Please try again.",
+          "tools": {
+            "search_models": {
+              "title": "Search models",
+              "description": "Find models by words in their title, tags, creator or description."
+            },
+            "list_models": {
+              "title": "List models",
+              "description": "List models by tag, category, collection or author."
+            },
+            "get_model": {
+              "title": "Get a model",
+              "description": "Read one model's description, files, tags, author and collections."
+            },
+            "list_collections": {
+              "title": "List collections",
+              "description": "See your collections and how many models each holds."
+            },
+            "get_collection": {
+              "title": "Get a collection",
+              "description": "List the models in one collection."
+            },
+            "list_tags": {
+              "title": "List tags",
+              "description": "See every tag in your library."
+            },
+            "list_categories": {
+              "title": "List categories",
+              "description": "See your categories and folders."
+            },
+            "get_author": {
+              "title": "Get an author",
+              "description": "Read about a designer and see their models in your library."
+            },
+            "library_stats": {
+              "title": "Library stats",
+              "description": "Your totals, most viewed, most printed and newest models."
+            }
+          }
+        }
       },
       "language": {
         "heading": "Language",
@@ -1238,6 +1283,7 @@
           "password_reset": "Reset password",
           "api_token_generated": "Generated an API token",
           "api_token_revoked": "Revoked their API token",
+          "api_token_mcp_tools_changed": "Changed their API token's MCP tools",
           "user_invited": "Invited a user",
           "model_uploaded": "Model uploaded",
           "model_imported": "Model imported",

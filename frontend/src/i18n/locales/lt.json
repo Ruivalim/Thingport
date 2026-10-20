@@ -190,7 +190,7 @@
       "backToProfile": "Grįžti į profilį",
       "apiToken": {
         "heading": "API raktas",
-        "description": "Leidžia kitoms programoms ir paslaugoms prisijungti prie jūsų Thingport bibliotekos tik skaitymo teisėmis.",
+        "description": "Leidžia kitoms programoms, paslaugoms ir DI asistentams prisijungti prie jūsų Thingport bibliotekos. Per API jis gali tik skaityti.",
         "created": "sukurtas {{date}}",
         "lastUsed": "paskutinį kartą naudotas {{when}}",
         "neverUsed": "dar nenaudotas",
@@ -204,7 +204,52 @@
         "copyNow": "Nukopijuokite raktą dabar. Jis daugiau nebus rodomas.",
         "copy": "Kopijuoti",
         "copied": "Nukopijuota",
-        "failed": "Kažkas nepavyko su jūsų API raktu. Bandykite dar kartą."
+        "failed": "Kažkas nepavyko su jūsų API raktu. Bandykite dar kartą.",
+        "mcp": {
+          "heading": "MCP įrankiai",
+          "description": "Ką gali naudoti DI asistentas, prijungtas su šiuo raktu (per MCP, adresu /api/mcp). Pakeitimai įsigalioja iš karto, naujo rakto nereikia.",
+          "connect": "Kad prijungtumėte DI asistentą, pavyzdžiui Claude Code:",
+          "writes": "Keičia biblioteką",
+          "failed": "Nepavyko išsaugoti rakto MCP įrankių. Bandykite dar kartą.",
+          "tools": {
+            "search_models": {
+              "title": "Ieškoti modelių",
+              "description": "Rasti modelius pagal žodžius pavadinime, žymėse, autoriuje ar aprašyme."
+            },
+            "list_models": {
+              "title": "Modelių sąrašas",
+              "description": "Išvardyti modelius pagal žymę, kategoriją, kolekciją ar autorių."
+            },
+            "get_model": {
+              "title": "Modelio informacija",
+              "description": "Perskaityti modelio aprašymą, failus, žymes, autorių ir kolekcijas."
+            },
+            "list_collections": {
+              "title": "Kolekcijų sąrašas",
+              "description": "Matyti savo kolekcijas ir kiek modelių kiekvienoje."
+            },
+            "get_collection": {
+              "title": "Kolekcijos turinys",
+              "description": "Išvardyti vienos kolekcijos modelius."
+            },
+            "list_tags": {
+              "title": "Žymių sąrašas",
+              "description": "Matyti visas bibliotekos žymes."
+            },
+            "list_categories": {
+              "title": "Kategorijų sąrašas",
+              "description": "Matyti savo kategorijas ir aplankus."
+            },
+            "get_author": {
+              "title": "Autoriaus informacija",
+              "description": "Sužinoti apie dizainerį ir matyti jo modelius jūsų bibliotekoje."
+            },
+            "library_stats": {
+              "title": "Bibliotekos statistika",
+              "description": "Jūsų suvestinė, daugiausiai peržiūrėti, spausdinti ir naujausi modeliai."
+            }
+          }
+        }
       },
       "language": {
         "heading": "Kalba",
@@ -1267,6 +1312,7 @@
           "password_reset": "Atkūrė slaptažodį",
           "api_token_generated": "Sugeneravo API raktą",
           "api_token_revoked": "Atšaukė savo API raktą",
+          "api_token_mcp_tools_changed": "Pakeitė savo API rakto MCP įrankius",
           "user_invited": "Pakvietė naudotoją",
           "model_uploaded": "Modelis įkeltas",
           "model_imported": "Modelis importuotas",
