@@ -6,6 +6,7 @@ import { request, send } from "../shared/messages";
 import { printablesToken, readMe, readPrintables } from "./printables";
 import { providerEnabled } from "./providerSettings";
 import { sleep } from "./runtime";
+import { cults3dSignedIn } from "./cults3d";
 
 // The header is drawn after load; give up quietly if it never shows (e.g. signed out).
 const HEADER_WAIT_MS = 15_000;
@@ -97,6 +98,13 @@ export function captureProviderAccount(hostname: string): void {
     captured = true;
     // Its sign-in downloads the files; the site renews it as it refreshes the token, and each new one is sent on.
     void send("SYNC_NEXPRINT_SESSION");
+    return;
+  }
+  if (/(^|\.)cults3d\.com$/i.test(hostname)) {
+    captured = true;
+    // Its sign-in and Cloudflare clearance open the order and download pages; sent once they change, and only from a
+    // signed-in page.
+    if (cults3dSignedIn()) void send("SYNC_CULTS3D_SESSION");
     return;
   }
   if (/(^|\.)thangs\.com$/i.test(hostname)) {

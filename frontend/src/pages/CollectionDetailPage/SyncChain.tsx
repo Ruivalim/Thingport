@@ -27,6 +27,7 @@ const LOGOS = new Set<string>([
   "crealitycloud",
   "nexprint",
   "thangs",
+  "cults3d",
 ]);
 
 // The pulse is 40% of its segment wide, so 250% starts it past the right end and -100% ends it

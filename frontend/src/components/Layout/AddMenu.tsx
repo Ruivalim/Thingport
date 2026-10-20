@@ -48,6 +48,7 @@ import {
   isNexprintCollectionUrl,
   isNexprintModelUrl,
   isThangsListUrl,
+  isCults3dListUrl,
   isThingiverseCollectionUrl,
   isThingiverseLikesUrl,
   type ImportProviderKey,
@@ -66,6 +67,7 @@ const IMPORT_PROVIDERS: ImportProviderKey[] = [
   "crealitycloud",
   "nexprint",
   "thangs",
+  "cults3d",
 ];
 
 /** What the search palette's !import command calls. */
@@ -136,7 +138,8 @@ const AddMenu = React.forwardRef<AddMenuHandle, Props>(function AddMenu(
           isMakeronlineListUrl(link) ||
           isCrealitycloudListUrl(link) ||
           isNexprintCollectionUrl(link) ||
-          isThangsListUrl(link),
+          isThangsListUrl(link) ||
+          isCults3dListUrl(link),
       )
     : isMakerworldCollectionUrl(linkValue);
   // Models with print profiles to pick between.

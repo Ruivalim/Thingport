@@ -4,7 +4,7 @@
 // the background registers the content script there. It only ever runs on the sites listed here.
 
 export type OptionalSite = {
-  id: "myminifactory" | "snapmaker" | "makeronline" | "crealitycloud" | "nexprint" | "thangs";
+  id: "myminifactory" | "snapmaker" | "makeronline" | "crealitycloud" | "nexprint" | "thangs" | "cults3d";
   name: string;
   origins: string[];
 };
@@ -17,6 +17,7 @@ export const OPTIONAL_SITES: readonly OptionalSite[] = [
   { id: "crealitycloud", name: "Creality Cloud", origins: ["*://*.crealitycloud.com/*"] },
   { id: "nexprint", name: "NexPrint", origins: ["*://*.nexprint.com/*"] },
   { id: "thangs", name: "Thangs", origins: ["*://thangs.com/*", "*://*.thangs.com/*"] },
+  { id: "cults3d", name: "Cults3D", origins: ["*://cults3d.com/*", "*://*.cults3d.com/*"] },
 ];
 
 const scriptId = (site: OptionalSite) => `site-${site.id}`;

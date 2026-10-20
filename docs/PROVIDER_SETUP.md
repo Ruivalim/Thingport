@@ -1,6 +1,6 @@
 # Provider setup
 
-Importing from **Printables** works out of the box (its public API needs no credential). **MakerWorld** needs each user's own session cookie, and **Thingiverse** an App Token an admin sets once for the whole instance. **MyMiniFactory** needs an API key an admin sets once for free models; each user connects their own MyMiniFactory session only to import paid or sign-in-only models from their library. **Snapmaker Space** needs each user's own sign-in, which [Thingport Grab](../extension/README.md) keeps fresh. **MakerOnline** reads its models and public collections with nothing, but hands out files only through Thingport Grab; each user's own sign-in adds their likes and private collections. **Creality Cloud** reads its models and collections with nothing, but gives files and likes only to each user's own sign-in, which Thingport Grab sends on. **NexPrint** reads its models and collections, private ones included, with nothing, and gives files only to each user's own sign-in, which Thingport Grab sends on. **Thangs** reads its models, likes and public collections with nothing, and gives files only to each user's own sign-in, which Thingport Grab sends on and Thingport keeps renewed for about a year.
+Importing from **Printables** works out of the box (its public API needs no credential). **MakerWorld** needs each user's own session cookie, and **Thingiverse** an App Token an admin sets once for the whole instance. **MyMiniFactory** needs an API key an admin sets once for free models; each user connects their own MyMiniFactory session only to import paid or sign-in-only models from their library. **Snapmaker Space** needs each user's own sign-in, which [Thingport Grab](../extension/README.md) keeps fresh. **MakerOnline** reads its models and public collections with nothing, but hands out files only through Thingport Grab; each user's own sign-in adds their likes and private collections. **Creality Cloud** reads its models and collections with nothing, but gives files and likes only to each user's own sign-in, which Thingport Grab sends on. **NexPrint** reads its models and collections, private ones included, with nothing, and gives files only to each user's own sign-in, which Thingport Grab sends on. **Thangs** reads its models, likes and public collections with nothing, and gives files only to each user's own sign-in, which Thingport Grab sends on and Thingport keeps renewed for about a year. **Cults3D** is read with each user's own API key, and gives files only to the user's browser sign-in, which Thingport Grab sends on.
 
 Connect them under **Configuration → Providers**: open the user menu (your avatar, top right) and choose **Configuration**, or click one of the provider chips at the bottom of that menu. Right-click a provider to connect or disconnect it, or double-click one that isn't connected yet. A green tick means it's connected. A provider your admin has [turned off](#turning-a-provider-off) isn't listed.
 
@@ -193,6 +193,43 @@ again.
 4. Right-click **Thangs** in Thingport's **Configuration > Providers**, choose **Connect** and paste it. Thingport checks
    it with Thangs before storing it.
 
+## Cults3D
+
+Per-user (Configuration > Providers > Cults3D), in two parts.
+
+**Your API key** reads everything but the files: model details, categories, anyone's liked models, your own printlists
+(Cults3D's collections; its API shows no one else's) and your downloads. Make one at
+[cults3d.com/en/api/keys](https://cults3d.com/en/api/keys), then right-click **Cults3D** in **Configuration >
+Providers**, choose **Connect**, and enter your nickname exactly as your profile writes it (its capitals count) and the
+key's secret. Thingport checks them with Cults3D before storing them.
+
+**Your browser's sign-in** downloads the files. They're on Cults3D's own pages, behind a Cloudflare check only a browser
+passes, so Thingport uses your browser's: the `_session_id` sign-in cookie, and the `cf_clearance` cookie Cloudflare
+gave your browser, sent with that browser's User-Agent. Cloudflare ties that clearance to your IP address too, so it
+only works while Thingport reaches the internet from the same address as your browser, as a server at home does.
+FlareSolverr doesn't help here: its browser can't hand over a download link. The sign-in lasts 20 days from its last
+use, and Thingport's own use renews it.
+
+- **Free models** you haven't downloaded yet are added to your Cults3D downloads first, as the site's own Download
+  button does. A model comes in as the zip Cults3D builds of its files, each one its own file in Thingport.
+- **Paid models** download only once you've bought them. Paid models you don't own are left out of likes and printlist
+  imports and syncs.
+
+### Easiest: Thingport Grab
+
+With [Thingport Grab](../extension/README.md) allowed on Cults3D, opening cults3d.com while you're signed in sends the
+sign-in and clearance, and again whenever they change. If Cults3D turns them down, Thingport says so, and your next
+visit sends new ones.
+
+### Manual: copy it from your browser
+
+1. Sign in at [cults3d.com](https://cults3d.com).
+2. Open DevTools (`F12`, or `Cmd+Option+I` on macOS) and reload the page.
+3. On the **Network** tab, pick the page's own request and copy its request headers, with the `Cookie` and
+   `User-Agent` ones.
+4. Right-click **Cults3D** in Thingport's **Configuration > Providers**, choose **Paste browser sign-in** and paste
+   them.
+
 ## MakerWorld cookie
 
 Per-user (Configuration > Providers > MakerWorld) -- MakerWorld has no developer API, so importing from it runs as _your own_ logged-in MakerWorld session, captured as a cookie value.
@@ -215,7 +252,7 @@ This is your own MakerWorld login session -- don't share it, and expect to redo 
 
 ## Turning a provider off
 
-Admins choose which providers this Thingport imports from, under **Administration → Providers**. All nine are on by
+Admins choose which providers this Thingport imports from, under **Administration → Providers**. All ten are on by
 default. Turn one off and nothing new comes from it for anyone: links to it, Thingport Grab and the import queue are
 refused, its synced collections pause, and background jobs skip it. It also disappears from everyone's
 **Configuration → Providers**. Models already imported from it stay as they are, and turning it back on picks up where

@@ -144,7 +144,10 @@ export type AuthorLookupProblem =
   | "myminifactory_key_rejected"
   | "myminifactory_rate_limited"
   | "makerworld_captcha"
-  | "makerworld_login_rejected";
+  | "makerworld_login_rejected"
+  | "cults3d_no_key"
+  | "cults3d_key_rejected"
+  | "cults3d_rate_limited";
 
 export type AuthorLinkingRun = {
   running: boolean;

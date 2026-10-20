@@ -4,13 +4,15 @@
 //   npx tsx scripts/syncProviderCategories.ts
 //
 // Thingiverse and MyMiniFactory list their categories only with an API key, so it reads this instance's (from the
-// database in backend/.env, as the app does). The rest are public.
+// database in backend/.env, as the app does). Cults3D's API needs a user's own key: CULTS3D_NICK and CULTS3D_API_KEY,
+// or else the first user's who set one. The rest are public.
 
 import { writeFileSync } from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { browserFetch } from "../src/utils/browserFetch";
 import { getMyminifactoryApiKey, getThingiverseAccessToken } from "../src/services/settingsService";
+import { cults3dNumericId } from "../src/services/cults3dApi";
 import { prisma } from "../src/db";
 
 type Entry = { id: string; name: string; parent: string | null };
@@ -171,6 +173,31 @@ const FETCHERS: Record<string, () => Promise<Entry[]>> = {
       }
     }
     return out;
+  },
+  async cults3d() {
+    const user = await prisma.user.findFirst({
+      where: { cults3dNick: { not: null }, cults3dApiKey: { not: null } },
+      select: { cults3dNick: true, cults3dApiKey: true },
+    });
+    const nick = process.env.CULTS3D_NICK ?? user?.cults3dNick;
+    const key = process.env.CULTS3D_API_KEY ?? user?.cults3dApiKey;
+    if (!nick || !key) throw new Error("needs CULTS3D_NICK and CULTS3D_API_KEY, or a user with a Cults3D API key");
+    const res = await fetch("https://cults3d.com/graphql", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Basic ${Buffer.from(`${nick}:${key}`).toString("base64")}`,
+      },
+      body: JSON.stringify({ query: "{ categories(safe: false) { id name children { id name } } }" }),
+    });
+    if (!res.ok) throw new Error(`Cults3D: HTTP ${res.status}`);
+    const data = ((await res.json()) as Node).data as Node;
+    // Its ids are base64 of "Category/<number>"; the number is what imports carry.
+    return flatten(nodes(data?.categories), (node) => ({
+      id: cults3dNumericId(node.id),
+      name: node.name,
+      children: node.children,
+    }));
   },
 };
 

@@ -76,7 +76,8 @@ function hasMeta(category: Category): boolean {
     category.makeronline_cat_ids ||
     category.crealitycloud_cat_ids ||
     category.nexprint_cat_ids ||
-    category.thangs_cat_ids,
+    category.thangs_cat_ids ||
+    category.cults3d_cat_ids,
   );
 }
 

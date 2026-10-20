@@ -16,6 +16,7 @@ export const PROVIDERS = [
   "crealitycloud",
   "nexprint",
   "thangs",
+  "cults3d",
 ] as const;
 export type Provider = (typeof PROVIDERS)[number];
 
@@ -29,6 +30,7 @@ const PROVIDER_NAMES: Record<Provider, string> = {
   crealitycloud: "Creality Cloud",
   nexprint: "NexPrint",
   thangs: "Thangs",
+  cults3d: "Cults3D",
 };
 
 const SETTING_KEY = "disabled_providers";

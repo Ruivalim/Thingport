@@ -17,6 +17,7 @@ export const SITE_NAMES: Record<Provider, string> = {
   crealitycloud: "Creality Cloud",
   nexprint: "NexPrint",
   thangs: "Thangs",
+  cults3d: "Cults3D",
 };
 
 /** The instance inspects the link: finds the file, reads its title, checks whether it's a zip. */

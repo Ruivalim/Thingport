@@ -56,6 +56,19 @@ import {
   markThangsSessionRejected,
   withThangsToken,
 } from "./thangsSessionService";
+import {
+  Cults3dAuthError,
+  cults3dLikesKey,
+  cults3dLikesName,
+  cults3dLikesUrl,
+  Cults3dRateLimitError,
+  fetchCults3dLikes,
+  fetchCults3dOrders,
+  listCults3dCollections,
+  type Cults3dCredentials,
+} from "./cults3dApi";
+import { getCults3dConnection, getUserCults3dCredentials, markCults3dApiRejected } from "./cults3dSessionService";
+import { syncLikesUsername } from "../dto";
 import { MakerworldAuthError, MakerworldCaptchaError, extractMakerworldBearerToken } from "./makerworldCloudApi";
 import { fetchMakerworldCollectionCard, listMakerworldOwnCollections } from "./makerworldCollections";
 import { getUserMakerworldCookie } from "./makerworldCookieService";
@@ -100,6 +113,7 @@ export const BROWSABLE_PROVIDERS = [
   "crealitycloud",
   "nexprint",
   "thangs",
+  "cults3d",
 ] as const;
 export type BrowsableProvider = (typeof BROWSABLE_PROVIDERS)[number];
 
@@ -123,7 +137,7 @@ export type ProviderCollectionOut = {
 };
 
 export async function getProviderAccounts(userId: string): Promise<ProviderAccountsOut> {
-  const [user, thingiverseToken, myminifactoryKey, snapmaker, makeronline, crealitycloud, nexprint, thangs] =
+  const [user, thingiverseToken, myminifactoryKey, snapmaker, makeronline, crealitycloud, nexprint, thangs, cults3d] =
     await Promise.all([
       prisma.user.findUnique({
         where: { id: userId },
@@ -141,6 +155,7 @@ export async function getProviderAccounts(userId: string): Promise<ProviderAccou
       getCrealitycloudConnection(userId),
       getNexprintConnection(userId),
       getThangsConnection(userId),
+      getCults3dConnection(userId),
     ]);
   return {
     makerworld: { connected: Boolean(extractMakerworldBearerToken(user?.makerworldCookie)), account: null },
@@ -152,6 +167,7 @@ export async function getProviderAccounts(userId: string): Promise<ProviderAccou
     crealitycloud: { connected: crealitycloud === "connected", account: null },
     nexprint: { connected: nexprint === "connected", account: null },
     thangs: { connected: thangs === "connected", account: null },
+    cults3d: { connected: cults3d.api === "connected", account: cults3d.nick },
   };
 }
 
@@ -204,6 +220,8 @@ export async function setProviderAccount(
     throw new HttpError(400, "NexPrint is linked through its sign-in in Configuration > Providers");
   } else if (provider === "thangs") {
     throw new HttpError(400, "Thangs is linked through its sign-in in Configuration > Providers");
+  } else if (provider === "cults3d") {
+    throw new HttpError(400, "Cults3D is linked through its API key in Configuration > Providers");
   } else {
     throw new HttpError(400, "MakerWorld is linked through its cookie in Configuration > Providers");
   }
@@ -246,6 +264,8 @@ async function providerCall<T>(call: () => Promise<T>): Promise<T> {
     if (err instanceof ThangsAuthError) throw new HttpError(400, err.message);
     if (err instanceof ThangsBlockedError) throw new HttpError(429, err.message);
     if (err instanceof ThangsPrivateCollectionError) throw new HttpError(403, err.message);
+    if (err instanceof Cults3dAuthError) throw new HttpError(400, err.message);
+    if (err instanceof Cults3dRateLimitError) throw new HttpError(429, err.message);
     throw err;
   }
 }
@@ -380,6 +400,46 @@ function thangsCollectionCard(userId: string, collectionId: string): Promise<Pro
   });
 }
 
+/** Runs `call` with the user's Cults3D API key and the models they own; remembers a rejected key. */
+async function withCults3d<T>(
+  userId: string,
+  call: (session: { credentials: Cults3dCredentials; owned: Set<string> }) => Promise<T>,
+): Promise<T> {
+  return providerCall(async () => {
+    const credentials = await getUserCults3dCredentials(userId);
+    if (!credentials) throw new HttpError(409, "Enter your Cults3D nickname and API key in Configuration > Providers");
+    try {
+      const owned = new Set((await fetchCults3dOrders(credentials)).keys());
+      return await call({ credentials, owned });
+    } catch (err) {
+      if (err instanceof Cults3dAuthError) await markCults3dApiRejected(userId);
+      throw err;
+    }
+  });
+}
+
+/** The user's likes and their own printlists. */
+function cults3dCards(userId: string): Promise<ProviderCollectionCard[]> {
+  return withCults3d(userId, ({ credentials, owned }) => listCults3dCollections(credentials, owned));
+}
+
+/** Anyone's likes, which Cults3D's API shows to any key. */
+function cults3dLikesCard(userId: string, nick: string): Promise<ProviderCollectionCard | null> {
+  return withCults3d(userId, async ({ credentials, owned }) => {
+    const likes = await fetchCults3dLikes(credentials, nick, owned);
+    if (!likes) return null;
+    return {
+      id: cults3dLikesKey(nick),
+      name: cults3dLikesName(nick),
+      url: cults3dLikesUrl(nick),
+      modelCount: likes.total,
+      thumbnails: likes.entries.slice(0, 4).flatMap((entry) => entry.cover ?? []),
+      private: false,
+      owner: nick,
+    };
+  });
+}
+
 async function withSyncs(
   userId: string,
   provider: SyncProvider,
@@ -440,6 +500,8 @@ export async function listProviderCollections(
     cards = await nexprintCards(userId);
   } else if (provider === "thangs") {
     cards = await thangsCards(userId);
+  } else if (provider === "cults3d") {
+    cards = await cults3dCards(userId);
   } else if (provider === "myminifactory") {
     const key = await requireMyminifactoryKey();
     if (!user?.myminifactoryUsername) throw new HttpError(409, "Tell Thingport your MyMiniFactory username first");
@@ -467,14 +529,14 @@ export async function lookupProviderCollection(userId: string, url: string): Pro
   if (!source)
     throw new HttpError(
       400,
-      "That isn't a MakerWorld, Printables, Thingiverse, MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud, NexPrint or Thangs collection link",
+      "That isn't a MakerWorld, Printables, Thingiverse, MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud, NexPrint, Thangs or Cults3D collection link",
     );
   await assertProviderEnabled(source.provider);
   let card: ProviderCollectionCard | null;
   if (source.likesOf && source.provider === "thingiverse") {
     const token = await requireThingiverseToken();
     card = await providerCall(() => thingiverseLikesCard(source.likesOf!, token));
-  } else if (source.likesOf) {
+  } else if (source.likesOf && source.provider === "printables") {
     // Printables shows likes to their owner only, so only the user's own, as Grab read them.
     const likes = await pushedLikes(userId);
     if (likes?.card.id !== source.externalId) {
@@ -508,6 +570,17 @@ export async function lookupProviderCollection(userId: string, url: string): Pro
       source.externalId === THANGS_LIKES_KEY
         ? ((await thangsCards(userId)).find((own) => own.id === THANGS_LIKES_KEY) ?? null)
         : await thangsCollectionCard(userId, source.externalId);
+  } else if (source.provider === "cults3d") {
+    const likesOf = source.likesOf ?? syncLikesUsername({ externalId: source.externalId, sourceUrl: source.url });
+    if (likesOf) {
+      card = await cults3dLikesCard(userId, likesOf);
+    } else {
+      // Cults3D's API shows the user their own printlists only.
+      card = (await cults3dCards(userId)).find((own) => own.id === source.externalId) ?? null;
+      if (!card) {
+        throw new HttpError(404, "Only your own Cults3D printlists can be found: Cults3D's API shows no one else's.");
+      }
+    }
   } else if (source.provider === "snapmaker") {
     // Only the user's own likes and bookmarks are there to find.
     card = (await snapmakerCards(userId)).find((own) => own.id === source.externalId) ?? null;
@@ -541,7 +614,7 @@ export async function enableSyncFromApp(
   if (!source)
     throw new HttpError(
       400,
-      "That isn't a MakerWorld, Printables, Thingiverse, MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud, NexPrint or Thangs collection link",
+      "That isn't a MakerWorld, Printables, Thingiverse, MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud, NexPrint, Thangs or Cults3D collection link",
     );
   await assertProviderEnabled(source.provider);
   if (input.profileScope && !hasProfiles(source.provider)) {

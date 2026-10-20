@@ -1,6 +1,6 @@
-// Thingiverse, Printables, MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud, NexPrint and Thangs import directly; other links go through
-// /import/inspect first, like the web app's useUploadImport.tsx. MakerOnline's files are signed on its own page first
-// (see background/makeronline.ts).
+// Thingiverse, Printables, MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud, NexPrint, Thangs and Cults3D
+// import directly; other links go through /import/inspect first, like the web app's useUploadImport.tsx. MakerOnline's
+// files are signed on its own page first (see background/makeronline.ts).
 
 import type { FillGapsResult, InspectResult, SourceGap, ZipEntriesResult } from "../../shared/api";
 import { request } from "../../shared/messages";
@@ -22,6 +22,7 @@ import { loadMakeronlineProfiles } from "../makeronline";
 import { loadCrealitycloudProfiles } from "../crealitycloud";
 import { loadNexprintProfiles } from "../nexprint";
 import { thangsDownloadBlock } from "../thangs";
+import { isUnboughtCults3dModel } from "../cults3d";
 import { onPanelAction, panelQuery, panelQueryAll, renderPanel } from "../shell";
 import { collectionIdFor, collectionPickerHtml, readCollectionChoice, wireCollectionPicker } from "./collectionPicker";
 import { errorHtml, statusHtml, successHtml } from "./results";
@@ -147,6 +148,13 @@ export async function loadSingleItem(): Promise<void> {
     `);
     return;
   }
+  if (provider === "cults3d" && isUnboughtCults3dModel()) {
+    renderPanel(`
+      <div class="tg-title">Paid model</div>
+      <div class="tg-hint">Buy it on Cults3D first. Once it's in your downloads, Thingport imports it from there.</div>
+    `);
+    return;
+  }
   renderFunStatus(checkingLinkPhrases(provider));
   // Thangs counts every download against the account's daily ones, so one it would refuse isn't tried.
   const thangsBlock = provider === "thangs" ? await thangsDownloadBlock(ctx().url) : null;
@@ -165,7 +173,8 @@ export async function loadSingleItem(): Promise<void> {
     (provider === "makeronline" && type === "model") ||
     (provider === "crealitycloud" && type === "model") ||
     (provider === "nexprint" && type === "model") ||
-    (provider === "thangs" && type === "model");
+    (provider === "thangs" && type === "model") ||
+    (provider === "cults3d" && type === "model");
 
   let zipFilename: string | null = null;
   if (skipInspect) {

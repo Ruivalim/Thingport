@@ -89,6 +89,7 @@ export const SEARCH_PAGES: SearchPage[] = [
     "creality cloud",
     "nexprint",
     "thangs",
+    "cults3d",
     "app token",
     "api key",
     "access token",

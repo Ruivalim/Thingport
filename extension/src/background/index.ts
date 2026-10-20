@@ -23,6 +23,7 @@ import { importMakeronlineModel, runWaitingImports, syncMakeronlineSession } fro
 import { syncCrealitycloudSession } from "./crealitycloudSession";
 import { syncNexprintSession } from "./nexprintSession";
 import { syncThangsSession } from "./thangsSession";
+import { syncCults3dSession } from "./cults3dSession";
 import { onPairingTabClosed, onPairingTabUrl, startPairing } from "./pairing";
 import { openSetup } from "./setup";
 import { setTabIconState } from "./tabIcon";
@@ -48,6 +49,7 @@ listen<BackgroundMessages>({
   SYNC_CREALITYCLOUD_SESSION: () => syncCrealitycloudSession(),
   SYNC_NEXPRINT_SESSION: () => syncNexprintSession(),
   SYNC_THANGS_SESSION: () => syncThangsSession(),
+  SYNC_CULTS3D_SESSION: () => syncCults3dSession(),
   IMPORT_MAKERONLINE_MODEL: (payload, sender) => importMakeronlineModel(senderTabId(sender), payload),
   RUN_MAKERONLINE_WAITING: (_payload, sender) => runWaitingImports(senderTabId(sender)),
   PRINTABLES_PUSH_DUE: ({ now }) => printablesPushDue({ now }),

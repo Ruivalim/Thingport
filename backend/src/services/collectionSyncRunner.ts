@@ -73,6 +73,8 @@ import {
   markThangsSessionRejected,
   withThangsToken,
 } from "./thangsSessionService";
+import { Cults3dAuthError, fetchCults3dLikes, fetchCults3dOrders, fetchCults3dPrintlist } from "./cults3dApi";
+import { getCults3dConnection, getUserCults3dCredentials, markCults3dApiRejected } from "./cults3dSessionService";
 import { notifyGrabImportsQueued, queueGrabImport } from "./grabImportService";
 import { getSnapmakerConnection, getUserSnapmakerToken, markSnapmakerTokenRejected } from "./snapmakerSessionService";
 import {
@@ -208,6 +210,18 @@ export async function fetchListing(
     );
     return listing ? listing.entries.map((e) => e.modelId) : null;
   }
+  if (sync.provider === "cults3d") {
+    // Read with the user's API key (see connectionProblem). Paid models they own are kept in, the rest of the paid
+    // ones left out.
+    const credentials = await getUserCults3dCredentials(sync.userId);
+    if (!credentials) throw new Cults3dAuthError();
+    const owned = new Set((await fetchCults3dOrders(credentials)).keys());
+    const likesOf = syncLikesUsername(sync);
+    const listing = likesOf
+      ? await fetchCults3dLikes(credentials, likesOf, owned, Number.POSITIVE_INFINITY)
+      : await fetchCults3dPrintlist(credentials, id, owned, Number.POSITIVE_INFINITY);
+    return listing ? listing.entries.map((e) => e.slug) : null;
+  }
   throw new Error(`Unknown provider "${sync.provider}"`);
 }
 
@@ -318,6 +332,26 @@ const CONNECTION_PROBLEMS = {
     reason: "Thangs turned your sign-in down; signing out there, or a year since signing in, ends it.",
     fix: "you sign in on thangs.com with Thingport Grab, or connect it again",
   },
+  cults3dApiDisconnected: {
+    error: "Cults3D isn't connected",
+    reason: "Thingport reads Cults3D with your own API key, and none is set.",
+    fix: "you enter your Cults3D nickname and API key",
+  },
+  cults3dApiExpired: {
+    error: "Cults3D turned the API key down",
+    reason: "Cults3D turned your API key down; deleting it on the site ends it.",
+    fix: "you enter a working Cults3D API key",
+  },
+  cults3dSiteDisconnected: {
+    error: "Cults3D sign-in missing",
+    reason: "Cults3D gives its files to a signed-in user only, and Thingport Grab hasn't sent the browser's sign-in.",
+    fix: "you open cults3d.com signed in with Thingport Grab, or paste its sign-in",
+  },
+  cults3dSiteExpired: {
+    error: "Cults3D sign-in ran out",
+    reason: "Cults3D turned your sign-in down; it ends 20 days after it was last used, or on signing out.",
+    fix: "you sign in on cults3d.com with Thingport Grab, or paste its sign-in again",
+  },
 } satisfies Record<string, ConnectionProblem>;
 
 /** `"A"`, `"A" and "B"`, or the first few and how many more. */
@@ -357,6 +391,13 @@ async function connectionProblem(
     const connection = await getMakerworldConnection(sync.userId);
     if (connection === "disconnected") return CONNECTION_PROBLEMS.makerworldDisconnected;
     if (connection === "expired") return CONNECTION_PROBLEMS.makerworldExpired;
+  }
+  if (sync.provider === "cults3d") {
+    const connection = await getCults3dConnection(sync.userId);
+    if (connection.api === "disconnected") return CONNECTION_PROBLEMS.cults3dApiDisconnected;
+    if (connection.api === "expired") return CONNECTION_PROBLEMS.cults3dApiExpired;
+    if (connection.site === "disconnected") return CONNECTION_PROBLEMS.cults3dSiteDisconnected;
+    if (connection.site === "expired") return CONNECTION_PROBLEMS.cults3dSiteExpired;
   }
   if (sync.provider === "thingiverse" && !(await getThingiverseAccessToken())) {
     return CONNECTION_PROBLEMS.thingiverseDisconnected;
@@ -473,6 +514,11 @@ async function runSync(syncId: string): Promise<SyncOutcome> {
     if (err instanceof ThangsAuthError) {
       await markThangsSessionRejected(userId);
       await holdProvider(userId, sync.provider, CONNECTION_PROBLEMS.thangsExpired);
+      return "disconnected";
+    }
+    if (err instanceof Cults3dAuthError) {
+      await markCults3dApiRejected(userId);
+      await holdProvider(userId, sync.provider, CONNECTION_PROBLEMS.cults3dApiExpired);
       return "disconnected";
     }
     const message = err instanceof Error && err.message.trim() ? err.message.trim() : "Sync failed";

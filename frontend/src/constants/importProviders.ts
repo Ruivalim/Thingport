@@ -26,6 +26,7 @@ export const IMPORT_PROVIDER_INFO: Record<string, ImportProviderInfo> = {
   nexprint: { label: "NexPrint", color: "#7A55E3" },
   // Thangs' own yellow is too light for white text, so its badge text is dark in both themes.
   thangs: { label: "Thangs", color: "#FFBC00", textColor: "common.black" },
+  cults3d: { label: "Cults3D", color: "#822EF5" },
   // Direct uploads (source_provider is null).
   thingport: { label: "Thingport", color: "common.white", textColor: "common.black", outlined: true },
 };

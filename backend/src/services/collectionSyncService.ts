@@ -52,6 +52,15 @@ import {
   thangsModelUrl,
 } from "./thangsApi";
 import { getThangsConnection } from "./thangsSessionService";
+import {
+  cults3dLikesKey,
+  cults3dLikesUrl,
+  cults3dModelUrl,
+  parseCults3dLikesUrl,
+  parseCults3dModelUrl,
+  parseCults3dPrintlistUrl,
+} from "./cults3dApi";
+import { getCults3dConnection } from "./cults3dSessionService";
 import { createLog } from "./auditLog";
 import { pushedLikes } from "./providerListingsService";
 import { createNotification } from "./notificationService";
@@ -73,9 +82,10 @@ export type SyncProvider =
   | "makeronline"
   | "crealitycloud"
   | "nexprint"
-  | "thangs";
+  | "thangs"
+  | "cults3d";
 
-/** `likesOf` is set for a user's likes (on Thingiverse, or the user's own on Printables), which a
+/** `likesOf` is set for a user's likes (on Thingiverse or Cults3D, or the user's own on Printables), which a
  *  sync follows like a collection. */
 export type SyncSource = { provider: SyncProvider; externalId: string; url: string; likesOf?: string };
 
@@ -89,6 +99,7 @@ const PROVIDER_NAMES: Record<SyncProvider, string> = {
   crealitycloud: "Creality Cloud",
   nexprint: "NexPrint",
   thangs: "Thangs",
+  cults3d: "Cults3D",
 };
 
 /** Providers whose models come with print profiles a sync can pick between. */
@@ -186,6 +197,20 @@ export function parseSyncSource(url: string): SyncSource | null {
     // The page names no user: it's always the signed-in one's, read as the account Thingport has.
     return { provider: "thangs", externalId: THANGS_LIKES_KEY, url: THANGS_LIKES_URL };
   }
+  const cults3dPrintlist = parseCults3dPrintlistUrl(url);
+  if (cults3dPrintlist) {
+    return { provider: "cults3d", externalId: cults3dPrintlist.key, url: cults3dPrintlist.url };
+  }
+  const cults3dLikes = parseCults3dLikesUrl(url);
+  if (cults3dLikes) {
+    // Anyone's, as on Thingiverse: Cults3D's API shows them to any key.
+    return {
+      provider: "cults3d",
+      externalId: cults3dLikesKey(cults3dLikes.nick),
+      url: cults3dLikesUrl(cults3dLikes.nick),
+      likesOf: cults3dLikes.nick,
+    };
+  }
   const printablesLikes = parsePrintablesLikesUrl(url);
   if (printablesLikes) {
     // Only Thingport Grab can read these, as their owner (see providerListingsService.ts).
@@ -219,6 +244,7 @@ export function modelUrlFor(provider: string, externalId: string): string {
   if (provider === "crealitycloud") return crealitycloudModelUrl(externalId);
   if (provider === "nexprint") return nexprintModelUrl(externalId);
   if (provider === "thangs") return thangsModelUrl(externalId);
+  if (provider === "cults3d") return cults3dModelUrl(externalId);
   return `https://www.thingiverse.com/thing:${externalId}`;
 }
 
@@ -234,6 +260,8 @@ export function modelIdFromUrl(provider: string, url: string): string | null {
     nexprint: /\/models\/(G\d+)/i,
     thangs: /\/m\/(\d+)/,
   };
+  // Cults3D's links name a model by its slug, in any of its languages.
+  if (provider === "cults3d") return parseCults3dModelUrl(url)?.slug ?? null;
   const pattern = patterns[provider] ?? /thing:(\d+)/;
   return url.match(pattern)?.[1] ?? null;
 }
@@ -304,7 +332,7 @@ export async function enableSync(userId: string, input: EnableSyncInput): Promis
   if (!source)
     throw new HttpError(
       400,
-      "Only MakerWorld, Printables, Thingiverse, MyMiniFactory, MakerOnline, Creality Cloud, NexPrint and Thangs collections, Thingiverse or your own Printables, MakerOnline, Creality Cloud and Thangs likes, and your own Snapmaker Space likes and bookmarks, can be synced",
+      "Only MakerWorld, Printables, Thingiverse, MyMiniFactory, MakerOnline, Creality Cloud, NexPrint and Thangs collections, your own Cults3D printlists, Thingiverse or Cults3D likes, your own Printables, MakerOnline, Creality Cloud and Thangs likes, and your own Snapmaker Space likes and bookmarks, can be synced",
     );
   if (source.provider === "printables" && source.likesOf) await assertOwnPrintablesLikes(userId, source.likesOf);
   if (source.provider === "snapmaker") await assertOwnSnapmakerList(userId, source.url);
@@ -312,6 +340,7 @@ export async function enableSync(userId: string, input: EnableSyncInput): Promis
     await assertMakeronlineConnected(userId);
   }
   if (source.provider === "thangs") await assertThangsConnected(userId);
+  if (source.provider === "cults3d") await assertCults3dSource(userId, source);
   const crealitycloudLikes = source.provider === "crealitycloud" ? parseCrealitycloudLikesUrl(source.url) : null;
   if (crealitycloudLikes) await assertOwnCrealitycloudLikes(userId, crealitycloudLikes.userId);
   const knownIds = [...new Set(input.knownIds.map((id) => id.trim()).filter(Boolean))];
@@ -453,6 +482,17 @@ async function assertThangsConnected(userId: string): Promise<void> {
       400,
       "Thangs gives its files to a signed-in user only: connect Thangs first, or visit it with Thingport Grab",
     );
+  }
+}
+
+/** Cults3D's listings are read with the user's API key, which shows no one's printlists but their own. */
+async function assertCults3dSource(userId: string, source: SyncSource): Promise<void> {
+  const connection = await getCults3dConnection(userId);
+  if (connection.api !== "connected") {
+    throw new HttpError(400, "Cults3D is read with your own API key: enter it in Configuration > Providers first");
+  }
+  if (!source.likesOf && !source.externalId.startsWith(`${connection.nick?.toLowerCase()}/`)) {
+    throw new HttpError(400, "Only your own Cults3D printlists can be synced: Cults3D's API shows no one else's");
   }
 }
 

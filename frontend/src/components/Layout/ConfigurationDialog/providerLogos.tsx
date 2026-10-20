@@ -16,7 +16,7 @@ export type ProviderId =
   | "snapmaker";
 
 /** Sites shown as "Coming soon": listed, but nothing can be done with them yet. */
-export const COMING_SOON_PROVIDERS: { id: ProviderId; name: string }[] = [{ id: "cults3d", name: "Cults3D" }];
+export const COMING_SOON_PROVIDERS: { id: ProviderId; name: string }[] = [];
 
 type Logo = {
   /** Defaults to 0 0 24 24, Simple Icons' box. */

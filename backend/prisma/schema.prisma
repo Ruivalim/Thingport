@@ -110,6 +110,20 @@ model User {
   thangsUserId             String?
   // When Thangs last turned the sign-in down, refresh token included.
   thangsRejectedAt         DateTime?
+  // The user's Cults3D API credentials (their nickname and an API key they made on the site), which read models,
+  // likes, printlists and orders without Cloudflare in the way.
+  cults3dNick              String?
+  cults3dApiKey            String?
+  // When Cults3D last turned the API key down.
+  cults3dApiRejectedAt     DateTime?
+  // The browser's Cults3D sign-in, sent by Thingport Grab: the _session_id cookie (20 days, renewed on use), and the
+  // cf_clearance cookie with the User-Agent it was issued to, which the site's Cloudflare wants for the order and
+  // download pages. The clearance only holds from the browser's own IP address.
+  cults3dSession           String?
+  cults3dClearance         String?
+  cults3dUserAgent         String?
+  // When Cults3D last answered the session with its sign-in page.
+  cults3dSessionRejectedAt DateTime?
   slicer                   String?
   // "light" | "dark" | "system"; null means never set.
   themePreference          String?
@@ -189,6 +203,7 @@ model Category {
   nexprintCatIds      String[]   @default([])
   // Thangs has no category ids, only paths: "Tools & Organizers", or "Tools & Organizers/Multiboard".
   thangsCatIds        String[]   @default([])
+  cults3dCatIds       Int[]      @default([])
   prints              Print[]
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
@@ -204,6 +219,7 @@ model Category {
   @@index([crealitycloudCatIds], type: Gin)
   @@index([nexprintCatIds], type: Gin)
   @@index([thangsCatIds], type: Gin)
+  @@index([cults3dCatIds], type: Gin)
 }
 
 model Print {

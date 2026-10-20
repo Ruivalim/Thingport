@@ -21,6 +21,7 @@ export const PROVIDER_ACCENTS: Record<BrowsableProvider, string> = {
   crealitycloud: "#1AC686",
   nexprint: "#7A55E3",
   thangs: "#FFBC00",
+  cults3d: "#822EF5",
 };
 
 type Props = {
@@ -424,6 +425,60 @@ function ThangsTile({ collection }: { collection: ProviderCollection }) {
   );
 }
 
+/** Cults3D: a big cover beside two small ones, the name and a count in its purple below. */
+function Cults3dTile({ collection }: { collection: ProviderCollection }) {
+  return (
+    <Box
+      sx={{
+        borderRadius: "10px",
+        border: 1,
+        borderColor: "divider",
+        bgcolor: "background.paper",
+        overflow: "hidden",
+      }}
+    >
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: "2fr 1fr",
+          gridTemplateRows: "1fr 1fr",
+          gap: "2px",
+          aspectRatio: "4 / 3",
+        }}
+      >
+        <Box sx={{ gridRow: "1 / 3", minHeight: 0, overflow: "hidden" }}>
+          <Thumb src={collection.thumbnails[0]} sx={{ height: "100%" }} />
+        </Box>
+        {[1, 2].map((i) => (
+          <Box key={i} sx={{ minHeight: 0, overflow: "hidden" }}>
+            <Thumb src={collection.thumbnails[i]} sx={{ height: "100%" }} />
+          </Box>
+        ))}
+      </Box>
+      <Box sx={{ px: 1.25, py: 1 }}>
+        <Typography noWrap sx={{ fontWeight: 700, fontSize: "0.875rem" }}>
+          {collection.name}
+        </Typography>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 0.5,
+            mt: 0.25,
+            fontSize: "0.75rem",
+            fontWeight: 600,
+            // Its purple is too dark to read on the dark theme's paper; a lighter shade of it there.
+            color: (theme) => (theme.palette.mode === "dark" ? "#B48CFA" : PROVIDER_ACCENTS.cults3d),
+          }}
+        >
+          <ModelCount count={collection.model_count} provider="cults3d" />
+          {collection.private && <LockOutlinedIcon sx={{ fontSize: 14, ml: "auto", color: "text.secondary" }} />}
+        </Box>
+      </Box>
+    </Box>
+  );
+}
+
 const TILES: Record<BrowsableProvider, (props: { collection: ProviderCollection }) => JSX.Element> = {
   makerworld: MakerWorldTile,
   printables: PrintablesTile,
@@ -434,6 +489,7 @@ const TILES: Record<BrowsableProvider, (props: { collection: ProviderCollection 
   crealitycloud: CrealitycloudTile,
   nexprint: NexprintTile,
   thangs: ThangsTile,
+  cults3d: Cults3dTile,
 };
 
 /** The name to show: a user's likes, and Snapmaker's likes and bookmarks, come named in English by the instance, as
@@ -514,6 +570,26 @@ export function ProviderCollectionTileSkeleton({ provider }: { provider: Browsab
       <Skeleton variant="text" sx={{ fontSize: "0.75rem", width: "40%" }} />
     </>
   );
+  if (provider === "cults3d") {
+    return (
+      <Box aria-hidden sx={{ borderRadius: "10px", border: 1, borderColor: "divider", overflow: "hidden" }}>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: "2fr 1fr",
+            gridTemplateRows: "1fr 1fr",
+            gap: "2px",
+            aspectRatio: "4 / 3",
+          }}
+        >
+          <Skeleton variant="rectangular" sx={{ gridRow: "1 / 3", width: "100%", height: "100%" }} />
+          <Skeleton variant="rectangular" sx={{ width: "100%", height: "100%" }} />
+          <Skeleton variant="rectangular" sx={{ width: "100%", height: "100%" }} />
+        </Box>
+        <Box sx={{ px: 1.25, py: 1 }}>{lines}</Box>
+      </Box>
+    );
+  }
   if (provider === "makerworld") {
     return (
       <Box aria-hidden sx={{ borderRadius: "12px", border: 1, borderColor: "divider", overflow: "hidden", mb: "11px" }}>

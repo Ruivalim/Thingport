@@ -18,6 +18,7 @@ type StartCrealitycloudListImportPayload = Parameters<typeof importsApi.fromCrea
 type StartNexprintProfilesImportPayload = Parameters<typeof importsApi.fromNexprintProfiles>[0];
 type StartNexprintCollectionImportPayload = Parameters<typeof importsApi.fromNexprintCollection>[0];
 type StartThangsListImportPayload = Parameters<typeof importsApi.fromThangsList>[0];
+type StartCults3dListImportPayload = Parameters<typeof importsApi.fromCults3dList>[0];
 type StartLinksImportPayload = Parameters<typeof importsApi.fromLinks>[0];
 
 type ImportJobContextValue = {
@@ -38,6 +39,7 @@ type ImportJobContextValue = {
   startNexprintProfilesImport: (payload: StartNexprintProfilesImportPayload) => Promise<void>;
   startNexprintCollectionImport: (payload: StartNexprintCollectionImportPayload) => Promise<void>;
   startThangsListImport: (payload: StartThangsListImportPayload) => Promise<void>;
+  startCults3dListImport: (payload: StartCults3dListImportPayload) => Promise<void>;
   startLinksImport: (payload: StartLinksImportPayload) => Promise<void>;
   /** Reruns the links that failed on the finished job shown in the progress bar. */
   retryJob: () => Promise<void>;
@@ -275,6 +277,16 @@ export function ImportJobProvider({
     [startPolling],
   );
 
+  const startCults3dListImport = useCallback(
+    async (payload: StartCults3dListImportPayload) => {
+      const { job_id } = await importsApi.fromCults3dList(payload);
+      const job = await importsApi.getImportJob(job_id);
+      setActiveJob(job);
+      startPolling(job_id);
+    },
+    [startPolling],
+  );
+
   const startLinksImport = useCallback(
     async (payload: StartLinksImportPayload) => {
       const { job_id } = await importsApi.fromLinks(payload);
@@ -316,6 +328,7 @@ export function ImportJobProvider({
       startNexprintProfilesImport,
       startNexprintCollectionImport,
       startThangsListImport,
+      startCults3dListImport,
       startLinksImport,
       retryJob,
       dismissJob,
@@ -336,6 +349,7 @@ export function ImportJobProvider({
       startNexprintProfilesImport,
       startNexprintCollectionImport,
       startThangsListImport,
+      startCults3dListImport,
       startLinksImport,
       retryJob,
       dismissJob,

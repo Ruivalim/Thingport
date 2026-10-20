@@ -9,7 +9,8 @@ export type Provider =
   | "makeronline"
   | "crealitycloud"
   | "nexprint"
-  | "thangs";
+  | "thangs"
+  | "cults3d";
 
 export type Classification =
   | { kind: "single"; provider: "makerworld"; type: "model" }
@@ -21,6 +22,7 @@ export type Classification =
   | { kind: "single"; provider: "crealitycloud"; type: "model" }
   | { kind: "single"; provider: "nexprint"; type: "model" }
   | { kind: "single"; provider: "thangs"; type: "model" }
+  | { kind: "single"; provider: "cults3d"; type: "model" }
   | { kind: "batch"; provider: "makerworld"; type: "collection" }
   | { kind: "batch"; provider: "thingiverse"; type: "likes" | "collection" }
   | { kind: "batch"; provider: "printables"; type: "collection" }
@@ -29,7 +31,8 @@ export type Classification =
   | { kind: "batch"; provider: "makeronline"; type: "collection" | "likes" }
   | { kind: "batch"; provider: "crealitycloud"; type: "collection" | "likes" }
   | { kind: "batch"; provider: "nexprint"; type: "collection" }
-  | { kind: "batch"; provider: "thangs"; type: "collection" | "likes" };
+  | { kind: "batch"; provider: "thangs"; type: "collection" | "likes" }
+  | { kind: "batch"; provider: "cults3d"; type: "collection" | "likes" };
 
 export type SnapmakerList = "likes" | "bookmarks";
 
@@ -281,6 +284,75 @@ export function isThangsLikesUrl(url: string): boolean {
   return !!parsed && isThangs(parsed) && /^\/mythangs\/liked-models\/?$/i.test(parsed.pathname);
 }
 
+/** Cults3D's path segments, decoded and lower-cased: it writes them in each of its languages, accents and all. Null
+ *  off the site. */
+function cults3dSegments(url: string): string[] | null {
+  const parsed = parse(url);
+  if (!parsed || !/^(www\.)?cults3d\.com$/i.test(parsed.hostname)) return null;
+  const parts = parsed.pathname.split("/").filter(Boolean);
+  try {
+    return parts.map((part) => decodeURIComponent(part).toLowerCase());
+  } catch {
+    return parts.map((part) => part.toLowerCase());
+  }
+}
+
+// What each of Cults3D's languages calls a model page, likes and printlists ("design collections"). Kept in step
+// with the backend's cults3dApi.ts.
+const CULTS3D_MODEL_WORDS = new Set([
+  "3d-model",
+  "modell-3d",
+  "modelo-3d",
+  "modèle-3d",
+  "modello-3d",
+  "3d-moderu",
+  "3d-móxíng",
+]);
+const CULTS3D_LIKES_WORDS = new Set(["likes", "mi-piace", "iine-ichiran", "curtidas", "laiki", "beğeniler", "xǐhuān"]);
+const CULTS3D_PRINTLIST_WORDS = new Set([
+  "design-collections",
+  "drucklisten",
+  "colecciones-de-diseños",
+  "collections-de-designs",
+  "raccolta-progetti",
+  "dezain-korekushon",
+  "designs-colecoes",
+  "dizain-kollektsii",
+  "tasarım-koleksiyonlar",
+  "shèjì-xìliè",
+]);
+const CULTS3D_LIST_PAGES = new Set([
+  "latest",
+  "popular",
+  "selected",
+  "trending",
+  "best-sellers",
+  "random",
+  "mine",
+  "new",
+]);
+
+/** `/<locale>/3d-model/<category>/<slug>` in any of its languages, or `/<locale>/creations/<slug>`. */
+export function parseCults3dModelUrl(url: string): { slug: string } | null {
+  const parts = cults3dSegments(url);
+  if (!parts || !/^[a-z]{2}$/.test(parts[0] ?? "")) return null;
+  if (CULTS3D_MODEL_WORDS.has(parts[1]) && parts.length >= 4) return { slug: parts[3] };
+  if (parts[1] === "creations" && parts.length === 3 && !CULTS3D_LIST_PAGES.has(parts[2])) return { slug: parts[2] };
+  return null;
+}
+
+/** A printlist: `/<locale>/design-collections/<nick>/<slug>`. */
+export function isCults3dPrintlistUrl(url: string): boolean {
+  const parts = cults3dSegments(url);
+  return !!parts && parts.length === 4 && /^[a-z]{2}$/.test(parts[0]) && CULTS3D_PRINTLIST_WORDS.has(parts[1]);
+}
+
+/** A user's likes: `/<locale>/users/<nick>/likes`. */
+export function isCults3dLikesUrl(url: string): boolean {
+  const parts = cults3dSegments(url);
+  return !!parts && parts.length === 4 && /^[a-z]{2}$/.test(parts[0]) && CULTS3D_LIKES_WORDS.has(parts[3]);
+}
+
 /** Null keeps the icon hidden. "single" pages get a dedup check; "batch" pages always show it. */
 export function classifyUrl(url: string): Classification | null {
   if (isMakerworldCollectionUrl(url)) return { kind: "batch", provider: "makerworld", type: "collection" };
@@ -297,6 +369,8 @@ export function classifyUrl(url: string): Classification | null {
   if (isNexprintCollectionUrl(url)) return { kind: "batch", provider: "nexprint", type: "collection" };
   if (isThangsCollectionUrl(url)) return { kind: "batch", provider: "thangs", type: "collection" };
   if (isThangsLikesUrl(url)) return { kind: "batch", provider: "thangs", type: "likes" };
+  if (isCults3dPrintlistUrl(url)) return { kind: "batch", provider: "cults3d", type: "collection" };
+  if (isCults3dLikesUrl(url)) return { kind: "batch", provider: "cults3d", type: "likes" };
   if (parseMakerworldModelUrl(url)) return { kind: "single", provider: "makerworld", type: "model" };
   if (parseThingiverseThingUrl(url)) return { kind: "single", provider: "thingiverse", type: "thing" };
   if (parsePrintablesModelUrl(url)) return { kind: "single", provider: "printables", type: "model" };
@@ -306,5 +380,6 @@ export function classifyUrl(url: string): Classification | null {
   if (parseCrealitycloudModelUrl(url)) return { kind: "single", provider: "crealitycloud", type: "model" };
   if (parseNexprintModelUrl(url)) return { kind: "single", provider: "nexprint", type: "model" };
   if (parseThangsModelUrl(url)) return { kind: "single", provider: "thangs", type: "model" };
+  if (parseCults3dModelUrl(url)) return { kind: "single", provider: "cults3d", type: "model" };
   return null;
 }
