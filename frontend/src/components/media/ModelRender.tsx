@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { keyframes } from "@emotion/react";
 import Box from "@mui/material/Box";
 import Skeleton from "@mui/material/Skeleton";
@@ -34,6 +34,14 @@ export default function ModelRender({ url, alt, onUnavailable, placeholder }: Pr
   const [attempt, setAttempt] = useState(0);
   const [waiting, setWaiting] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  // A check still out when the model changes or the card goes must not report on the next one.
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (attempt > RETRY_DELAYS_MS.length) onUnavailable();
@@ -89,6 +97,7 @@ export default function ModelRender({ url, alt, onUnavailable, placeholder }: Pr
               .then((res) => res.json() as Promise<{ code?: string }>)
               .catch(() => ({ code: undefined }))
               .then(({ code }) => {
+                if (!mounted.current) return;
                 if (code && code !== "PREVIEW_GENERATING") return onUnavailable();
                 setAttempt((count) => count + 1);
                 setWaiting(true);
