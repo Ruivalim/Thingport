@@ -1280,7 +1280,9 @@
           "sign_in_connected": "Prijungtas prisijungimo teikėjas",
           "sign_in_disconnected": "Atjungtas prisijungimo teikėjas",
           "grab_connected": "Prijungtas Thingport Grab",
-          "grab_disconnected": "Pašalintas Thingport Grab"
+          "grab_disconnected": "Pašalintas Thingport Grab",
+          "collections_merged": "Kolekcijos sujungtos",
+          "tags_merged": "Žymos sujungtos"
         },
         "authorsLinked": "Susieta modelių: {{count}}",
         "descriptionsRefetched": "{{email}} — pakeista aprašymų: {{updated}} iš {{total}}",
@@ -1298,7 +1300,8 @@
         "providerOff": "{{provider}} išjungtas",
         "aiRunSummary": "Patikrinta {{done}} iš {{total}} — pasiūlyta {{suggested}}, pritaikyta {{applied}}, nepavyko {{failed}}",
         "aiRunStopped": "(sustabdyta)",
-        "viaProvider": "per {{provider}}"
+        "viaProvider": "per {{provider}}",
+        "merged": "{{merged}} → {{name}}"
       },
       "rendering": {
         "heading": "Atvaizdavimas",
@@ -2993,6 +2996,36 @@
             "myminifactory": "Thingport neberodys jūsų MyMiniFactory kolekcijų, kol vėl nurodysite vartotojo vardą. Jau nustatyti sinchronizavimai išsaugos savo modelius."
           }
         }
+      },
+      "sortByModels": "Daugiausia modelių",
+      "selection": {
+        "enter": "Žymėti kolekcijas",
+        "toolbar": "Veiksmai su pažymėtomis kolekcijomis",
+        "builtIn": "Įtaisytųjų kolekcijų negalima sujungti ar ištrinti",
+        "bookmarked_one": "Įsiminta {{count}} kolekcija",
+        "bookmarked_few": "Įsimintos {{count}} kolekcijos",
+        "bookmarked_many": "Įsiminta {{count}} kolekcijos",
+        "bookmarked_other": "Įsiminta {{count}} kolekcijų",
+        "unbookmarked_one": "Iš įsimintų pašalinta {{count}} kolekcija",
+        "unbookmarked_few": "Iš įsimintų pašalintos {{count}} kolekcijos",
+        "unbookmarked_many": "Iš įsimintų pašalinta {{count}} kolekcijos",
+        "unbookmarked_other": "Iš įsimintų pašalinta {{count}} kolekcijų",
+        "deleteTitle_one": "Ištrinti {{count}} kolekciją?",
+        "deleteTitle_few": "Ištrinti {{count}} kolekcijas?",
+        "deleteTitle_many": "Ištrinti {{count}} kolekcijos?",
+        "deleteTitle_other": "Ištrinti {{count}} kolekcijų?",
+        "deleteMessage_one": "Joje esantys modeliai liks. To atšaukti negalima.",
+        "deleteMessage_few": "Jose esantys modeliai liks. To atšaukti negalima.",
+        "deleteMessage_many": "Jose esantys modeliai liks. To atšaukti negalima.",
+        "deleteMessage_other": "Jose esantys modeliai liks. To atšaukti negalima.",
+        "deleted_one": "Ištrinta {{count}} kolekcija",
+        "deleted_few": "Ištrintos {{count}} kolekcijos",
+        "deleted_many": "Ištrinta {{count}} kolekcijos",
+        "deleted_other": "Ištrinta {{count}} kolekcijų",
+        "merged_one": "{{count}} kolekcija sujungta į „{{name}}“",
+        "merged_few": "{{count}} kolekcijos sujungtos į „{{name}}“",
+        "merged_many": "{{count}} kolekcijos sujungta į „{{name}}“",
+        "merged_other": "{{count}} kolekcijų sujungta į „{{name}}“"
       }
     },
     "tags": {
@@ -3019,6 +3052,39 @@
         "title": "{{name}}",
         "subtitle": "Žyma",
         "empty": "Su šia žyma modelių kol kas nėra."
+      },
+      "selection": {
+        "enter": "Žymėti žymas",
+        "toolbar": "Veiksmai su pažymėtomis žymomis",
+        "selectAllLoaded": "Pažymėti visas įkeltas",
+        "bookmarked_one": "Įsiminta {{count}} žyma",
+        "bookmarked_few": "Įsimintos {{count}} žymos",
+        "bookmarked_many": "Įsiminta {{count}} žymos",
+        "bookmarked_other": "Įsiminta {{count}} žymų",
+        "unbookmarked_one": "Iš įsimintų pašalinta {{count}} žyma",
+        "unbookmarked_few": "Iš įsimintų pašalintos {{count}} žymos",
+        "unbookmarked_many": "Iš įsimintų pašalinta {{count}} žymos",
+        "unbookmarked_other": "Iš įsimintų pašalinta {{count}} žymų",
+        "deleteTitle_one": "Ištrinti {{count}} žymą?",
+        "deleteTitle_few": "Ištrinti {{count}} žymas?",
+        "deleteTitle_many": "Ištrinti {{count}} žymos?",
+        "deleteTitle_other": "Ištrinti {{count}} žymų?",
+        "deleteMessage_one": "Žyma bus pašalinta iš visų ja pažymėtų modelių. Patys modeliai liks.",
+        "deleteMessage_few": "Žymos bus pašalintos iš visų jomis pažymėtų modelių. Patys modeliai liks.",
+        "deleteMessage_many": "Žymos bus pašalintos iš visų jomis pažymėtų modelių. Patys modeliai liks.",
+        "deleteMessage_other": "Žymos bus pašalintos iš visų jomis pažymėtų modelių. Patys modeliai liks.",
+        "deleteConfirm_one": "Ištrinti žymą",
+        "deleteConfirm_few": "Ištrinti žymas",
+        "deleteConfirm_many": "Ištrinti žymas",
+        "deleteConfirm_other": "Ištrinti žymas",
+        "deleted_one": "Ištrinta {{count}} žyma",
+        "deleted_few": "Ištrintos {{count}} žymos",
+        "deleted_many": "Ištrinta {{count}} žymos",
+        "deleted_other": "Ištrinta {{count}} žymų",
+        "merged_one": "{{count}} žyma sujungta į „{{name}}“",
+        "merged_few": "{{count}} žymos sujungtos į „{{name}}“",
+        "merged_many": "{{count}} žymos sujungta į „{{name}}“",
+        "merged_other": "{{count}} žymų sujungta į „{{name}}“"
       }
     },
     "downloadZip": {
@@ -3155,6 +3221,59 @@
       "removedFromCollection_one": "{{count}} modelis pašalintas iš kolekcijos",
       "removedFromCollection_few": "{{count}} modeliai pašalinti iš kolekcijos",
       "removedFromCollection_other": "{{count}} modelių pašalinta iš kolekcijos"
+    },
+    "merge": {
+      "action": "Sujungti",
+      "needTwo": "Sujungimui pažymėkite bent 2",
+      "previewFailed": "Nepavyko apskaičiuoti, ką pakeis sujungimas. Bandykite dar kartą.",
+      "failed": "Nepavyko sujungti. Bandykite dar kartą.",
+      "keep": "Sujungti į",
+      "kept": "Lieka",
+      "after": "Po sujungimo",
+      "modelUnit_one": "modelis",
+      "modelUnit_few": "modeliai",
+      "modelUnit_many": "modelio",
+      "modelUnit_other": "modelių",
+      "new": "naujų",
+      "quoted": "„{{name}}“",
+      "andMore_one": "dar {{count}}",
+      "andMore_few": "dar {{count}}",
+      "andMore_many": "dar {{count}}",
+      "andMore_other": "dar {{count}}",
+      "syncsWith": "sinchronizuojama su {{provider}}",
+      "bookmarkMoves": "Įsiminimas pereina „{{name}}“.",
+      "cantUndo": "Sujungimo atšaukti negalima.",
+      "mergeInto": "Sujungti į „{{name}}“",
+      "collections": {
+        "title_one": "Sujungti {{count}} kolekciją",
+        "title_few": "Sujungti {{count}} kolekcijas",
+        "title_many": "Sujungti {{count}} kolekcijos",
+        "title_other": "Sujungti {{count}} kolekcijų",
+        "keepHelp": "Pasirinkite, kurią kolekciją palikti. Kitų kolekcijų modeliai bus pridėti prie jos, o kitos kolekcijos ištrintos.",
+        "goes": "Ištrinama",
+        "othersGo_one": "{{names}} bus ištrinta. Jos modeliai liks: jie pereis į „{{name}}“.",
+        "othersGo_few": "{{names}} bus ištrintos. Jų modeliai liks: jie pereis į „{{name}}“.",
+        "othersGo_many": "{{names}} bus ištrintos. Jų modeliai liks: jie pereis į „{{name}}“.",
+        "othersGo_other": "{{names}} bus ištrintos. Jų modeliai liks: jie pereis į „{{name}}“.",
+        "keepsOwn": "„{{name}}“ išlaiko savo pavadinimą, aprašymą, žymas ir sinchronizavimą.",
+        "syncStops_one": "{{names}} sinchronizuojama su tiekėjo kolekcija, ir šis sinchronizavimas sustos. Palikite ją, jei norite toliau sinchronizuoti.",
+        "syncStops_few": "{{names}} sinchronizuojamos su tiekėjų kolekcijomis, ir šie sinchronizavimai sustos. Palikite vieną iš jų, jei norite toliau ją sinchronizuoti.",
+        "syncStops_many": "{{names}} sinchronizuojamos su tiekėjų kolekcijomis, ir šie sinchronizavimai sustos. Palikite vieną iš jų, jei norite toliau ją sinchronizuoti.",
+        "syncStops_other": "{{names}} sinchronizuojamos su tiekėjų kolekcijomis, ir šie sinchronizavimai sustos. Palikite vieną iš jų, jei norite toliau ją sinchronizuoti."
+      },
+      "tags": {
+        "title_one": "Sujungti {{count}} žymą",
+        "title_few": "Sujungti {{count}} žymas",
+        "title_many": "Sujungti {{count}} žymos",
+        "title_other": "Sujungti {{count}} žymų",
+        "keepHelp": "Pasirinkite, kurią žymą palikti. Visi modeliai su kitomis žymomis gaus ją, o kitos žymos bus pašalintos.",
+        "goes": "Pašalinama",
+        "othersGo_one": "{{names}} bus pašalinta. Jos modeliai bus pažymėti „{{name}}“.",
+        "othersGo_few": "{{names}} bus pašalintos. Jų modeliai bus pažymėti „{{name}}“.",
+        "othersGo_many": "{{names}} bus pašalintos. Jų modeliai bus pažymėti „{{name}}“.",
+        "othersGo_other": "{{names}} bus pašalintos. Jų modeliai bus pažymėti „{{name}}“.",
+        "keepsOwn": "Modeliai, jau pažymėti „{{name}}“, nesikeičia."
+      }
     }
   }
 }
