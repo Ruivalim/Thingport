@@ -14,7 +14,7 @@ const GAP = 3;
 export const ACTIVITY_KINDS: ActivityKind[] = ["import", "upload", "download", "slicer", "delete"];
 const LEVEL_ALPHA = [0, 0.3, 0.5, 0.75, 1];
 
-function cellColor(theme: Theme, value: number): string {
+export function cellColor(theme: Theme, value: number): string {
   if (value === 0) return theme.palette.mode === "dark" ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.06)";
   return alpha(theme.palette.primary.main, LEVEL_ALPHA[value]);
 }

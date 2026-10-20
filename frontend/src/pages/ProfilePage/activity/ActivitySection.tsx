@@ -1,5 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router-dom";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -20,13 +21,25 @@ type Props = {
 /** The signed-in user's own activity, as a year of days. Opens on the last 12 months, like GitHub. */
 export default function ActivitySection({ onUnauthorized }: Props) {
   const { t } = useTranslation("app");
-  // Null is the last 12 months; a year is that calendar year.
-  const [year, setYear] = React.useState<number | null>(null);
-  // A day picked on the heatmap, which the timeline starts from.
-  const [selectedDay, setSelectedDay] = React.useState<string | null>(null);
-  const timelineRef = React.useRef<HTMLDivElement | null>(null);
   const today = localToday();
   const thisYear = Number(today.slice(0, 4));
+  // A day picked on the dashboard's heatmap arrives as ?day=YYYY-MM-DD.
+  const [searchParams] = useSearchParams();
+  const [linkedDay] = React.useState(() => {
+    const day = searchParams.get("day");
+    return day && /^\d{4}-\d{2}-\d{2}$/.test(day) && day <= today ? day : null;
+  });
+  // Null is the last 12 months; a year is that calendar year. A linked day before them opens its own year.
+  const [year, setYear] = React.useState<number | null>(() =>
+    linkedDay && linkedDay < lastYearRange(today).from ? Number(linkedDay.slice(0, 4)) : null,
+  );
+  // A day picked on the heatmap, which the timeline starts from.
+  const [selectedDay, setSelectedDay] = React.useState<string | null>(linkedDay);
+  const timelineRef = React.useRef<HTMLDivElement | null>(null);
+
+  React.useEffect(() => {
+    if (linkedDay) timelineRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [linkedDay]);
   // Tagged with the range it's for, so switching years never shows the last one's numbers.
   const [loaded, setLoaded] = React.useState<{ key: string; data: ActivitySummary } | null>(null);
   const [error, setError] = React.useState<string | null>(null);
