@@ -38,6 +38,11 @@ curl -H "Authorization: Bearer tp_your_token_here" "https://thingport.example.co
 The token works only in the header. Putting it in the address as `?token=...` is refused, because addresses end up in
 browser history and proxy logs.
 
+## Connect an AI assistant
+
+The same token connects an AI assistant to your library over MCP, with the tools you tick on your Profile. See
+[Connect an AI assistant with MCP](mcp.md).
+
 ## What a token can and can't do
 
 - **Read:** anything you can see in Thingport yourself, such as models, collections, tags, search, the dashboard and
