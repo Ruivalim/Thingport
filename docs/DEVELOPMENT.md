@@ -259,4 +259,4 @@ ordinary notification (the System tab). To post one, add an entry to `entries` a
 ## Related documents
 
 - [CONTRIBUTING.md](../CONTRIBUTING.md) -- branch, commit and pull request workflow
-- [PROVIDER_SETUP.md](PROVIDER_SETUP.md) -- MakerWorld / Thingiverse / Printables / MyMiniFactory credentials
+- [PROVIDER_SETUP.md](PROVIDER_SETUP.md) -- what each provider needs, with a setup page per provider under [providers/](providers/)
