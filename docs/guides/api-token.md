@@ -1,7 +1,8 @@
 # Connect other apps with an API token
 
-An API token lets another app, script or dashboard read your Thingport library as you, without your password. It
-can't change anything: it only reads.
+An API token lets another app, script or dashboard read your Thingport library as you, without your password. Over the
+REST API it can't change anything: it only reads. The only way it can change your library is through the MCP tools you
+turn on for it yourself (see [Connect an AI assistant](#connect-an-ai-assistant)).
 
 Each user has their own token, and it only sees that user's library.
 
@@ -40,8 +41,9 @@ browser history and proxy logs.
 
 ## Connect an AI assistant
 
-The same token connects an AI assistant to your library over MCP, with the tools you tick on your Profile. See
-[Connect an AI assistant with MCP](mcp.md).
+The same token connects an AI assistant to your library over MCP, with the tools you tick on your Profile. The tools that
+read are on for a new token; the ones that change your library, such as importing a model, stay off until you turn them
+on. See [Connect an AI assistant with MCP](mcp.md).
 
 ## What a token can and can't do
 
