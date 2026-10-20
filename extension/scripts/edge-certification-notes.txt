@@ -1,7 +1,7 @@
 Thingport Grab {{version}}. Changes: {{changes}}
 
 WHAT IT DOES
-Imports 3D-printing models from model sites (MakerWorld, Printables, Thingiverse, and others the user enables) into the user's own self-hosted Thingport server (open source: https://github.com/TautvydasDerzinskas/Thingport). Sends nothing to the developer or third parties.
+Imports 3D-printing models from model sites (MakerWorld, Printables, Thingiverse, and others the user enables) into the user's own self-hosted Thingport server (open source: https://github.com/TautvydasDerzinskas/Thingport). Data goes only to the user's server and the model sites themselves, never to the developer or anyone else.
 
 HOW TO TEST
 1. A Thingport server is required. {{testServer}}
