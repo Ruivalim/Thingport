@@ -23,7 +23,7 @@ import { resolveMakeronlineModel } from "./makeronlineApi";
 import { resolveCrealitycloudModel } from "./crealitycloudApi";
 import { resolveNexprintModel } from "./nexprintApi";
 import { resolveThangsModel } from "./thangsApi";
-import { Cults3dAuthError, Cults3dRateLimitError, resolveCults3dModel } from "./cults3dApi";
+import { Cults3dAuthError, type Cults3dCredentials, Cults3dRateLimitError, resolveCults3dModel } from "./cults3dApi";
 import { getUserCults3dCredentials, markCults3dApiRejected } from "./cults3dSessionService";
 import { getDisabledProviders } from "./providerSettingsService";
 
@@ -70,15 +70,20 @@ export type AuthorLinkingRun = {
 
 type Candidate = { printId: string; userId: string; provider: LookupProvider; externalId: string; creator: string };
 
-// One model per unmatched creator per site: the newest, as the likeliest still online.
+// One model per unmatched creator per site: the newest, as the likeliest still online. Cults3D is read only with the
+// model's owner's own API key, so there it's the newest of an owner who has a usable one.
 const LOOKUP_CANDIDATES = Prisma.sql`
   SELECT DISTINCT ON (p."sourceProvider", lower(trim(p.creator)))
     p.id AS "printId", p."userId", p."sourceProvider" AS provider, p."sourceExternalId" AS "externalId", p.creator
   FROM "Print" p
+  JOIN "User" u ON u.id = p."userId"
   WHERE p."authorId" IS NULL AND p.creator IS NOT NULL AND trim(p.creator) <> ''
     AND p."sourceProvider" IN (${Prisma.join([...LOOKUP_PROVIDERS])}) AND p."sourceExternalId" IS NOT NULL
     AND p.id NOT IN (SELECT print_id FROM (${LINKABLE_PRINTS}) l)
-  ORDER BY p."sourceProvider", lower(trim(p.creator)), p."createdAt" DESC
+  ORDER BY p."sourceProvider", lower(trim(p.creator)),
+    (p."sourceProvider" = 'cults3d' AND u."cults3dNick" IS NOT NULL AND u."cults3dApiKey" IS NOT NULL
+      AND u."cults3dApiRejectedAt" IS NULL) DESC,
+    p."createdAt" DESC
 `;
 
 export async function authorLinkingSummary(): Promise<{ linkable: number; lookup: number }> {
@@ -160,9 +165,17 @@ export async function runAuthorLinking(run: AuthorLinkingRun): Promise<void> {
       run.lookedUp++;
       continue;
     }
+    // Candidates prefer an owner with a key (see LOOKUP_CANDIDATES), so none here means no owner of this creator's
+    // models has one: a key to set up, not an author missing.
+    const cults3d = candidate.provider === "cults3d" ? await getUserCults3dCredentials(candidate.userId) : null;
+    if (candidate.provider === "cults3d" && !cults3d) {
+      if (!run.problems.includes("cults3d_no_key")) run.problems.push("cults3d_no_key");
+      run.lookedUp++;
+      continue;
+    }
     let author: ImportedAuthorInfo | null = null;
     try {
-      author = await lookUpAuthor(candidate, { thingiverseToken, myminifactoryKey });
+      author = await lookUpAuthor(candidate, { thingiverseToken, myminifactoryKey, cults3d });
     } catch (err) {
       if (err instanceof MakerworldCaptchaError) skip("makerworld", "makerworld_captcha");
       else if (err instanceof MakerworldAuthError) skip("makerworld", "makerworld_login_rejected");
@@ -195,7 +208,7 @@ export async function runAuthorLinking(run: AuthorLinkingRun): Promise<void> {
 
 async function lookUpAuthor(
   candidate: Candidate,
-  keys: { thingiverseToken: string | null; myminifactoryKey: string | null },
+  keys: { thingiverseToken: string | null; myminifactoryKey: string | null; cults3d: Cults3dCredentials | null },
 ): Promise<ImportedAuthorInfo | null> {
   switch (candidate.provider) {
     case "thingiverse": {
@@ -232,11 +245,9 @@ async function lookUpAuthor(
     }
     case "cults3d": {
       // Its API reads only with a user's own key: the model's importer's.
-      const credentials = await getUserCults3dCredentials(candidate.userId);
-      if (!credentials) return null;
       await maybeSleep(IMPORT_COLLECTION_DELAY_MS);
       try {
-        return (await resolveCults3dModel(candidate.externalId, credentials))?.meta.author ?? null;
+        return (await resolveCults3dModel(candidate.externalId, keys.cults3d!))?.meta.author ?? null;
       } catch (err) {
         // Remembered, so the rest of this user's models don't ask with it again; other users' keys still work.
         if (err instanceof Cults3dAuthError) await markCults3dApiRejected(candidate.userId);

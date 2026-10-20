@@ -262,6 +262,59 @@ describe("looking up authors no known author matches", () => {
     expect(run.problems).toContain("thingiverse_no_token");
     expect(await authorOf(print.id)).toBeNull();
   });
+
+  it("reads Cults3D with the key of an owner who has one, even when another owner's model is newer", async () => {
+    const keyed = await request(app)
+      .post("/api/register")
+      .send({
+        displayName: "Cults3D Key Owner",
+        email: `author-linking-c3d-${stamp}@example.com`,
+        password: "password123",
+      });
+    const keyedUserId: string = keyed.body.user.id;
+    await prisma.user.update({
+      where: { id: keyedUserId },
+      data: { cults3dNick: `keyed${stamp}`, cults3dApiKey: "secret" },
+    });
+    const creator = `c3d-creator-${stamp}`;
+    const older = await prisma.print.create({
+      data: {
+        userId: keyedUserId,
+        name: `c3d-keyed ${stamp}`,
+        nameNormalized: `c3d-keyed ${stamp}`,
+        creator,
+        sourceProvider: "cults3d",
+        sourceExternalId: `c3d-keyed-${stamp}`,
+      },
+    });
+    const newer = await unattributedPrint("c3d-unkeyed", "cults3d", creator);
+    await prisma.print.update({ where: { id: newer.id }, data: { createdAt: new Date(Date.now() + 60_000) } });
+    let authorization: string | null = null;
+    global.fetch = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(async (input, init) => {
+      if (String(input) !== "https://cults3d.com/graphql") return new Response("not found", { status: 404 });
+      authorization = new Headers(init?.headers).get("authorization");
+      return json({ data: { creation: { slug: `c3d-keyed-${stamp}`, name: "Anything", creator: { nick: creator } } } });
+    }) as unknown as typeof fetch;
+
+    const run = newRun();
+    await runAuthorLinking(run);
+    expect(authorization).toBe(`Basic ${Buffer.from(`keyed${stamp}:secret`).toString("base64")}`);
+    expect(await authorOf(older.id)).toBe(`cults3d:${creator}`);
+    expect(await authorOf(newer.id)).toBe(`cults3d:${creator}`);
+    expect(run.problems).not.toContain("cults3d_no_key");
+  });
+
+  it("skips a Cults3D creator no owner has a key for, and says a key is missing", async () => {
+    const print = await unattributedPrint("c3d-nokey", "cults3d", `c3d-nokey-${stamp}`);
+    mockFetch({});
+    const run = newRun();
+    await runAuthorLinking(run);
+    expect(run.problems).toContain("cults3d_no_key");
+    // Other files' leftover models may be looked up too; none of it is Cults3D's.
+    const urls = vi.mocked(global.fetch).mock.calls.map(([input]) => String(input));
+    expect(urls.filter((url) => url.startsWith("https://cults3d.com"))).toEqual([]);
+    expect(await authorOf(print.id)).toBeNull();
+  });
 });
 
 describe("Administration > Triggers > Link missing authors", () => {
