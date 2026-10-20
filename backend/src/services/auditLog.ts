@@ -8,6 +8,7 @@ export type LogAction =
   | "password_reset"
   | "api_token_generated"
   | "api_token_revoked"
+  | "api_token_mcp_tools_changed"
   | "user_invited"
   | "authors_linked"
   | "descriptions_refetched"

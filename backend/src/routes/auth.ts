@@ -13,7 +13,8 @@ import { findValidInvitation } from "../services/invitationService";
 import { checkCaptcha } from "../services/captchaService";
 import { createLog } from "../services/auditLog";
 import { seedDefaultCategories } from "../services/categoryService";
-import { generateApiToken, getApiToken, revokeApiToken } from "../services/apiTokenService";
+import { generateApiToken, getApiToken, revokeApiToken, setApiTokenMcpTools } from "../services/apiTokenService";
+import { DEFAULT_MCP_TOOL_NAMES, MCP_TOOL_CATALOG, MCP_TOOL_NAMES } from "../mcp/tools";
 import { toUserOut } from "../dto";
 import type { Prisma, Role } from "@prisma/client";
 
@@ -397,16 +398,40 @@ router.get(
   "/profile/api-token",
   requireAuth,
   asyncHandler(async (req, res) => {
-    res.json(await getApiToken(req.userId!));
+    res.json({ ...(await getApiToken(req.userId!)), available_mcp_tools: MCP_TOOL_CATALOG });
   }),
 );
+
+// Unknown names are refused rather than dropped, so a typo can't quietly leave a tool off.
+const mcpToolsSchema = z
+  .array(z.enum(MCP_TOOL_NAMES as [string, ...string[]]))
+  .transform((names) => [...new Set(names)]);
+// No body (older clients) gives the tools that only read.
+const generateApiTokenSchema = z.object({ mcp_tools: mcpToolsSchema.optional() }).default({});
 
 router.post(
   "/profile/api-token",
   requireAuth,
   asyncHandler(async (req, res) => {
-    res.json(await generateApiToken(req.userId!));
-    void createLog({ userId: req.userId!, action: "api_token_generated" });
+    const body = parseBody(generateApiTokenSchema, req.body ?? {});
+    const token = await generateApiToken(req.userId!, body.mcp_tools ?? DEFAULT_MCP_TOOL_NAMES);
+    res.json({ ...token, available_mcp_tools: MCP_TOOL_CATALOG });
+    void createLog({ userId: req.userId!, action: "api_token_generated", details: { mcp_tools: token.mcp_tools } });
+  }),
+);
+
+router.put(
+  "/profile/api-token/mcp-tools",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const body = parseBody(z.object({ mcp_tools: mcpToolsSchema }), req.body);
+    const token = await setApiTokenMcpTools(req.userId!, body.mcp_tools);
+    res.json({ ...token, available_mcp_tools: MCP_TOOL_CATALOG });
+    void createLog({
+      userId: req.userId!,
+      action: "api_token_mcp_tools_changed",
+      details: { mcp_tools: token.mcp_tools },
+    });
   }),
 );
 
@@ -415,7 +440,7 @@ router.delete(
   requireAuth,
   asyncHandler(async (req, res) => {
     await revokeApiToken(req.userId!);
-    res.json(await getApiToken(req.userId!));
+    res.json({ ...(await getApiToken(req.userId!)), available_mcp_tools: MCP_TOOL_CATALOG });
     void createLog({ userId: req.userId!, action: "api_token_revoked" });
   }),
 );
