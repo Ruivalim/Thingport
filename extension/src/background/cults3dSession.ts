@@ -9,7 +9,15 @@ const SITE = "https://cults3d.com";
 
 async function cookieValue(name: string): Promise<string> {
   try {
-    return (await chrome.cookies.get({ url: SITE, name }))?.value ?? "";
+    const plain = (await chrome.cookies.get({ url: SITE, name }))?.value;
+    if (plain) return plain;
+    // Cloudflare sets cf_clearance partitioned (CHIPS), keyed to the site itself; a plain lookup doesn't see those, and
+    // an exact partition key would have to match its cross-site flag too. An empty one lists every partition's.
+    const partitioned = await chrome.cookies.getAll({ domain: "cults3d.com", name, partitionKey: {} });
+    const own = partitioned.find((cookie) =>
+      /^https:\/\/(www\.)?cults3d\.com$/i.test(cookie.partitionKey?.topLevelSite ?? ""),
+    );
+    return (own ?? partitioned[0])?.value ?? "";
   } catch {
     return "";
   }

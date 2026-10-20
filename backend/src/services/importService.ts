@@ -156,6 +156,7 @@ import {
 } from "./cults3dApi";
 import {
   CULTS3D_CONNECT,
+  CULTS3D_NO_CLEARANCE,
   CULTS3D_SIGN_IN,
   getUserCults3dBrowser,
   getUserCults3dCredentials,
@@ -2114,6 +2115,8 @@ async function importCults3dModel(
     if (!downloadUrl && resolved.priceCents > 0) throw cults3dPaid(resolved);
     const browser = await getUserCults3dBrowser(userId);
     if (!browser) throw new HttpError(400, CULTS3D_SIGN_IN, CULTS3D_SESSION_CODE);
+    // Without it every site page is a Cloudflare challenge.
+    if (!browser.clearance) throw new HttpError(400, CULTS3D_NO_CLEARANCE, CULTS3D_SESSION_CODE);
     if (!downloadUrl) {
       await placeCults3dFreeOrder(resolved.slug, browser);
       downloadUrl = (await fetchCults3dOrders(credentials)).get(resolved.slug) ?? null;

@@ -103,6 +103,12 @@ export const CULTS3D_CONNECT =
   "Thingport reads Cults3D with your own API key: make one at cults3d.com/en/api/keys, then enter it with your " +
   "nickname in Configuration > Providers.";
 
+/** Shown when the browser's sign-in came without Cloudflare's clearance cookie, which the download pages need. */
+export const CULTS3D_NO_CLEARANCE =
+  "Thingport has your Cults3D sign-in but not Cloudflare's clearance for it, which the downloads need. Update " +
+  "Thingport Grab, then visit cults3d.com signed in again -- or paste a signed-in request's headers, with the " +
+  "cf_clearance cookie, in Configuration > Providers.";
+
 /** Shown wherever a download needs the browser's sign-in, and there's none. */
 export const CULTS3D_SIGN_IN =
   "Cults3D only gives its files to a signed-in user: visit cults3d.com signed in with Thingport Grab, then import " +
