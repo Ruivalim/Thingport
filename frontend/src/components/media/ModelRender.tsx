@@ -34,14 +34,22 @@ export default function ModelRender({ url, alt, onUnavailable, placeholder }: Pr
   const [attempt, setAttempt] = useState(0);
   const [waiting, setWaiting] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  // A check still out when the model changes or the card goes must not report on the next one.
-  const mounted = useRef(true);
+  // A new model starts over.
+  const [forUrl, setForUrl] = useState(url);
+  if (forUrl !== url) {
+    setForUrl(url);
+    setAttempt(0);
+    setWaiting(false);
+    setLoaded(false);
+  }
+  // The render currently shown, or null once gone, so a check still out for an earlier one is dropped.
+  const liveUrl = useRef<string | null>(url);
   useEffect(() => {
-    mounted.current = true;
+    liveUrl.current = url;
     return () => {
-      mounted.current = false;
+      liveUrl.current = null;
     };
-  }, []);
+  }, [url]);
 
   useEffect(() => {
     if (attempt > RETRY_DELAYS_MS.length) onUnavailable();
@@ -92,12 +100,13 @@ export default function ModelRender({ url, alt, onUnavailable, placeholder }: Pr
           loading="lazy"
           onLoad={() => setLoaded(true)}
           onError={() => {
+            const checking = url;
             // Only a render still being made is worth waiting for; the server says which it is.
             void fetch(src)
               .then((res) => res.json() as Promise<{ code?: string }>)
               .catch(() => ({ code: undefined }))
               .then(({ code }) => {
-                if (!mounted.current) return;
+                if (liveUrl.current !== checking) return;
                 if (code && code !== "PREVIEW_GENERATING") return onUnavailable();
                 setAttempt((count) => count + 1);
                 setWaiting(true);
