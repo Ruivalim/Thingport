@@ -1,5 +1,35 @@
 # Thingport backend changelog
 
+# [thingport-backend-v1.1.0](https://github.com/TautvydasDerzinskas/Thingport/compare/thingport-backend-v1.0.2...thingport-backend-v1.1.0) (2026-10-20)
+
+
+### Bug Fixes
+
+* add validation and improve error handling in sync operations ([7c3c7ec](https://github.com/TautvydasDerzinskas/Thingport/commit/7c3c7ec90298672150219ea18c44ac37bc40280c))
+* correct category updates and improve NexPrint error handling ([1cf2903](https://github.com/TautvydasDerzinskas/Thingport/commit/1cf2903b8efd9e13f71b50e4e768f7930c1382eb))
+* detect Cults3D clearance cookie in Cloudflare partitions ([2f66ed6](https://github.com/TautvydasDerzinskas/Thingport/commit/2f66ed682b1bc61b0a6c456db23aedbc15193eb1))
+* handle malformed tokens, add refresh concurrency control, and improve list URL validation ([44f4bf2](https://github.com/TautvydasDerzinskas/Thingport/commit/44f4bf26354675ce41ee0c7e2684d3fe9384e70f))
+* Makerworld profile thumbnails being all the same ([c6c8161](https://github.com/TautvydasDerzinskas/Thingport/commit/c6c8161a74dceca83d0827fec00735763ce76428))
+* models with images should use them as thumbnails ([cf0653b](https://github.com/TautvydasDerzinskas/Thingport/commit/cf0653b005e9339a8cd0f200a7ef4a7e6f028f75))
+* page a Thangs collection to the end without a total ([68a1481](https://github.com/TautvydasDerzinskas/Thingport/commit/68a14817079d8cc3bd275cfe4badf7bc16084194))
+* **printService:** restore file on failed plate database update ([03fdd83](https://github.com/TautvydasDerzinskas/Thingport/commit/03fdd836a5889e9f06deea8d2311d69cae27efa1))
+* tell print profiles apart by name and picture on every provider ([f34a488](https://github.com/TautvydasDerzinskas/Thingport/commit/f34a488fb21b69b50e8170105f5933f70cf46f01))
+
+
+### Features
+
+* add Cults3D provider ([930b9b4](https://github.com/TautvydasDerzinskas/Thingport/commit/930b9b48dba5c2375d4fccf2e59ced2965e87711))
+* add MyMiniFactory as a provider ([a7a9190](https://github.com/TautvydasDerzinskas/Thingport/commit/a7a91902a0f43d47741e8cb52c1ec294f143fadb))
+* add Thangs provider ([2591714](https://github.com/TautvydasDerzinskas/Thingport/commit/2591714c0cd44b086c0cb3c94d11e99c8262fe81))
+* enable Creality Cloud provider ([772b1ac](https://github.com/TautvydasDerzinskas/Thingport/commit/772b1acfef609796015b51db186012e717124bc5))
+* enable NextPrint provider ([4037151](https://github.com/TautvydasDerzinskas/Thingport/commit/4037151e4aaa6a744469b52ef60f999b343e085a))
+* multi-select models in grids with bulk actions ([fe5dbec](https://github.com/TautvydasDerzinskas/Thingport/commit/fe5dbecdc5a76ab43eec39a5dd432626a9eaf2f6)), closes [#91](https://github.com/TautvydasDerzinskas/Thingport/issues/91)
+* pick mapped provider categories by name ([87db3f0](https://github.com/TautvydasDerzinskas/Thingport/commit/87db3f0ff0346a2811ea4b4659056e9e5928df22))
+* preview dashboard panels as tiles and add an activity heatmap panel ([c65e712](https://github.com/TautvydasDerzinskas/Thingport/commit/c65e712a31c30c0c0621c440a50a4e3f256dfb42))
+* **providers:** enable MakerOnline provider ([5bf3457](https://github.com/TautvydasDerzinskas/Thingport/commit/5bf3457e8c5a5448c97f12fb0ac9101137884dca))
+* **providers:** enable Snapmaker Space provider ([ac5bf25](https://github.com/TautvydasDerzinskas/Thingport/commit/ac5bf253c7c3a09abd0ce90e8c24539004f0f879))
+* replace the AI Thinking toggle with a per-connection reasoning effort ([b30b0ce](https://github.com/TautvydasDerzinskas/Thingport/commit/b30b0cefd82691d391a9144d40efbd178ffbb331))
+
 # [thingport-backend-v1.0.2](https://github.com/TautvydasDerzinskas/Thingport/compare/thingport-backend-v1.0.1...thingport-backend-v1.0.2) (2026-10-18)
 
 

@@ -1,5 +1,28 @@
 # Thingport Grab changelog
 
+# [thingport-grab-v1.7.0](https://github.com/TautvydasDerzinskas/Thingport/compare/thingport-grab-v1.6.0...thingport-grab-v1.7.0) (2026-10-20)
+
+
+### Bug Fixes
+
+* add validation and improve error handling in sync operations ([7c3c7ec](https://github.com/TautvydasDerzinskas/Thingport/commit/7c3c7ec90298672150219ea18c44ac37bc40280c))
+* correct category updates and improve NexPrint error handling ([1cf2903](https://github.com/TautvydasDerzinskas/Thingport/commit/1cf2903b8efd9e13f71b50e4e768f7930c1382eb))
+* detect Cults3D clearance cookie in Cloudflare partitions ([2f66ed6](https://github.com/TautvydasDerzinskas/Thingport/commit/2f66ed682b1bc61b0a6c456db23aedbc15193eb1))
+* handle malformed tokens, add refresh concurrency control, and improve list URL validation ([44f4bf2](https://github.com/TautvydasDerzinskas/Thingport/commit/44f4bf26354675ce41ee0c7e2684d3fe9384e70f))
+* Makerworld profile thumbnails being all the same ([c6c8161](https://github.com/TautvydasDerzinskas/Thingport/commit/c6c8161a74dceca83d0827fec00735763ce76428))
+* tell print profiles apart by name and picture on every provider ([f34a488](https://github.com/TautvydasDerzinskas/Thingport/commit/f34a488fb21b69b50e8170105f5933f70cf46f01))
+
+
+### Features
+
+* add Cults3D provider ([930b9b4](https://github.com/TautvydasDerzinskas/Thingport/commit/930b9b48dba5c2375d4fccf2e59ced2965e87711))
+* add MyMiniFactory as a provider ([a7a9190](https://github.com/TautvydasDerzinskas/Thingport/commit/a7a91902a0f43d47741e8cb52c1ec294f143fadb))
+* add Thangs provider ([2591714](https://github.com/TautvydasDerzinskas/Thingport/commit/2591714c0cd44b086c0cb3c94d11e99c8262fe81))
+* enable Creality Cloud provider ([772b1ac](https://github.com/TautvydasDerzinskas/Thingport/commit/772b1acfef609796015b51db186012e717124bc5))
+* enable NextPrint provider ([4037151](https://github.com/TautvydasDerzinskas/Thingport/commit/4037151e4aaa6a744469b52ef60f999b343e085a))
+* **providers:** enable MakerOnline provider ([5bf3457](https://github.com/TautvydasDerzinskas/Thingport/commit/5bf3457e8c5a5448c97f12fb0ac9101137884dca))
+* **providers:** enable Snapmaker Space provider ([ac5bf25](https://github.com/TautvydasDerzinskas/Thingport/commit/ac5bf253c7c3a09abd0ce90e8c24539004f0f879))
+
 # [thingport-grab-v1.6.0](https://github.com/TautvydasDerzinskas/Thingport/compare/thingport-grab-v1.5.0...thingport-grab-v1.6.0) (2026-10-17)
 
 
