@@ -395,6 +395,14 @@ export const DOCS = [
     description: "Run Thingport locally with hot reload, and run the test suites.",
   },
   {
+    slug: "translating",
+    source: "docs/TRANSLATING.md",
+    group: "Contributing",
+    title: "Translating Thingport",
+    nav: "Translating",
+    description: "Add a language or improve one by translating a single JSON file; it appears in the app on its own.",
+  },
+  {
     slug: "grab/development",
     source: "extension/CONTRIBUTING.md",
     group: "Contributing",

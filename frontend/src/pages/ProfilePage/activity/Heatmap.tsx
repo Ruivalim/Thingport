@@ -6,7 +6,7 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { alpha, type Theme } from "@mui/material/styles";
 import type { ActivityDay, ActivityKind } from "../../../api/activity";
-import { buildWeeks, level, monthStarts, type DateRange } from "./calendar";
+import { buildWeeks, level, monthStarts, weekStartFor, type DateRange } from "./calendar";
 
 const CELL = 11;
 const GAP = 3;
@@ -33,7 +33,7 @@ type Props = {
 export default function Heatmap({ range, days, selectedDay, today, onSelectDay }: Props) {
   const { t, i18n } = useTranslation("app");
   // Monday-first in Lithuanian, as its calendars are; Sunday-first otherwise, as GitHub's is.
-  const weekStart = i18n.language.startsWith("lt") ? 1 : 0;
+  const weekStart = weekStartFor(i18n.language);
   const weeks = React.useMemo(() => buildWeeks(range, weekStart), [range, weekStart]);
   const months = React.useMemo(() => monthStarts(weeks), [weeks]);
   const byDate = React.useMemo(() => new Map(days.map((day) => [day.date, day.counts])), [days]);

@@ -1,7 +1,7 @@
 # Themes and languages
 
 - **Light and dark themes**, or **System** to follow your device's setting.
-- **English and Lithuanian.**
+- **English and Lithuanian**, and any language someone has [translated it into](../TRANSLATING.md).
 
 Choose them under **Configuration → Appearance**, from the user menu, or type <kbd>!</kbd> in the search bar for the
 theme and language commands. The theme is saved to your account, so it follows you to other devices. The language is

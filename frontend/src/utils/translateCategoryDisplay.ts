@@ -1,5 +1,6 @@
 import type { i18n as I18n } from "i18next";
 import type { Category } from "../api/categories";
+import { FALLBACK_LANGUAGE, matchLanguage } from "../constants/languages";
 
 export type CategoryDisplayText = {
   name: string;
@@ -16,12 +17,12 @@ function firstMakerworldCatId(category: Category): number | null {
   return Number.isFinite(id) ? id : null;
 }
 
-/** Both locales are always loaded, so English is available as reference text. */
+/** All locales are always loaded, so English is available as reference text. */
 function defaultCategoryText(i18n: I18n, lng: string, id: number): DefaultCategoryText | undefined {
   return i18n.getResourceBundle(lng, "models")?.defaultCategories?.[id];
 }
 
-/** Shows the Lithuanian text for a starter category field only while it still matches the original
+/** Shows the UI language's text for a starter category field only while it still matches the original
  * English verbatim (i.e. the user hasn't edited it). Each field is checked independently. */
 export function translateCategoryDisplay(category: Category, i18n: I18n): CategoryDisplayText {
   const stored: CategoryDisplayText = {
@@ -30,18 +31,19 @@ export function translateCategoryDisplay(category: Category, i18n: I18n): Catego
     metaDescription: category.meta_description,
   };
 
-  const lang = i18n.language.slice(0, 2).toLowerCase();
-  if (lang !== "lt") return stored;
+  const lang = matchLanguage(i18n.language);
+  if (lang === FALLBACK_LANGUAGE) return stored;
 
   const id = firstMakerworldCatId(category);
   if (id === null) return stored;
-  const en = defaultCategoryText(i18n, "en", id);
-  const lt = defaultCategoryText(i18n, "lt", id);
-  if (!en || !lt) return stored;
+  const en = defaultCategoryText(i18n, FALLBACK_LANGUAGE, id);
+  const local = defaultCategoryText(i18n, lang, id);
+  if (!en || !local) return stored;
 
   return {
-    name: category.name === en.name ? lt.name : category.name,
-    metaTitle: category.meta_title === en.metaTitle ? lt.metaTitle : category.meta_title,
-    metaDescription: category.meta_description === en.metaDescription ? lt.metaDescription : category.meta_description,
+    name: category.name === en.name ? local.name : category.name,
+    metaTitle: category.meta_title === en.metaTitle ? local.metaTitle : category.meta_title,
+    metaDescription:
+      category.meta_description === en.metaDescription ? local.metaDescription : category.meta_description,
   };
 }
