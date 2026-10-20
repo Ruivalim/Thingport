@@ -450,6 +450,29 @@ export const printsApi = {
     return res.json();
   },
 
+  /** Each model on its own: the ones that fail are counted, the rest are still deleted. */
+  bulkDelete: async (ids: string[]): Promise<{ deleted: string[]; failed: number }> => {
+    const res = await fetch(`${apiBase()}/prints/delete`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ print_ids: ids }),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Delete failed"));
+    return res.json();
+  },
+
+  bulkFavorite: async (ids: string[], favorite: boolean): Promise<Print[]> => {
+    const res = await fetch(`${apiBase()}/prints/favorite`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ print_ids: ids, favorite }),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, favorite ? "Failed to favorite" : "Failed to unfavorite"));
+    return ((await res.json()) as { prints: Print[] }).prints;
+  },
+
   updateCategory: async (id: string, category_id: string | null) => {
     const res = await fetch(`${apiBase()}/print/${id}/category`, {
       method: "POST",

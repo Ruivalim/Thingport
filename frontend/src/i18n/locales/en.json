@@ -3002,6 +3002,42 @@
     },
     "manager": {
       "title": "Manage categories & folders"
+    },
+    "selection": {
+      "enter": "Select models",
+      "exit": "Done selecting",
+      "toolbar": "Actions for the selected models",
+      "count": "{{count}} selected",
+      "selectAllLoaded": "Select all loaded",
+      "aiActions": "AI actions",
+      "improveDescriptions": "Improve descriptions with AI",
+      "aiRunActive": "An AI run is already in progress",
+      "addToCollectionTitle_one": "Add {{count}} model to a collection",
+      "addToCollectionTitle_other": "Add {{count}} models to a collection",
+      "downloadTitle_one": "Download {{count}} model",
+      "downloadTitle_other": "Download {{count}} models",
+      "favorited_one": "Added {{count}} model to Favourites",
+      "favorited_other": "Added {{count}} models to Favourites",
+      "unfavorited_one": "Removed {{count}} model from Favourites",
+      "unfavorited_other": "Removed {{count}} models from Favourites",
+      "confirmDelete_one": "Delete {{count}} model? This can't be undone.",
+      "confirmDelete_other": "Delete {{count}} models? This can't be undone.",
+      "deleted_one": "Deleted {{count}} model",
+      "deleted_other": "Deleted {{count}} models",
+      "deletePartlyFailed_one": "{{count}} model couldn't be deleted",
+      "deletePartlyFailed_other": "{{count}} models couldn't be deleted",
+      "confirmManual_one": "{{count}} of the selected models has a category you picked yourself. Let AI recategorize it too?",
+      "confirmManual_other": "{{count}} of the selected models have a category you picked yourself. Let AI recategorize them too?",
+      "includeManual": "Include them",
+      "skipManual": "Skip them",
+      "categorizeQueued_one": "Categorizing {{count}} model with AI. Progress shows at the bottom of the page.",
+      "categorizeQueued_other": "Categorizing {{count}} models with AI. Progress shows at the bottom of the page.",
+      "improveQueued_one": "Improving {{count}} description with AI. Progress shows at the bottom of the page.",
+      "improveQueued_other": "Improving {{count}} descriptions with AI. Progress shows at the bottom of the page.",
+      "confirmRemoveFromCollection_one": "Remove {{count}} model from this collection? The model itself is kept.",
+      "confirmRemoveFromCollection_other": "Remove {{count}} models from this collection? The models themselves are kept.",
+      "removedFromCollection_one": "Removed {{count}} model from the collection",
+      "removedFromCollection_other": "Removed {{count}} models from the collection"
     }
   }
 }

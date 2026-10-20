@@ -491,8 +491,9 @@ export function currentAiDescriptionRun(userId: string): AiDescriptionRun | null
   return runs.get(userId) ?? null;
 }
 
-/** Always every model the user owns; the ones with nothing new are skipped without asking the AI. */
-export function startAiDescriptionRun(userId: string): AiDescriptionRun | null {
+/** Every model the user owns, where the ones with nothing new are skipped without asking the AI; or the models
+ *  picked in a grid, which are asked about even with nothing new, as a request for one model is. */
+export function startAiDescriptionRun(userId: string, printIds?: string[]): AiDescriptionRun | null {
   if (runs.get(userId)?.running) return null;
   const run: AiDescriptionRun = {
     running: true,
@@ -509,8 +510,8 @@ export function startAiDescriptionRun(userId: string): AiDescriptionRun | null {
     lastError: null,
   };
   runs.set(userId, run);
-  log.info("run started", { user: userId });
-  void runAiDescriptions(userId, run)
+  log.info("run started", { user: userId, printIds: printIds?.length });
+  void runAiDescriptions(userId, run, printIds)
     .catch((error) => {
       run.failed++;
       run.lastError = noSecretError(error).message;
@@ -530,9 +531,9 @@ export function startAiDescriptionRun(userId: string): AiDescriptionRun | null {
   return run;
 }
 
-async function runAiDescriptions(userId: string, run: AiDescriptionRun): Promise<void> {
+async function runAiDescriptions(userId: string, run: AiDescriptionRun, printIds?: string[]): Promise<void> {
   const prints = await prisma.print.findMany({
-    where: { userId },
+    where: { userId, ...(printIds ? { id: { in: printIds } } : {}) },
     select: { id: true },
     orderBy: { createdAt: "asc" },
   });
@@ -542,7 +543,7 @@ async function runAiDescriptions(userId: string, run: AiDescriptionRun): Promise
     if (run.cancelled) break;
     let stop = false;
     try {
-      const outcome = await improvePrintDescription(userId, print.id, { source: "run" });
+      const outcome = await improvePrintDescription(userId, print.id, { source: "run", force: Boolean(printIds) });
       consecutiveFailures = 0;
       run[outcome]++;
     } catch (error) {

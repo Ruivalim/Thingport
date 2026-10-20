@@ -111,6 +111,25 @@ export const collectionsApi = {
     assertOk(res, "Add to collection failed");
   },
 
+  addItems: async (collectionId: string, printIds: string[]): Promise<void> => {
+    const res = await fetch(`${apiBase()}/collection/${collectionId}/items`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ print_ids: printIds }),
+    });
+    assertOk(res, "Add to collection failed");
+  },
+
+  /** The prints themselves are untouched. */
+  removeItems: async (collectionId: string, printIds: string[]): Promise<void> => {
+    const res = await fetch(`${apiBase()}/collection/${collectionId}/items`, {
+      method: "DELETE",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ print_ids: printIds }),
+    });
+    assertOk(res, "Remove from collection failed");
+  },
+
   listForPrint: async (printId: string): Promise<CollectionMembership[]> => {
     const res = await fetch(`${apiBase()}/print/${printId}/collections`, { headers: authHeaders() });
     assertOk(res, "Failed to list collections");

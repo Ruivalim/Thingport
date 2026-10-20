@@ -15,7 +15,8 @@ export type TrackedRun<R, S> = {
 
 type AiRunContextValue = {
   categorization: TrackedRun<AiRun, AiRunScope>;
-  descriptions: TrackedRun<AiDescriptionRun, void>;
+  /** Every model, or only the ids given. */
+  descriptions: TrackedRun<AiDescriptionRun, string[] | void>;
 };
 
 const AiRunContext = createContext<AiRunContextValue | null>(null);
@@ -84,10 +85,10 @@ const categorizationRuns: RunApi<AiRun, AiRunScope> = {
   start: async (scope) => (await aiCategorizationApi.startRun(scope)).run,
   cancel: async () => (await aiCategorizationApi.cancelRun()).run,
 };
-const descriptionRuns: RunApi<AiDescriptionRun, void> = {
+const descriptionRuns: RunApi<AiDescriptionRun, string[] | void> = {
   enabled: async () => (await aiDescriptionsApi.status()).enabled,
   state: async () => (await aiDescriptionsApi.runState()).run,
-  start: async () => (await aiDescriptionsApi.startRun()).run,
+  start: async (printIds) => (await aiDescriptionsApi.startRun(printIds || undefined)).run,
   cancel: async () => (await aiDescriptionsApi.cancelRun()).run,
 };
 
@@ -125,6 +126,6 @@ export function useAiRun(): TrackedRun<AiRun, AiRunScope> {
   return useAiRuns().categorization;
 }
 
-export function useAiDescriptionRun(): TrackedRun<AiDescriptionRun, void> {
+export function useAiDescriptionRun(): TrackedRun<AiDescriptionRun, string[] | void> {
   return useAiRuns().descriptions;
 }

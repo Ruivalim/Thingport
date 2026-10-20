@@ -35,6 +35,8 @@ export type AiRunScope = {
   include_rule: boolean;
   /** Also takes older categories, which may have been picked by hand. */
   include_manual: boolean;
+  /** Only these models, still filtered by the flags above. */
+  print_ids?: string[];
 };
 export type AiSuggestions = { total: number; items: Print[] };
 export type AiBulkResult = { accepted: number; rejected: number; failed: number };
