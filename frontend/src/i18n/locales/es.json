@@ -1522,20 +1522,7 @@
       "more": "Más",
       "years": "Años",
       "loadError": "No se pudo cargar tu actividad.",
-      "monthsShort": [
-        "ene",
-        "feb",
-        "mar",
-        "abr",
-        "may",
-        "jun",
-        "jul",
-        "ago",
-        "sept",
-        "oct",
-        "nov",
-        "dic"
-      ],
+      "monthsShort": ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sept", "oct", "nov", "dic"],
       "timeline": {
         "title": "Cronología de actividad",
         "emptyMonth": "Aún no hay actividad este mes.",
