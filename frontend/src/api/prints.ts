@@ -20,7 +20,9 @@ export type Plate = {
   size: number;
   url: string; // /print/{printId}/plate/{plateId}/file/{filename}
   thumb_url?: string | null; // /plate/{plateId}/thumb.jpg?v=... if a thumb exists
+  thumb_generated?: boolean; // the thumb is our own render, not a picture from an import or upload
   preview_glb_url?: string | null; // /plate/{plateId}/preview.glb?v=... once background pre-render finishes
+  render_url?: string | null; // /plate/{plateId}/render.png[?v=...]: grey shading for cards to tint; null if undrawable
 };
 
 export type PrintFile = {
@@ -35,6 +37,7 @@ export type PreviewImage = {
   id: string;
   position: number; // dense, 0-based, ordered; 0 is the default/main image
   url: string; // /preview-image/{id}/file.jpg?v=...
+  generated?: boolean; // our own render, not a picture from an import or upload
 };
 
 export type Author = {
@@ -85,6 +88,8 @@ export type Print = {
   plates: Plate[]; // ordered by position, length >= 1
   preview_images: PreviewImage[]; // ordered by position; [0] is the default/main gallery image
   thumb_url?: string | null; // denormalized = plates[0].thumb_url
+  thumb_generated?: boolean; // denormalized = plates[0].thumb_generated
+  render_url?: string | null; // the first plate's render_url that isn't null
   supporting_file_count: number;
   // Optional: an older backend (published separately) doesn't send it.
   total_size?: number;

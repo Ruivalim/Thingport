@@ -133,6 +133,7 @@ import {
   updateAiConnection,
 } from "../services/aiConnectionService";
 import { getDisabledProviders, PROVIDERS, setProviderEnabled } from "../services/providerSettingsService";
+import { CARD_PREVIEWS, getCardPreview, setCardPreview } from "../services/cardPreviewService";
 import { createLog } from "../services/auditLog";
 import { testFlaresolverr } from "../services/flaresolverr";
 
@@ -1080,6 +1081,22 @@ router.patch(
   asyncHandler(async (req, res) => {
     const body = parseBody(dashboardThumbnailsSchema, req.body);
     res.json({ thumbnails: await setDashboardThumbnails(req.userId!, body.thumbnails) });
+  }),
+);
+
+router.get(
+  "/settings/card-preview",
+  asyncHandler(async (req, res) => {
+    res.json({ preview: await getCardPreview(req.userId!) });
+  }),
+);
+
+const cardPreviewSchema = z.object({ preview: z.enum(CARD_PREVIEWS) });
+router.patch(
+  "/settings/card-preview",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(cardPreviewSchema, req.body);
+    res.json({ preview: await setCardPreview(req.userId!, body.preview) });
   }),
 );
 

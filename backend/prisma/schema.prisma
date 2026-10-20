@@ -138,6 +138,8 @@ model User {
   dashboardLayout          String?
   // The dashboard lists' model pictures, one of DASHBOARD_THUMBNAILS; null means "photos".
   dashboardThumbnails      String?
+  // What model cards lead with, one of CARD_PREVIEWS; null means "images".
+  cardPreview              String?
   // Where the dashboard's weather is for: { lat, lon, name, source }. Null until the user sets one.
   weatherLocation          Json?
   authorPreviewEnabled     Boolean           @default(true)

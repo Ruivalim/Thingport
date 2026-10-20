@@ -10,6 +10,7 @@ import { matchLanguage, SUPPORTED_LANGUAGES } from "../../../constants/languages
 import { ACCENT_COLORS, type AccentColor, type ThemeSelection } from "../../../constants/settingsOptions";
 import { setCachedAccentColor, useAccentColor } from "../../../hooks/useAccentColor";
 import { setCachedAuthorPreviewEnabled, useAuthorPreviewEnabled } from "../../../hooks/useAuthorPreviewEnabled";
+import { useCardPreview } from "../../../hooks/useCardPreview";
 import { accentSwatch } from "../../../theme";
 import ColorSwatches from "../../controls/ColorSwatches";
 import Segmented from "../../controls/Segmented";
@@ -26,13 +27,14 @@ type Props = {
   onUnauthorized?: () => void;
 };
 
-/** Theme, accent, language and author preview, each applied as it's changed. */
+/** Theme, accent, model card pictures, language and author preview, each applied as it's changed. */
 export default function AppearancePanel({ theme, onThemeChange, onUnauthorized }: Props) {
   const { t, i18n } = useTranslation("app");
   const authorPreview = useAuthorPreviewEnabled();
   const [authorPreviewError, setAuthorPreviewError] = React.useState<string | null>(null);
   const language = matchLanguage(i18n.resolvedLanguage ?? i18n.language);
   const accent = useAccentColor();
+  const [cardPreview, setCardPreview] = useCardPreview();
   const [accentError, setAccentError] = React.useState<string | null>(null);
 
   const changeAccent = async (next: AccentColor) => {
@@ -92,6 +94,22 @@ export default function AppearancePanel({ theme, onThemeChange, onUnauthorized }
               {accentError}
             </Typography>
           )}
+        </div>
+        <div>
+          <SectionLabel>
+            {t("appearance.cardPreview.heading")}
+            <HelpTip text={t("appearance.cardPreview.help")} />
+          </SectionLabel>
+          <Segmented
+            label={t("appearance.cardPreview.heading")}
+            value={cardPreview ?? "images"}
+            disabled={cardPreview === null}
+            onChange={setCardPreview}
+            options={[
+              { value: "images", label: t("appearance.cardPreview.images") },
+              { value: "renders", label: t("appearance.cardPreview.renders") },
+            ]}
+          />
         </div>
         <div>
           <SectionLabel>{t("profile.language.heading")}</SectionLabel>

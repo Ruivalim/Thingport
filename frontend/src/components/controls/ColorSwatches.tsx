@@ -12,10 +12,12 @@ type Props<T extends string> = {
   options: { value: T; label: string; color: string; contrast: string }[];
   onChange: (value: T) => void;
   label: string;
+  /** Without Segmented's track, for a toolbar that's already a surface of its own. */
+  bare?: boolean;
 };
 
 /** Round colour swatches on Segmented's track; the chosen one is ringed and ticked. */
-export default function ColorSwatches<T extends string>({ value, options, onChange, label }: Props<T>) {
+export default function ColorSwatches<T extends string>({ value, options, onChange, label, bare }: Props<T>) {
   return (
     <Box
       component="fieldset"
@@ -27,11 +29,9 @@ export default function ColorSwatches<T extends string>({ value, options, onChan
         flexWrap: "wrap",
         maxWidth: "100%",
         gap: 0.75,
-        p: "6px",
-        borderRadius: "10px",
-        bgcolor: trackBg,
-        border: 1,
-        borderColor: "divider",
+        p: bare ? "4px" : "6px",
+        border: 0,
+        ...(!bare && { borderRadius: "10px", bgcolor: trackBg, border: 1, borderColor: "divider" }),
       }}
     >
       {options.map((option) => {

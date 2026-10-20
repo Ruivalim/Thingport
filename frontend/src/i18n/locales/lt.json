@@ -1650,6 +1650,12 @@
         "amber": "Thangs geltona",
         "teal": "MyMiniFactory žydra",
         "purple": "Cults3D violetinė"
+      },
+      "cardPreview": {
+        "heading": "Modelių kortelės",
+        "images": "Nuotraukos",
+        "renders": "3D vaizdai",
+        "help": "Ką modelių kortelės rodo pirmiausia. Nuotraukos: paveikslėliai, su kuriais modelis atkeliavo, arba 3D vaizdas, jei jų nėra. 3D vaizdai: kiekvieno modelio vaizdas jūsų akcento spalva arba jo nuotraukos, jei failo nupiešti nepavyksta."
       }
     },
     "configuration": {
@@ -2689,16 +2695,7 @@
         "spin": "Sukimas",
         "zoomIn": "Priartinti",
         "zoomOut": "Nutolinti",
-        "colorLabel": "Modelio spalva: {{name}}",
-        "colors": {
-          "red": "Raudona",
-          "orange": "Oranžinė",
-          "yellow": "Geltona",
-          "green": "Žalia",
-          "blue": "Mėlyna",
-          "purple": "Violetinė",
-          "grey": "Pilka"
-        }
+        "color": "Modelio spalva"
       },
       "downloadFailed": "Nepavyko atsisiųsti. Bandykite dar kartą.",
       "deleteFailed": "Nepavyko ištrinti modelio.",
