@@ -500,6 +500,11 @@
         "loadError": "Couldn't load today's model.",
         "hint": "Drag to spin, click to open"
       },
+      "activityHeatmap": {
+        "title": "Activity",
+        "total_one": "{{count}} activity",
+        "total_other": "{{count}} activities"
+      },
       "widgets": {
         "open": "Customize dashboard",
         "title": "Customize dashboard",

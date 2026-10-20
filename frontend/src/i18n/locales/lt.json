@@ -501,6 +501,12 @@
         "loadError": "Nepavyko įkelti šiandienos modelio.",
         "hint": "Tempkite, kad pasuktumėte, spustelėkite, kad atidarytumėte"
       },
+      "activityHeatmap": {
+        "title": "Veikla",
+        "total_one": "{{count}} veiksmas",
+        "total_few": "{{count}} veiksmai",
+        "total_other": "{{count}} veiksmų"
+      },
       "widgets": {
         "open": "Tvarkyti valdymo skydą",
         "title": "Tvarkyti valdymo skydą",

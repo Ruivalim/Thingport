@@ -34,13 +34,15 @@ const BASE: DashboardWidgetId[] = [
   "topAuthors",
   "topProviders",
 ];
-const EXTRAS: DashboardWidgetId[] = ["clock", "weather", "featuredModel"];
+const EXTRAS: DashboardWidgetId[] = ["clock", "weather", "featuredModel", "activityHeatmap"];
 
 describe("puzzle layout", () => {
-  // The extras come as a block of two rows, so they fit exactly when all or none are shown.
+  // The extras come as a block of three rows, so they fit exactly when all or none are shown. The
+  // heatmap is a whole row of its own, so it fits on its own too.
   it.each([
     ["no extras", []],
     ["every extra", EXTRAS],
+    ["only the activity heatmap", ["activityHeatmap"]],
   ])("packs the default boxes with %s and leaves no holes", (_, extras) => {
     const pieces = puzzlePieces([...BASE, ...(extras as DashboardWidgetId[])].map((id) => ({ id })));
     expect(pieces).toHaveLength(BASE.length + (extras as DashboardWidgetId[]).length);
