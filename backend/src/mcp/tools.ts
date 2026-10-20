@@ -6,7 +6,7 @@ import { HttpError } from "../utils/fileUtils";
 import { SYSTEM_COLLECTIONS, systemCollectionKeyForId } from "../services/collectionService";
 import { getDashboardSummary } from "../services/dashboardService";
 import { printOutById } from "../services/printLoader";
-import { listPrints, listTagsOf, PRINT_SORT_MODES, SELF_AUTHOR_ID } from "../services/printQuery";
+import { listPrints, PRINT_SORT_MODES, SELF_AUTHOR_ID } from "../services/printQuery";
 import { search } from "../services/searchService";
 import { addModelsToCollection, createCollection, isSystemCollectionId } from "../services/collectionService";
 import { getImportTask, startImportTask, type ImportTaskState } from "../services/importTaskService";
@@ -235,11 +235,30 @@ const getCollection: McpToolDefinition = {
 const listTags: McpToolDefinition = {
   name: "list_tags",
   title: "List tags",
-  description: "Every tag in the library, so models can then be listed by the exact tag names it uses.",
+  description:
+    "The library's tags, most used first, with how many models have each, so models can then be listed by the exact " +
+    "tag names it uses. A big library has thousands: narrow them with query.",
   readOnly: true,
-  inputSchema: {},
-  async run({ userId }) {
-    return { tags: await listTagsOf(userId, {}) };
+  inputSchema: {
+    query: z.string().optional().describe("Only tags containing this, ignoring case, e.g. 'drag' for 'dragon'."),
+    limit: z.number().int().min(1).max(500).optional().describe("How many to return, up to 500 (default 200)."),
+  },
+  async run({ userId }, args) {
+    const query = ((args.query as string | undefined) ?? "").trim().toLowerCase();
+    const rows = await prisma.print.findMany({ where: { userId }, select: { tags: true } });
+    // Counted case-insensitively, under the spelling seen first, as the library's tag list does.
+    const counts = new Map<string, { tag: string; model_count: number }>();
+    for (const row of rows) {
+      for (const tag of new Set(row.tags.map((t) => t.trim()).filter(Boolean))) {
+        const key = tag.toLowerCase();
+        if (query && !key.includes(query)) continue;
+        const entry = counts.get(key);
+        if (entry) entry.model_count++;
+        else counts.set(key, { tag, model_count: 1 });
+      }
+    }
+    const all = [...counts.values()].toSorted((a, b) => b.model_count - a.model_count || a.tag.localeCompare(b.tag));
+    return { tags: all.slice(0, (args.limit as number | undefined) ?? 200), total: all.length };
   },
 };
 

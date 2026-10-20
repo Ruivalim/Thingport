@@ -234,7 +234,7 @@
             },
             "list_tags": {
               "title": "Žymių sąrašas",
-              "description": "Matyti visas bibliotekos žymes."
+              "description": "Matyti savo žymes, dažniausiai naudojamas pirmiau."
             },
             "list_categories": {
               "title": "Kategorijų sąrašas",

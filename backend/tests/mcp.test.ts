@@ -314,11 +314,23 @@ describe("the tools", () => {
     expect(other.isError).toBe(true);
   });
 
-  it("list_tags lists only the user's tags", async () => {
+  it("list_tags lists only the user's tags, most used first, and narrows by query", async () => {
     const { data } = await callTool(alice.token, "list_tags");
-    expect(data.tags.map((t: string) => t.toLowerCase())).toEqual(
-      expect.arrayContaining(["dragon", "flexi", "calibration"]),
+    const byTag = new Map(
+      data.tags.map((t: { tag: string; model_count: number }) => [t.tag.toLowerCase(), t.model_count]),
     );
+    expect(byTag.get("dragon")).toBe(1);
+    expect(byTag.get("calibration")).toBe(1);
+    expect(data.total).toBe(3);
+
+    const narrowed = await callTool(alice.token, "list_tags", { query: "DRAG", limit: 5 });
+    expect(narrowed.data.tags.map((t: { tag: string }) => t.tag.toLowerCase())).toEqual(["dragon"]);
+    // Bob's "dragon" model doesn't count towards Alice's tags.
+    expect(narrowed.data.tags[0].model_count).toBe(1);
+
+    const one = await callTool(alice.token, "list_tags", { limit: 1 });
+    expect(one.data.tags).toHaveLength(1);
+    expect(one.data.total).toBe(3);
   });
 
   it("list_categories and library_stats answer for the user", async () => {

@@ -45,7 +45,7 @@ These read your library, and are on for a new token:
 | `get_model`         | One model's description, files, tags, category, author, collections and where it was imported from.     |
 | `list_collections`  | Your collections and how many models each holds, plus Favourites and Browsing History.                  |
 | `get_collection`    | The models in one collection.                                                                           |
-| `list_tags`         | Every tag in your library.                                                                              |
+| `list_tags`         | Your tags, most used first, narrowed by a word if you like.                                             |
 | `list_categories`   | Your category and folder tree.                                                                          |
 | `get_author`        | A designer, where to find them, and their models in your library.                                       |
 | `library_stats`     | Your totals, and your most viewed, most printed and newest models.                                      |

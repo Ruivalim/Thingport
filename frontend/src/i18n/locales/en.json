@@ -233,7 +233,7 @@
             },
             "list_tags": {
               "title": "List tags",
-              "description": "See every tag in your library."
+              "description": "See your tags, most used first."
             },
             "list_categories": {
               "title": "List categories",
