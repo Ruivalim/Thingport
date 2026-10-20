@@ -1,7 +1,7 @@
 Thingport Grab {{version}}. Changes: {{changes}}
 
 WHAT IT DOES
-Imports 3D-printing models from model sites (MakerWorld, Printables, Thingiverse, and others the user enables) into the user's own self-hosted Thingport server (open source: https://github.com/TautvydasDerzinskas/Thingport). Data goes only to the user's server and the model sites themselves, never to the developer or anyone else.
+Imports 3D-printing models from model sites (MakerWorld, Printables, Thingiverse, and others the user enables) into the user's own self-hosted Thingport server (open source: https://github.com/TautvydasDerzinskas/Thingport). Data goes only to the user's server, the model sites (including id.snapmaker.com to renew the Snapmaker sign-in) and the browser's own sync storage (recent imports list); never to the developer.
 
 HOW TO TEST
 1. A Thingport server is required. {{testServer}}
@@ -10,7 +10,7 @@ HOW TO TEST
 
 PERMISSIONS
 - storage: server address, sign-in, recent imports.
-- cookies: a model site's sign-in cookies, read on that site only for its downloads, sent only to the user's server. Snapmaker's is renewed only with id.snapmaker.com.
+- cookies: a model site's sign-in cookies, read on that site only for its downloads, sent only to the user's server.
 - downloads: reads the link of a download MakerWorld starts, then cancels it.
 - alarms: renews the Snapmaker sign-in, if enabled.
 - scripting: registers the content script on optional sites once allowed; on MakerOnline runs a page function (world: MAIN) calling the site's own download endpoint, as its Download button does.
