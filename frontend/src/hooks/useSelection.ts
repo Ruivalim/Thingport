@@ -57,9 +57,9 @@ export function useSelection<T>(
         const from = anchor ? pickable.findIndex((item) => keyOf(item) === anchor) : -1;
         const to = pickable.findIndex((item) => keyOf(item) === key);
         if (to < 0) return prev;
-        if (range && from >= 0) {
+        if (range && anchor !== null && from >= 0) {
           // The range takes the state the anchor was left in, as a file manager does.
-          const select = prev.has(anchor!);
+          const select = prev.has(anchor);
           for (const item of pickable.slice(Math.min(from, to), Math.max(from, to) + 1)) {
             if (select) next.add(keyOf(item));
             else next.delete(keyOf(item));

@@ -221,7 +221,7 @@ export default function MergeDialog({ open, onClose, kind, items, loadPreview, o
                       {added !== null && added > 0 && (
                         <Box component="span" sx={{ color: "success.main", fontWeight: 600 }}>
                           {" · +"}
-                          <RollingNumber value={added} /> {t("models:merge.new")}
+                          <RollingNumber value={added} /> {t("models:merge.new", { count: added })}
                         </Box>
                       )}
                     </Typography>

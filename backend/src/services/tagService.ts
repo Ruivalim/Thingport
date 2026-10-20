@@ -26,10 +26,29 @@ function rewrite(tags: string[], from: Set<string>, to: string | null): string[]
   return result;
 }
 
-/** Swaps `from` for `to` (or removes them) on every model and collection of the user's, in one transaction so two
- *  rewrites can't each save a model's tags over the other's. Answers how many models had each of `from`, the models
- *  changed, and how many of those hadn't had `to`. */
+/** Thrown inside a rewrite when a row's tags changed after they were read, to roll the rewrite back and retry it. */
+class TagsChanged extends Error {}
+
+/** Swaps `from` for `to` (or removes them) on every model and collection of the user's, in one transaction. Each
+ *  write only lands if the row still has the tags that were read, so a concurrent edit is never saved over: the
+ *  rewrite is rolled back and retried instead. Answers how many models had each of `from`, the models changed, and
+ *  how many of those hadn't had `to`. */
 async function rewriteTags(
+  userId: string,
+  from: Set<string>,
+  to: string | null,
+): Promise<{ counts: Map<string, number>; printIds: string[]; gained: number }> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await rewriteTagsOnce(userId, from, to);
+    } catch (err) {
+      if (!(err instanceof TagsChanged)) throw err;
+      if (attempt >= 3) throw new HttpError(409, "Tags changed while saving, try again");
+    }
+  }
+}
+
+async function rewriteTagsOnce(
   userId: string,
   from: Set<string>,
   to: string | null,
@@ -48,14 +67,25 @@ async function rewriteTags(
     return hit;
   });
   const taggedCollections = collections.filter((c) => c.tags.some((tag) => from.has(normalizeTag(tag))));
-  await prisma.$transaction([
-    ...tagged.map((print) =>
-      prisma.print.update({ where: { id: print.id }, data: { tags: rewrite(print.tags, from, to) } }),
-    ),
-    ...taggedCollections.map((c) =>
-      prisma.collection.update({ where: { id: c.id }, data: { tags: rewrite(c.tags, from, to) } }),
-    ),
-  ]);
+  await prisma.$transaction(
+    async (tx) => {
+      for (const print of tagged) {
+        const { count } = await tx.print.updateMany({
+          where: { id: print.id, tags: { equals: print.tags } },
+          data: { tags: rewrite(print.tags, from, to) },
+        });
+        if (!count) throw new TagsChanged();
+      }
+      for (const c of taggedCollections) {
+        const { count } = await tx.collection.updateMany({
+          where: { id: c.id, tags: { equals: c.tags } },
+          data: { tags: rewrite(c.tags, from, to) },
+        });
+        if (!count) throw new TagsChanged();
+      }
+    },
+    { timeout: 60_000 },
+  );
   return { counts, printIds: tagged.map((print) => print.id), gained };
 }
 
