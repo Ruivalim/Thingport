@@ -127,6 +127,8 @@ model User {
   slicer                   String?
   // "light" | "dark" | "system"; null means never set.
   themePreference          String?
+  // One of ACCENT_COLORS; null means Thingport green.
+  accentColor              String?
   // Which tree the models page shows: "categories" | "folders"; null means categories.
   categoriesView           String?
   // The dashboard widgets the user has switched on or off, as { [widgetId]: boolean }. A widget

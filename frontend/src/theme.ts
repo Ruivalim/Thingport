@@ -1,7 +1,7 @@
-import { alpha, createTheme, darken, type Theme, type ThemeOptions } from "@mui/material/styles";
-import type { ResolvedTheme } from "./constants/settingsOptions";
+import { alpha, createTheme, darken, lighten, type Theme, type ThemeOptions } from "@mui/material/styles";
+import { DEFAULT_ACCENT, type AccentColor, type ResolvedTheme } from "./constants/settingsOptions";
 
-export type { ResolvedTheme };
+export type { AccentColor, ResolvedTheme };
 
 export const THEME_IDS: ResolvedTheme[] = ["light", "dark"];
 
@@ -69,12 +69,15 @@ type ThemeDef = {
   headingText: string;
 };
 
-const THEME_DEFS: Record<ResolvedTheme, ThemeDef> = {
+type AccentKeys = "accent" | "accentLight" | "accentStrong" | "accentSoft" | "accentContrast" | "selectedNavText";
+/** A theme before its accent: where the two tinted backgrounds are left out, they're taken from the accent. */
+type BaseThemeDef = Omit<ThemeDef, AccentKeys | "subnavBackground" | "selectedNavBackground"> &
+  Partial<Pick<ThemeDef, "subnavBackground" | "selectedNavBackground">>;
+
+const THEME_DEFS: Record<ResolvedTheme, BaseThemeDef> = {
   light: {
     mode: "light",
     pageBackground: "#f7f7f7",
-    // A shade under the page, faintly green: neither the white sidebar nor the content.
-    subnavBackground: "#ecf1ec",
     panel: "#ffffff",
     panelStrong: "#ffffff",
     border: "#ebebeb",
@@ -82,17 +85,10 @@ const THEME_DEFS: Record<ResolvedTheme, ThemeDef> = {
     text: "#1f1f1f",
     textMuted: "#858585",
     textSubtle: "#858585",
-    accent: "#00b800",
-    accentLight: "#5be584",
-    accentStrong: darken("#00b800", 0.15),
-    accentSoft: alpha("#00b800", 0.16),
-    accentContrast: "#ffffff",
     altText: "rgb(255, 114, 32)",
     modelColor: "#cbd5e1",
     modelEmissive: "#94a3b8",
     navInactiveText: "#858585",
-    selectedNavBackground: alpha("#5be584", 0.2),
-    selectedNavText: "#00b800",
     headingText: "#1f1f1f",
   },
   dark: {
@@ -107,20 +103,72 @@ const THEME_DEFS: Record<ResolvedTheme, ThemeDef> = {
     text: "#828690",
     textMuted: "#828690",
     textSubtle: "#828690",
-    accent: "#00b800",
-    accentLight: "#5be584",
-    accentStrong: darken("#00b800", 0.15),
-    accentSoft: alpha("#00b800", 0.16),
-    accentContrast: "#ffffff",
     altText: "rgb(255, 114, 32)",
     modelColor: "#e2e8f0",
     modelEmissive: "#475569",
     navInactiveText: "#969ba0",
     selectedNavBackground: "linear-gradient(to right, rgb(24, 31, 57) 0%, rgba(49, 206, 255, 0) 100%)",
-    selectedNavText: "#00b800",
     headingText: "#ffffff",
   },
 };
+
+type AccentDef = {
+  main: string;
+  /** Defaults to a lightened main. */
+  light?: string;
+  /** Text on a filled accent: white unless the accent is too pale for it. */
+  contrastText?: string;
+  /** Light mode's sub-menu background: a shade under the page, faintly tinted, so it's neither the white sidebar
+   *  nor the content. Defaults to a little of the accent in grey. */
+  lightSubnav?: string;
+};
+
+// Picked to be far apart: the providers' greens (MakerWorld, Creality) and violets (NexPrint) are left out as too
+// close to Thingport green and Cults3D purple.
+const ACCENTS: Record<AccentColor, AccentDef> = {
+  green: { main: "#00b800", light: "#5be584", lightSubnav: "#ecf1ec" },
+  blue: { main: "#248bfb" }, // Thingiverse
+  orange: { main: "#fa6831" }, // Printables
+  amber: { main: "#f2a900", contrastText: "#1f1f1f" }, // Thangs, a shade deeper to read on white
+  teal: { main: "#00b39a" }, // MyMiniFactory, likewise
+  purple: { main: "#822ef5" }, // Cults3D
+};
+
+/** The accent's colour and the colour that reads on it, for pickers. */
+export function accentSwatch(accent: AccentColor): { color: string; contrast: string } {
+  const { main, contrastText = "#ffffff" } = ACCENTS[accent];
+  return { color: main, contrast: contrastText };
+}
+
+/** `weight` of `color` over `base`, both hex. */
+function mixHex(base: string, color: string, weight: number): string {
+  const channels = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  const a = channels(base);
+  const b = channels(color);
+  return `#${a
+    .map((v, i) =>
+      Math.round(v + (b[i] - v) * weight)
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")}`;
+}
+
+function withAccent(d: BaseThemeDef, accent: AccentColor): ThemeDef {
+  const a = ACCENTS[accent];
+  const light = a.light ?? lighten(a.main, 0.35);
+  return {
+    ...d,
+    subnavBackground: d.subnavBackground ?? a.lightSubnav ?? mixHex("#f2f2f2", a.main, 0.06),
+    selectedNavBackground: d.selectedNavBackground ?? alpha(light, 0.2),
+    accent: a.main,
+    accentLight: light,
+    accentStrong: darken(a.main, 0.15),
+    accentSoft: alpha(a.main, 0.16),
+    accentContrast: accentSwatch(accent).contrast,
+    selectedNavText: a.main,
+  };
+}
 
 /** The veil behind modals and the open search. */
 export function veilColor(mode: "light" | "dark"): string {
@@ -128,8 +176,8 @@ export function veilColor(mode: "light" | "dark"): string {
 }
 export const VEIL_BLUR = "blur(1.5px)";
 
-export function buildTheme(id: ResolvedTheme): Theme {
-  const d = THEME_DEFS[id];
+export function buildTheme(id: ResolvedTheme, accent: AccentColor = DEFAULT_ACCENT): Theme {
+  const d = withAccent(THEME_DEFS[id], accent);
   const options: ThemeOptions = {
     palette: {
       mode: d.mode,
@@ -211,10 +259,6 @@ export function buildTheme(id: ResolvedTheme): Theme {
 
 export function subtleTextColor(id: ResolvedTheme): string {
   return THEME_DEFS[id].textSubtle;
-}
-
-export function accentSoftColor(id: ResolvedTheme): string {
-  return THEME_DEFS[id].accentSoft;
 }
 
 /** The border colour for container edges: the divider in light mode, invisible in dark mode where

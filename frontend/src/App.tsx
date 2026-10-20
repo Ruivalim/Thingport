@@ -46,6 +46,7 @@ import { settingsApi, type PreviewMode } from "./api/settings";
 import { clearToken, clearUser, readToken, readUser, storeToken, storeUser } from "./utils/auth";
 import { type AppSettings, type MakerWorldSettings, loadSettings, saveSettings } from "./utils/settings";
 import { useResolvedTheme } from "./hooks/useResolvedTheme";
+import { setCachedAccentColor, useAccentColor } from "./hooks/useAccentColor";
 import type { ResolvedTheme, ThemeSelection } from "./constants/settingsOptions";
 import { buildTheme } from "./theme";
 
@@ -309,7 +310,8 @@ export default function App() {
   // Server-persisted so it follows the account across devices.
   const [themeSelection, setThemeSelection] = React.useState<ThemeSelection>("light");
   const resolvedTheme = useResolvedTheme(themeSelection);
-  const muiTheme = React.useMemo(() => buildTheme(resolvedTheme), [resolvedTheme]);
+  const accent = useAccentColor();
+  const muiTheme = React.useMemo(() => buildTheme(resolvedTheme, accent), [resolvedTheme, accent]);
   // index.html's theme-color tags follow the OS; this makes the title bar follow the theme
   // actually shown, which can be a manual light/dark choice.
   React.useEffect(() => {
@@ -333,15 +335,16 @@ export default function App() {
     if (!token) return;
     (async () => {
       try {
-        const { theme } = await settingsApi.getTheme();
+        const saved = await settingsApi.getTheme();
         // Null means never set; keep the current theme.
-        if (theme) setThemeSelection(theme);
+        if (saved.theme) setThemeSelection(saved.theme);
+        if (saved.accent) setCachedAccentColor(saved.accent);
       } catch {}
     })();
   }, [token]);
   const handleThemeChange = React.useCallback((selected: ThemeSelection) => {
     setThemeSelection(selected);
-    void settingsApi.updateTheme(selected).catch(() => {});
+    void settingsApi.updateTheme({ theme: selected }).catch(() => {});
   }, []);
   React.useEffect(() => {
     saveSettings(settings);

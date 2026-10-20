@@ -1,6 +1,6 @@
 import { authHeaders } from "../utils/auth";
 import { apiBase, assertOk, readErrorMessage, UnauthorizedError } from "./client";
-import type { ThemeSelection } from "../constants/settingsOptions";
+import type { AccentColor, ThemeSelection } from "../constants/settingsOptions";
 import { invalidateAiCategorizationStatus } from "./aiCategorization";
 
 export type StorageToken =
@@ -183,6 +183,8 @@ export type VersionCheck = {
 export const FRONTEND_VERSION: string = import.meta.env.VITE_APP_VERSION as string;
 
 export const FRONTEND_GIT_SHA: string | null = (import.meta.env.VITE_GIT_SHA as string | undefined) || null;
+
+export type ThemePreferences = { theme: ThemeSelection | null; accent: AccentColor | null };
 
 export const settingsApi = {
   getAiCategorization: async (): Promise<AiCategorizationSettings> => {
@@ -670,17 +672,17 @@ export const settingsApi = {
   },
 
   // Null means never set.
-  getTheme: async (): Promise<{ theme: ThemeSelection | null }> => {
+  getTheme: async (): Promise<ThemePreferences> => {
     const res = await fetch(`${apiBase()}/settings/theme`, { headers: authHeaders() });
     assertOk(res, "Failed to load theme setting");
     return res.json();
   },
 
-  updateTheme: async (theme: ThemeSelection): Promise<{ theme: ThemeSelection | null }> => {
+  updateTheme: async (patch: Partial<ThemePreferences>): Promise<ThemePreferences> => {
     const res = await fetch(`${apiBase()}/settings/theme`, {
       method: "PATCH",
       headers: authHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ theme }),
+      body: JSON.stringify(patch),
     });
     if (res.status === 401) throw new UnauthorizedError();
     if (!res.ok) {
