@@ -1581,7 +1581,7 @@
     },
     "providers": {
       "title": "Providers",
-      "subtitle": "The sites you import models from. Right-click one to connect or disconnect it.",
+      "subtitle": "The sites you import models from. Right-click one to connect it, disconnect it or read about it.",
       "connected": "Connected",
       "notConnected": "Not connected",
       "connect": "Connect",
@@ -1773,6 +1773,162 @@
         "readMore": "Read the guide",
         "extensionRecommended": "Thingport Grab, the browser extension, is the recommended way to import: it works right on the model page, brings in whole collections, and some sites only work with it. The bookmarklet is a lighter alternative for one model at a time.",
         "getExtension": "Get Grab"
+      }
+    },
+    "providerAbout": {
+      "about": "About",
+      "aboutName": "About {{name}}",
+      "tabsLabel": "View",
+      "tabs": {
+        "about": "About",
+        "compare": "Compare"
+      },
+      "sections": {
+        "needs": "Needs",
+        "imports": "Imports",
+        "setup": "Setup"
+      },
+      "rows": {
+        "signIn": "Sign-in",
+        "grab": "Thingport Grab",
+        "flaresolverr": "FlareSolverr"
+      },
+      "rowHelp": {
+        "grab": "Thingport's browser extension. It imports from a model's page and hands your browser's sign-in to Thingport.",
+        "flaresolverr": "Part of the Docker stack. It gets past Cloudflare's checks with a real browser; set it in Administration → Connections."
+      },
+      "need": {
+        "required": "Required",
+        "recommended": "Recommended",
+        "optional": "Optional",
+        "none": "Not used"
+      },
+      "signIn": {
+        "none": "None",
+        "admin": "Admin's key",
+        "user": "Your sign-in",
+        "adminUser": "Admin's key + yours",
+        "userOptional": "Optional"
+      },
+      "features": {
+        "models": "Models",
+        "profiles": "Print profiles",
+        "collections": "Collections",
+        "likes": "Likes",
+        "sync": "Sync",
+        "paid": "Paid models"
+      },
+      "flareNote": {
+        "recommended": "Gets past Cloudflare when it challenges the server. Without it, those imports fail.",
+        "optional": "Only a fallback, if Cloudflare ever steps in.",
+        "none": "Not needed."
+      },
+      "guide": "Full guide",
+      "getGrab": "Get Thingport Grab",
+      "visit": "Open {{host}}",
+      "compareLabel": "What each provider needs and imports",
+      "off": "Turned off",
+      "yes": "Yes",
+      "no": "No",
+      "providers": {
+        "makerworld": {
+          "summary": "Bambu Lab's platform for sharing 3D printable models, many with tuned print profiles. Open to any printer, with MakerLab tools for customising models.",
+          "signIn": "Your own MakerWorld session cookie.",
+          "grab": "Reads the cookie for you, and imports whole collections without running into MakerWorld's rate limits.",
+          "setup": [
+            "Install Thingport Grab and import once from a MakerWorld page while signed in: it connects MakerWorld for you.",
+            "Or by hand: copy the token cookie from your browser's developer tools (Application → Cookies → makerworld.com).",
+            "Right-click MakerWorld in Configuration → Providers, choose Connect and paste it."
+          ]
+        },
+        "printables": {
+          "summary": "Prusa Research's free model repository, formerly PrusaPrinters, with contests and Prusameters rewards. Its files work on any printer.",
+          "signIn": "Nothing to connect.",
+          "grab": "Needed only for your private collections and likes, which Printables shows to you alone.",
+          "setup": [
+            "Nothing to set up: paste a Printables link, or import from its page with Thingport Grab.",
+            "For your private collections and likes, visit Printables signed in, with Thingport Grab."
+          ]
+        },
+        "thingiverse": {
+          "summary": "One of the oldest and largest libraries of user-made 3D printable designs, most of them free and openly licensed.",
+          "signIn": "One App Token for everyone, set by an admin.",
+          "grab": "Handy for importing from Thingiverse's pages, but not needed.",
+          "setup": [
+            "Sign in at thingiverse.com and open thingiverse.com/apps/create.",
+            "Create an app of a type without a redirect URL, such as Desktop app, and copy its App Token.",
+            "An admin pastes it in Configuration → Providers → Thingiverse, or in Administration → Providers."
+          ]
+        },
+        "myminifactory": {
+          "summary": "A curated marketplace of free and paid 3D printable files, best known for tabletop miniatures. Models are checked before they're listed.",
+          "signIn": "An API key set by an admin; your own sign-in adds the models you bought.",
+          "grab": "Connects your account when you just visit myminifactory.com.",
+          "setup": [
+            "An admin creates an application at myminifactory.com/settings/developer and saves its API key in Administration → Providers.",
+            "For bought models, open myminifactory.com signed in with Thingport Grab, or paste your PHPSESSID cookie in Configuration → Providers."
+          ]
+        },
+        "snapmaker": {
+          "summary": "Snapmaker's model platform, built around its U1 printer. Featured models are test-printed, with profiles tuned for multi-colour prints.",
+          "signIn": "Your own sign-in. It lasts a day.",
+          "grab": "The only thing that renews the sign-in. Without it, you paste a new one every day.",
+          "setup": [
+            "Install Thingport Grab, enable it on Snapmaker Space and open space.snapmaker.com signed in.",
+            "Grab then keeps the sign-in fresh while your browser is open.",
+            "By hand: paste the login_access_token cookie in Configuration → Providers. It lasts a day."
+          ]
+        },
+        "makeronline": {
+          "summary": "Anycubic's model platform: free and paid models, designer contests and an AI text-to-3D tool.",
+          "signIn": "None to import; your sign-in adds your likes and private collections.",
+          "grab": "Grab downloads every MakerOnline file, in a makeronline.com page. Imports started elsewhere wait for it.",
+          "setup": [
+            "Install Thingport Grab and enable it on MakerOnline.",
+            "Import from a model page, or open any makeronline.com page to bring in the models waiting for Grab.",
+            "Signed in there, Grab also connects your account for your likes and private collections."
+          ]
+        },
+        "crealitycloud": {
+          "summary": "Creality's 3D printing platform: a large library of free and premium models, with cloud slicing and remote printing.",
+          "signIn": "Your own sign-in. It lasts a week and isn't renewed.",
+          "grab": "Sends each new sign-in as you sign in on crealitycloud.com.",
+          "setup": [
+            "Install Thingport Grab, enable it on Creality Cloud and open crealitycloud.com signed in.",
+            "By hand: copy the Cookie header of a crealitycloud.com/api request and paste it in Configuration → Providers.",
+            "After a week, sign in there again to reconnect."
+          ]
+        },
+        "nexprint": {
+          "summary": "Elegoo's open model platform, launched in 2025. It mixes Elegoo's own library with community designs, and works with Elegoo Slicer and OrcaSlicer.",
+          "signIn": "Your own sign-in, which the site renews as you use it.",
+          "grab": "Sends the renewed sign-in as you visit nexprint.com.",
+          "setup": [
+            "Install Thingport Grab, enable it on NexPrint and open nexprint.com signed in.",
+            "By hand: copy the Authorization header of a nexprint.com/gateway request and paste it in Configuration → Providers."
+          ]
+        },
+        "thangs": {
+          "summary": "A 3D model search engine by Physna that finds models by their shape as well as their name, with a marketplace and designer memberships.",
+          "signIn": "Your own sign-in; Thingport renews it for about a year.",
+          "grab": "Connects your account in one visit to thangs.com.",
+          "setup": [
+            "Install Thingport Grab, enable it on Thangs and open thangs.com signed in.",
+            "By hand: copy the Cookie header of a thangs.com/api request and paste it in Configuration → Providers.",
+            "Free accounts download a limited number of models a day."
+          ]
+        },
+        "cults3d": {
+          "summary": "A French marketplace for free and paid 3D printable designs, founded in 2014, and a social network for makers.",
+          "signIn": "Your own API key, and your browser's sign-in for files.",
+          "grab": "Sends the browser's sign-in and Cloudflare clearance. Thingport must reach the internet from that browser's IP address.",
+          "flaresolverr": "Doesn't help: its browser can't hand over a download link.",
+          "setup": [
+            "Make an API key at cults3d.com/en/api/keys.",
+            "Right-click Cults3D in Configuration → Providers, choose Connect, and enter your nickname and the key.",
+            "Open cults3d.com signed in with Thingport Grab, so its files can download."
+          ]
+        }
       }
     }
   },

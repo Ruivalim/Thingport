@@ -2,6 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
+import ButtonBase from "@mui/material/ButtonBase";
 import Chip from "@mui/material/Chip";
 import Dialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
@@ -21,6 +22,7 @@ import { useConfirm } from "../../components/ConfirmProvider";
 import { COMING_SOON_PROVIDERS, ProviderLogo } from "../../components/Layout/ConfigurationDialog/providerLogos";
 import SectionHeader from "../../components/SectionHeader";
 import { publishProviders } from "../../hooks/useDisabledProviders";
+import { useProviderAbout } from "../../components/providerAbout/ProviderAboutProvider";
 import ProviderKeySection, { type KeyedProvider } from "./ProviderKeySection";
 
 type Props = {
@@ -147,13 +149,17 @@ export default function ProvidersPage({ onUnauthorized }: Props) {
               alignItems="center"
               sx={{ px: 2, py: 1.5, "&:not(:last-of-type)": { borderBottom: 1, borderColor: "divider" } }}
             >
-              <Box sx={{ flexShrink: 0, lineHeight: 0, opacity: enabled ? 1 : 0.45 }}>
-                <ProviderLogo id={id} size={32} />
-              </Box>
+              <AboutButton id={id} name={NAMES[id]}>
+                <Box sx={{ flexShrink: 0, lineHeight: 0, opacity: enabled ? 1 : 0.45 }}>
+                  <ProviderLogo id={id} size={32} />
+                </Box>
+              </AboutButton>
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography variant="body1" fontWeight={600}>
-                  {NAMES[id]}
-                </Typography>
+                <AboutButton id={id} name={NAMES[id]} tabIndex={-1}>
+                  <Typography variant="body1" fontWeight={600}>
+                    {NAMES[id]}
+                  </Typography>
+                </AboutButton>
                 <Typography variant="body2" color="text.secondary">
                   {t(`adminSettings.providers.descriptions.${id}`)}
                 </Typography>
@@ -232,5 +238,41 @@ export default function ProvidersPage({ onUnauthorized }: Props) {
         </DialogContent>
       </Dialog>
     </Stack>
+  );
+}
+
+/** The logo or name of a provider: opens its About dialog. The name repeats the logo's button, so it's skipped by Tab. */
+function AboutButton({
+  id,
+  name,
+  tabIndex,
+  children,
+}: {
+  id: ImportProvider;
+  name: string;
+  tabIndex?: number;
+  children: React.ReactNode;
+}) {
+  const { t } = useTranslation("app");
+  const openAbout = useProviderAbout(id);
+  if (!openAbout) return <>{children}</>;
+  return (
+    <Tooltip title={t("providerAbout.aboutName", { name })}>
+      <ButtonBase
+        onClick={openAbout}
+        tabIndex={tabIndex}
+        aria-label={t("providerAbout.aboutName", { name })}
+        sx={{
+          borderRadius: "8px",
+          textAlign: "left",
+          transition: "transform 150ms ease",
+          "&:hover": { transform: "translateY(-1px)", "& .MuiTypography-root": { textDecoration: "underline" } },
+          "&.Mui-focusVisible": { outline: 2, outlineColor: "primary.main", outlineOffset: 2 },
+          "@media (prefers-reduced-motion: reduce)": { transition: "none", "&:hover": { transform: "none" } },
+        }}
+      >
+        {children}
+      </ButtonBase>
+    </Tooltip>
   );
 }

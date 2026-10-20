@@ -1,3 +1,4 @@
+import type { KeyboardEvent, MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import Box from "@mui/material/Box";
 import Tooltip from "@mui/material/Tooltip";
@@ -6,6 +7,7 @@ import markColor from "../assets/logos/thingport-mark-color.svg";
 import markOnDark from "../assets/logos/thingport-mark-on-dark.svg";
 import { printProviderInfo, providerChipSx } from "../constants/importProviders";
 import { hasProviderLogo, ProviderLogo } from "./Layout/ConfigurationDialog/providerLogos";
+import { useProviderAbout } from "./providerAbout/ProviderAboutProvider";
 
 // Read by screen readers, not shown.
 const visuallyHidden = {
@@ -25,10 +27,12 @@ type Props = {
   sx?: SxProps<Theme>;
 };
 
-/** Where a model came from, as the provider's logo on a round badge; its chip shows on hover or focus. */
+/** Where a model came from, as the provider's logo on a round badge; its chip shows on hover or focus. A click opens
+ *  the provider's About dialog; a direct upload's Thingport badge has none. */
 export default function ProviderBadge({ provider, size = 28, sx }: Props) {
-  const { t } = useTranslation("models");
+  const { t } = useTranslation(["models", "app"]);
   const theme = useTheme();
+  const openAbout = useProviderAbout(provider);
   const info = printProviderInfo(provider);
   const label = provider ? t("card.importedFrom", { provider: info.label }) : t("card.uploadedDirectly");
   const logoSize = Math.round(size * 0.6);
@@ -54,6 +58,21 @@ export default function ProviderBadge({ provider, size = 28, sx }: Props) {
     >
       <Box
         tabIndex={0}
+        {...(openAbout && {
+          role: "button",
+          "aria-label": `${label}. ${t("app:providerAbout.aboutName", { name: info.label })}`,
+          onClick: (event: MouseEvent) => {
+            // The badge sits on a card that opens the model.
+            event.stopPropagation();
+            openAbout();
+          },
+          onKeyDown: (event: KeyboardEvent) => {
+            if (event.key !== "Enter" && event.key !== " ") return;
+            event.preventDefault();
+            event.stopPropagation();
+            openAbout();
+          },
+        })}
         sx={[
           {
             width: size,
@@ -66,6 +85,7 @@ export default function ProviderBadge({ provider, size = 28, sx }: Props) {
             border: 1,
             borderColor: "divider",
             boxShadow: 2,
+            cursor: openAbout ? "pointer" : "default",
             transition: "transform 150ms ease",
             "&:hover, &:focus-visible": { transform: "scale(1.08)" },
             "&:focus-visible": { outline: `2px solid ${theme.palette.primary.main}`, outlineOffset: 2 },
@@ -77,9 +97,11 @@ export default function ProviderBadge({ provider, size = 28, sx }: Props) {
           ...(Array.isArray(sx) ? sx : [sx]),
         ]}
       >
-        <Box component="span" sx={visuallyHidden}>
-          {label}
-        </Box>
+        {!openAbout && (
+          <Box component="span" sx={visuallyHidden}>
+            {label}
+          </Box>
+        )}
         {hasProviderLogo(provider) ? (
           <ProviderLogo id={provider} size={logoSize} />
         ) : (
