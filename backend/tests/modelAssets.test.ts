@@ -166,6 +166,22 @@ describe("another model's files inside a model's pictures folder", () => {
     for (const file of foreign) expect(fs.readFileSync(stored(home, file), "utf8")).toBe("guest");
     fs.rmSync(stored(path.dirname(home)), { recursive: true, force: true });
   });
+
+  it("are listed as that model's in the storage browser", async () => {
+    const hostId = await upload(`nest-host-${stamp}.stl`, "solid nest endsolid");
+    const guestId = await upload(`nest-guest-${stamp}.stl`, "solid nest endsolid");
+    const home = (await prisma.print.findUniqueOrThrow({ where: { id: hostId } })).assetsPath!;
+    const guestHome = path.join(home, "Guest", "Images");
+    await prisma.print.update({ where: { id: guestId }, data: { assetsPath: guestHome } });
+    fs.mkdirSync(stored(guestHome), { recursive: true });
+    fs.writeFileSync(stored(guestHome, "guest.jpg"), "guest");
+
+    const listing = await browse(guestHome.split(path.sep).join("/"));
+    expect(listing.files).toEqual([expect.objectContaining({ name: "guest.jpg", print_id: guestId })]);
+
+    for (const id of [guestId, hostId]) await request(app).delete(`/api/print/${id}`).set(auth());
+    fs.rmSync(stored(path.dirname(home)), { recursive: true, force: true });
+  });
 });
 
 describe("a model saved before pictures moved in beside its files", () => {

@@ -125,8 +125,10 @@ async function entriesUnder(folder: string): Promise<{ entries: Entry[]; picture
     })),
   ];
   // Another model's files can be in a pictures folder, when a category puts them there; they're listed as its own.
+  // The deepest folders go first, so a model's pictures folder inside another's keeps its pictures.
   const listed = new Set(entries.map((entry) => entry.path));
-  const pictures = await mapWithConcurrency(homes, PICTURE_FOLDER_READS, async (print) => {
+  const deepestFirst = homes.toSorted((a, b) => b.assetsPath!.length - a.assetsPath!.length);
+  const pictures = await mapWithConcurrency(deepestFirst, PICTURE_FOLDER_READS, async (print) => {
     const home = toSlash(print.assetsPath!);
     return (await listAssetFiles(print.assetsPath!)).map((file) => ({
       path: `${home}/${file.path}`,
