@@ -1,10 +1,12 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
+import MenuItem from "@mui/material/MenuItem";
+import Select from "@mui/material/Select";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { UnauthorizedError } from "../../../api/client";
 import { settingsApi } from "../../../api/settings";
-import { SUPPORTED_LANGUAGES, type LanguageCode } from "../../../constants/languages";
+import { matchLanguage, SUPPORTED_LANGUAGES } from "../../../constants/languages";
 import type { ThemeSelection } from "../../../constants/settingsOptions";
 import { setCachedAuthorPreviewEnabled, useAuthorPreviewEnabled } from "../../../hooks/useAuthorPreviewEnabled";
 import Segmented from "../../controls/Segmented";
@@ -12,6 +14,8 @@ import HelpTip from "../../HelpTip";
 import { PanelHeader, SectionLabel } from "./parts";
 
 const THEMES: ThemeSelection[] = ["light", "dark", "system"];
+// More languages than this no longer fit a segmented control comfortably.
+const MAX_SEGMENTED_LANGUAGES = 4;
 
 type Props = {
   theme: ThemeSelection;
@@ -24,8 +28,7 @@ export default function AppearancePanel({ theme, onThemeChange, onUnauthorized }
   const { t, i18n } = useTranslation("app");
   const authorPreview = useAuthorPreviewEnabled();
   const [authorPreviewError, setAuthorPreviewError] = React.useState<string | null>(null);
-  const language = (SUPPORTED_LANGUAGES.find((lang) => (i18n.resolvedLanguage ?? i18n.language).startsWith(lang.code))
-    ?.code ?? "en") as LanguageCode;
+  const language = matchLanguage(i18n.resolvedLanguage ?? i18n.language);
 
   const toggleAuthorPreview = async (enabled: boolean) => {
     setAuthorPreviewError(null);
@@ -56,12 +59,28 @@ export default function AppearancePanel({ theme, onThemeChange, onUnauthorized }
         </div>
         <div>
           <SectionLabel>{t("profile.language.heading")}</SectionLabel>
-          <Segmented
-            label={t("profile.language.heading")}
-            value={language}
-            onChange={(code) => void i18n.changeLanguage(code)}
-            options={SUPPORTED_LANGUAGES.map((lang) => ({ value: lang.code, label: lang.label }))}
-          />
+          {SUPPORTED_LANGUAGES.length > MAX_SEGMENTED_LANGUAGES ? (
+            <Select
+              size="small"
+              value={language}
+              onChange={(e) => void i18n.changeLanguage(e.target.value)}
+              inputProps={{ "aria-label": t("profile.language.heading") }}
+              sx={{ minWidth: 200 }}
+            >
+              {SUPPORTED_LANGUAGES.map((lang) => (
+                <MenuItem key={lang.code} value={lang.code} lang={lang.code}>
+                  {lang.label}
+                </MenuItem>
+              ))}
+            </Select>
+          ) : (
+            <Segmented
+              label={t("profile.language.heading")}
+              value={language}
+              onChange={(code) => void i18n.changeLanguage(code)}
+              options={SUPPORTED_LANGUAGES.map((lang) => ({ value: lang.code, label: lang.label }))}
+            />
+          )}
         </div>
         <div>
           <SectionLabel>

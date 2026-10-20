@@ -291,7 +291,7 @@ export const DOCS = [
     group: "Features",
     title: "Themes and languages",
     nav: "Themes and languages",
-    description: "Light, dark or system theme, in English or Lithuanian.",
+    description: "Light, dark or system theme, in any language Thingport is translated into.",
   },
   {
     slug: "guides/system-health",
@@ -393,6 +393,14 @@ export const DOCS = [
     title: "Development setup",
     nav: "Development",
     description: "Run Thingport locally with hot reload, and run the test suites.",
+  },
+  {
+    slug: "translating",
+    source: "docs/TRANSLATING.md",
+    group: "Contributing",
+    title: "Translating Thingport",
+    nav: "Translating",
+    description: "Add a language or improve one by translating a single JSON file; it appears in the app on its own.",
   },
   {
     slug: "grab/development",

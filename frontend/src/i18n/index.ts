@@ -2,23 +2,26 @@ import i18n from "i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
 import { initReactI18next } from "react-i18next";
 
-import en from "./locales/en.json";
-import lt from "./locales/lt.json";
-import { LANGUAGE_STORAGE_KEY, SUPPORTED_LANGUAGES } from "../constants/languages";
+import { FALLBACK_LANGUAGE, LANGUAGE_STORAGE_KEY, LOCALES, SUPPORTED_LANGUAGES } from "../constants/languages";
 
 // Namespaces by area: "common" (generic words), "app" (shell chrome, modals), "library" (viewer
-// overlays and previews), "models" (Models page, model detail, author page).
+// overlays and previews), "models" (Models page, model detail, author page). A locale may be partial:
+// missing keys fall back to English.
+const NAMESPACES = ["common", "app", "library", "models"];
+
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
-    resources: {
-      en: { common: en.common, app: en.app, library: en.library, models: en.models },
-      lt: { common: lt.common, app: lt.app, library: lt.library, models: lt.models },
-    },
-    ns: ["common", "app", "library", "models"],
+    resources: Object.fromEntries(
+      Object.entries(LOCALES).map(([code, locale]) => [
+        code,
+        Object.fromEntries(NAMESPACES.filter((ns) => locale[ns]).map((ns) => [ns, locale[ns]])),
+      ]),
+    ),
+    ns: NAMESPACES,
     defaultNS: "common",
-    fallbackLng: "en",
+    fallbackLng: FALLBACK_LANGUAGE,
     supportedLngs: SUPPORTED_LANGUAGES.map((l) => l.code),
     interpolation: { escapeValue: false },
     detection: {

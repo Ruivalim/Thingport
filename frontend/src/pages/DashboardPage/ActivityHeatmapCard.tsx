@@ -8,7 +8,7 @@ import InsightsIcon from "@mui/icons-material/Insights";
 import { activityApi, type ActivityDay } from "../../api/activity";
 import { UnauthorizedError } from "../../api/client";
 import Heatmap from "../ProfilePage/activity/Heatmap";
-import { addDays, localToday, weekday, type DateRange } from "../ProfilePage/activity/calendar";
+import { addDays, localToday, weekday, weekStartFor, type DateRange } from "../ProfilePage/activity/calendar";
 
 // The heatmap's cell and gap, and room for its weekday labels.
 const WEEK_WIDTH = 14;
@@ -29,7 +29,7 @@ export default function ActivityHeatmapCard({ onUnauthorized }: Props) {
   const { t, i18n } = useTranslation("app");
   const navigate = useNavigate();
   const today = localToday();
-  const weekStart = i18n.language.startsWith("lt") ? 1 : 0;
+  const weekStart = weekStartFor(i18n.language);
   const [days, setDays] = useState<ActivityDay[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [weeks, setWeeks] = useState<number | null>(null);

@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { addDays, buildWeeks, lastYearRange, level, localToday, monthStarts, weekday, yearRange } from "./calendar";
+import {
+  addDays,
+  buildWeeks,
+  lastYearRange,
+  level,
+  localToday,
+  monthStarts,
+  weekday,
+  weekStartFor,
+  yearRange,
+} from "./calendar";
 
 describe("ranges", () => {
   it("makes the last year end today and start the day after a year ago", () => {
@@ -67,5 +77,13 @@ describe("level", () => {
     expect(level(1, 10)).toBe(1);
     expect(level(5, 10)).toBe(2);
     expect(level(10, 10)).toBe(4);
+  });
+});
+
+describe("weekStartFor", () => {
+  it("follows the language's locale", () => {
+    expect(weekStartFor("en")).toBe(0);
+    expect(weekStartFor("lt")).toBe(1);
+    expect(weekStartFor("de")).toBe(1);
   });
 });

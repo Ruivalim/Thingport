@@ -6,7 +6,7 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { alpha, type Theme } from "@mui/material/styles";
 import type { ActivityDay, ActivityKind } from "../../../api/activity";
-import { buildWeeks, level, monthStarts, type DateRange } from "./calendar";
+import { buildWeeks, level, monthStarts, weekStartFor, type DateRange } from "./calendar";
 
 const CELL = 11;
 const GAP = 3;
@@ -32,8 +32,8 @@ type Props = {
 /** GitHub's contribution graph: a column per week, a square per day, darker the busier the day. */
 export default function Heatmap({ range, days, selectedDay, today, onSelectDay }: Props) {
   const { t, i18n } = useTranslation("app");
-  // Monday-first in Lithuanian, as its calendars are; Sunday-first otherwise, as GitHub's is.
-  const weekStart = i18n.language.startsWith("lt") ? 1 : 0;
+  // Follows the locale's calendar: Sunday-first where it starts the week then (as GitHub does), Monday otherwise.
+  const weekStart = weekStartFor(i18n.language);
   const weeks = React.useMemo(() => buildWeeks(range, weekStart), [range, weekStart]);
   const months = React.useMemo(() => monthStarts(weeks), [weeks]);
   const byDate = React.useMemo(() => new Map(days.map((day) => [day.date, day.counts])), [days]);
