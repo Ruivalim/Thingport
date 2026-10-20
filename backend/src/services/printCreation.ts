@@ -17,6 +17,7 @@ import {
   saveThumbFromFile,
 } from "./printService";
 import { generateModelPreviewGlb, canRenderModelImage, generateModelImage } from "./modelPreviewCache";
+import { generateCardRender } from "./previewImageService";
 import { deleteNormalized3mf } from "./normalized3mfCache";
 import { getPreviewMode } from "./settingsService";
 import { Prisma } from "@prisma/client";
@@ -101,6 +102,7 @@ async function thumbnailAndSniff(plateId: string, filename: string, mime: string
   // Queued behind the GLB, which the model page needs first.
   if (canRenderModelImage(filename) && (await getPreviewMode()) === "automatic") {
     void generateModelImage(plateId, effectivePath, filename);
+    void generateCardRender(plateId, effectivePath, filename);
   }
 }
 

@@ -22,7 +22,7 @@ import {
   relocatePrint,
   saveThumbFromBytes,
 } from "../services/printService";
-import { addGeneratedPreviewImageIfNone } from "../services/previewImageService";
+import { addGeneratedPreviewImageIfNone, generateCardRender } from "../services/previewImageService";
 import { printOutById } from "../services/printLoader";
 import {
   generateModelPreviewGlb,
@@ -31,6 +31,7 @@ import {
   generateModelImage,
   modelImagePath,
   modelImageState,
+  type ModelImageKind,
   canRenderModelImage,
 } from "../services/modelPreviewCache";
 import { getPreviewMode } from "../services/settingsService";
@@ -193,16 +194,15 @@ router.get(
   }),
 );
 
-// The model drawn in one colour, for small slots like the dashboard lists. Built on first
-// request for models from before pictures existed; new uploads queue theirs straight away.
-router.get(
-  "/plate/:plateId/model.png",
-  asyncHandler(async (req, res) => {
+/** Serves one of the server's pictures of a plate. Built on first request for models from before that kind of picture
+ *  existed; new uploads queue theirs straight away. */
+function modelPictureHandler(kind: ModelImageKind) {
+  return asyncHandler(async (req, res) => {
     const plate = await prisma.plate.findFirst({
       where: { id: req.params.plateId, print: { userId: req.userId } },
     });
     if (!plate) throw new HttpError(404, "Not found");
-    const imagePath = modelImagePath(plate.id);
+    const imagePath = modelImagePath(plate.id, kind);
     if (!fs.existsSync(imagePath)) {
       if (!canRenderModelImage(plate.filename))
         throw new HttpError(404, "No picture for this file type", "PREVIEW_UNSUPPORTED");
@@ -211,8 +211,9 @@ router.get(
       }
       const srcPath = resolvePlateFilePath(plate);
       if (!srcPath) throw new HttpError(404, "Model file is missing", "PREVIEW_FAILED");
-      void generateModelImage(plate.id, srcPath, plate.filename);
-      const state = modelImageState(plate.id);
+      if (kind === "render") void generateCardRender(plate.id, srcPath, plate.filename);
+      else void generateModelImage(plate.id, srcPath, plate.filename);
+      const state = modelImageState(plate.id, kind);
       if (state === "unsupported") {
         throw new HttpError(404, "This file's layout can't be drawn by the server", "PREVIEW_UNSUPPORTED");
       }
@@ -225,8 +226,13 @@ router.get(
     // Versioned URLs never change; the bare one is how a missing picture gets asked for.
     res.setHeader("Cache-Control", req.query.v ? "private, max-age=31536000, immutable" : "private, no-cache");
     res.sendFile(path.resolve(imagePath));
-  }),
-);
+  });
+}
+
+// The model drawn in one colour, for small slots like the dashboard lists.
+router.get("/plate/:plateId/model.png", modelPictureHandler("icon"));
+// The model in grey shading on transparent, which model cards tint with the accent.
+router.get("/plate/:plateId/render.png", modelPictureHandler("render"));
 
 router.post(
   "/plate/:plateId/thumbnail-generated",

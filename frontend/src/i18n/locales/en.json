@@ -1584,6 +1584,13 @@
         "amber": "Thangs yellow",
         "teal": "MyMiniFactory teal",
         "purple": "Cults3D purple"
+      },
+      "cardPreview": {
+        "heading": "Model cards",
+        "images": "Images",
+        "renders": "3D renders",
+        "failed": "Couldn't save the model card choice.",
+        "help": "What model cards show first. Images: the pictures a model came with, or a 3D render where it has none. 3D renders: a render of every model in your accent color, or its pictures where the file can't be drawn."
       }
     },
     "configuration": {
@@ -2622,16 +2629,7 @@
         "spin": "Spin",
         "zoomIn": "Zoom in",
         "zoomOut": "Zoom out",
-        "colorLabel": "Model color: {{name}}",
-        "colors": {
-          "red": "Red",
-          "orange": "Orange",
-          "yellow": "Yellow",
-          "green": "Green",
-          "blue": "Blue",
-          "purple": "Purple",
-          "grey": "Grey"
-        }
+        "color": "Model color"
       },
       "downloadFailed": "Download failed. Please try again.",
       "deleteFailed": "Failed to delete the model.",

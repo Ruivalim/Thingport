@@ -4,7 +4,8 @@ import path from "node:path";
 import sharp from "sharp";
 import { PREVIEWS } from "../config";
 import { prisma } from "../db";
-import { plateThumbReplaceable, saveThumbFromBytes } from "./printService";
+import { generateModelImage } from "./modelPreviewCache";
+import { plateThumbExists, plateThumbReplaceable, saveThumbFromBytes } from "./printService";
 import type { PreviewImage } from "@prisma/client";
 
 export function previewImagePath(id: string): string {
@@ -90,4 +91,27 @@ export async function deleteAllPreviewImages(printId: string): Promise<void> {
   for (const row of rows) {
     await fs.rm(previewImagePath(row.id), { force: true }).catch(() => undefined);
   }
+}
+
+// The card render is white shading for the cards to tint, too pale on a light background as it is; as a thumb it's
+// slate, like the live viewer's model.
+const RENDER_THUMB_SHADE = [0.58, 0.64, 0.72, 1];
+
+/** Our own render stands in as the plate's thumb, and the model's cover, while it has no picture at all, so mosaics
+ *  and lists that show thumbs have one without the model being opened. */
+async function adoptRenderAsThumb(plateId: string, renderPath: string): Promise<void> {
+  if (plateThumbExists(plateId)) return;
+  const plate = await prisma.plate.findUnique({ where: { id: plateId }, select: { printId: true } });
+  if (!plate) return;
+  const buffer = await sharp(renderPath).linear(RENDER_THUMB_SHADE, [0, 0, 0, 0]).png().toBuffer();
+  if (!(await saveThumbFromBytes(plateId, buffer))) return;
+  await prisma.plate.update({ where: { id: plateId }, data: { thumbGenerated: true } });
+  await addGeneratedPreviewImageIfNone(plate.printId, buffer);
+}
+
+/** Queues the model card's render. Never throws. */
+export function generateCardRender(plateId: string, srcPath: string, filename: string): Promise<void> {
+  return generateModelImage(plateId, srcPath, filename, "render", (renderPath) =>
+    adoptRenderAsThumb(plateId, renderPath).catch((err) => console.error(`Render thumb failed for ${plateId}:`, err)),
+  );
 }

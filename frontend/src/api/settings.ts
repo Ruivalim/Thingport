@@ -77,6 +77,8 @@ export type WeatherLocation = { lat: number; lon: number; name: string | null; s
 export type DashboardLayout = "left" | "top" | "right" | "bottom" | "topTwo" | "puzzle";
 // Kept in sync by hand with the backend's DASHBOARD_THUMBNAILS.
 export type DashboardThumbnails = "none" | "photos" | "monochrome";
+/** What model cards lead with: the model's own pictures, or our render tinted with the accent. */
+export type CardPreview = "images" | "renders";
 /** Only the widgets the user has switched; the rest follow their default. */
 export type DashboardWidgetChoices = Partial<Record<DashboardWidgetId, boolean>>;
 
@@ -758,6 +760,23 @@ export const settingsApi = {
     });
     if (res.status === 401) throw new UnauthorizedError();
     if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to update the dashboard thumbnails setting"));
+    return res.json();
+  },
+
+  getCardPreview: async (): Promise<{ preview: CardPreview }> => {
+    const res = await fetch(`${apiBase()}/settings/card-preview`, { headers: authHeaders() });
+    assertOk(res, "Failed to load the model card preview setting");
+    return res.json();
+  },
+
+  updateCardPreview: async (preview: CardPreview): Promise<{ preview: CardPreview }> => {
+    const res = await fetch(`${apiBase()}/settings/card-preview`, {
+      method: "PATCH",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ preview }),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to update the model card preview setting"));
     return res.json();
   },
 

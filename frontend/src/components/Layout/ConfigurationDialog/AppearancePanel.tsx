@@ -5,11 +5,12 @@ import Select from "@mui/material/Select";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { UnauthorizedError } from "../../../api/client";
-import { settingsApi } from "../../../api/settings";
+import { settingsApi, type CardPreview } from "../../../api/settings";
 import { matchLanguage, SUPPORTED_LANGUAGES } from "../../../constants/languages";
 import { ACCENT_COLORS, type AccentColor, type ThemeSelection } from "../../../constants/settingsOptions";
 import { setCachedAccentColor, useAccentColor } from "../../../hooks/useAccentColor";
 import { setCachedAuthorPreviewEnabled, useAuthorPreviewEnabled } from "../../../hooks/useAuthorPreviewEnabled";
+import { useCardPreview } from "../../../hooks/useCardPreview";
 import { accentSwatch } from "../../../theme";
 import ColorSwatches from "../../controls/ColorSwatches";
 import Segmented from "../../controls/Segmented";
@@ -26,16 +27,28 @@ type Props = {
   onUnauthorized?: () => void;
 };
 
-/** Theme, accent, language and author preview, each applied as it's changed. */
+/** Theme, accent, model card pictures, language and author preview, each applied as it's changed. */
 export default function AppearancePanel({ theme, onThemeChange, onUnauthorized }: Props) {
   const { t, i18n } = useTranslation("app");
   const authorPreview = useAuthorPreviewEnabled();
   const [authorPreviewError, setAuthorPreviewError] = React.useState<string | null>(null);
   const language = matchLanguage(i18n.resolvedLanguage ?? i18n.language);
   const accent = useAccentColor();
+  const [cardPreview, setCardPreview] = useCardPreview();
   const [accentError, setAccentError] = React.useState<string | null>(null);
   // Picks can overlap; only the latest one's failure may put the accent back.
   const latestAccentSave = React.useRef(0);
+  const [cardPreviewError, setCardPreviewError] = React.useState<string | null>(null);
+
+  const changeCardPreview = async (next: CardPreview) => {
+    setCardPreviewError(null);
+    try {
+      await setCardPreview(next);
+    } catch (err) {
+      if (err instanceof UnauthorizedError) onUnauthorized?.();
+      else setCardPreviewError(t("appearance.cardPreview.failed"));
+    }
+  };
 
   const changeAccent = async (next: AccentColor) => {
     const previous = accent;
@@ -94,6 +107,27 @@ export default function AppearancePanel({ theme, onThemeChange, onUnauthorized }
           {accentError && (
             <Typography variant="caption" color="error" sx={{ display: "block", mt: 1 }}>
               {accentError}
+            </Typography>
+          )}
+        </div>
+        <div>
+          <SectionLabel>
+            {t("appearance.cardPreview.heading")}
+            <HelpTip text={t("appearance.cardPreview.help")} />
+          </SectionLabel>
+          <Segmented
+            label={t("appearance.cardPreview.heading")}
+            value={cardPreview ?? "images"}
+            disabled={cardPreview === null}
+            onChange={(next) => void changeCardPreview(next)}
+            options={[
+              { value: "images", label: t("appearance.cardPreview.images") },
+              { value: "renders", label: t("appearance.cardPreview.renders") },
+            ]}
+          />
+          {cardPreviewError && (
+            <Typography variant="caption" color="error" sx={{ display: "block", mt: 1 }}>
+              {cardPreviewError}
             </Typography>
           )}
         </div>

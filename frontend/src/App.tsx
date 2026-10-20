@@ -47,6 +47,7 @@ import { clearToken, clearUser, readToken, readUser, storeToken, storeUser } fro
 import { type AppSettings, type MakerWorldSettings, loadSettings, saveSettings } from "./utils/settings";
 import { useResolvedTheme } from "./hooks/useResolvedTheme";
 import { setCachedAccentColor, useAccentColor } from "./hooks/useAccentColor";
+import { resetCardPreview } from "./hooks/useCardPreview";
 import { DEFAULT_ACCENT, type ResolvedTheme, type ThemeSelection } from "./constants/settingsOptions";
 import { buildTheme } from "./theme";
 
@@ -363,6 +364,7 @@ export default function App() {
   const authRequired = health?.auth_required ?? true;
 
   const handleLogin = (tok: string, ttl: number, loggedInUser: AuthUser) => {
+    resetCardPreview();
     storeToken(tok);
     storeUser(loggedInUser);
     setToken(tok);
