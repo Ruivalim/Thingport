@@ -93,13 +93,10 @@ import { SLICER_IDS, getUserSlicer, setUserSlicer } from "../services/slicerPref
 import { CATEGORIES_VIEWS, getCategoriesView, setCategoriesView } from "../services/categoriesViewService";
 import {
   DASHBOARD_LAYOUTS,
-  DASHBOARD_THUMBNAILS,
   DASHBOARD_WIDGETS,
   getDashboardLayout,
-  getDashboardThumbnails,
   getDashboardWidgets,
   setDashboardLayout,
-  setDashboardThumbnails,
   setDashboardWidgets,
 } from "../services/dashboardWidgetsService";
 import {
@@ -113,11 +110,13 @@ import {
 import { CONSUME_DIR } from "../config";
 import {
   ACCENT_COLORS,
+  RENDER_COLORS,
   THEME_SELECTIONS,
   getUserThemePreferences,
   setUserThemePreferences,
 } from "../services/themePreferenceService";
 import { getUserAuthorPreviewEnabled, setUserAuthorPreviewEnabled } from "../services/authorPreviewPreferenceService";
+import { getHoverSlideshowEnabled, setHoverSlideshowEnabled } from "../services/hoverSlideshowService";
 import { checkForUpdates } from "../services/versionService";
 import { getWeatherLocation, setWeatherLocation, weatherLocationSchema } from "../services/weatherLocationService";
 import { dropPreviewsAffectedBySimplification } from "../services/modelPreviewCache";
@@ -981,6 +980,7 @@ router.get(
 const themeSettingsSchema = z.object({
   theme: z.enum(THEME_SELECTIONS).nullable().optional(),
   accent: z.enum(ACCENT_COLORS).nullable().optional(),
+  renderColor: z.enum(RENDER_COLORS).nullable().optional(),
 });
 router.patch(
   "/settings/theme",
@@ -1069,22 +1069,6 @@ router.patch(
 );
 
 router.get(
-  "/settings/dashboard-thumbnails",
-  asyncHandler(async (req, res) => {
-    res.json({ thumbnails: await getDashboardThumbnails(req.userId!) });
-  }),
-);
-
-const dashboardThumbnailsSchema = z.object({ thumbnails: z.enum(DASHBOARD_THUMBNAILS) });
-router.patch(
-  "/settings/dashboard-thumbnails",
-  asyncHandler(async (req, res) => {
-    const body = parseBody(dashboardThumbnailsSchema, req.body);
-    res.json({ thumbnails: await setDashboardThumbnails(req.userId!, body.thumbnails) });
-  }),
-);
-
-router.get(
   "/settings/card-preview",
   asyncHandler(async (req, res) => {
     res.json({ preview: await getCardPreview(req.userId!) });
@@ -1130,6 +1114,22 @@ router.patch(
   asyncHandler(async (req, res) => {
     const body = parseBody(authorPreviewSettingsSchema, req.body);
     res.json({ enabled: await setUserAuthorPreviewEnabled(req.userId!, body.enabled) });
+  }),
+);
+
+router.get(
+  "/settings/hover-slideshow",
+  asyncHandler(async (req, res) => {
+    res.json({ enabled: await getHoverSlideshowEnabled(req.userId!) });
+  }),
+);
+
+const hoverSlideshowSchema = z.object({ enabled: z.boolean() });
+router.patch(
+  "/settings/hover-slideshow",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(hoverSlideshowSchema, req.body);
+    res.json({ enabled: await setHoverSlideshowEnabled(req.userId!, body.enabled) });
   }),
 );
 

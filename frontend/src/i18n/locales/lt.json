@@ -518,8 +518,7 @@
         "allHidden": "Visi valdymo skydo langeliai paslėpti.",
         "sections": {
           "layout": "Išdėstymas",
-          "panels": "Langeliai",
-          "thumbnails": "Miniatiūros"
+          "panels": "Langeliai"
         },
         "layoutSubtitle": "Pasirinkite, kaip išdėstyti valdymo skydo langelius. Spalvota dalis rodo, kur bus skaičiai.",
         "layouts": {
@@ -529,17 +528,6 @@
           "bottom": "Skaičiai apačioje, trys stulpeliai",
           "topTwo": "Skaičiai viršuje, du stulpeliai",
           "puzzle": "Dėlionė"
-        },
-        "thumbnailsSubtitle": "Paveikslėliai šalia modelių valdymo skydo sąrašuose.",
-        "thumbnails": {
-          "none": "Paslėpti",
-          "photos": "Nuotraukos",
-          "monochrome": "Vienspalvės"
-        },
-        "thumbnailsHelp": {
-          "none": "Sąrašuose rodomi tik pavadinimai.",
-          "photos": "Kiekvieno modelio peržiūros paveikslėlis.",
-          "monochrome": "Kiekvienas modelis nupieštas vienu tonu permatomame fone; serveris jį sukuria, kai prireikia pirmą kartą. Failai, kurių nupiešti negalima, rodo nuotrauką."
         }
       }
     },
@@ -1649,14 +1637,26 @@
         "orange": "Printables oranžinė",
         "amber": "Thangs geltona",
         "teal": "MyMiniFactory žydra",
-        "purple": "Cults3D violetinė"
+        "purple": "Cults3D violetinė",
+        "graphite": "Grafitas"
       },
       "cardPreview": {
         "heading": "Modelių kortelės",
         "images": "Nuotraukos",
         "renders": "3D vaizdai",
         "failed": "Nepavyko išsaugoti modelių kortelių pasirinkimo.",
-        "help": "Ką modelių kortelės rodo pirmiausia. Nuotraukos: paveikslėliai, su kuriais modelis atkeliavo, arba 3D vaizdas, jei jų nėra. 3D vaizdai: kiekvieno modelio vaizdas jūsų akcento spalva arba jo nuotraukos, jei failo nupiešti nepavyksta."
+        "help": "Ką modelių kortelės rodo pirmiausia. Nuotraukos: paveikslėliai, su kuriais modelis atkeliavo, arba 3D vaizdas, jei jų nėra. 3D vaizdai: kiekvieno modelio vaizdas jūsų atvaizdo spalva arba jo nuotraukos, jei failo nupiešti nepavyksta."
+      },
+      "hoverSlideshow": {
+        "heading": "Skaidrės užvedus",
+        "failed": "Nepavyko išsaugoti skaidrių užvedus nustatymo.",
+        "help": "Užvedus žymeklį ant modelio kortelės, joje keičiasi modelio nuotraukos."
+      },
+      "renderColor": {
+        "heading": "Atvaizdo spalva",
+        "light": "Šviesiai pilka (be atspalvio)",
+        "failed": "Nepavyko išsaugoti atvaizdo spalvos.",
+        "help": "Spalva, kuria piešiami sugeneruoti 3D atvaizdai ir 3D peržiūra. Pasirinkus akcento spalvą, ji pasikeičia kartu; čia galite ją pakeisti atskirai."
       }
     },
     "configuration": {

@@ -216,7 +216,8 @@ function previewGlbUrl(plate: Plate): string | null {
   return `/plate/${plate.id}/preview.glb?v=${mtime}`;
 }
 
-function renderUrl(plate: Plate): string | null {
+/** The plate's grey render for the browser to tint; unversioned until it exists, as asking for it queues it. */
+export function renderUrl(plate: { id: string; filename: string }): string | null {
   if (!canRenderModelImage(plate.filename)) return null;
   const file = modelImagePath(plate.id, "render");
   return fs.existsSync(file)

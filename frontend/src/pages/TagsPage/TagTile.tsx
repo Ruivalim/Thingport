@@ -10,6 +10,10 @@ import Skeleton from "@mui/material/Skeleton";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { printsApi } from "../../api/prints";
+import TintedRender from "../../components/media/TintedRender";
+import { useRenderColor } from "../../hooks/useAccentColor";
+import { useCardPreview } from "../../hooks/useCardPreview";
+import { renderSwatch } from "../../theme";
 import type { TagSummary } from "../../api/tags";
 import { colorForTag } from "../../utils/tagColors";
 import TagActionsMenu from "../TagDetailPage/TagActionsMenu";
@@ -39,6 +43,10 @@ function TagTile({ tag, onToggleBookmark, onDeleted, onUnauthorized }: Props) {
   const fallback = colorForTag(tag.name);
   const contextMenu = useCardContextMenu();
   const bookmarkLabel = tag.bookmarked ? t("models:tags.unbookmarkTag") : t("models:tags.bookmarkTag");
+  const [preference] = useCardPreview();
+  const tint = renderSwatch(useRenderColor()).color;
+  // Led as the model cards are: renders when chosen and some are made, the pictures otherwise.
+  const renderMosaic = preference === "renders" ? tag.render_mosaic_url : null;
 
   return (
     <Box
@@ -53,7 +61,7 @@ function TagTile({ tag, onToggleBookmark, onDeleted, onUnauthorized }: Props) {
         bgcolor: tag.mosaic_url ? "divider" : fallback.bg,
         transition: "transform 150ms, box-shadow 150ms",
         "&:hover": { transform: "translateY(-2px)", boxShadow: "0 6px 16px rgba(0, 0, 0, 0.16)" },
-        "&:hover .tag-mosaic img": { transform: "scale(1.04)" },
+        "&:hover .tag-mosaic > *": { transform: "scale(1.04)" },
         "&:hover .tag-tile-menu, &:focus-within .tag-tile-menu": { opacity: 1 },
       }}
     >
@@ -70,7 +78,16 @@ function TagTile({ tag, onToggleBookmark, onDeleted, onUnauthorized }: Props) {
           "&:focus-visible": { outline: "2px solid", outlineColor: "primary.main", outlineOffset: -3 },
         }}
       >
-        {tag.mosaic_url ? (
+        {renderMosaic ? (
+          <Box className="tag-mosaic" aria-hidden sx={{ position: "absolute", inset: 0, overflow: "hidden" }}>
+            <TintedRender
+              src={printsApi.fileUrl(renderMosaic)}
+              tint={tint}
+              loading="lazy"
+              sx={{ opacity: 0.75, transition: "transform 300ms" }}
+            />
+          </Box>
+        ) : tag.mosaic_url ? (
           // Built on the server from the tag's newest models: one picture per tile, however many models.
           <Box className="tag-mosaic" aria-hidden sx={{ position: "absolute", inset: 0, overflow: "hidden" }}>
             <Box

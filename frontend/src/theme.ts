@@ -1,5 +1,5 @@
 import { alpha, createTheme, darken, lighten, type Theme, type ThemeOptions } from "@mui/material/styles";
-import { DEFAULT_ACCENT, type AccentColor, type ResolvedTheme } from "./constants/settingsOptions";
+import { DEFAULT_ACCENT, type AccentColor, type RenderColor, type ResolvedTheme } from "./constants/settingsOptions";
 
 export type { AccentColor, ResolvedTheme };
 
@@ -120,6 +120,9 @@ type AccentDef = {
   contrastText?: string;
   /** Light mode's selected-menu text, for an accent too pale to read as text on white. */
   lightText?: string;
+  /** Dark mode's main and the text on it, for an accent too dark to see on a dark page. */
+  darkMain?: string;
+  darkContrastText?: string;
   /** Light mode's sub-menu background: a shade under the page, faintly tinted, so it's neither the white sidebar
    *  nor the content. Defaults to a little of the accent in grey. */
   lightSubnav?: string;
@@ -134,12 +137,21 @@ const ACCENTS: Record<AccentColor, AccentDef> = {
   amber: { main: "#f2a900", contrastText: "#1f1f1f", lightText: "#8a6000" }, // Thangs, a shade deeper to read on white
   teal: { main: "#00b39a" }, // MyMiniFactory, likewise
   purple: { main: "#822ef5" }, // Cults3D
+  graphite: { main: "#2b2b2b", light: "#6b6b6b", darkMain: "#c9ccd3", darkContrastText: "#1f1f1f" },
 };
+
+// Light grey barely changes the render's grey shading, so it reads as no tint at all.
+const UNTINTED_RENDER = "#d6d6d6";
 
 /** The accent's colour and the colour that reads on it, for pickers. */
 export function accentSwatch(accent: AccentColor): { color: string; contrast: string } {
   const { main, contrastText = "#ffffff" } = ACCENTS[accent];
   return { color: main, contrast: contrastText };
+}
+
+/** What a generated render is tinted, and the colour that reads on it, for pickers. The same in both themes. */
+export function renderSwatch(color: RenderColor): { color: string; contrast: string } {
+  return color === "light" ? { color: UNTINTED_RENDER, contrast: "#1f1f1f" } : accentSwatch(color);
 }
 
 /** `weight` of `color` over `base`, both hex. */
@@ -157,7 +169,11 @@ function mixHex(base: string, color: string, weight: number): string {
 }
 
 function withAccent(d: BaseThemeDef, accent: AccentColor): ThemeDef {
-  const a = ACCENTS[accent];
+  const def = ACCENTS[accent];
+  const a =
+    d.mode === "dark" && def.darkMain
+      ? { ...def, main: def.darkMain, light: undefined, contrastText: def.darkContrastText ?? def.contrastText }
+      : def;
   const light = a.light ?? lighten(a.main, 0.35);
   return {
     ...d,
@@ -167,7 +183,7 @@ function withAccent(d: BaseThemeDef, accent: AccentColor): ThemeDef {
     accentLight: light,
     accentStrong: darken(a.main, 0.15),
     accentSoft: alpha(a.main, 0.16),
-    accentContrast: accentSwatch(accent).contrast,
+    accentContrast: a.contrastText ?? "#ffffff",
     selectedNavText: d.mode === "light" ? (a.lightText ?? a.main) : a.main,
   };
 }

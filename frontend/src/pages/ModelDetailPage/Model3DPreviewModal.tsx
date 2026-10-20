@@ -27,9 +27,9 @@ import ModelViewer, {
 } from "../../components/media/ModelViewer";
 import type { PlateSummary } from "../../utils/bambuThreeMf";
 import PreviewToolbar from "./PreviewToolbar";
-import type { AccentColor } from "../../constants/settingsOptions";
-import { useAccentColor } from "../../hooks/useAccentColor";
-import { accentSwatch } from "../../theme";
+import type { RenderColor } from "../../constants/settingsOptions";
+import { useRenderColor } from "../../hooks/useAccentColor";
+import { renderSwatch } from "../../theme";
 import { fileRowText } from "./fileRowText";
 
 // Light mode keeps a product-shot style grey; dark mode uses the page background so it doesn't glare.
@@ -68,10 +68,10 @@ export default function Model3DPreviewModal({ print, onClose }: Props) {
   // Lives here so it survives the viewer remounting per file.
   const viewerRef = useRef<ModelViewerHandle>(null);
   const [renderStyle, setRenderStyle] = useState<RenderStyle>("solid");
-  // Follows the accent until another colour is picked for this viewing.
-  const accent = useAccentColor();
-  const [pickedColor, setPickedColor] = useState<AccentColor | null>(null);
-  const modelColor = pickedColor ?? accent;
+  // Follows the render colour until another is picked for this viewing.
+  const renderColor = useRenderColor();
+  const [pickedColor, setPickedColor] = useState<RenderColor | null>(null);
+  const modelColor = pickedColor ?? renderColor;
   const [cameraView, setCameraView] = useState<CameraView>("topFront");
   const [showGrid, setShowGrid] = useState(true);
   const [spin, setSpin] = useState(true);
@@ -225,7 +225,7 @@ export default function Model3DPreviewModal({ print, onClose }: Props) {
               ext={ext}
               initialCameraView={cameraView}
               theme={themeMode}
-              colorOverride={accentSwatch(modelColor).color}
+              colorOverride={renderSwatch(modelColor).color}
               renderStyle={renderStyle}
               showBuildPlate={showGrid}
               buildPlateForMeshes

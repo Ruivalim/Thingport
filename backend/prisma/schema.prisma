@@ -129,6 +129,8 @@ model User {
   themePreference          String?
   // One of ACCENT_COLORS; null means Thingport green.
   accentColor              String?
+  // What generated renders are tinted, one of RENDER_COLORS; null follows the accent.
+  renderColor              String?
   // Which tree the models page shows: "categories" | "folders"; null means categories.
   categoriesView           String?
   // The dashboard widgets the user has switched on or off, as { [widgetId]: boolean }. A widget
@@ -136,13 +138,13 @@ model User {
   dashboardWidgets         Json?
   // How the dashboard arranges its boxes, one of DASHBOARD_LAYOUTS; null means "left".
   dashboardLayout          String?
-  // The dashboard lists' model pictures, one of DASHBOARD_THUMBNAILS; null means "photos".
-  dashboardThumbnails      String?
   // What model cards lead with, one of CARD_PREVIEWS; null means "images".
   cardPreview              String?
   // Where the dashboard's weather is for: { lat, lon, name, source }. Null until the user sets one.
   weatherLocation          Json?
   authorPreviewEnabled     Boolean           @default(true)
+  // Model cards cycle through a model's pictures while hovered.
+  hoverSlideshowEnabled    Boolean           @default(true)
   // Filled from the first linked Author with this data; later links never overwrite it.
   bio                      String?
   backgroundUrl            String?

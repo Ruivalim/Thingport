@@ -512,8 +512,7 @@
         "allHidden": "Tous les blocs du tableau de bord sont masqués.",
         "sections": {
           "layout": "Disposition",
-          "panels": "Panneaux",
-          "thumbnails": "Miniatures"
+          "panels": "Panneaux"
         },
         "layoutSubtitle": "Choisissez la disposition des blocs du tableau de bord. La partie colorée indique l’emplacement des compteurs.",
         "layouts": {
@@ -523,17 +522,6 @@
           "bottom": "Compteurs en bas, sur trois colonnes",
           "topTwo": "Compteurs en haut, sur deux colonnes",
           "puzzle": "Puzzle"
-        },
-        "thumbnailsSubtitle": "Les images à côté des modèles dans les listes du tableau de bord.",
-        "thumbnails": {
-          "none": "Masquées",
-          "photos": "Photos",
-          "monochrome": "Monochrome"
-        },
-        "thumbnailsHelp": {
-          "none": "Les listes n’affichent que les noms.",
-          "photos": "L’image d’aperçu de chaque modèle.",
-          "monochrome": "Chaque modèle dessiné dans une seule teinte sur fond transparent, généré par le serveur la première fois que c’est nécessaire. Les fichiers qu’il ne peut pas dessiner affichent leur photo."
         }
       }
     },
@@ -1596,14 +1584,26 @@
         "orange": "Orange Printables",
         "amber": "Jaune Thangs",
         "teal": "Turquoise MyMiniFactory",
-        "purple": "Violet Cults3D"
+        "purple": "Violet Cults3D",
+        "graphite": "Graphite"
       },
       "cardPreview": {
         "heading": "Cartes des modèles",
         "images": "Images",
         "renders": "Rendus 3D",
         "failed": "Impossible d’enregistrer le choix pour les cartes des modèles.",
-        "help": "Ce que les cartes des modèles affichent en premier. Images : les images fournies avec le modèle, ou un rendu 3D s’il n’en a pas. Rendus 3D : un rendu de chaque modèle dans votre couleur d’accent, ou ses images si le fichier ne peut pas être dessiné."
+        "help": "Ce que les cartes des modèles affichent en premier. Images : les images fournies avec le modèle, ou un rendu 3D s’il n’en a pas. Rendus 3D : un rendu de chaque modèle dans votre couleur de rendu, ou ses images si le fichier ne peut pas être dessiné."
+      },
+      "hoverSlideshow": {
+        "heading": "Diaporama au survol",
+        "failed": "Impossible d’enregistrer le choix pour le diaporama au survol.",
+        "help": "Les cartes des modèles font défiler les images du modèle tant que le pointeur reste dessus."
+      },
+      "renderColor": {
+        "heading": "Couleur du rendu",
+        "light": "Gris clair (sans teinte)",
+        "failed": "Impossible d’enregistrer la couleur du rendu.",
+        "help": "La couleur des rendus 3D générés et de l’aperçu 3D. Choisir une couleur d’accent la change aussi ; choisissez ici pour la modifier séparément."
       }
     },
     "configuration": {

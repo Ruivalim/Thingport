@@ -9,6 +9,8 @@ export type TagSummary = {
   bookmarked: boolean;
   /** One picture of its newest models, built and cached by the server; null while none has a picture. */
   mosaic_url: string | null;
+  /** The same of their grey renders alone, for the browser to tint; null while none has a render yet. */
+  render_mosaic_url: string | null;
 };
 
 export type TagSummaryPage = {

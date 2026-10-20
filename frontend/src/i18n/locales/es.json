@@ -512,8 +512,7 @@
         "allHidden": "Todos los bloques del panel están ocultos.",
         "sections": {
           "layout": "Disposición",
-          "panels": "Paneles",
-          "thumbnails": "Miniaturas"
+          "panels": "Paneles"
         },
         "layoutSubtitle": "Elige cómo organiza el panel sus bloques. La parte coloreada indica dónde van los recuentos.",
         "layouts": {
@@ -523,17 +522,6 @@
           "bottom": "Contadores abajo, en tres columnas",
           "topTwo": "Contadores arriba, en dos columnas",
           "puzzle": "Puzle"
-        },
-        "thumbnailsSubtitle": "Las imágenes junto a los modelos en las listas del panel.",
-        "thumbnails": {
-          "none": "Ocultas",
-          "photos": "Fotos",
-          "monochrome": "Monocromo"
-        },
-        "thumbnailsHelp": {
-          "none": "Las listas muestran solo los nombres.",
-          "photos": "La imagen de vista previa de cada modelo.",
-          "monochrome": "Cada modelo dibujado en un solo tono sobre fondo transparente, generado por el servidor la primera vez que hace falta. Los archivos que no puede dibujar muestran su foto."
         }
       }
     },
@@ -1583,14 +1571,26 @@
         "orange": "Naranja Printables",
         "amber": "Amarillo Thangs",
         "teal": "Turquesa MyMiniFactory",
-        "purple": "Morado Cults3D"
+        "purple": "Morado Cults3D",
+        "graphite": "Grafito"
       },
       "cardPreview": {
         "heading": "Tarjetas de modelos",
         "images": "Imágenes",
         "renders": "Renders 3D",
         "failed": "No se pudo guardar la opción de las tarjetas de modelos.",
-        "help": "Lo que muestran primero las tarjetas de modelos. Imágenes: las imágenes que trae el modelo, o un render 3D si no tiene ninguna. Renders 3D: un render de cada modelo en tu color de acento, o sus imágenes si el archivo no se puede dibujar."
+        "help": "Lo que muestran primero las tarjetas de modelos. Imágenes: las imágenes que trae el modelo, o un render 3D si no tiene ninguna. Renders 3D: un render de cada modelo en tu color del render, o sus imágenes si el archivo no se puede dibujar."
+      },
+      "hoverSlideshow": {
+        "heading": "Presentación al pasar el cursor",
+        "failed": "No se pudo guardar la opción de la presentación al pasar el cursor.",
+        "help": "Las tarjetas de modelos van pasando las imágenes del modelo mientras el puntero está sobre ellas."
+      },
+      "renderColor": {
+        "heading": "Color del render",
+        "light": "Gris claro (sin tinte)",
+        "failed": "No se pudo guardar el color del render.",
+        "help": "El color en que se dibujan los renders 3D generados y la vista previa 3D. Al elegir un color de acento cambia con él; elige aquí para cambiarlo por separado."
       }
     },
     "configuration": {
