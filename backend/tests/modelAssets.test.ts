@@ -139,6 +139,35 @@ describe("a model's pictures and supporting files", () => {
   });
 });
 
+describe("another model's files inside a model's pictures folder", () => {
+  it("stay put when the model moves or is deleted", async () => {
+    // A category named like "<model>/Images" puts another model's files there.
+    const printId = await upload(`host-${stamp}.stl`, "solid host endsolid");
+    const home = (await prisma.print.findUniqueOrThrow({ where: { id: printId } })).assetsPath!;
+    const added = await request(app)
+      .post(`/api/print/${printId}/preview-images`)
+      .set(auth())
+      .attach("files", await png(90), "photo.png");
+    expect(added.status).toBe(200);
+    const foreign = ["Guest/guest.stl", "guest.jpg"];
+    for (const file of foreign) {
+      fs.mkdirSync(path.dirname(stored(home, file)), { recursive: true });
+      fs.writeFileSync(stored(home, file), "guest");
+    }
+
+    await reorganizeManagedPrints("{category-or-folder}/{model}/{id}/{filename}", userId);
+    const moved = (await prisma.print.findUniqueOrThrow({ where: { id: printId } })).assetsPath!;
+    expect(moved).not.toBe(home);
+    expect(fs.readdirSync(stored(moved))).not.toContain("guest.jpg");
+    for (const file of foreign) expect(fs.readFileSync(stored(home, file), "utf8")).toBe("guest");
+
+    await reorganizeManagedPrints("{category-or-folder}/{model}/{filename}", userId);
+    expect(await request(app).delete(`/api/print/${printId}`).set(auth())).toHaveProperty("status", 200);
+    for (const file of foreign) expect(fs.readFileSync(stored(home, file), "utf8")).toBe("guest");
+    fs.rmSync(stored(path.dirname(home)), { recursive: true, force: true });
+  });
+});
+
 describe("a model saved before pictures moved in beside its files", () => {
   it("keeps its pictures and supporting files where they were until the move brings them over", async () => {
     const name = `legacy-${stamp}`;

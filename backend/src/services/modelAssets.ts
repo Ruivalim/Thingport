@@ -116,6 +116,20 @@ export async function adoptLegacyAsset(home: string, file: AssetFile): Promise<b
   return true;
 }
 
+/** The files in a model's pictures folder that are its own -- named by one of `ids`, its plates' and images' --
+ *  relative to it. Anything else is left alone: another model's files, when a category puts them in here. */
+export async function ownedAssetFiles(home: string, ids: Iterable<string>): Promise<string[]> {
+  const owners = new Set(ids);
+  const found: string[] = [];
+  for (const folder of new Set(Object.values(ASSET_SUBFOLDERS))) {
+    const entries = await fs.readdir(path.join(STORAGE, home, folder), { withFileTypes: true }).catch(() => []);
+    for (const entry of entries) {
+      if (entry.isFile() && owners.has(entry.name.split(".")[0])) found.push(path.join(folder, entry.name));
+    }
+  }
+  return found;
+}
+
 /** Every file under a model's pictures folder, relative to it with "/" separators. */
 export async function listAssetFiles(home: string): Promise<{ path: string; size: number }[]> {
   const root = path.join(STORAGE, home);

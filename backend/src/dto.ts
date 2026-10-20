@@ -15,8 +15,8 @@ import type {
   User,
 } from "@prisma/client";
 import type { AssetHome } from "./services/modelAssets";
-import { plateThumbExists, plateThumbPath } from "./services/printService";
-import { previewImageExists, previewImagePath } from "./services/previewImageService";
+import { plateThumbPath } from "./services/printService";
+import { previewImagePath } from "./services/previewImageService";
 import { preparedFilename } from "./services/preparedPrint";
 import {
   canRenderModelImage,
@@ -202,11 +202,19 @@ export type CategoryOut = {
   cults3d_cat_ids: string;
 };
 
+/** `url` versioned by the file's mtime; null when it isn't there. One stat, as a storage move can take the file
+ *  away between an existence check and a second look. */
+function versionedUrl(file: string, url: string): string | null {
+  try {
+    return `${url}?v=${fs.statSync(file).mtimeMs}`;
+  } catch {
+    return null;
+  }
+}
+
 /** `home`, here and below, is the model's Print.assetsPath. */
 export function plateThumbUrl(plateId: string, home: AssetHome): string | null {
-  if (!plateThumbExists(plateId, home)) return null;
-  const mtime = fs.statSync(plateThumbPath(plateId, home)).mtimeMs;
-  return `/plate/${plateId}/thumb.jpg?v=${mtime}`;
+  return versionedUrl(plateThumbPath(plateId, home), `/plate/${plateId}/thumb.jpg`);
 }
 
 function previewGlbUrl(plate: Plate): string | null {
@@ -221,10 +229,8 @@ function previewGlbUrl(plate: Plate): string | null {
 /** The plate's grey render for the browser to tint; unversioned until it exists, as asking for it queues it. */
 export function renderUrl(plate: { id: string; filename: string }, home: AssetHome): string | null {
   if (!canRenderModelImage(plate.filename)) return null;
-  const file = modelImagePath(plate.id, home, "render");
-  return fs.existsSync(file)
-    ? `/plate/${plate.id}/render.png?v=${fs.statSync(file).mtimeMs}`
-    : `/plate/${plate.id}/render.png`;
+  const url = `/plate/${plate.id}/render.png`;
+  return versionedUrl(modelImagePath(plate.id, home, "render"), url) ?? url;
 }
 
 export function toPlateOut(printId: string, plate: Plate, home: AssetHome): PlateOut {
@@ -258,9 +264,7 @@ export function printCover(
 }
 
 function previewImageUrl(id: string, home: AssetHome): string | null {
-  if (!previewImageExists(id, home)) return null;
-  const mtime = fs.statSync(previewImagePath(id, home)).mtimeMs;
-  return `/preview-image/${id}/file.jpg?v=${mtime}`;
+  return versionedUrl(previewImagePath(id, home), `/preview-image/${id}/file.jpg`);
 }
 
 export function toPreviewImageOut(image: PreviewImage, home: AssetHome): PreviewImageOut | null {

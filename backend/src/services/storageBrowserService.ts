@@ -124,6 +124,8 @@ async function entriesUnder(folder: string): Promise<{ entries: Entry[]; picture
       location: (): StorageFileLocation => (exists(file.storagePath) ? "managed" : "missing"),
     })),
   ];
+  // Another model's files can be in a pictures folder, when a category puts them there; they're listed as its own.
+  const listed = new Set(entries.map((entry) => entry.path));
   const pictures = await mapWithConcurrency(homes, PICTURE_FOLDER_READS, async (print) => {
     const home = toSlash(print.assetsPath!);
     return (await listAssetFiles(print.assetsPath!)).map((file) => ({
@@ -135,7 +137,11 @@ async function entriesUnder(folder: string): Promise<{ entries: Entry[]; picture
       location: (): StorageFileLocation => "managed",
     }));
   });
-  entries.push(...pictures.flat());
+  for (const picture of pictures.flat()) {
+    if (listed.has(picture.path)) continue;
+    listed.add(picture.path);
+    entries.push(picture);
+  }
   return { entries, pictureFolders: new Set(homes.map((print) => toSlash(print.assetsPath!))) };
 }
 

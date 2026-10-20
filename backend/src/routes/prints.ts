@@ -15,6 +15,7 @@ import {
   relocatePrint,
   relocatePrintsForToken,
   removeAssetHome,
+  assetOwnerIds,
   removePlatePictures,
   uniqueModelName,
 } from "../services/printService";
@@ -657,6 +658,7 @@ router.post(
 
 async function deletePrint(userId: string, printId: string): Promise<void> {
   const full = await loadFullPrint(userId, printId);
+  const assetOwners = await assetOwnerIds(printId);
   await deleteAllPrintFiles(printId);
   await deleteAllPreviewImages(printId);
   await deleteAllDescriptionImages(printId);
@@ -665,7 +667,7 @@ async function deletePrint(userId: string, printId: string): Promise<void> {
     await deletePlateFiles(plate);
     await removePlatePictures(plate.id, full.print.assetsPath);
   }
-  await removeAssetHome(full.print.assetsPath);
+  await removeAssetHome(full.print.assetsPath, assetOwners);
   void recordActivity(userId, "delete", printId, full.print.name);
   void createLog({
     userId,

@@ -8,13 +8,14 @@ import { prisma } from "../db";
 import { listZipEntries, readZipEntry } from "../utils/zipReader";
 import {
   adoptLegacyAsset,
+  ASSET_SUBFOLDERS,
   ASSETS_FOLDER,
   assetExists,
   assetPath,
   assetTarget,
   descriptionImageFile,
   galleryImageFile,
-  listAssetFiles,
+  ownedAssetFiles,
   plateAssetHome,
   plateRenderFile,
   plateThumbFile,
@@ -189,14 +190,17 @@ async function printTemplateValues(print: PrintLike, template: string): Promise<
 }
 
 /** {plate} with the separator next to it taken out, for the files that aren't plates: "{model}-{plate}-{filename}"
- *  gives "{model}-{filename}". */
+ *  gives "{model}-{filename}". A folder per plate ("Plate {plate}/") goes whole, so they sit beside the plates'
+ *  folders. */
 function withoutPlateToken(template: string): string {
-  return template
-    .split("/")
-    .map((segment) =>
-      segment.replace(/([ _.-]*)\{plate\}([ _.-]*)/g, (match, before: string, after: string, offset: number) =>
-        offset === 0 || offset + match.length === segment.length ? "" : before || after,
-      ),
+  const segments = template.split("/");
+  return segments
+    .map((segment, index) =>
+      index < segments.length - 1 && segment.includes("{plate}")
+        ? ""
+        : segment.replace(/([ _.-]*)\{plate\}([ _.-]*)/g, (match, before: string, after: string, offset: number) =>
+            offset === 0 || offset + match.length === segment.length ? "" : before || after,
+          ),
     )
     .join("/");
 }
@@ -419,26 +423,33 @@ export async function pruneEmptyStorageDirs(start: string): Promise<void> {
   }
 }
 
-/** Moves one file or folder of a model; `save` records the new place, and the file goes back if that fails. */
+/** Moves one file of a model; `save` records the new place, and the file goes back if that fails. */
 async function moveStored(oldPath: string, newPath: string, save: () => Promise<unknown>): Promise<boolean> {
-  const oldExists = fsSync.existsSync(oldPath);
-  if (oldExists) {
-    await fs.mkdir(path.dirname(newPath), { recursive: true });
-    await fs.rename(oldPath, newPath);
-  }
+  return (await moveAllStored([[oldPath, newPath]], save)) > 0;
+}
+
+/** Moves files that one record finds, as moveStored; returns how many were there to move. */
+async function moveAllStored(moves: [string, string][], save: () => Promise<unknown>): Promise<number> {
+  const present = moves.filter(([oldPath]) => fsSync.existsSync(oldPath));
+  const done: [string, string][] = [];
   try {
+    for (const [oldPath, newPath] of present) {
+      await fs.mkdir(path.dirname(newPath), { recursive: true });
+      await fs.rename(oldPath, newPath);
+      done.push([oldPath, newPath]);
+    }
     await save();
   } catch (err) {
-    // Put it back, so the stored path still finds it.
-    if (oldExists) {
+    // Put them back, so the stored path still finds them.
+    for (const [oldPath, newPath] of done.toReversed()) {
       await fs.mkdir(path.dirname(oldPath), { recursive: true });
       await fs.rename(newPath, oldPath);
       await pruneEmptyStorageDirs(path.dirname(newPath));
     }
     throw err;
   }
-  if (oldExists) await pruneEmptyStorageDirs(path.dirname(oldPath));
-  return oldExists;
+  for (const [oldPath] of present) await pruneEmptyStorageDirs(path.dirname(oldPath));
+  return present.length;
 }
 
 const samePath = (relative: string, other: string) => path.resolve(STORAGE, relative) === path.resolve(STORAGE, other);
@@ -477,8 +488,18 @@ async function modelAssetFiles(printId: string, plateIds: string[]): Promise<Ass
   ];
 }
 
-/** The model's pictures folder, moved whole to where the template now puts it, with any pictures still in the old
- *  shared folders brought in. */
+/** The ids a model's pictures are named by: its plates' and its gallery and description images'. */
+export async function assetOwnerIds(printId: string): Promise<string[]> {
+  const [plates, images, descriptions] = await Promise.all([
+    prisma.plate.findMany({ where: { printId }, select: { id: true } }),
+    prisma.previewImage.findMany({ where: { printId }, select: { id: true } }),
+    prisma.descriptionImage.findMany({ where: { printId }, select: { id: true } }),
+  ]);
+  return [...plates, ...images, ...descriptions].map((row) => row.id);
+}
+
+/** The model's pictures moved to where the template now puts its folder, with any still in the old shared folders
+ *  brought in. Only its own files go: another model's can be in there too. */
 async function relocateAssets(
   print: PrintLike & { assetsPath: string | null },
   template: string,
@@ -494,12 +515,11 @@ async function relocateAssets(
     // Saved before anything moves, so a picture moved below is found even if the move stops part-way.
     await prisma.print.update({ where: { id: print.id }, data: { assetsPath: home } });
   } else if (!samePath(current, home)) {
-    const from = path.join(STORAGE, current);
-    const count = (await listAssetFiles(current)).length;
-    await moveStored(from, path.join(STORAGE, home), () =>
-      prisma.print.update({ where: { id: print.id }, data: { assetsPath: home } }),
+    const owned = await ownedAssetFiles(current, await assetOwnerIds(print.id));
+    moved += await moveAllStored(
+      owned.map((file) => [path.join(STORAGE, current, file), path.join(STORAGE, home, file)]),
+      () => prisma.print.update({ where: { id: print.id }, data: { assetsPath: home } }),
     );
-    moved += count;
   } else if (current !== home) {
     await prisma.print.update({ where: { id: print.id }, data: { assetsPath: home } });
   }
@@ -780,10 +800,16 @@ export async function plateThumbReplaceable(plateId: string): Promise<boolean> {
   return plate?.thumbGenerated ?? false;
 }
 
-/** The whole pictures folder, once its model is gone. */
-export async function removeAssetHome(home: AssetHome): Promise<void> {
+/** What's left of the model's pictures once it's gone, and the folder with them. `ids` are its assetOwnerIds,
+ *  taken before its rows went; only files named by them go, as another model's can be in the folder too. */
+export async function removeAssetHome(home: AssetHome, ids: string[]): Promise<void> {
   if (!home) return;
   const abs = path.join(STORAGE, home);
-  await fs.rm(abs, { recursive: true, force: true }).catch(() => undefined);
-  await pruneEmptyStorageDirs(path.dirname(abs));
+  for (const file of await ownedAssetFiles(home, ids)) {
+    await fs.rm(path.join(abs, file), { force: true }).catch(() => undefined);
+  }
+  for (const folder of Object.values(ASSET_SUBFOLDERS).filter(Boolean)) {
+    await pruneEmptyStorageDirs(path.join(abs, folder));
+  }
+  await pruneEmptyStorageDirs(abs);
 }

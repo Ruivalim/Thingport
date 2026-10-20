@@ -17,7 +17,7 @@ import { deleteAllPrintFiles } from "./printFileService";
 import { deleteAllPreviewImages } from "./previewImageService";
 import { deleteAllDescriptionImages } from "./descriptionImageService";
 import { deletePlateFiles } from "./printCreation";
-import { removeAssetHome, removePlatePictures } from "./printService";
+import { assetOwnerIds, removeAssetHome, removePlatePictures } from "./printService";
 import { loadFullPrint } from "./printLoader";
 import { removeUserTagMosaics } from "./tagMosaicService";
 
@@ -116,6 +116,7 @@ export async function deleteAllPrintsForUser(userId: string): Promise<number> {
   const prints = await prisma.print.findMany({ where: { userId }, select: { id: true } });
   for (const { id } of prints) {
     const full = await loadFullPrint(userId, id);
+    const assetOwners = await assetOwnerIds(id);
     await deleteAllPrintFiles(id);
     await deleteAllPreviewImages(id);
     await deleteAllDescriptionImages(id);
@@ -124,7 +125,7 @@ export async function deleteAllPrintsForUser(userId: string): Promise<number> {
       await deletePlateFiles(plate);
       await removePlatePictures(plate.id, full.print.assetsPath);
     }
-    await removeAssetHome(full.print.assetsPath);
+    await removeAssetHome(full.print.assetsPath, assetOwners);
   }
   // With no models left the user has no tags, so none of their tag pictures is needed.
   await removeUserTagMosaics(userId);

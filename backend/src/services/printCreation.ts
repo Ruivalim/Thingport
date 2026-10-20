@@ -14,6 +14,7 @@ import {
   managedPlatePath,
   pruneEmptyStorageDirs,
   removeAssetHome,
+  assetOwnerIds,
   removePlatePictures,
   renderPlateStoragePath,
   saveThumbFromFile,
@@ -244,6 +245,7 @@ async function discardPrint(printId: string): Promise<void> {
   try {
     const plates = await prisma.plate.findMany({ where: { printId } });
     const home = await printAssetHome(printId);
+    const assetOwners = await assetOwnerIds(printId);
     await prisma.print.delete({ where: { id: printId } });
     for (const plate of plates) {
       await removePlatePictures(plate.id, home);
@@ -252,7 +254,7 @@ async function discardPrint(printId: string): Promise<void> {
       await fs.rm(managed, { force: true });
       await pruneEmptyStorageDirs(path.dirname(managed));
     }
-    await removeAssetHome(home);
+    await removeAssetHome(home, assetOwners);
   } catch (err) {
     console.error("Failed to discard half-created print", printId, err);
   }
