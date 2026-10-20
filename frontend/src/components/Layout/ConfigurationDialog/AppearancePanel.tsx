@@ -5,7 +5,7 @@ import Select from "@mui/material/Select";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { UnauthorizedError } from "../../../api/client";
-import { settingsApi } from "../../../api/settings";
+import { settingsApi, type CardPreview } from "../../../api/settings";
 import { matchLanguage, SUPPORTED_LANGUAGES } from "../../../constants/languages";
 import { ACCENT_COLORS, type AccentColor, type ThemeSelection } from "../../../constants/settingsOptions";
 import { setCachedAccentColor, useAccentColor } from "../../../hooks/useAccentColor";
@@ -36,6 +36,17 @@ export default function AppearancePanel({ theme, onThemeChange, onUnauthorized }
   const accent = useAccentColor();
   const [cardPreview, setCardPreview] = useCardPreview();
   const [accentError, setAccentError] = React.useState<string | null>(null);
+  const [cardPreviewError, setCardPreviewError] = React.useState<string | null>(null);
+
+  const changeCardPreview = async (next: CardPreview) => {
+    setCardPreviewError(null);
+    try {
+      await setCardPreview(next);
+    } catch (err) {
+      if (err instanceof UnauthorizedError) onUnauthorized?.();
+      else setCardPreviewError(t("appearance.cardPreview.failed"));
+    }
+  };
 
   const changeAccent = async (next: AccentColor) => {
     const previous = accent;
@@ -104,12 +115,17 @@ export default function AppearancePanel({ theme, onThemeChange, onUnauthorized }
             label={t("appearance.cardPreview.heading")}
             value={cardPreview ?? "images"}
             disabled={cardPreview === null}
-            onChange={setCardPreview}
+            onChange={(next) => void changeCardPreview(next)}
             options={[
               { value: "images", label: t("appearance.cardPreview.images") },
               { value: "renders", label: t("appearance.cardPreview.renders") },
             ]}
           />
+          {cardPreviewError && (
+            <Typography variant="caption" color="error" sx={{ display: "block", mt: 1 }}>
+              {cardPreviewError}
+            </Typography>
+          )}
         </div>
         <div>
           <SectionLabel>{t("profile.language.heading")}</SectionLabel>

@@ -83,6 +83,7 @@ export default function ModelDetailPage({ theme, onSelectCategory, onUnauthorize
         if (cancelled) return;
         setPrint(data);
         setActiveImageIndex(0);
+        setRenderUnavailable(false);
       } catch (err) {
         if (cancelled) return;
         if (err instanceof UnauthorizedError) {
@@ -230,6 +231,7 @@ export default function ModelDetailPage({ theme, onSelectCategory, onUnauthorize
               </>
             ) : showRender ? (
               <ModelRender
+                key={print.id}
                 url={print.render_url!}
                 alt={print.title || print.name}
                 onUnavailable={onRenderUnavailable}

@@ -316,11 +316,21 @@ export async function generateModelImage(
 ): Promise<void> {
   const errorPath = modelImageErrorPath(plateId, kind);
   const key = `${kind}:${plateId}`;
-  if (!canRenderModelImage(filename) || fsSync.existsSync(modelImagePath(plateId, kind))) return;
+  if (!canRenderModelImage(filename)) return;
+  const cachedPath = modelImagePath(plateId, kind);
+  if (fsSync.existsSync(cachedPath)) {
+    // Still run onReady, so a step that failed after an earlier render gets another go.
+    try {
+      await onReady?.(cachedPath);
+    } catch (err) {
+      console.error(`Model picture post-processing failed for plate ${plateId}:`, err);
+    }
+    return;
+  }
   if (imagesInFlight.has(key) || recentlyFailed(plateId, errorPath)) return;
   imagesInFlight.add(key);
   await scheduleRender("image", async () => {
-    const dest = modelImagePath(plateId, kind);
+    const dest = cachedPath;
     const tmp = `${dest}.${process.pid}.${Date.now()}.tmp`;
     try {
       const outcome = await renderPlateFile(plateId, srcPath, (from) =>

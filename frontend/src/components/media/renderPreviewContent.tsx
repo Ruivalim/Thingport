@@ -118,7 +118,14 @@ export function renderPreviewContent(
     } else {
       fallback = <PreviewPlaceholder text={t("library:modelViewer.noPreview")} />;
     }
-    return <CardPicture print={print} previewMode={previewMode} fallback={fallback} />;
+    return (
+      <CardPicture
+        key={`${print.id}:${print.render_url ?? ""}`}
+        print={print}
+        previewMode={previewMode}
+        fallback={fallback}
+      />
+    );
   }
 
   if (is3d) {

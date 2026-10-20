@@ -5,19 +5,24 @@ import { settingsApi, type CardPreview } from "../api/settings";
 // switch shows everywhere at once.
 let cached: CardPreview | undefined;
 let inFlight: Promise<CardPreview> | null = null;
+// Bumped on sign-in, so an answer still on its way for the previous account is dropped.
+let account = 0;
 const listeners = new Set<(value: CardPreview) => void>();
 
 function load(): Promise<CardPreview> {
   if (cached !== undefined) return Promise.resolve(cached);
+  if (inFlight) return inFlight;
+  const forAccount = account;
   // A switch made while this is in flight is newer than the server's answer, so it wins.
-  inFlight ??= settingsApi
+  const request = settingsApi
     .getCardPreview()
-    .then((res) => (cached ??= res.preview))
+    .then((res) => (forAccount === account ? (cached ??= res.preview) : res.preview))
     .catch((): CardPreview => cached ?? "images")
     .finally(() => {
-      inFlight = null;
+      if (inFlight === request) inFlight = null;
     });
-  return inFlight;
+  inFlight = request;
+  return request;
 }
 
 function publish(value: CardPreview) {
@@ -25,8 +30,16 @@ function publish(value: CardPreview) {
   listeners.forEach((listener) => listener(value));
 }
 
-/** Null until the saved choice is known, so cards don't flash the wrong picture first. */
-export function useCardPreview(): [CardPreview | null, (preview: CardPreview) => void] {
+/** Forgets the previous account's choice; call on sign-in. */
+export function resetCardPreview() {
+  account++;
+  cached = undefined;
+  inFlight = null;
+}
+
+/** Null until the saved choice is known, so cards don't flash the wrong picture first. The setter shows the switch
+ *  straight away, puts it back if the save fails, and rejects with the save's error. */
+export function useCardPreview(): [CardPreview | null, (preview: CardPreview) => Promise<void>] {
   const [value, setValue] = useState<CardPreview | null>(cached ?? null);
 
   useEffect(() => {
@@ -41,10 +54,16 @@ export function useCardPreview(): [CardPreview | null, (preview: CardPreview) =>
     };
   }, []);
 
-  const update = (preview: CardPreview) => {
+  const update = async (preview: CardPreview) => {
+    const previous = cached ?? "images";
     publish(preview);
-    // The switch already happened here; a failed save only means other devices won't follow.
-    settingsApi.updateCardPreview(preview).catch(() => {});
+    try {
+      await settingsApi.updateCardPreview(preview);
+    } catch (err) {
+      // Only if nothing newer was picked meanwhile.
+      if (cached === preview) publish(previous);
+      throw err;
+    }
   };
 
   return [value, update];

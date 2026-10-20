@@ -16,7 +16,7 @@ type Props<T extends string> = {
   bare?: boolean;
 };
 
-/** Round colour swatches on Segmented's track; the chosen one is ringed and ticked. */
+/** Round colour swatches on Segmented's track, or bare; the chosen one is ringed and ticked. */
 export default function ColorSwatches<T extends string>({ value, options, onChange, label, bare }: Props<T>) {
   return (
     <Box
