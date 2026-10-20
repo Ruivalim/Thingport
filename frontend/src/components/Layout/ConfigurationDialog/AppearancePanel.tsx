@@ -36,6 +36,8 @@ export default function AppearancePanel({ theme, onThemeChange, onUnauthorized }
   const accent = useAccentColor();
   const [cardPreview, setCardPreview] = useCardPreview();
   const [accentError, setAccentError] = React.useState<string | null>(null);
+  // Picks can overlap; only the latest one's failure may put the accent back.
+  const latestAccentSave = React.useRef(0);
   const [cardPreviewError, setCardPreviewError] = React.useState<string | null>(null);
 
   const changeCardPreview = async (next: CardPreview) => {
@@ -50,12 +52,14 @@ export default function AppearancePanel({ theme, onThemeChange, onUnauthorized }
 
   const changeAccent = async (next: AccentColor) => {
     const previous = accent;
+    const save = ++latestAccentSave.current;
     setAccentError(null);
     // The whole app recolours straight away; put back if the save fails.
     setCachedAccentColor(next);
     try {
       await settingsApi.updateTheme({ accent: next });
     } catch (err) {
+      if (save !== latestAccentSave.current) return;
       setCachedAccentColor(previous);
       if (err instanceof UnauthorizedError) onUnauthorized?.();
       else setAccentError(t("appearance.accentFailed"));

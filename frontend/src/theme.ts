@@ -18,7 +18,7 @@ declare module "@mui/material/styles" {
       subnavBackground: string;
       modelColor: string;
       modelEmissive: string;
-      /** A secondary accent that doesn't compete with the primary green. */
+      /** A fixed secondary accent, whichever accent is picked. */
       altText: string;
       /** Separate from text.secondary so recoloring nav rows can't leak into unrelated UI. */
       navInactiveText: string;
@@ -118,6 +118,8 @@ type AccentDef = {
   light?: string;
   /** Text on a filled accent: white unless the accent is too pale for it. */
   contrastText?: string;
+  /** Light mode's selected-menu text, for an accent too pale to read as text on white. */
+  lightText?: string;
   /** Light mode's sub-menu background: a shade under the page, faintly tinted, so it's neither the white sidebar
    *  nor the content. Defaults to a little of the accent in grey. */
   lightSubnav?: string;
@@ -129,7 +131,7 @@ const ACCENTS: Record<AccentColor, AccentDef> = {
   green: { main: "#00b800", light: "#5be584", lightSubnav: "#ecf1ec" },
   blue: { main: "#248bfb" }, // Thingiverse
   orange: { main: "#fa6831" }, // Printables
-  amber: { main: "#f2a900", contrastText: "#1f1f1f" }, // Thangs, a shade deeper to read on white
+  amber: { main: "#f2a900", contrastText: "#1f1f1f", lightText: "#8a6000" }, // Thangs, a shade deeper to read on white
   teal: { main: "#00b39a" }, // MyMiniFactory, likewise
   purple: { main: "#822ef5" }, // Cults3D
 };
@@ -166,7 +168,7 @@ function withAccent(d: BaseThemeDef, accent: AccentColor): ThemeDef {
     accentStrong: darken(a.main, 0.15),
     accentSoft: alpha(a.main, 0.16),
     accentContrast: accentSwatch(accent).contrast,
-    selectedNavText: a.main,
+    selectedNavText: d.mode === "light" ? (a.lightText ?? a.main) : a.main,
   };
 }
 
@@ -212,7 +214,7 @@ export function buildTheme(id: ResolvedTheme, accent: AccentColor = DEFAULT_ACCE
       MuiButton: { styleOverrides: { root: { borderRadius: 8 } } },
       MuiChip: { styleOverrides: { root: { borderRadius: 6 } } },
       MuiTooltip: { styleOverrides: { tooltip: { backgroundColor: d.panelStrong, color: d.text } } },
-      // Success toasts always use the brand green, not MUI's success palette.
+      // Success toasts use the accent, not MUI's success palette.
       MuiAlert: {
         styleOverrides: {
           filledSuccess: { backgroundColor: d.accent, color: d.accentContrast },

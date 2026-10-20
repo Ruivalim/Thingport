@@ -48,7 +48,7 @@ import { type AppSettings, type MakerWorldSettings, loadSettings, saveSettings }
 import { useResolvedTheme } from "./hooks/useResolvedTheme";
 import { setCachedAccentColor, useAccentColor } from "./hooks/useAccentColor";
 import { resetCardPreview } from "./hooks/useCardPreview";
-import type { ResolvedTheme, ThemeSelection } from "./constants/settingsOptions";
+import { DEFAULT_ACCENT, type ResolvedTheme, type ThemeSelection } from "./constants/settingsOptions";
 import { buildTheme } from "./theme";
 
 const DEFAULT_REFRESH_SECONDS = 6 * 60 * 60; // 6 hours
@@ -333,15 +333,25 @@ export default function App() {
     })();
   }, [token]);
   React.useEffect(() => {
-    if (!token) return;
+    // The accent is the account's, so another account signing in on this tab doesn't inherit it.
+    if (!token) {
+      setCachedAccentColor(DEFAULT_ACCENT);
+      return;
+    }
+    let active = true;
     (async () => {
       try {
         const saved = await settingsApi.getTheme();
-        // Null means never set; keep the current theme.
+        // An answer for a token that's since changed belongs to someone else's session.
+        if (!active) return;
+        // Null means never set: the theme stays as it is, the accent is the default.
         if (saved.theme) setThemeSelection(saved.theme);
-        if (saved.accent) setCachedAccentColor(saved.accent);
+        setCachedAccentColor(saved.accent ?? DEFAULT_ACCENT);
       } catch {}
     })();
+    return () => {
+      active = false;
+    };
   }, [token]);
   const handleThemeChange = React.useCallback((selected: ThemeSelection) => {
     setThemeSelection(selected);
