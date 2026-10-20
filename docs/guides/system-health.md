@@ -21,7 +21,7 @@ for.
 | Database       | Required    | Holds every model, collection, user and setting. Without it nothing in Thingport works.                                                                                                                                                                                 |
 | File storage   | Required    | Where model files, pictures and 3D previews are kept. Uploads, imports and downloads fail if it isn't writable or runs out of space.                                                                                                                                    |
 | Memory         | Required    | Building 3D previews of large models takes the most. With too little, previews fail or the server restarts.                                                                                                                                                             |
-| FlareSolverr   | Recommended | Gets past Cloudflare's checks, mostly on Thingiverse and Printables. Without it, imports and syncs from those sites are blocked whenever Cloudflare challenges the server.                                                                                              |
+| FlareSolverr   | Recommended | Gets past Cloudflare's checks, mostly on Printables, Thingiverse and MyMiniFactory. Without it, imports and syncs from those sites are blocked whenever Cloudflare challenges the server.                                                                               |
 | Thingiverse    | Recommended | The instance's Thingiverse App Token, used for every Thingiverse import, synced collection and author lookup. Not checked while Thingiverse is [turned off](../PROVIDER_SETUP.md#turning-a-provider-off).                                                               |
 | MyMiniFactory  | Optional    | The instance's MyMiniFactory API key, used to read models, synced collections and authors from MyMiniFactory. Not checked while MyMiniFactory is [turned off](../PROVIDER_SETUP.md#turning-a-provider-off).                                                             |
 | Thingport Grab | Recommended | The [browser extension](../../extension/README.md) for importing while you browse MakerWorld, Printables, Thingiverse and MyMiniFactory, whole collections included, and for bringing over Printables likes. Shown as seen once any browser uses it with this instance. |
@@ -53,10 +53,10 @@ pull the AI model on Ollama.
 - **FlareSolverr not answering**: check that its container is running and that the URL under **Administration →
   Connections → FlareSolverr** is right, port included (usually `http://flaresolverr:8191`).
 - **Thingiverse token rejected**: generate a new one at [thingiverse.com/apps/create](https://www.thingiverse.com/apps/create)
-  and save it under **Administration → Providers** (see [provider setup](../PROVIDER_SETUP.md#thingiverse-app-token)).
+  and save it under **Administration → Providers** (see [Thingiverse setup](../providers/thingiverse.md#setup)).
 - **MyMiniFactory key rejected**: check that you copied the application's API key, not its client ID, under
   [myminifactory.com/settings/developer](https://www.myminifactory.com/settings/developer), and save it under
-  **Administration → Providers** (see [provider setup](../PROVIDER_SETUP.md#myminifactory-api-key)).
+  **Administration → Providers** (see [MyMiniFactory setup](../providers/myminifactory.md#setup-the-api-key)).
 - **AI provider not answering or model missing**: see [troubleshooting the AI features](ai.md#troubleshooting).
 - **Email not connecting**: check the host, port, security setting and login under **Administration → Connections →
   SMTP**.

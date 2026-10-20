@@ -1637,7 +1637,7 @@
     },
     "providers": {
       "title": "Šaltiniai",
-      "subtitle": "Svetainės, iš kurių importuojate modelius. Spustelėkite dešiniuoju pelės mygtuku, kad prijungtumėte ar atjungtumėte.",
+      "subtitle": "Svetainės, iš kurių importuojate modelius. Spustelėkite dešiniuoju pelės mygtuku, kad prijungtumėte, atjungtumėte ar sužinotumėte daugiau.",
       "connected": "Prijungta",
       "notConnected": "Neprijungta",
       "connect": "Prijungti",
@@ -1829,6 +1829,162 @@
         "readMore": "Skaityti vadovą",
         "extensionRecommended": "Rekomenduojamas importavimo būdas yra naršyklės plėtinys Thingport Grab: jis veikia tiesiai modelio puslapyje, importuoja ištisas kolekcijas, o kai kurios svetainės veikia tik su juo. Žymių programėlė yra paprastesnė alternatyva vienam modeliui importuoti.",
         "getExtension": "Gauti Grab"
+      }
+    },
+    "providerAbout": {
+      "about": "Apie",
+      "aboutName": "Apie {{name}}",
+      "tabsLabel": "Rodinys",
+      "tabs": {
+        "about": "Apie",
+        "compare": "Palyginti"
+      },
+      "sections": {
+        "needs": "Reikia",
+        "imports": "Importuoja",
+        "setup": "Nustatymas"
+      },
+      "rows": {
+        "signIn": "Prisijungimas",
+        "grab": "Thingport Grab",
+        "flaresolverr": "FlareSolverr"
+      },
+      "rowHelp": {
+        "grab": "Thingport naršyklės plėtinys. Jis importuoja tiesiai iš modelio puslapio ir perduoda Thingport jūsų naršyklės prisijungimą.",
+        "flaresolverr": "Docker rinkinio dalis. Tikra naršykle jis įveikia Cloudflare patikras; nustatomas skiltyje Administravimas → Ryšiai."
+      },
+      "need": {
+        "required": "Būtinas",
+        "recommended": "Rekomenduojamas",
+        "optional": "Nebūtinas",
+        "none": "Nenaudojamas"
+      },
+      "signIn": {
+        "none": "Nereikia",
+        "admin": "Administratoriaus raktas",
+        "user": "Jūsų prisijungimas",
+        "adminUser": "Administratoriaus ir jūsų",
+        "userOptional": "Nebūtinas"
+      },
+      "features": {
+        "models": "Modeliai",
+        "profiles": "Spausdinimo profiliai",
+        "collections": "Kolekcijos",
+        "likes": "Pamėgti",
+        "sync": "Sinchronizavimas",
+        "paid": "Mokami modeliai"
+      },
+      "flareNote": {
+        "recommended": "Įveikia Cloudflare, kai šis patikrina serverį. Be jo tokie importai nepavyksta.",
+        "optional": "Tik atsarginis variantas, jei Cloudflare kada įsikištų.",
+        "none": "Nereikia."
+      },
+      "guide": "Visas vadovas",
+      "getGrab": "Gauti Thingport Grab",
+      "visit": "Atverti {{host}}",
+      "compareLabel": "Ko reikia kiekvienam šaltiniui ir ką jis importuoja",
+      "off": "Išjungtas",
+      "yes": "Taip",
+      "no": "Ne",
+      "providers": {
+        "makerworld": {
+          "summary": "Bambu Lab platforma 3D spausdinimo modeliams dalytis, daugelis jų – su suderintais spausdinimo profiliais. Tinka bet kuriam spausdintuvui, o MakerLab įrankiais modelius galima pritaikyti.",
+          "signIn": "Jūsų MakerWorld sesijos slapukas.",
+          "grab": "Pats nuskaito slapuką ir importuoja ištisas kolekcijas, neperžengdamas MakerWorld užklausų ribų.",
+          "setup": [
+            "Įdiekite Thingport Grab ir vieną kartą importuokite iš MakerWorld puslapio prisijungę: jis pats prijungs MakerWorld.",
+            "Arba rankiniu būdu: nukopijuokite token slapuką iš naršyklės kūrėjo įrankių (Application → Cookies → makerworld.com).",
+            "Spustelėkite MakerWorld dešiniuoju mygtuku skiltyje Konfigūracija → Šaltiniai, pasirinkite Prijungti ir įklijuokite."
+          ]
+        },
+        "printables": {
+          "summary": "Nemokama Prusa Research modelių saugykla, anksčiau vadinta PrusaPrinters, su konkursais ir Prusameters apdovanojimais. Jos failai tinka bet kuriam spausdintuvui.",
+          "signIn": "Nieko jungti nereikia.",
+          "grab": "Reikia tik jūsų privačioms kolekcijoms ir pamėgtiems modeliams, kuriuos Printables rodo tik jums.",
+          "setup": [
+            "Nieko nustatyti nereikia: įklijuokite Printables nuorodą arba importuokite iš jos puslapio su Thingport Grab.",
+            "Privačioms kolekcijoms ir pamėgtiems modeliams atverkite Printables prisijungę, su Thingport Grab."
+          ]
+        },
+        "thingiverse": {
+          "summary": "Viena seniausių ir didžiausių naudotojų sukurtų 3D spausdinimo dizainų bibliotekų; dauguma jų nemokami ir atvirai licencijuoti.",
+          "signIn": "Vienas programėlės raktas visiems, jį nustato administratorius.",
+          "grab": "Patogu importuoti iš Thingiverse puslapių, bet nebūtina.",
+          "setup": [
+            "Prisijunkite prie thingiverse.com ir atverkite thingiverse.com/apps/create.",
+            "Sukurkite programėlę, kuriai nereikia peradresavimo adreso, pvz., Desktop app, ir nukopijuokite jos App Token.",
+            "Administratorius jį įklijuoja skiltyje Konfigūracija → Šaltiniai → Thingiverse arba Administravimas → Šaltiniai."
+          ]
+        },
+        "myminifactory": {
+          "summary": "Atrinktų nemokamų ir mokamų 3D spausdinimo failų parduotuvė, labiausiai žinoma stalo žaidimų miniatiūromis. Modeliai patikrinami prieš juos paskelbiant.",
+          "signIn": "API raktas, kurį nustato administratorius; jūsų prisijungimas prideda nusipirktus modelius.",
+          "grab": "Prijungia jūsų paskyrą, kai tiesiog atveriate myminifactory.com.",
+          "setup": [
+            "Administratorius sukuria programėlę myminifactory.com/settings/developer ir išsaugo jos API raktą skiltyje Administravimas → Šaltiniai.",
+            "Nusipirktiems modeliams atverkite myminifactory.com prisijungę su Thingport Grab arba įklijuokite PHPSESSID slapuką skiltyje Konfigūracija → Šaltiniai."
+          ]
+        },
+        "snapmaker": {
+          "summary": "Snapmaker modelių platforma, sukurta jos U1 spausdintuvui. Rekomenduojami modeliai išbandomi spausdinant, profiliai suderinti spalvotam spausdinimui.",
+          "signIn": "Jūsų prisijungimas. Jis galioja parą.",
+          "grab": "Tik jis atnaujina prisijungimą. Be jo naują tektų įklijuoti kasdien.",
+          "setup": [
+            "Įdiekite Thingport Grab, įjunkite jį Snapmaker Space ir atverkite space.snapmaker.com prisijungę.",
+            "Tada Grab palaiko prisijungimą galiojantį, kol naršyklė atverta.",
+            "Rankiniu būdu: įklijuokite login_access_token slapuką skiltyje Konfigūracija → Šaltiniai. Jis galioja parą."
+          ]
+        },
+        "makeronline": {
+          "summary": "Anycubic modelių platforma: nemokami ir mokami modeliai, dizainerių konkursai ir DI įrankis 3D modeliams iš teksto kurti.",
+          "signIn": "Importuoti nereikia; prisijungimas prideda jūsų pamėgtus modelius ir privačias kolekcijas.",
+          "grab": "Kiekvieną MakerOnline failą atsisiunčia Grab, makeronline.com puslapyje. Kitur pradėti importai jo laukia.",
+          "setup": [
+            "Įdiekite Thingport Grab ir įjunkite jį MakerOnline.",
+            "Importuokite iš modelio puslapio arba atverkite bet kurį makeronline.com puslapį, kad atkeliautų Grab laukiantys modeliai.",
+            "Jei ten prisijungę, Grab prijungia ir jūsų paskyrą pamėgtiems modeliams ir privačioms kolekcijoms."
+          ]
+        },
+        "crealitycloud": {
+          "summary": "Creality 3D spausdinimo platforma: didelė nemokamų ir aukščiausios kokybės modelių biblioteka, pjaustymas debesyje ir nuotolinis spausdinimas.",
+          "signIn": "Jūsų prisijungimas. Jis galioja savaitę ir nėra atnaujinamas.",
+          "grab": "Perduoda kiekvieną naują prisijungimą, kai prisijungiate crealitycloud.com.",
+          "setup": [
+            "Įdiekite Thingport Grab, įjunkite jį Creality Cloud ir atverkite crealitycloud.com prisijungę.",
+            "Rankiniu būdu: nukopijuokite crealitycloud.com/api užklausos Cookie antraštę ir įklijuokite skiltyje Konfigūracija → Šaltiniai.",
+            "Po savaitės prisijunkite ten vėl, kad prijungtumėte iš naujo."
+          ]
+        },
+        "nexprint": {
+          "summary": "Atvira Elegoo modelių platforma, pradėta 2025 m. Joje Elegoo biblioteka sujungta su bendruomenės dizainais, ji veikia su Elegoo Slicer ir OrcaSlicer.",
+          "signIn": "Jūsų prisijungimas, kurį svetainė atnaujina, kol ja naudojatės.",
+          "grab": "Perduoda atnaujintą prisijungimą, kai lankotės nexprint.com.",
+          "setup": [
+            "Įdiekite Thingport Grab, įjunkite jį NexPrint ir atverkite nexprint.com prisijungę.",
+            "Rankiniu būdu: nukopijuokite nexprint.com/gateway užklausos Authorization antraštę ir įklijuokite skiltyje Konfigūracija → Šaltiniai."
+          ]
+        },
+        "thangs": {
+          "summary": "Physna sukurta 3D modelių paieškos sistema, randanti modelius ne tik pagal pavadinimą, bet ir pagal formą, su parduotuve ir dizainerių narystėmis.",
+          "signIn": "Jūsų prisijungimas; Thingport jį atnaujina maždaug metus.",
+          "grab": "Prijungia jūsų paskyrą vienu apsilankymu thangs.com.",
+          "setup": [
+            "Įdiekite Thingport Grab, įjunkite jį Thangs ir atverkite thangs.com prisijungę.",
+            "Rankiniu būdu: nukopijuokite thangs.com/api užklausos Cookie antraštę ir įklijuokite skiltyje Konfigūracija → Šaltiniai.",
+            "Nemokamos paskyros per dieną gali atsisiųsti ribotą modelių skaičių."
+          ]
+        },
+        "cults3d": {
+          "summary": "Prancūziška nemokamų ir mokamų 3D spausdinimo dizainų parduotuvė, įkurta 2014 m., kartu ir socialinis tinklas kūrėjams.",
+          "signIn": "Jūsų API raktas ir naršyklės prisijungimas failams.",
+          "grab": "Perduoda naršyklės prisijungimą ir Cloudflare leidimą. Thingport turi jungtis į internetą iš tos naršyklės IP adreso.",
+          "flaresolverr": "Nepadeda: jo naršyklė negali perduoti atsisiuntimo nuorodos.",
+          "setup": [
+            "Sukurkite API raktą cults3d.com/en/api/keys.",
+            "Spustelėkite Cults3D dešiniuoju mygtuku skiltyje Konfigūracija → Šaltiniai, pasirinkite Prijungti ir įveskite slapyvardį bei raktą.",
+            "Atverkite cults3d.com prisijungę su Thingport Grab, kad failus būtų galima atsisiųsti."
+          ]
+        }
       }
     }
   },

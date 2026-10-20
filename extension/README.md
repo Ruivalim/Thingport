@@ -1,6 +1,6 @@
 # Thingport Grab
 
-A browser extension for Chrome, Edge and Firefox that imports MakerWorld, Thingiverse, Printables
+A browser extension for Chrome, Edge and Firefox that imports MakerWorld, Printables, Thingiverse,
 MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud, NexPrint, Thangs and Cults3D models into your self-hosted Thingport instance without leaving the provider's site.
 Visiting a model, collection, or Thingiverse Likes page shows a floating Thingport icon; clicking it
 opens a small panel to pick what to import (and, for a single model, an optional destination

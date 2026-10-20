@@ -1,6 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import Alert from "@mui/material/Alert";
+import Divider from "@mui/material/Divider";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
@@ -15,6 +16,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import LinkIcon from "@mui/icons-material/Link";
 import LinkOffIcon from "@mui/icons-material/LinkOff";
 import ContentPasteIcon from "@mui/icons-material/ContentPaste";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { UnauthorizedError } from "../../../api/client";
 import { settingsApi, type Cults3dSettings } from "../../../api/settings";
 import { cults3dReady, cults3dStatus } from "./cults3dStatus";
@@ -24,6 +26,7 @@ import { AppGrid, AppTile, menuPosition, reopenContextMenuBelow, TileMenuHeader 
 import { PanelHeader } from "./parts";
 import { COMING_SOON_PROVIDERS, ProviderLogo, type ProviderId } from "./providerLogos";
 import { useDisabledProviders } from "../../../hooks/useDisabledProviders";
+import { useProviderAbout } from "../../providerAbout/ProviderAboutProvider";
 import type { ImportProvider } from "../../../api/settings";
 
 const PROVIDERS: { id: ProviderId; name: string }[] = [
@@ -365,6 +368,8 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
             }
           />
         )}
+        {menuId && <AboutMenuItem id={menuId} onClick={() => setMenu(null)} />}
+        {menuId && !isComingSoon(menuId) && <Divider />}
         {menuId && menuExpired && (
           <MenuItem
             onClick={() => {
@@ -461,6 +466,25 @@ export default function ProvidersPanel({ isAdmin, cookie, onUpdateMakerWorld, on
         />
       )}
     </>
+  );
+}
+
+function AboutMenuItem({ id, onClick }: { id: ProviderId; onClick: () => void }) {
+  const { t } = useTranslation("app");
+  const openAbout = useProviderAbout(id);
+  if (!openAbout) return null;
+  return (
+    <MenuItem
+      onClick={() => {
+        onClick();
+        openAbout();
+      }}
+    >
+      <ListItemIcon>
+        <InfoOutlinedIcon fontSize="small" />
+      </ListItemIcon>
+      <ListItemText>{t("providerAbout.about")}</ListItemText>
+    </MenuItem>
   );
 }
 
