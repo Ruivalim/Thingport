@@ -1,3 +1,8 @@
+# Edge certification notes, sent with every Edge submission by scripts/publish-edge.ts. Lines starting with # are
+# dropped before sending.
+# LIMIT: Edge rejects notes of 2,000 characters or more AFTER the placeholders are filled, and {{testServer}} alone
+# adds about 330. Check with `npm run check:edge-notes` (CI runs it). Keep it short: describe providers as a group
+# ("model sites the user enables") rather than listing each one, so adding a provider doesn't grow the notes.
 Thingport Grab {{version}}. Changes: {{changes}}
 
 WHAT IT DOES
