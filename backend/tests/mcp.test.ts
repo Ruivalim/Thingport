@@ -5,7 +5,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
 import { createApp } from "../src/app";
 import { prisma } from "../src/db";
-import { DEFAULT_MCP_TOOL_NAMES, MCP_TOOLS } from "../src/mcp/tools";
+import { DEFAULT_MCP_TOOL_NAMES, MCP_TOOLS, mcpImportTiming } from "../src/mcp/tools";
 
 // /api/mcp end to end: who gets in, which tools each token sees, and that every tool only ever
 // reads the token owner's own library.
@@ -332,5 +332,177 @@ describe("the tools", () => {
   it("get_author says not found for an unknown author", async () => {
     const result = await callTool(alice.token, "get_author", { id: "no-such-author" });
     expect(result.isError).toBe(true);
+  });
+});
+
+describe("the tools that write", () => {
+  const WRITE_TOOLS = ["import_model", "create_collection", "add_to_collection"];
+  // A public IP literal passes the SSRF check without a DNS lookup; fetch is mocked below.
+  const FILE_URL = "https://93.184.215.14/files/mcp-imported-widget.stl";
+  let writer: Account;
+  const originalFetch = global.fetch;
+
+  beforeAll(async () => {
+    const user = await register("writer");
+    writer = {
+      ...user,
+      token: await apiToken(user.session, { mcp_tools: [...DEFAULT_MCP_TOOL_NAMES, ...WRITE_TOOLS] }),
+    };
+  });
+
+  function mockFile(contents = "solid widget\nendsolid widget\n") {
+    global.fetch = (async (input: RequestInfo | URL) => {
+      if (String(input) === FILE_URL) {
+        return new Response(contents, { headers: { "content-type": "application/octet-stream" } });
+      }
+      throw new Error(`Unexpected fetch to ${String(input)}`);
+    }) as typeof fetch;
+  }
+
+  it("are off for a new token, and marked as writing", async () => {
+    const names = await toolNames(alice.token);
+    for (const tool of WRITE_TOOLS) expect(names).not.toContain(tool);
+    const listed = (await mcp(writer.token, "tools/list")).body.result.tools as {
+      name: string;
+      annotations: { readOnlyHint: boolean; destructiveHint: boolean };
+    }[];
+    for (const tool of listed.filter((t) => WRITE_TOOLS.includes(t.name))) {
+      expect(tool.annotations.readOnlyHint).toBe(false);
+      expect(tool.annotations.destructiveHint).toBe(false);
+    }
+  });
+
+  it("refuses a write tool to a token that didn't turn it on", async () => {
+    const before = await prisma.collection.count({ where: { userId: alice.userId } });
+    const res = await mcp(alice.token, "tools/call", { name: "create_collection", arguments: { name: "Nope" } });
+    expect(res.body.error ?? (res.body.result?.isError ? res.body.result : null)).toBeTruthy();
+    expect(await prisma.collection.count({ where: { userId: alice.userId } })).toBe(before);
+  });
+
+  it("create_collection makes an empty collection, and refuses a name already taken", async () => {
+    const created = await callTool(writer.token, "create_collection", { name: "From the assistant", tags: ["ai"] });
+    expect(created.data.name).toBe("From the assistant");
+    const row = await prisma.collection.findUniqueOrThrow({ where: { id: created.data.id } });
+    expect(row.userId).toBe(writer.userId);
+
+    const again = await callTool(writer.token, "create_collection", { name: "from the ASSISTANT" });
+    expect(again.isError).toBe(true);
+    expect(again.text).toMatch(/already/i);
+  });
+
+  it("add_to_collection files the user's models and reports the rest", async () => {
+    const own = await upload(writer.session, "own-model.stl");
+    const { data: collection } = await callTool(writer.token, "create_collection", { name: "Filing test" });
+
+    const first = await callTool(writer.token, "add_to_collection", {
+      collection_id: collection.id,
+      model_ids: [own, bobSecretId, "no-such-model"],
+    });
+    expect(first.data.added).toEqual([own]);
+    // Another user's model reads as not found, never as added.
+    expect(first.data.not_found.toSorted()).toEqual([bobSecretId, "no-such-model"].toSorted());
+    expect(await prisma.collectionItem.count({ where: { printId: bobSecretId, collectionId: collection.id } })).toBe(0);
+
+    const second = await callTool(writer.token, "add_to_collection", {
+      collection_id: collection.id,
+      model_ids: [own],
+    });
+    expect(second.data.added).toEqual([]);
+    expect(second.data.already_in).toEqual([own]);
+  });
+
+  it("add_to_collection won't touch another user's collection or a built-in one", async () => {
+    const own = await upload(writer.session, "other-check.stl");
+    const theirs = await callTool(writer.token, "add_to_collection", {
+      collection_id: bobCollectionId,
+      model_ids: [own],
+    });
+    expect(theirs.isError).toBe(true);
+    expect(await prisma.collectionItem.count({ where: { collectionId: bobCollectionId } })).toBe(0);
+    const builtIn = await callTool(writer.token, "add_to_collection", { collection_id: "favorites", model_ids: [own] });
+    expect(builtIn.isError).toBe(true);
+  });
+
+  it("import_model imports a link into the library and the chosen collection, once", async () => {
+    mockFile();
+    try {
+      const { data: collection } = await callTool(writer.token, "create_collection", { name: "Imported here" });
+      const first = await callTool(writer.token, "import_model", {
+        url: FILE_URL,
+        title: "Widget from MCP",
+        collection_id: collection.id,
+      });
+      expect(first.isError).toBe(false);
+      expect(first.data.status).toBe("created");
+      expect(first.data.model.title).toBe("Widget from MCP");
+      expect(first.data.collection).toEqual({ id: collection.id, name: "Imported here" });
+      const print = await prisma.print.findUniqueOrThrow({ where: { id: first.data.model.id } });
+      expect(print.userId).toBe(writer.userId);
+      expect(await prisma.collectionItem.count({ where: { collectionId: collection.id, printId: print.id } })).toBe(1);
+      // The same trail as + Add > Import.
+      expect(
+        await prisma.log.count({ where: { userId: writer.userId, action: "model_imported", targetId: print.id } }),
+      ).toBe(1);
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it("import_model refuses an internal address", async () => {
+    const result = await callTool(writer.token, "import_model", { url: "http://127.0.0.1:8000/api/health" });
+    expect(result.isError).toBe(true);
+    expect(result.text).toMatch(/local addresses/i);
+  });
+
+  it("import_model checks the collection before importing anything", async () => {
+    mockFile();
+    try {
+      const before = await prisma.print.count({ where: { userId: writer.userId } });
+      const result = await callTool(writer.token, "import_model", { url: FILE_URL, collection_id: bobCollectionId });
+      expect(result.isError).toBe(true);
+      expect(await prisma.print.count({ where: { userId: writer.userId } })).toBe(before);
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it("hands a slow import over to get_import_status, which only its user can read", async () => {
+    const slowUrl = "https://93.184.215.14/files/mcp-slow-widget.stl";
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    global.fetch = (async (input: RequestInfo | URL) => {
+      if (String(input) !== slowUrl) throw new Error(`Unexpected fetch to ${String(input)}`);
+      await gate;
+      return new Response("solid slow\nendsolid slow\n", { headers: { "content-type": "application/octet-stream" } });
+    }) as typeof fetch;
+    const saved = { ...mcpImportTiming };
+    mcpImportTiming.waitMs = 50;
+    mcpImportTiming.pollMs = 10;
+    try {
+      const started = await callTool(writer.token, "import_model", { url: slowUrl });
+      expect(started.data.status).toBe("running");
+      const taskId = started.data.task_id as string;
+
+      // Someone else's token can't follow it, even with the id.
+      const peek = await callTool(alice.token, "get_import_status", { task_id: taskId });
+      expect(peek.isError).toBe(true);
+
+      release();
+      let state = started.data;
+      for (let i = 0; i < 100 && state.status === "running"; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        state = (await callTool(writer.token, "get_import_status", { task_id: taskId })).data;
+      }
+      expect(state.status).toBe("created");
+      expect(state.model.id).toBeTruthy();
+    } finally {
+      Object.assign(mcpImportTiming, saved);
+      global.fetch = originalFetch;
+    }
+  });
+
+  it("get_import_status says when it doesn't know the import", async () => {
+    const unknown = await callTool(writer.token, "get_import_status", { task_id: "no-such-task" });
+    expect(unknown.isError).toBe(true);
   });
 });

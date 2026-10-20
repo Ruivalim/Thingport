@@ -35,7 +35,13 @@ export function buildMcpServer(ctx: McpToolContext, allowedTools: ReadonlySet<st
         title: tool.title,
         description: tool.description,
         inputSchema: tool.inputSchema,
-        annotations: { readOnlyHint: tool.readOnly, openWorldHint: false },
+        annotations: {
+          readOnlyHint: tool.readOnly,
+          // Nothing here deletes or overwrites.
+          destructiveHint: false,
+          idempotentHint: tool.idempotent ?? tool.readOnly,
+          openWorldHint: tool.openWorld ?? false,
+        },
       },
       async (args: Record<string, unknown>) => {
         try {

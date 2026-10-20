@@ -8,13 +8,16 @@ import { getDashboardSummary } from "../services/dashboardService";
 import { printOutById } from "../services/printLoader";
 import { listPrints, listTagsOf, PRINT_SORT_MODES, SELF_AUTHOR_ID } from "../services/printQuery";
 import { search } from "../services/searchService";
+import { addModelsToCollection, createCollection, isSystemCollectionId } from "../services/collectionService";
+import { getImportTask, startImportTask, type ImportTaskState } from "../services/importTaskService";
+import { importAndDescribe, prepareSingleImport } from "../services/singleImport";
 
 // The tools /api/mcp offers. Each runs as the token's user, through the same services as the REST
 // API, so it sees exactly that user's library. Outputs are trimmed to what an assistant can use:
 // no image or file URLs, which need a session to open anyway.
 //
-// `readOnly` is what lets an API token reach a tool at all over POST (see routes/mcp.ts). A tool that
-// writes must say so, and is off for every token until its user ticks it.
+// A token reaches only the tools its user ticked (see routes/mcp.ts). A tool that writes must say so with
+// `readOnly: false`: it's then off for every token until its user turns it on.
 
 export type McpToolContext = { userId: string };
 
@@ -23,6 +26,10 @@ export type McpToolDefinition = {
   title: string;
   description: string;
   readOnly: boolean;
+  /** Calling it again with the same arguments changes nothing more. */
+  idempotent?: boolean;
+  /** Reaches outside this Thingport, e.g. a provider's site. */
+  openWorld?: boolean;
   inputSchema: z.ZodRawShape;
   run: (ctx: McpToolContext, args: Record<string, unknown>) => Promise<unknown>;
 };
@@ -334,6 +341,141 @@ const libraryStats: McpToolDefinition = {
   },
 };
 
+// An import that takes longer than this (a big zip, a slow provider) carries on in the background, and the
+// assistant follows it with get_import_status rather than holding the call open.
+// An object so tests can shorten the wait.
+export const mcpImportTiming = { waitMs: 25_000, pollMs: 250 };
+
+type ImportedModel = PrintOut & { import_outcome: "created" | "already_imported" | "profile_added" };
+
+/** What a finished, failed or still running import looks like to the assistant. */
+function importStateOut(taskId: string, state: ImportTaskState) {
+  if (state.status === "running") {
+    return {
+      status: "running",
+      task_id: taskId,
+      note: "Still importing. Call get_import_status with this task_id in a little while.",
+    };
+  }
+  if (state.status === "error") throw new HttpError(state.http_status, state.detail);
+  const result = state.result as { model: ImportedModel; collection: { id: string; name: string } | null };
+  return {
+    status: result.model.import_outcome,
+    model: modelSummary(result.model),
+    collection: result.collection,
+  };
+}
+
+const importModel: McpToolDefinition = {
+  name: "import_model",
+  title: "Import a model",
+  description:
+    "Import a model into the library from its page on a supported site (MakerWorld, Printables, Thingiverse and " +
+    "the others Thingport supports), as + Add > Import does. A model already in the library isn't imported twice. " +
+    "Usually finishes in the call; a long import returns a task_id to check with get_import_status.",
+  readOnly: false,
+  idempotent: true,
+  openWorld: true,
+  inputSchema: {
+    url: z.string().min(1).describe("The model's page, e.g. https://www.printables.com/model/3161-3d-benchy"),
+    title: z.string().max(500).optional().describe("A title to use instead of the site's."),
+    tags: z.array(z.string()).optional().describe("Tags to use instead of the site's."),
+    category_id: z.string().optional().describe("A category to file it in (an id from list_categories)."),
+    collection_id: z.string().optional().describe("A collection to add it to (an id from list_collections)."),
+  },
+  async run({ userId }, args) {
+    const collectionId = args.collection_id as string | undefined;
+    // Checked first, so a bad collection doesn't leave an import half done.
+    if (collectionId) {
+      if (isSystemCollectionId(collectionId)) throw new HttpError(400, "Models can't be added to that collection");
+      const owned = await prisma.collection.count({ where: { id: collectionId, userId } });
+      if (!owned) throw new HttpError(404, "Collection not found");
+    }
+    // No captcha: like Thingport Grab, an assistant has nowhere to show one, and the token's user turned
+    // this tool on themselves.
+    const { url, body } = await prepareSingleImport(userId, {
+      url: args.url as string,
+      title: (args.title as string | undefined) ?? null,
+      tags: (args.tags as string[] | undefined) ?? [],
+      category_id: (args.category_id as string | undefined) ?? null,
+    });
+    const taskId = startImportTask(userId, async () => {
+      const model = (await importAndDescribe(userId, url, body)) as ImportedModel;
+      const filed = collectionId ? (await addModelsToCollection(userId, collectionId, [model.id])).collection : null;
+      return { model, collection: filed ? { id: filed.id, name: filed.name } : null };
+    });
+    const deadline = Date.now() + mcpImportTiming.waitMs;
+    let state = getImportTask(taskId, userId)!;
+    while (state.status === "running" && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, mcpImportTiming.pollMs));
+      state = getImportTask(taskId, userId)!;
+    }
+    return importStateOut(taskId, state);
+  },
+};
+
+const getImportStatus: McpToolDefinition = {
+  name: "get_import_status",
+  title: "Check an import",
+  description: "How an import that import_model left running is getting on, and the model once it's done.",
+  readOnly: true,
+  inputSchema: { task_id: z.string().min(1).describe("The task_id import_model returned.") },
+  async run({ userId }, args) {
+    const taskId = args.task_id as string;
+    const state = getImportTask(taskId, userId);
+    // Tasks live in memory for a while after they finish; a restart forgets them.
+    if (!state) throw new HttpError(404, "No such import: it may have finished a while ago, or the server restarted");
+    return importStateOut(taskId, state);
+  },
+};
+
+const createCollectionTool: McpToolDefinition = {
+  name: "create_collection",
+  title: "Create a collection",
+  description: "Create a new, empty collection. Fill it with add_to_collection.",
+  readOnly: false,
+  inputSchema: {
+    name: z.string().trim().min(1).max(200).describe("The collection's name; it must not already be taken."),
+    description: z.string().trim().max(2000).optional(),
+    tags: z.array(z.string()).optional(),
+  },
+  async run({ userId }, args) {
+    const collection = await createCollection(userId, {
+      name: args.name as string,
+      description: (args.description as string | undefined) ?? null,
+      tags: args.tags as string[] | undefined,
+    });
+    return { id: collection.id, name: collection.name, description: collection.description, tags: collection.tags };
+  },
+};
+
+const addToCollection: McpToolDefinition = {
+  name: "add_to_collection",
+  title: "Add models to a collection",
+  description:
+    "Add models from the library to one of the user's collections. Models already in it stay as they are. " +
+    "Nothing is ever removed.",
+  readOnly: false,
+  idempotent: true,
+  inputSchema: {
+    collection_id: z.string().min(1).describe("The collection, an id from list_collections."),
+    model_ids: z
+      .array(z.string().min(1))
+      .min(1)
+      .max(100)
+      .describe("The models, ids from search_models or list_models."),
+  },
+  async run({ userId }, args) {
+    const result = await addModelsToCollection(userId, args.collection_id as string, args.model_ids as string[]);
+    return {
+      collection: { id: result.collection.id, name: result.collection.name },
+      added: result.added,
+      already_in: result.alreadyIn,
+      not_found: result.notFound,
+    };
+  },
+};
+
 export const MCP_TOOLS: readonly McpToolDefinition[] = [
   searchModels,
   listModels,
@@ -344,6 +486,10 @@ export const MCP_TOOLS: readonly McpToolDefinition[] = [
   listCategories,
   getAuthor,
   libraryStats,
+  getImportStatus,
+  importModel,
+  createCollectionTool,
+  addToCollection,
 ];
 
 export const MCP_TOOL_NAMES = MCP_TOOLS.map((tool) => tool.name);
