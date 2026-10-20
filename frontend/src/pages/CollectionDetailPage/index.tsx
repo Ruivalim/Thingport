@@ -22,6 +22,8 @@ import CollectionSyncIndicator from "../../components/CollectionSyncIndicator";
 import InfoBanner from "../../components/InfoBanner";
 import { CardSkeletons } from "../../components/media/CardSkeleton";
 import { cardGridSx } from "../../components/media/cardGrid";
+import ModelSelectionToolbar from "../../components/modelSelection/ModelSelectionToolbar";
+import { replacePrints, useModelSelection } from "../../hooks/useModelSelection";
 
 const PAGE_SIZE = 24;
 
@@ -51,6 +53,7 @@ export default function CollectionDetailPage({
   const [loadingMore, setLoadingMore] = useState(false);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(false);
+  const selection = useModelSelection(items);
   const [searchParams, setSearchParams] = useSearchParams();
   const sortModeParam = searchParams.get("orderBy");
   const sortMode: PrintSortMode =
@@ -177,6 +180,23 @@ export default function CollectionDetailPage({
     <Stack spacing={2} sx={{ maxWidth: "1920px", mx: "auto" }}>
       <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
         {collection.sync && <CollectionSyncIndicator sync={collection.sync} onClick={() => setSyncOpen(true)} />}
+        <ModelSelectionToolbar
+          selection={selection}
+          total={items.length}
+          hasMore={hasMore}
+          onDeleted={(ids) => setItems((prev) => prev.filter((i) => !ids.includes(i.id)))}
+          onUpdated={(updated) =>
+            setItems((prev) =>
+              // As for one card: unfavoriting inside Favourites drops them immediately.
+              collection.system_key === "favorites"
+                ? replacePrints(prev, updated).filter((i) => i.is_favorite)
+                : replacePrints(prev, updated),
+            )
+          }
+          onUnauthorized={onUnauthorized}
+          collectionId={collection.system_key ? undefined : collection.id}
+          onRemovedFromCollection={(ids) => setItems((prev) => prev.filter((i) => !ids.includes(i.id)))}
+        />
         <Box sx={{ ml: "auto" }}>
           <SortTabs value={sortMode} onChange={setSortMode} />
         </Box>
@@ -214,6 +234,9 @@ export default function CollectionDetailPage({
                 onUpdated={(updated) => setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)))}
                 onUnauthorized={onUnauthorized}
                 viewer={viewer}
+                selectMode={selection.active}
+                selected={selection.isSelected(item.id)}
+                onToggleSelect={(range) => selection.toggle(item.id, range)}
               />
             ))}
             {loadingMore && <CardSkeletons count={6} />}

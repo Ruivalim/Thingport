@@ -15,6 +15,8 @@ import ModelCard from "../ModelsPage/ModelCard";
 import SortTabs from "../ModelsPage/SortTabs";
 import { CardSkeletons } from "../../components/media/CardSkeleton";
 import { cardGridSx } from "../../components/media/cardGrid";
+import ModelSelectionToolbar from "../../components/modelSelection/ModelSelectionToolbar";
+import { replacePrints, useModelSelection } from "../../hooks/useModelSelection";
 
 const PAGE_SIZE = 24;
 const SORT_MODES: PrintSortMode[] = ["relevance", "newest", "popular", "downloads"];
@@ -37,6 +39,7 @@ export default function SearchResultsPage({ theme, previewMode, onUnauthorized, 
   const [loadingMore, setLoadingMore] = useState(false);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(false);
+  const selection = useModelSelection(items);
   const sortModeParam = searchParams.get("orderBy");
   const sortMode: PrintSortMode =
     sortModeParam === "newest" || sortModeParam === "popular" || sortModeParam === "downloads"
@@ -125,8 +128,18 @@ export default function SearchResultsPage({ theme, previewMode, onUnauthorized, 
 
   return (
     <Stack spacing={2} sx={{ maxWidth: "1920px", mx: "auto" }}>
-      <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-        <SortTabs value={sortMode} modes={SORT_MODES} onChange={setSortMode} />
+      <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+        <ModelSelectionToolbar
+          selection={selection}
+          total={items.length}
+          hasMore={hasMore}
+          onDeleted={(ids) => setItems((prev) => prev.filter((i) => !ids.includes(i.id)))}
+          onUpdated={(updated) => setItems((prev) => replacePrints(prev, updated))}
+          onUnauthorized={onUnauthorized}
+        />
+        <Box sx={{ ml: "auto" }}>
+          <SortTabs value={sortMode} modes={SORT_MODES} onChange={setSortMode} />
+        </Box>
       </Box>
       {items.length ? (
         <Stack spacing={2}>
@@ -142,6 +155,9 @@ export default function SearchResultsPage({ theme, previewMode, onUnauthorized, 
                 onUpdated={(updated) => setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)))}
                 onUnauthorized={onUnauthorized}
                 viewer={viewer}
+                selectMode={selection.active}
+                selected={selection.isSelected(item.id)}
+                onToggleSelect={(range) => selection.toggle(item.id, range)}
               />
             ))}
             {loadingMore && <CardSkeletons count={6} />}

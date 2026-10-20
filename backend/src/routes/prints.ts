@@ -21,7 +21,7 @@ import {
 } from "../services/descriptionImageService";
 import { deleteAuthorIfOrphaned, getLinkedAuthorIds } from "../services/authorService";
 import { toPrintOut } from "../dto";
-import { loadFullPrint, printOutById } from "../services/printLoader";
+import { loadFullPrint, printOutById, printOutsByIds } from "../services/printLoader";
 import { deleteAllPrintFiles, saveFileFromTemp } from "../services/printFileService";
 import { RENDERABLE_MODEL_EXTS } from "../config";
 import { estimateDownloadSize, resolvePrintsForDownload, sendPrintsZip } from "../services/downloadZip";
@@ -645,26 +645,69 @@ router.post(
   }),
 );
 
+async function deletePrint(userId: string, printId: string): Promise<void> {
+  const full = await loadFullPrint(userId, printId);
+  await deleteAllPrintFiles(printId);
+  await deleteAllPreviewImages(printId);
+  await deleteAllDescriptionImages(printId);
+  await prisma.print.delete({ where: { id: printId } });
+  for (const plate of full.plates) {
+    await deletePlateFiles(plate);
+    await fs.promises.rm(plateThumbPath(plate.id), { force: true }).catch(() => undefined);
+  }
+  void recordActivity(userId, "delete", printId, full.print.name);
+  void createLog({
+    userId,
+    action: "model_deleted",
+    targetId: printId,
+    details: { name: full.print.name },
+  });
+}
+
 router.delete(
   "/print/:id",
   asyncHandler(async (req, res) => {
-    const full = await loadFullPrint(req.userId!, req.params.id);
-    await deleteAllPrintFiles(req.params.id);
-    await deleteAllPreviewImages(req.params.id);
-    await deleteAllDescriptionImages(req.params.id);
-    await prisma.print.delete({ where: { id: req.params.id } });
-    for (const plate of full.plates) {
-      await deletePlateFiles(plate);
-      await fs.promises.rm(plateThumbPath(plate.id), { force: true }).catch(() => undefined);
-    }
+    await deletePrint(req.userId!, req.params.id);
     res.json({ ok: true });
-    void recordActivity(req.userId!, "delete", req.params.id, full.print.name);
-    void createLog({
-      userId: req.userId!,
-      action: "model_deleted",
-      targetId: req.params.id,
-      details: { name: full.print.name },
+  }),
+);
+
+// The grids' multi-select. One at a time, so a model that fails doesn't take the rest with it.
+const bulkPrintIdsSchema = z.object({ print_ids: z.array(z.string()).min(1).max(500) });
+router.post(
+  "/prints/delete",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(bulkPrintIdsSchema, req.body);
+    const deleted: string[] = [];
+    let failed = 0;
+    for (const printId of new Set(body.print_ids)) {
+      try {
+        await deletePrint(req.userId!, printId);
+        deleted.push(printId);
+      } catch {
+        failed++;
+      }
+    }
+    res.json({ deleted, failed });
+  }),
+);
+
+const bulkFavoriteSchema = bulkPrintIdsSchema.extend({ favorite: z.boolean() });
+router.post(
+  "/prints/favorite",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(bulkFavoriteSchema, req.body);
+    // Only the ones changing, so an existing favourite keeps its date and its place in Favourites.
+    await prisma.print.updateMany({
+      where: {
+        id: { in: body.print_ids },
+        userId: req.userId,
+        favoritedAt: body.favorite ? null : { not: null },
+      },
+      data: { favoritedAt: body.favorite ? new Date() : null },
     });
+    const prints = await printOutsByIds(req.userId!, body.print_ids);
+    res.json({ prints: body.print_ids.flatMap((id) => prints.get(id) ?? []) });
   }),
 );
 

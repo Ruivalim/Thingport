@@ -20,6 +20,8 @@ import TagBookmarkButton from "./TagBookmarkButton";
 import TagActionsMenu from "./TagActionsMenu";
 import { CardSkeletons } from "../../components/media/CardSkeleton";
 import { cardGridSx } from "../../components/media/cardGrid";
+import ModelSelectionToolbar from "../../components/modelSelection/ModelSelectionToolbar";
+import { replacePrints, useModelSelection } from "../../hooks/useModelSelection";
 
 const PAGE_SIZE = 24;
 
@@ -43,6 +45,7 @@ export default function TagDetailPage({ theme, previewMode, onUnauthorized, onBo
   const [loadingMore, setLoadingMore] = useState(false);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(false);
+  const selection = useModelSelection(items);
   const [searchParams, setSearchParams] = useSearchParams();
   const sortModeParam = searchParams.get("orderBy");
   const sortMode: PrintSortMode =
@@ -182,23 +185,47 @@ export default function TagDetailPage({ theme, previewMode, onUnauthorized, onBo
 
   return (
     <Stack spacing={2} sx={{ maxWidth: "1920px", mx: "auto" }}>
-      <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-        <SortTabs value={sortMode} onChange={setSortMode} />
+      <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+        <ModelSelectionToolbar
+          selection={selection}
+          total={items.length}
+          hasMore={hasMore}
+          onDeleted={(ids) => setItems((prev) => prev.filter((i) => !ids.includes(i.id)))}
+          onUpdated={(updated) => setItems((prev) => replacePrints(prev, updated))}
+          onUnauthorized={onUnauthorized}
+        />
+        <Box sx={{ ml: "auto" }}>
+          <SortTabs value={sortMode} onChange={setSortMode} />
+        </Box>
       </Box>
       {collections.length || items.length ? (
         <Stack spacing={2}>
           <Box sx={cardGridSx(6)}>
             {collections.map((collection) => (
-              <CollectionCard
+              // Only models are selectable; the collections step back while select mode is on.
+              <Box
                 key={collection.id}
-                collection={collection}
-                theme={theme}
-                previewMode={previewMode}
-                onUpdated={(updated) => setCollections((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))}
-                onDeleted={(deletedId) => setCollections((prev) => prev.filter((c) => c.id !== deletedId))}
-                onUnauthorized={onUnauthorized}
-                onBookmarksChanged={onBookmarksChanged}
-              />
+                // inert also keeps keyboard focus out; React 18 only passes it through as a string.
+                {...(selection.active && { inert: "" })}
+                sx={{
+                  minWidth: 0,
+                  opacity: selection.active ? 0.35 : 1,
+                  transition: "opacity .2s ease",
+                  "@media (prefers-reduced-motion: reduce)": { transition: "none" },
+                }}
+              >
+                <CollectionCard
+                  collection={collection}
+                  theme={theme}
+                  previewMode={previewMode}
+                  onUpdated={(updated) =>
+                    setCollections((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))
+                  }
+                  onDeleted={(deletedId) => setCollections((prev) => prev.filter((c) => c.id !== deletedId))}
+                  onUnauthorized={onUnauthorized}
+                  onBookmarksChanged={onBookmarksChanged}
+                />
+              </Box>
             ))}
             {items.map((item) => (
               <ModelCard
@@ -211,6 +238,9 @@ export default function TagDetailPage({ theme, previewMode, onUnauthorized, onBo
                 onUpdated={(updated) => setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)))}
                 onUnauthorized={onUnauthorized}
                 viewer={viewer}
+                selectMode={selection.active}
+                selected={selection.isSelected(item.id)}
+                onToggleSelect={(range) => selection.toggle(item.id, range)}
               />
             ))}
             {loadingMore && <CardSkeletons count={6} />}

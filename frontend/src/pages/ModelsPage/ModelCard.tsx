@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type React from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import Paper from "@mui/material/Paper";
@@ -7,9 +8,10 @@ import Stack from "@mui/material/Stack";
 import Avatar from "@mui/material/Avatar";
 import Typography from "@mui/material/Typography";
 import Tooltip from "@mui/material/Tooltip";
-import { useTheme } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import PrintIcon from "@mui/icons-material/Print";
+import CheckIcon from "@mui/icons-material/Check";
 import { type Print, printsApi } from "../../api/prints";
 import { type PreviewMode } from "../../api/settings";
 import { type ResolvedTheme } from "../../constants/settingsOptions";
@@ -39,6 +41,11 @@ type Props = {
   onRemovedFromCollection?: (id: string) => void;
   /** Shown as the author of a direct upload, which has none. */
   viewer?: AuthUser | null;
+  /** Select mode: a click selects the card instead of opening it, and the hover actions are gone. */
+  selectMode?: boolean;
+  selected?: boolean;
+  /** `range` is a shift-click. */
+  onToggleSelect?: (range: boolean) => void;
 };
 
 const OVERLAY_BUTTON_SIZE = 30;
@@ -64,6 +71,9 @@ export default function ModelCard({
   collectionId,
   onRemovedFromCollection,
   viewer,
+  selectMode = false,
+  selected = false,
+  onToggleSelect,
 }: Props) {
   const { t } = useTranslation(["models", "common"]);
   const navigate = useNavigate();
@@ -88,16 +98,28 @@ export default function ModelCard({
   // Only mounted while hovered, so idle cards don't load images or tick.
   const [hovered, setHovered] = useState(false);
   const contextMenu = useCardContextMenu();
+  const toggleSelect = (event: React.MouseEvent | React.KeyboardEvent) => onToggleSelect?.(event.shiftKey);
   const slideshowImages =
     item.preview_images.length > 1 ? item.preview_images.map((img) => printsApi.fileUrl(img.url)) : [];
 
   return (
     <Paper
       variant="outlined"
-      onClick={() => navigate(`/models/${item.id}`)}
+      onClick={selectMode ? toggleSelect : () => navigate(`/models/${item.id}`)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      onContextMenu={contextMenu.onContextMenu}
+      onContextMenu={selectMode ? undefined : contextMenu.onContextMenu}
+      {...(selectMode && {
+        role: "checkbox",
+        "aria-checked": selected,
+        "aria-label": item.title || item.name,
+        tabIndex: 0,
+        onKeyDown: (event: React.KeyboardEvent) => {
+          if (event.key !== " " && event.key !== "Enter") return;
+          event.preventDefault();
+          toggleSelect(event);
+        },
+      })}
       sx={{
         position: "relative",
         cursor: "pointer",
@@ -105,66 +127,131 @@ export default function ModelCard({
         borderRadius: "12px",
         borderColor: "transparent",
         bgcolor: muiTheme.palette.mode === "dark" ? muiTheme.thingport.pageBackground : muiTheme.palette.grey[100],
-        transition: "background-color .15s ease, box-shadow .15s ease, transform .15s ease",
-        "&:hover": {
-          bgcolor: "background.paper",
-          boxShadow: 6,
-          borderColor: "divider",
-          transform: "translateY(-2px)",
-        },
-        "&:hover .model-card-actions": { opacity: 1 },
+        // An outline, so selecting doesn't shift the card's contents the way a thicker border would.
+        outline: "2px solid",
+        outlineColor: selected ? muiTheme.palette.primary.main : "transparent",
+        outlineOffset: -2,
+        transition: "background-color .15s ease, box-shadow .15s ease, transform .15s ease, outline-color .15s ease",
+        // Shift-clicking a range would otherwise also select the text between.
+        ...(selectMode && { userSelect: "none" }),
+        "&:focus-visible": { outlineColor: muiTheme.palette.primary.main },
+        ...(!selectMode && {
+          "&:hover": {
+            bgcolor: "background.paper",
+            boxShadow: 6,
+            borderColor: "divider",
+            transform: "translateY(-2px)",
+          },
+          "&:hover .model-card-actions": { opacity: 1 },
+        }),
+        "@media (prefers-reduced-motion: reduce)": { transition: "none" },
       }}
     >
       {/* zIndex 0 makes this its own stacking context, so the slideshow's layered slides stay
-          under the provider badge and hover actions rendered after it. */}
-      <Box sx={{ position: "relative", zIndex: 0, width: "100%", aspectRatio: "4 / 3" }}>
+          under the provider badge and hover actions rendered after it. Selected, it shrinks
+          inside the outline, so the selection reads at a glance across the grid. */}
+      <Box
+        sx={{
+          position: "relative",
+          zIndex: 0,
+          width: "100%",
+          aspectRatio: "4 / 3",
+          overflow: "hidden",
+          transformOrigin: "center",
+          transform: selected ? "scale(0.92)" : "none",
+          borderRadius: selected ? "8px" : 0,
+          transition: "transform .2s ease, border-radius .2s ease",
+          "@media (prefers-reduced-motion: reduce)": { transition: "none" },
+        }}
+      >
         {renderPreviewContent(item, "card", theme, t, previewMode)}
-        {hovered && slideshowImages.length > 0 && (
+        {hovered && !selectMode && slideshowImages.length > 0 && (
           <HoverSlideshow images={slideshowImages} alt={item.title || item.name} />
         )}
       </Box>
 
-      <ProviderBadge provider={item.source_provider} sx={{ position: "absolute", top: 8, left: 8 }} />
+      <ProviderBadge
+        provider={item.source_provider}
+        interactive={!selectMode}
+        sx={{ position: "absolute", top: 8, left: 8 }}
+      />
 
-      <Stack
-        className="model-card-actions"
-        direction="row"
-        spacing={0.5}
-        onClick={(e) => e.stopPropagation()}
-        sx={{
-          position: "absolute",
-          top: 8,
-          right: 8,
-          opacity: 0,
-          transition: "opacity .15s ease",
-        }}
-      >
-        <Tooltip title={favoriteLabel}>
-          <Box>
-            <StarToggle
-              active={isFavorite}
-              onClick={toggleFavorite}
-              ariaLabel={favoriteLabel}
-              inactiveColor={overlayIconColor}
-              size={HOVER_ICON_SIZE}
-              sx={overlayButtonSx}
-            />
-          </Box>
-        </Tooltip>
-        <ModelActionsMenu
-          print={item}
-          onUnauthorized={onUnauthorized}
-          onDeleted={() => onDeleted?.(item.id)}
-          onUpdated={onUpdated}
-          collectionId={collectionId}
-          onRemovedFromCollection={() => onRemovedFromCollection?.(item.id)}
-          triggerSx={{ color: overlayIconColor, ...overlayButtonSx }}
-          iconFontSize={HOVER_ICON_SIZE}
-          viewer={viewer}
-          contextMenuAt={contextMenu.at}
-          onContextMenuClose={contextMenu.close}
-        />
-      </Stack>
+      {selectMode && (
+        <Box
+          aria-hidden
+          sx={{
+            position: "absolute",
+            top: 8,
+            right: 8,
+            width: 24,
+            height: 24,
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            border: 2,
+            borderColor: selected ? "primary.main" : "background.paper",
+            // A scrim, so the empty circle shows on light and dark previews alike.
+            bgcolor: selected ? "primary.main" : alpha(muiTheme.palette.common.black, 0.25),
+            color: "primary.contrastText",
+            boxShadow: 1,
+            transition: "background-color .15s ease, border-color .15s ease",
+            "@media (prefers-reduced-motion: reduce)": { transition: "none" },
+          }}
+        >
+          <CheckIcon
+            sx={{
+              fontSize: 16,
+              opacity: selected ? 1 : 0,
+              transform: selected ? "scale(1)" : "scale(0.4)",
+              transition: "opacity 150ms ease, transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1)",
+              "@media (prefers-reduced-motion: reduce)": { transition: "none" },
+            }}
+          />
+        </Box>
+      )}
+
+      {!selectMode && (
+        <Stack
+          className="model-card-actions"
+          direction="row"
+          spacing={0.5}
+          onClick={(e) => e.stopPropagation()}
+          sx={{
+            position: "absolute",
+            top: 8,
+            right: 8,
+            opacity: 0,
+            transition: "opacity .15s ease",
+          }}
+        >
+          <Tooltip title={favoriteLabel}>
+            <Box>
+              <StarToggle
+                active={isFavorite}
+                onClick={toggleFavorite}
+                ariaLabel={favoriteLabel}
+                inactiveColor={overlayIconColor}
+                size={HOVER_ICON_SIZE}
+                sx={overlayButtonSx}
+              />
+            </Box>
+          </Tooltip>
+          <ModelActionsMenu
+            print={item}
+            onUnauthorized={onUnauthorized}
+            onDeleted={() => onDeleted?.(item.id)}
+            onUpdated={onUpdated}
+            collectionId={collectionId}
+            onRemovedFromCollection={() => onRemovedFromCollection?.(item.id)}
+            triggerSx={{ color: overlayIconColor, ...overlayButtonSx }}
+            iconFontSize={HOVER_ICON_SIZE}
+            viewer={viewer}
+            contextMenuAt={contextMenu.at}
+            onContextMenuClose={contextMenu.close}
+          />
+        </Stack>
+      )}
       <Box sx={{ px: 1.5, pt: 0.75, pb: 1.5 }}>
         <Typography
           variant="body2"
@@ -179,7 +266,7 @@ export default function ModelCard({
           <AuthorHoverCard
             authorId={author ? author.id : SELF_AUTHOR_ID}
             viewer={viewer}
-            disabled={!author && !showViewerAsAuthor}
+            disabled={selectMode || (!author && !showViewerAsAuthor)}
           >
             <Stack
               direction="row"
@@ -188,10 +275,12 @@ export default function ModelCard({
               sx={{
                 minWidth: 0,
                 color: "#858585",
-                ...(author || showViewerAsAuthor ? { cursor: "pointer", "&:hover": { color: "#00b800" } } : undefined),
+                ...((author || showViewerAsAuthor) && !selectMode
+                  ? { cursor: "pointer", "&:hover": { color: "#00b800" } }
+                  : undefined),
               }}
               onClick={(e) => {
-                if (!author && !showViewerAsAuthor) return;
+                if (selectMode || (!author && !showViewerAsAuthor)) return;
                 e.stopPropagation();
                 navigate(`/authors/${author ? author.id : SELF_AUTHOR_ID}`);
               }}
