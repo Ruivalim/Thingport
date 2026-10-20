@@ -27,6 +27,15 @@
       "published_at": "2026-10-17T12:00:00Z",
       "audience": "admins",
       "version": "1.0.0"
+    },
+    {
+      "id": "2026-10-welcome-to-1.1.0",
+      "title": "Welcome to Thingport 1.1.0",
+      "body": "Thanks for updating! This release fixes a lot of bugs and adds seven new providers: MyMiniFactory, Thangs, Cults3D, Creality Cloud, Snapmaker Space, MakerOnline and NexPrint. You can now act on many models at once with bulk actions, import with a bookmarklet, and add more panels to your dashboard.",
+      "url": "https://github.com/TautvydasDerzinskas/Thingport/releases",
+      "published_at": "2026-10-20T12:00:00Z",
+      "audience": "all",
+      "version": "1.1.0"
     }
   ]
 }
