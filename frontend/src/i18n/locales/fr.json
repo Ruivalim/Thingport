@@ -1251,7 +1251,9 @@
           "sign_in_connected": "Fournisseur de connexion connecté",
           "sign_in_disconnected": "Fournisseur de connexion déconnecté",
           "grab_connected": "Thingport Grab connecté",
-          "grab_disconnected": "Thingport Grab retiré"
+          "grab_disconnected": "Thingport Grab retiré",
+          "collections_merged": "Collections fusionnées",
+          "tags_merged": "Étiquettes fusionnées"
         },
         "authorsLinked": "{{count}} modèle(s) relié(s)",
         "descriptionsRefetched": "{{email}} — {{updated}} description(s) sur {{total}} modifiée(s)",
@@ -1265,7 +1267,8 @@
         "providerOff": "{{provider}} désactivé",
         "aiRunSummary": "{{done}} sur {{total}} vérifiés — {{suggested}} suggérés, {{applied}} appliqués, {{failed}} en échec",
         "aiRunStopped": "(arrêtée)",
-        "viaProvider": "via {{provider}}"
+        "viaProvider": "via {{provider}}",
+        "merged": "{{merged}} → {{name}}"
       },
       "rendering": {
         "heading": "Rendu",
@@ -2922,6 +2925,24 @@
             "myminifactory": "Thingport n’affiche plus vos collections MyMiniFactory tant que vous n’avez pas à nouveau indiqué votre nom d’utilisateur. Les synchronisations déjà configurées conservent leurs modèles."
           }
         }
+      },
+      "sortByModels": "Plus de modèles",
+      "selection": {
+        "enter": "Sélectionner des collections",
+        "toolbar": "Actions pour les collections sélectionnées",
+        "builtIn": "Les collections intégrées ne peuvent être ni fusionnées ni supprimées",
+        "bookmarked_one": "{{count}} collection ajoutée aux favoris",
+        "bookmarked_other": "{{count}} collections ajoutées aux favoris",
+        "unbookmarked_one": "{{count}} collection retirée des favoris",
+        "unbookmarked_other": "{{count}} collections retirées des favoris",
+        "deleteTitle_one": "Supprimer {{count}} collection ?",
+        "deleteTitle_other": "Supprimer {{count}} collections ?",
+        "deleteMessage_one": "Ses modèles sont conservés. Action irréversible.",
+        "deleteMessage_other": "Leurs modèles sont conservés. Action irréversible.",
+        "deleted_one": "{{count}} collection supprimée",
+        "deleted_other": "{{count}} collections supprimées",
+        "merged_one": "{{count}} collection fusionnée dans « {{name}} »",
+        "merged_other": "{{count}} collections fusionnées dans « {{name}} »"
       }
     },
     "tags": {
@@ -2946,6 +2967,25 @@
         "title": "{{name}}",
         "subtitle": "Étiquette",
         "empty": "Aucun modèle avec cette étiquette pour le moment."
+      },
+      "selection": {
+        "enter": "Sélectionner des étiquettes",
+        "toolbar": "Actions pour les étiquettes sélectionnées",
+        "selectAllLoaded": "Tout sélectionner (chargées)",
+        "bookmarked_one": "{{count}} étiquette ajoutée aux favoris",
+        "bookmarked_other": "{{count}} étiquettes ajoutées aux favoris",
+        "unbookmarked_one": "{{count}} étiquette retirée des favoris",
+        "unbookmarked_other": "{{count}} étiquettes retirées des favoris",
+        "deleteTitle_one": "Supprimer {{count}} étiquette ?",
+        "deleteTitle_other": "Supprimer {{count}} étiquettes ?",
+        "deleteMessage_one": "Elle est retirée de tous les modèles qui l'ont. Les modèles sont conservés.",
+        "deleteMessage_other": "Elles sont retirées de tous les modèles qui les ont. Les modèles sont conservés.",
+        "deleteConfirm_one": "Supprimer l'étiquette",
+        "deleteConfirm_other": "Supprimer les étiquettes",
+        "deleted_one": "{{count}} étiquette supprimée",
+        "deleted_other": "{{count}} étiquettes supprimées",
+        "merged_one": "{{count}} étiquette fusionnée dans « {{name}} »",
+        "merged_other": "{{count}} étiquettes fusionnées dans « {{name}} »"
       }
     },
     "downloadZip": {
@@ -3069,6 +3109,46 @@
       "confirmRemoveFromCollection_other": "Retirer {{count}} modèles de cette collection ? Les modèles eux-mêmes sont conservés.",
       "removedFromCollection_one": "{{count}} modèle retiré de la collection",
       "removedFromCollection_other": "{{count}} modèles retirés de la collection"
+    },
+    "merge": {
+      "action": "Fusionner",
+      "needTwo": "Sélectionnez-en au moins 2 pour fusionner",
+      "previewFailed": "Impossible de calculer l'effet de la fusion. Réessayez.",
+      "failed": "La fusion a échoué. Réessayez.",
+      "keep": "Fusionner dans",
+      "kept": "Conservée",
+      "after": "Après la fusion",
+      "modelUnit_one": "modèle",
+      "modelUnit_other": "modèles",
+      "new_one": "nouveau",
+      "new_other": "nouveaux",
+      "quoted": "« {{name}} »",
+      "andMore_one": "{{count}} autre",
+      "andMore_other": "{{count}} autres",
+      "syncsWith": "synchronisée avec {{provider}}",
+      "bookmarkMoves": "Son favori passe à « {{name}} ».",
+      "cantUndo": "Une fusion est irréversible.",
+      "mergeInto": "Fusionner dans « {{name}} »",
+      "collections": {
+        "title_one": "Fusionner {{count}} collection",
+        "title_other": "Fusionner {{count}} collections",
+        "keepHelp": "Choisissez la collection à conserver. Les modèles des autres y sont ajoutés, puis les autres sont supprimées.",
+        "goes": "Supprimée",
+        "othersGo_one": "{{names}} est supprimée. Pas ses modèles : ils passent dans « {{name}} ».",
+        "othersGo_other": "{{names}} sont supprimées. Pas leurs modèles : ils passent dans « {{name}} ».",
+        "keepsOwn": "« {{name}} » garde son nom, sa description, ses étiquettes et sa synchronisation.",
+        "syncStops_one": "{{names}} est synchronisée avec une collection d'un fournisseur, et cette synchronisation s'arrête. Conservez-la plutôt pour continuer à synchroniser.",
+        "syncStops_other": "{{names}} sont synchronisées avec des collections de fournisseurs, et ces synchronisations s'arrêtent. Conservez-en une pour continuer à la synchroniser."
+      },
+      "tags": {
+        "title_one": "Fusionner {{count}} étiquette",
+        "title_other": "Fusionner {{count}} étiquettes",
+        "keepHelp": "Choisissez l'étiquette à conserver. Chaque modèle portant l'une des autres la reçoit à la place, puis les autres sont retirées.",
+        "goes": "Retirée",
+        "othersGo_one": "{{names}} est retirée. Ses modèles reçoivent « {{name}} » à la place.",
+        "othersGo_other": "{{names}} sont retirées. Leurs modèles reçoivent « {{name}} » à la place.",
+        "keepsOwn": "Les modèles qui ont déjà « {{name}} » ne changent pas."
+      }
     }
   }
 }

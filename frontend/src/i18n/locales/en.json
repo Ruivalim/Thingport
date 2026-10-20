@@ -1251,7 +1251,9 @@
           "sign_in_connected": "Sign-in provider connected",
           "sign_in_disconnected": "Sign-in provider disconnected",
           "grab_connected": "Thingport Grab connected",
-          "grab_disconnected": "Thingport Grab removed"
+          "grab_disconnected": "Thingport Grab removed",
+          "collections_merged": "Collections merged",
+          "tags_merged": "Tags merged"
         },
         "authorsLinked": "{{count}} model(s) linked",
         "descriptionsRefetched": "{{email}} — {{updated}} of {{total}} description(s) changed",
@@ -1265,7 +1267,8 @@
         "providerOff": "{{provider}} turned off",
         "aiRunSummary": "{{done}} of {{total}} checked — {{suggested}} suggested, {{applied}} applied, {{failed}} failed",
         "aiRunStopped": "(stopped)",
-        "viaProvider": "via {{provider}}"
+        "viaProvider": "via {{provider}}",
+        "merged": "{{merged}} → {{name}}"
       },
       "rendering": {
         "heading": "Rendering",
@@ -2909,6 +2912,24 @@
             "myminifactory": "Thingport stops listing your MyMiniFactory collections until you give your username again. Syncs already set up keep their models."
           }
         }
+      },
+      "sortByModels": "Most models",
+      "selection": {
+        "enter": "Select collections",
+        "toolbar": "Actions for the selected collections",
+        "builtIn": "Built-in collections can't be merged or deleted",
+        "bookmarked_one": "Bookmarked {{count}} collection",
+        "bookmarked_other": "Bookmarked {{count}} collections",
+        "unbookmarked_one": "Removed {{count}} collection from bookmarks",
+        "unbookmarked_other": "Removed {{count}} collections from bookmarks",
+        "deleteTitle_one": "Delete {{count}} collection?",
+        "deleteTitle_other": "Delete {{count}} collections?",
+        "deleteMessage_one": "The models in it are kept. This can't be undone.",
+        "deleteMessage_other": "The models in them are kept. This can't be undone.",
+        "deleted_one": "Deleted {{count}} collection",
+        "deleted_other": "Deleted {{count}} collections",
+        "merged_one": "Merged {{count}} collection into “{{name}}”",
+        "merged_other": "Merged {{count}} collections into “{{name}}”"
       }
     },
     "tags": {
@@ -2933,6 +2954,25 @@
         "title": "{{name}}",
         "subtitle": "Tag",
         "empty": "No models with this tag yet."
+      },
+      "selection": {
+        "enter": "Select tags",
+        "toolbar": "Actions for the selected tags",
+        "selectAllLoaded": "Select all loaded",
+        "bookmarked_one": "Bookmarked {{count}} tag",
+        "bookmarked_other": "Bookmarked {{count}} tags",
+        "unbookmarked_one": "Removed {{count}} tag from bookmarks",
+        "unbookmarked_other": "Removed {{count}} tags from bookmarks",
+        "deleteTitle_one": "Delete {{count}} tag?",
+        "deleteTitle_other": "Delete {{count}} tags?",
+        "deleteMessage_one": "It's removed from every model that has it. The models themselves are kept.",
+        "deleteMessage_other": "They're removed from every model that has them. The models themselves are kept.",
+        "deleteConfirm_one": "Delete tag",
+        "deleteConfirm_other": "Delete tags",
+        "deleted_one": "Deleted {{count}} tag",
+        "deleted_other": "Deleted {{count}} tags",
+        "merged_one": "Merged {{count}} tag into “{{name}}”",
+        "merged_other": "Merged {{count}} tags into “{{name}}”"
       }
     },
     "downloadZip": {
@@ -3055,6 +3095,46 @@
       "confirmRemoveFromCollection_other": "Remove {{count}} models from this collection? The models themselves are kept.",
       "removedFromCollection_one": "Removed {{count}} model from the collection",
       "removedFromCollection_other": "Removed {{count}} models from the collection"
+    },
+    "merge": {
+      "action": "Merge",
+      "needTwo": "Select at least 2 to merge",
+      "previewFailed": "Couldn't work out what the merge would do. Please try again.",
+      "failed": "Merge failed. Please try again.",
+      "keep": "Merge into",
+      "kept": "Kept",
+      "after": "After the merge",
+      "modelUnit_one": "model",
+      "modelUnit_other": "models",
+      "new_one": "new",
+      "new_other": "new",
+      "quoted": "“{{name}}”",
+      "andMore_one": "{{count}} more",
+      "andMore_other": "{{count}} more",
+      "syncsWith": "syncs with {{provider}}",
+      "bookmarkMoves": "Its bookmark moves to “{{name}}”.",
+      "cantUndo": "A merge can't be undone.",
+      "mergeInto": "Merge into “{{name}}”",
+      "collections": {
+        "title_one": "Merge {{count}} collection",
+        "title_other": "Merge {{count}} collections",
+        "keepHelp": "Pick the collection to keep. The others' models are added to it, then the others are deleted.",
+        "goes": "Deleted",
+        "othersGo_one": "{{names}} is deleted. Its models aren't: they move into “{{name}}”.",
+        "othersGo_other": "{{names}} are deleted. Their models aren't: they move into “{{name}}”.",
+        "keepsOwn": "“{{name}}” keeps its name, description, tags and sync.",
+        "syncStops_one": "{{names}} syncs with a provider collection, and that sync stops. Keep it instead to carry on syncing.",
+        "syncStops_other": "{{names}} sync with provider collections, and those syncs stop. Keep one of them instead to carry on syncing it."
+      },
+      "tags": {
+        "title_one": "Merge {{count}} tag",
+        "title_other": "Merge {{count}} tags",
+        "keepHelp": "Pick the tag to keep. Every model with one of the others gets it instead, then the others are removed.",
+        "goes": "Removed",
+        "othersGo_one": "{{names}} is removed. Its models are tagged “{{name}}” instead.",
+        "othersGo_other": "{{names}} are removed. Their models are tagged “{{name}}” instead.",
+        "keepsOwn": "Models already tagged “{{name}}” stay as they are."
+      }
     }
   }
 }

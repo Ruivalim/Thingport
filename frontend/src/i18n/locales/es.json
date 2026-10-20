@@ -1251,7 +1251,9 @@
           "sign_in_connected": "Proveedor de inicio de sesión conectado",
           "sign_in_disconnected": "Proveedor de inicio de sesión desconectado",
           "grab_connected": "Thingport Grab conectado",
-          "grab_disconnected": "Thingport Grab eliminado"
+          "grab_disconnected": "Thingport Grab eliminado",
+          "collections_merged": "Colecciones fusionadas",
+          "tags_merged": "Etiquetas fusionadas"
         },
         "authorsLinked": "{{count}} modelo(s) vinculado(s)",
         "descriptionsRefetched": "{{email}} — {{updated}} de {{total}} descripción(es) modificada(s)",
@@ -1265,7 +1267,8 @@
         "providerOff": "{{provider}} desactivado",
         "aiRunSummary": "{{done}} de {{total}} revisados — {{suggested}} sugeridos, {{applied}} aplicados, {{failed}} con error",
         "aiRunStopped": "(detenida)",
-        "viaProvider": "mediante {{provider}}"
+        "viaProvider": "mediante {{provider}}",
+        "merged": "{{merged}} → {{name}}"
       },
       "rendering": {
         "heading": "Renderizado",
@@ -2909,6 +2912,24 @@
             "myminifactory": "Thingport deja de mostrar tus colecciones de MyMiniFactory hasta que vuelvas a indicar tu nombre de usuario. Las sincronizaciones ya configuradas conservan sus modelos."
           }
         }
+      },
+      "sortByModels": "Más modelos",
+      "selection": {
+        "enter": "Seleccionar colecciones",
+        "toolbar": "Acciones para las colecciones seleccionadas",
+        "builtIn": "Las colecciones integradas no se pueden fusionar ni eliminar",
+        "bookmarked_one": "{{count}} colección añadida a marcadores",
+        "bookmarked_other": "{{count}} colecciones añadidas a marcadores",
+        "unbookmarked_one": "{{count}} colección quitada de marcadores",
+        "unbookmarked_other": "{{count}} colecciones quitadas de marcadores",
+        "deleteTitle_one": "¿Eliminar {{count}} colección?",
+        "deleteTitle_other": "¿Eliminar {{count}} colecciones?",
+        "deleteMessage_one": "Sus modelos se conservan. No se puede deshacer.",
+        "deleteMessage_other": "Sus modelos se conservan. No se puede deshacer.",
+        "deleted_one": "{{count}} colección eliminada",
+        "deleted_other": "{{count}} colecciones eliminadas",
+        "merged_one": "{{count}} colección fusionada en «{{name}}»",
+        "merged_other": "{{count}} colecciones fusionadas en «{{name}}»"
       }
     },
     "tags": {
@@ -2933,6 +2954,25 @@
         "title": "{{name}}",
         "subtitle": "Etiqueta",
         "empty": "Aún no hay modelos con esta etiqueta."
+      },
+      "selection": {
+        "enter": "Seleccionar etiquetas",
+        "toolbar": "Acciones para las etiquetas seleccionadas",
+        "selectAllLoaded": "Seleccionar todas las cargadas",
+        "bookmarked_one": "{{count}} etiqueta añadida a marcadores",
+        "bookmarked_other": "{{count}} etiquetas añadidas a marcadores",
+        "unbookmarked_one": "{{count}} etiqueta quitada de marcadores",
+        "unbookmarked_other": "{{count}} etiquetas quitadas de marcadores",
+        "deleteTitle_one": "¿Eliminar {{count}} etiqueta?",
+        "deleteTitle_other": "¿Eliminar {{count}} etiquetas?",
+        "deleteMessage_one": "Se quita de todos los modelos que la tienen. Los modelos se conservan.",
+        "deleteMessage_other": "Se quitan de todos los modelos que las tienen. Los modelos se conservan.",
+        "deleteConfirm_one": "Eliminar etiqueta",
+        "deleteConfirm_other": "Eliminar etiquetas",
+        "deleted_one": "{{count}} etiqueta eliminada",
+        "deleted_other": "{{count}} etiquetas eliminadas",
+        "merged_one": "{{count}} etiqueta fusionada en «{{name}}»",
+        "merged_other": "{{count}} etiquetas fusionadas en «{{name}}»"
       }
     },
     "downloadZip": {
@@ -3056,6 +3096,46 @@
       "confirmRemoveFromCollection_other": "¿Quitar {{count}} modelos de esta colección? Los modelos en sí se conservan.",
       "removedFromCollection_one": "Se quitó {{count}} modelo de la colección",
       "removedFromCollection_other": "Se quitaron {{count}} modelos de la colección"
+    },
+    "merge": {
+      "action": "Fusionar",
+      "needTwo": "Selecciona al menos 2 para fusionar",
+      "previewFailed": "No se pudo calcular qué haría la fusión. Inténtalo de nuevo.",
+      "failed": "La fusión falló. Inténtalo de nuevo.",
+      "keep": "Fusionar en",
+      "kept": "Se conserva",
+      "after": "Tras la fusión",
+      "modelUnit_one": "modelo",
+      "modelUnit_other": "modelos",
+      "new_one": "nuevo",
+      "new_other": "nuevos",
+      "quoted": "«{{name}}»",
+      "andMore_one": "{{count}} más",
+      "andMore_other": "{{count}} más",
+      "syncsWith": "se sincroniza con {{provider}}",
+      "bookmarkMoves": "Su marcador pasa a «{{name}}».",
+      "cantUndo": "Una fusión no se puede deshacer.",
+      "mergeInto": "Fusionar en «{{name}}»",
+      "collections": {
+        "title_one": "Fusionar {{count}} colección",
+        "title_other": "Fusionar {{count}} colecciones",
+        "keepHelp": "Elige la colección que se conserva. Los modelos de las demás se añaden a ella y luego las demás se eliminan.",
+        "goes": "Se elimina",
+        "othersGo_one": "{{names}} se elimina. Sus modelos no: pasan a «{{name}}».",
+        "othersGo_other": "{{names}} se eliminan. Sus modelos no: pasan a «{{name}}».",
+        "keepsOwn": "«{{name}}» conserva su nombre, descripción, etiquetas y sincronización.",
+        "syncStops_one": "{{names}} se sincroniza con una colección de un proveedor, y esa sincronización se detiene. Consérvala a ella para seguir sincronizando.",
+        "syncStops_other": "{{names}} se sincronizan con colecciones de proveedores, y esas sincronizaciones se detienen. Conserva una de ellas para seguir sincronizándola."
+      },
+      "tags": {
+        "title_one": "Fusionar {{count}} etiqueta",
+        "title_other": "Fusionar {{count}} etiquetas",
+        "keepHelp": "Elige la etiqueta que se conserva. Cada modelo con alguna de las demás la recibe en su lugar y luego las demás se quitan.",
+        "goes": "Se quita",
+        "othersGo_one": "{{names}} se quita. Sus modelos pasan a tener «{{name}}».",
+        "othersGo_other": "{{names}} se quitan. Sus modelos pasan a tener «{{name}}».",
+        "keepsOwn": "Los modelos que ya tienen «{{name}}» no cambian."
+      }
     }
   }
 }

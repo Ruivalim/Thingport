@@ -46,6 +46,7 @@ const ACTION_COLORS: Record<LogAction, ActionColor> = {
   collection_created: "success",
   collection_edited: "warning",
   collection_deleted: "error",
+  collections_merged: "warning",
   collection_item_added: "info",
   collection_item_removed: "default",
   collection_sync_enabled: "info",
@@ -53,6 +54,7 @@ const ACTION_COLORS: Record<LogAction, ActionColor> = {
   ai_categorization_run: "info",
   ai_description_run: "info",
   tag_deleted: "error",
+  tags_merged: "warning",
   user_role_changed: "warning",
   user_deleted: "error",
   provider_toggled: "warning",
@@ -176,6 +178,12 @@ export default function LogsPage({ onUnauthorized }: Props) {
         return t("adminSettings.logs.userDeleted", {
           email: typeof d.email === "string" ? d.email : "",
           count: typeof d.models === "number" ? d.models : 0,
+        });
+      case "collections_merged":
+      case "tags_merged":
+        return t("adminSettings.logs.merged", {
+          name: typeof d.name === "string" ? d.name : "",
+          merged: Array.isArray(d.merged) ? d.merged.join(", ") : "",
         });
       case "tag_deleted":
         return t("adminSettings.logs.tagDeleted", {
