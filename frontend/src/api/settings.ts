@@ -155,7 +155,16 @@ export type ImportProvider =
   | "makeronline"
   | "crealitycloud"
   | "nexprint"
-  | "thangs";
+  | "thangs"
+  | "cults3d";
+export type Cults3dSettings = {
+  configured: boolean;
+  expired: boolean;
+  nick: string | null;
+  session_configured: boolean;
+  session_expired: boolean;
+};
+
 /** An admin can turn a provider off for the whole instance; menus hide it then. */
 export type ProviderSetting = { id: ImportProvider; enabled: boolean };
 
@@ -474,6 +483,40 @@ export const settingsApi = {
     });
     if (res.status === 401) throw new UnauthorizedError();
     if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to update Thangs settings"));
+    return res.json();
+  },
+
+  // The user's own Cults3D API credentials, their nickname and an API key made on the site, and whether Thingport
+  // Grab has sent the browser's sign-in, which the downloads need. The key is write-only.
+  getCults3d: async (): Promise<Cults3dSettings> => {
+    const res = await fetch(`${apiBase()}/settings/cults3d`, { headers: authHeaders() });
+    assertOk(res, "Failed to load Cults3D settings");
+    return res.json();
+  },
+
+  /** Checked with Cults3D before it's saved; null forgets them. */
+  updateCults3d: async (
+    credentials: { nick: string; apiKey: string } | null,
+  ): Promise<{ configured: boolean; nick: string | null }> => {
+    const res = await fetch(`${apiBase()}/settings/cults3d`, {
+      method: "PATCH",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ nick: credentials?.nick ?? null, api_key: credentials?.apiKey ?? null, verify: true }),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to update Cults3D settings"));
+    return res.json();
+  },
+
+  /** The browser's sign-in by hand: a signed-in cults3d.com request's copied headers. Null forgets it. */
+  updateCults3dSession: async (session: string | null): Promise<{ configured: boolean }> => {
+    const res = await fetch(`${apiBase()}/settings/cults3d-session`, {
+      method: "PATCH",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ session }),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to update the Cults3D sign-in"));
     return res.json();
   },
 

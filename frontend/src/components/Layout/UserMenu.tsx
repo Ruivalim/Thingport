@@ -21,7 +21,8 @@ import { IMPORT_PROVIDER_INFO } from "../../constants/importProviders";
 import { COMING_SOON_PROVIDERS, ProviderLogo, type ProviderId } from "./ConfigurationDialog/providerLogos";
 import { SELF_AUTHOR_ID } from "../../constants/selfAuthor";
 import { useGravatarUrl } from "../../hooks/useGravatarUrl";
-import { settingsApi } from "../../api/settings";
+import { settingsApi, type Cults3dSettings } from "../../api/settings";
+import { cults3dReady, cults3dStatus } from "./ConfigurationDialog/cults3dStatus";
 import { useDisabledProviders } from "../../hooks/useDisabledProviders";
 
 type ServiceChipDef = {
@@ -34,7 +35,8 @@ type ServiceChipDef = {
     | "makeronline"
     | "crealitycloud"
     | "nexprint"
-    | "thangs";
+    | "thangs"
+    | "cults3d";
   label: string;
   connected: boolean;
   /** Explains what's missing when not connected. */
@@ -69,6 +71,7 @@ export function UserMenu({ user, onOpenConfiguration, onOpenProfile, onLogout }:
   const [nexprintExpired, setNexprintExpired] = React.useState(false);
   const [thangsConfigured, setThangsConfigured] = React.useState(false);
   const [thangsExpired, setThangsExpired] = React.useState(false);
+  const [cults3d, setCults3d] = React.useState<Cults3dSettings | null>(null);
 
   const menuOpen = Boolean(anchorEl);
   // Checked on every open: the cookie can change in Configuration while the menu stays mounted.
@@ -135,6 +138,10 @@ export function UserMenu({ user, onOpenConfiguration, onOpenProfile, onLogout }:
         setThangsExpired(res.expired);
       })
       .catch(() => undefined);
+    settingsApi
+      .getCults3d()
+      .then((res) => active && setCults3d(res))
+      .catch(() => undefined);
     return () => {
       active = false;
     };
@@ -195,6 +202,13 @@ export function UserMenu({ user, onOpenConfiguration, onOpenProfile, onLogout }:
       ...IMPORT_PROVIDER_INFO.thangs,
       connected: thangsConfigured && !thangsExpired,
       disabledReason: thangsExpired ? t("providers.thangs.expired") : t("userMenu.thangsDisabledReason"),
+    },
+    {
+      key: "cults3d",
+      ...IMPORT_PROVIDER_INFO.cults3d,
+      // Downloads need both: the API key, and the browser's sign-in Grab sends.
+      connected: cults3dReady(cults3d),
+      disabledReason: cults3dStatus(cults3d, t),
     },
   ];
   // Turned off by an admin: no icon. Coming-soon sites follow the live ones.

@@ -24,6 +24,8 @@ import { resolveMakeronlineModel } from "./makeronlineApi";
 import { resolveCrealitycloudModel } from "./crealitycloudApi";
 import { resolveNexprintModel } from "./nexprintApi";
 import { resolveThangsModel, ThangsBlockedError } from "./thangsApi";
+import { Cults3dAuthError, Cults3dRateLimitError, resolveCults3dModel } from "./cults3dApi";
+import { CULTS3D_CONNECT, getUserCults3dCredentials, markCults3dApiRejected } from "./cults3dSessionService";
 import { getUserMakerworldCookie } from "./makerworldCookieService";
 import { upsertAuthorFromImport } from "./authorService";
 import { emptyGaps, openSourceGaps, type SourceGap } from "./sourceGaps";
@@ -131,6 +133,20 @@ export async function fetchSourceMeta(userId: string, print: Print, sourceUrl: s
     return { ...emptyImportedPageMetadata(), ...resolved.meta, galleryImages: resolved.galleryImages };
   }
 
+  if (provider === "cults3d") {
+    const credentials = await getUserCults3dCredentials(userId);
+    if (!credentials) throw new HttpError(400, CULTS3D_CONNECT);
+    let resolved;
+    try {
+      resolved = await resolveCults3dModel(externalId, credentials);
+    } catch (err) {
+      if (err instanceof Cults3dAuthError) await markCults3dApiRejected(userId);
+      throw err;
+    }
+    if (!resolved) throw new HttpError(404, "This Cults3D model could not be found, or isn't public.");
+    return { ...emptyImportedPageMetadata(), ...resolved.meta, galleryImages: resolved.galleryImages };
+  }
+
   throw new HttpError(400, "This model has no source to fill its details from");
 }
 
@@ -186,6 +202,8 @@ export async function fillSourceGaps(userId: string, printId: string): Promise<F
     if (err instanceof MyminifactoryRateLimitError) throw new HttpError(429, err.message);
     if (err instanceof MyminifactoryAuthError) throw new HttpError(400, err.message);
     if (err instanceof ThangsBlockedError) throw new HttpError(429, err.message);
+    if (err instanceof Cults3dRateLimitError) throw new HttpError(429, err.message);
+    if (err instanceof Cults3dAuthError) throw new HttpError(400, err.message);
     throw err;
   }
   const wanted = new Set(gaps);

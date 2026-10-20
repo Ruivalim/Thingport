@@ -24,6 +24,7 @@ export type Category = {
   crealitycloud_cat_ids: string;
   nexprint_cat_ids: string;
   thangs_cat_ids: string;
+  cults3d_cat_ids: string;
 };
 
 export type CategoryMetaInput = {
@@ -38,6 +39,7 @@ export type CategoryMetaInput = {
   crealitycloudCatIds: string;
   nexprintCatIds: string;
   thangsCatIds: string;
+  cults3dCatIds: string;
 };
 
 export const categoriesApi = {
@@ -90,6 +92,7 @@ export const categoriesApi = {
         crealitycloud_cat_ids: meta.crealitycloudCatIds,
         nexprint_cat_ids: meta.nexprintCatIds,
         thangs_cat_ids: meta.thangsCatIds,
+        cults3d_cat_ids: meta.cults3dCatIds,
       }),
     });
     if (res.status === 401) throw new UnauthorizedError();

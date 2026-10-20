@@ -28,6 +28,7 @@ import {
   NEXPRINT_SESSION_CODE,
   THANGS_SESSION_CODE,
   THANGS_DOWNLOAD_LIMIT_CODE,
+  CULTS3D_SESSION_CODE,
   type ImportRequestBody,
 } from "./importService";
 import {
@@ -51,6 +52,8 @@ import { nexprintModelUrl, parseNexprintModelUrl, resolveNexprintModel, selectNe
 import { getUserNexprintToken, NEXPRINT_CONNECT } from "./nexprintSessionService";
 import { parseThangsModelUrl, thangsModelUrl } from "./thangsApi";
 import { getUserThangsToken, THANGS_CONNECT } from "./thangsSessionService";
+import { cults3dModelUrl, parseCults3dModelUrl } from "./cults3dApi";
+import { CULTS3D_CONNECT, getUserCults3dCredentials } from "./cults3dSessionService";
 import { queueGrabImport } from "./grabImportService";
 import { upsertAuthorFromImport } from "./authorService";
 import { extractZipEntriesToPrints } from "./zipService";
@@ -92,6 +95,7 @@ type SnapmakerListImportJobBody = ImportRequestBody & { model_ids: string[]; lis
 type CrealitycloudListImportJobBody = ImportRequestBody & { model_ids: string[]; title: string };
 type NexprintCollectionImportJobBody = ImportRequestBody & { model_ids: string[]; title: string };
 type ThangsListImportJobBody = ImportRequestBody & { model_ids: string[]; title: string };
+type Cults3dListImportJobBody = ImportRequestBody & { model_ids: string[]; title: string };
 
 // Why a design failed, so a batch reads as one clear cause instead of "N failed". Once a CAPTCHA
 // ("rateLimited"), the daily download limit, an auth failure or a Cloudflare block ("blocked")
@@ -101,6 +105,21 @@ type StopReason = "rateLimited" | "downloadLimit" | "auth" | "blocked";
 
 const BLOCKED_RETRY_TEXT =
   "Cloudflare blocked the request and FlareSolverr didn't get past it — check FlareSolverr in Administration → Connections, then retry";
+// Cults3D's pages take the browser's own Cloudflare clearance, which Grab sends; FlareSolverr's is no use there.
+const CULTS3D_BLOCKED_TEXT =
+  "Cults3D's Cloudflare turned Thingport away — visit cults3d.com with Thingport Grab to renew its clearance";
+
+/** A Cloudflare block, as a link's failure, by its provider. */
+function blockedRetryText(url: string | null): string {
+  return url && parseCults3dModelUrl(url) ? `${CULTS3D_BLOCKED_TEXT}, then retry` : BLOCKED_RETRY_TEXT;
+}
+
+/** A Cloudflare block, as a sync's. */
+function blockedText(provider: string): string {
+  return provider === "cults3d"
+    ? CULTS3D_BLOCKED_TEXT
+    : `Cloudflare blocked ${providerName(provider)} and FlareSolverr didn't get past it`;
+}
 
 const PROVIDER_OFF_TEXT = (name: string) =>
   `${name} was turned off on this Thingport; an admin can turn it back on in Administration → Providers`;
@@ -113,7 +132,8 @@ function classifyImportFailure(err: unknown): ImportFailureReason {
       err.code === SNAPMAKER_SESSION_CODE ||
       err.code === CREALITYCLOUD_SESSION_CODE ||
       err.code === NEXPRINT_SESSION_CODE ||
-      err.code === THANGS_SESSION_CODE
+      err.code === THANGS_SESSION_CODE ||
+      err.code === CULTS3D_SESSION_CODE
     ) {
       return "auth";
     }
@@ -340,6 +360,9 @@ const CREALITYCLOUD_AUTH_TEXT =
 const NEXPRINT_AUTH_TEXT =
   "NexPrint turned your sign-in down — visit nexprint.com signed in with Thingport Grab, then retry";
 const THANGS_AUTH_TEXT = "Thangs turned your sign-in down — visit thangs.com signed in with Thingport Grab, then retry";
+const CULTS3D_AUTH_TEXT =
+  "Cults3D turned your API key or sign-in down — check the key in Configuration → Providers, or visit cults3d.com " +
+  "signed in with Thingport Grab, then retry";
 
 /** A provider whose print profiles import by link, each as a plate of one model. */
 type ProfilesProvider = {
@@ -596,7 +619,7 @@ export async function runCollectionImportJob(
 /** A provider whose models import one by one with a token: Thingiverse's and MyMiniFactory's instance-wide one, or
  *  the user's own Snapmaker, Creality Cloud, NexPrint or Thangs sign-in. */
 type TokenBatchProvider = {
-  provider: "thingiverse" | "myminifactory" | "snapmaker" | "crealitycloud" | "nexprint" | "thangs";
+  provider: "thingiverse" | "myminifactory" | "snapmaker" | "crealitycloud" | "nexprint" | "thangs" | "cults3d";
   getToken: () => Promise<string | null>;
   notConfigured: string;
   modelUrl: (id: string) => string;
@@ -669,8 +692,21 @@ function thangsBatch(userId: string): TokenBatchProvider {
   };
 }
 
+function cults3dBatch(userId: string): TokenBatchProvider {
+  return {
+    provider: "cults3d",
+    // The batch only asks whether there's one; each model's import reads the credentials itself.
+    getToken: async () => (await getUserCults3dCredentials(userId))?.nick ?? null,
+    notConfigured: CULTS3D_CONNECT,
+    modelUrl: (slug) => cults3dModelUrl(slug),
+    rateLimitText: "blocked by Cults3D's rate limit — wait a while, then retry",
+    authText: `failed because ${CULTS3D_AUTH_TEXT}`,
+  };
+}
+
 /** Shared by the Thingiverse Likes and Collection imports, MyMiniFactory's collections, Snapmaker's likes and
- *  bookmarks, Creality Cloud's likes and collections, NexPrint's collections, and Thangs' likes and collections.
+ *  bookmarks, Creality Cloud's likes and collections, NexPrint's collections, Thangs' likes and collections, and
+ *  Cults3D's likes and printlists.
  * Once the provider's daily download limit is reached, the rest aren't asked for.
  * Successful imports are filed into the collection named by `resolveCollectionTitle`, which runs
  * afterwards so it costs no API call when nothing was imported. */
@@ -924,6 +960,23 @@ export async function runThangsListImportJob(
   );
 }
 
+/** A Cults3D user's likes, or one of the user's printlists, filed into a collection named after it. */
+export async function runCults3dListImportJob(
+  jobId: string,
+  userId: string,
+  body: Cults3dListImportJobBody,
+): Promise<void> {
+  await runTokenBatchImportJob(
+    jobId,
+    userId,
+    cults3dBatch(userId),
+    body,
+    body.model_ids,
+    async () => body.title,
+    (collectionTitle) => `"${collectionTitle}"`,
+  );
+}
+
 export async function runPrintablesCollectionImportJob(
   jobId: string,
   userId: string,
@@ -1135,6 +1188,7 @@ function authStopText(url: string): string {
   if (parseCrealitycloudModelUrl(url)) return CREALITYCLOUD_AUTH_TEXT;
   if (parseNexprintModelUrl(url)) return NEXPRINT_AUTH_TEXT;
   if (parseThangsModelUrl(url)) return THANGS_AUTH_TEXT;
+  if (parseCults3dModelUrl(url)) return CULTS3D_AUTH_TEXT;
   return "the MakerWorld session expired — update the cookie in Settings, then retry";
 }
 
@@ -1280,7 +1334,7 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
             rateLimited: "blocked by a MakerWorld CAPTCHA challenge — retry once it clears (usually 1-4 hours)",
             downloadLimit: `${downloadLimitSite(stopUrl)}'s daily download limit was reached — retry tomorrow`,
             auth: authStopText(stopUrl ?? item.url),
-            blocked: BLOCKED_RETRY_TEXT,
+            blocked: blockedRetryText(stopUrl ?? item.url),
           }[stopReason];
           settled = true;
           break;
@@ -1310,7 +1364,7 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
                 rateLimited: " (MakerWorld CAPTCHA challenge — retry once it clears)",
                 downloadLimit: ` (${downloadLimitSite(item.url)}'s daily download limit — retry tomorrow)`,
                 auth: ` (${authStopText(item.url)})`,
-                blocked: ` (${BLOCKED_RETRY_TEXT})`,
+                blocked: ` (${blockedRetryText(item.url)})`,
               }[result.stopReason];
             }
             settled = true;
@@ -1431,7 +1485,7 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
     } else if (stopReason === "auth") {
       bodyParts.push(`the rest failed because ${authStopText(stopUrl ?? job.sourceUrl)}`);
     } else if (stopReason === "blocked") {
-      bodyParts.push(`the rest failed: ${BLOCKED_RETRY_TEXT}`);
+      bodyParts.push(`the rest failed: ${blockedRetryText(stopUrl ?? job.sourceUrl)}`);
     } else if (failedCount) {
       bodyParts.push(`${failedCount} failed — retry them from the import's progress bar`);
     }
@@ -1477,7 +1531,7 @@ async function modelNames(printIds: string[]): Promise<string> {
 
 function syncStopText(reason: StopReason, provider: string): string {
   if (reason === "downloadLimit") return `${providerName(provider)}'s daily download limit was reached`;
-  if (reason === "blocked") return `Cloudflare blocked ${providerName(provider)} and FlareSolverr didn't get past it`;
+  if (reason === "blocked") return blockedText(provider);
   if (reason === "auth") {
     return provider === "makerworld"
       ? "your MakerWorld session expired, so connect MakerWorld again in Configuration > Providers"
@@ -1560,7 +1614,7 @@ async function deferSyncRest(job: ImportJob, currentItemId: string | null, reaso
             reason === "disabled"
               ? `${providerName(sync.provider)} is turned off on this Thingport`
               : reason === "blocked"
-                ? `Cloudflare blocked ${providerName(sync.provider)} and FlareSolverr didn't get past it`
+                ? blockedText(sync.provider)
                 : reason === "downloadLimit"
                   ? `${providerName(sync.provider)}'s daily download limit was reached`
                   : sync.provider === "makerworld"
@@ -1606,7 +1660,9 @@ async function notifySyncJobDone(
             ? `${more} will come in on a later sync: ${providerName(sync.provider)}'s daily download limit for your account was reached.`
             : deferred.reason === "auth"
               ? `${more} will come in on a later sync: ${providerName(sync.provider)} turned Thingport's sign-in down.`
-              : `${more} will come in on a later sync: Cloudflare blocked ${providerName(sync.provider)} and FlareSolverr didn't get past it. An admin can check FlareSolverr in Administration → Connections.`,
+              : sync.provider === "cults3d"
+                ? `${more} will come in on a later sync: ${CULTS3D_BLOCKED_TEXT}.`
+                : `${more} will come in on a later sync: Cloudflare blocked ${providerName(sync.provider)} and FlareSolverr didn't get past it. An admin can check FlareSolverr in Administration → Connections.`,
     );
   }
   if (failedCount) {

@@ -81,6 +81,7 @@ export async function seedDefaultCategories(tx: Prisma.TransactionClient, userId
         crealitycloudCatIds: node.crealitycloudCatIds ?? [],
         nexprintCatIds: node.nexprintCatIds ?? [],
         thangsCatIds: node.thangsCatIds ?? [],
+        cults3dCatIds: node.cults3dCatIds ?? [],
       },
     });
     let i = 0;

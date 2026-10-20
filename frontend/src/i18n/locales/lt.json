@@ -278,6 +278,7 @@
       "crealitycloudDisabledReason": "Creality Cloud: prijunkite paskyrą skiltyje Konfigūracija → Šaltiniai",
       "nexprintDisabledReason": "NexPrint: prijunkite paskyrą skiltyje Konfigūracija → Šaltiniai",
       "thangsDisabledReason": "Thangs: prijunkite paskyrą skiltyje Konfigūracija → Šaltiniai",
+      "cults3dDisabledReason": "Cults3D: įveskite slapyvardį ir API raktą skiltyje Konfigūracija → Šaltiniai",
       "myModels": "Mano modeliai"
     },
     "notifications": {
@@ -545,7 +546,8 @@
           "makeronline": "Modeliai su spausdinimo profiliais, kolekcijos ir kiekvieno naudotojo pamėgti modeliai. Failai atkeliauja per Thingport Grab: MakerOnline juos duoda tik savo puslapiams.",
           "crealitycloud": "Modeliai su spausdinimo profiliais, kolekcijos ir kiekvieno naudotojo pamėgti modeliai, per kiekvieno naudotojo Creality Cloud paskyrą.",
           "nexprint": "Modeliai su spausdinimo profiliais ir kolekcijos, per kiekvieno naudotojo NexPrint paskyrą.",
-          "thangs": "Nemokami ir įsigyti modeliai, patikę modeliai ir kolekcijos, per kiekvieno naudotojo Thangs paskyrą."
+          "thangs": "Nemokami ir įsigyti modeliai, patikę modeliai ir kolekcijos, per kiekvieno naudotojo Thangs paskyrą.",
+          "cults3d": "Nemokami ir įsigyti modeliai, patikę modeliai ir spausdinimo sąrašai, per kiekvieno naudotojo Cults3D API raktą. Failai gaunami su naršyklės prisijungimu, kurį perduoda Thingport Grab."
         },
         "keyStatus": {
           "thingiverse": {
@@ -1730,6 +1732,33 @@
         "expired": "Prisijungimo galiojimas baigėsi. Prisijunkite thangs.com su Thingport Grab arba vėl prijunkite Thangs skiltyje Konfigūracija → Šaltiniai.",
         "expiredStatus": "Prisijungimas nebegalioja"
       },
+      "cults3d": {
+        "nickLabel": "Cults3D slapyvardis",
+        "keyLabel": "API raktas",
+        "placeholder": "Jūsų slapyvardis, kaip parašyta profilyje",
+        "steps": [
+          "Prisijunkite prie cults3d.com ir atverkite cults3d.com/en/api/keys. Sukurkite raktą ir nukopijuokite jo slaptą reikšmę.",
+          "Žemiau įveskite slapyvardį tiksliai taip, kaip jis parašytas profilyje (didžiosios raidės svarbios), ir raktą. Juo Thingport skaito modelius, patikusius modelius, spausdinimo sąrašus ir jūsų atsisiuntimus.",
+          "Tada vieną kartą atverkite cults3d.com su Thingport Grab, prisijungę: Cults3D failus duoda tik savo puslapiams su prisijungusiu naudotoju, o Grab tą prisijungimą perduoda."
+        ],
+        "notConnected": "Thingport skaito Cults3D jūsų paties API raktu. Prijunkite jį su slapyvardžiu ir cults3d.com sukurtu raktu.",
+        "expired": "Cults3D atmetė API raktą. Sukurkite naują cults3d.com ir vėl prijunkite skiltyje Konfigūracija → Šaltiniai.",
+        "expiredStatus": "API raktas atmestas",
+        "siteMissing": "Prijungta, bet atsisiuntimams reikia naršyklės prisijungimo: atverkite cults3d.com prisijungę su Thingport Grab arba įklijuokite jį iš plytelės meniu.",
+        "siteExpired": "Naršyklės prisijungimas nebegalioja: atverkite cults3d.com prisijungę su Thingport Grab arba vėl įklijuokite jį iš plytelės meniu.",
+        "siteMissingStatus": "Dar nėra naršyklės prisijungimo",
+        "session": {
+          "title": "Įklijuokite Cults3D prisijungimą",
+          "paste": "Įklijuoti naršyklės prisijungimą",
+          "save": "Išsaugoti",
+          "placeholder": "Prisijungusio cults3d.com puslapio užklausos antraštės",
+          "steps": [
+            "Paprasčiausia: su Thingport Grab tiesiog atverkite cults3d.com prisijungę. Jis pats perduoda prisijungimą.",
+            "Arba rankiniu būdu: prisijungusiame cults3d.com puslapyje atverkite naršyklės kūrėjo įrankius (F12) ir perkraukite jį.",
+            "Skiltyje Network pasirinkite paties puslapio užklausą, nukopijuokite jos antraštes (su Cookie ir User-Agent) ir įklijuokite žemiau. Tai veikia tik tada, kai Thingport jungiasi prie interneto tuo pačiu adresu kaip ta naršyklė."
+          ]
+        }
+      },
       "printables": {
         "alwaysConnected": "Printables prijungta iš karto: nereikia paskyros ar rakto."
       },
@@ -2715,7 +2744,7 @@
           "takenBy": "Sinchronizuojama su „{{name}}“",
           "loadFailed": "Nepavyko įkelti kolekcijų.",
           "lookupFailed": "Nepavyko rasti šios kolekcijos.",
-          "notALink": "Įklijuokite MakerWorld, Printables, Thingiverse, MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud, NexPrint arba Thangs kolekcijos nuorodą.",
+          "notALink": "Įklijuokite MakerWorld, Printables, Thingiverse, MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud, NexPrint, Thangs arba Cults3D kolekcijos nuorodą.",
           "usernameFailed": "Nepavyko išsaugoti vartotojo vardo.",
           "openProviders": "Atidaryti tiekėjus",
           "notConnected": {
@@ -2727,7 +2756,8 @@
             "makeronline": "Prijunkite MakerOnline per Konfigūracija > Šaltiniai arba atverkite jį su Thingport Grab, kad čia matytumėte savo pamėgtus modelius ir kolekcijas.",
             "crealitycloud": "Prijunkite Creality Cloud per Konfigūracija > Šaltiniai arba atverkite jį su Thingport Grab, kad čia matytumėte savo pamėgtus modelius ir kolekcijas.",
             "nexprint": "Prijunkite NexPrint per Konfigūracija > Šaltiniai arba atverkite jį su Thingport Grab, kad čia matytumėte savo kolekcijas.",
-            "thangs": "Prijunkite Thangs per Konfigūracija > Šaltiniai arba atverkite jį su Thingport Grab, kad čia matytumėte savo patikusius modelius ir kolekcijas."
+            "thangs": "Prijunkite Thangs per Konfigūracija > Šaltiniai arba atverkite jį su Thingport Grab, kad čia matytumėte savo patikusius modelius ir kolekcijas.",
+            "cults3d": "Įveskite Cults3D slapyvardį ir API raktą per Konfigūracija > Šaltiniai, kad čia matytumėte patikusius modelius ir spausdinimo sąrašus."
           },
           "usernameLabel": "Jūsų {{provider}} vartotojo vardas",
           "usernameHint": {

@@ -233,6 +233,7 @@ const categoryMetaSchema = z.object({
   crealitycloud_cat_ids: catIdsField,
   nexprint_cat_ids: catIdsField,
   thangs_cat_ids: catPathsField,
+  cults3d_cat_ids: catIdsField,
 });
 
 router.patch(
@@ -255,6 +256,7 @@ router.patch(
         crealitycloudCatIds: catIdsUpdate(body.crealitycloud_cat_ids),
         nexprintCatIds: catIdsUpdate(body.nexprint_cat_ids)?.map(String),
         thangsCatIds: body.thangs_cat_ids === undefined ? undefined : parseCatPathsInput(body.thangs_cat_ids),
+        cults3dCatIds: catIdsUpdate(body.cults3d_cat_ids),
       },
     });
     res.json(toCategoryOut(updated));

@@ -277,6 +277,7 @@
       "crealitycloudDisabledReason": "Creality Cloud: connect your account in Configuration → Providers",
       "nexprintDisabledReason": "NexPrint: connect your account in Configuration → Providers",
       "thangsDisabledReason": "Thangs: connect your account in Configuration → Providers",
+      "cults3dDisabledReason": "Cults3D: enter your nickname and API key in Configuration → Providers",
       "myModels": "My models"
     },
     "notifications": {
@@ -544,7 +545,8 @@
           "makeronline": "Models with their print profiles, collections and each user's likes. Files come through Thingport Grab: MakerOnline gives them only to its own pages.",
           "crealitycloud": "Models with their print profiles, collections and each user's likes, through each user's own Creality Cloud account.",
           "nexprint": "Models with their print profiles, and collections, through each user's own NexPrint account.",
-          "thangs": "Free and bought models, likes and collections, through each user's own Thangs account."
+          "thangs": "Free and bought models, likes and collections, through each user's own Thangs account.",
+          "cults3d": "Free and bought models, likes and printlists, through each user's own Cults3D API key. Files come with the browser's sign-in, which Thingport Grab sends."
         },
         "keyStatus": {
           "thingiverse": {
@@ -1674,6 +1676,33 @@
         "expired": "Sign-in expired. Sign in on thangs.com with Thingport Grab, or connect Thangs again in Configuration → Providers.",
         "expiredStatus": "Sign-in expired"
       },
+      "cults3d": {
+        "nickLabel": "Cults3D nickname",
+        "keyLabel": "API key",
+        "placeholder": "Your nickname, as written on your profile",
+        "steps": [
+          "Sign in at cults3d.com and open cults3d.com/en/api/keys. Make a key there and copy its secret.",
+          "Enter your nickname exactly as your profile writes it (capitals count) and the key below. Thingport reads models, likes, printlists and your downloads with it.",
+          "Then open cults3d.com once with Thingport Grab, signed in: Cults3D gives its files only to its own signed-in pages, and Grab passes that sign-in on."
+        ],
+        "notConnected": "Thingport reads Cults3D with your own API key. Connect it with your nickname and a key made on cults3d.com.",
+        "expired": "Cults3D turned the API key down. Make a new one on cults3d.com and connect again in Configuration → Providers.",
+        "expiredStatus": "API key turned down",
+        "siteMissing": "Connected, but downloads need the browser's sign-in: open cults3d.com signed in with Thingport Grab, or paste it from the tile's menu.",
+        "siteExpired": "The browser's sign-in ran out: open cults3d.com signed in with Thingport Grab, or paste it again from the tile's menu.",
+        "siteMissingStatus": "No browser sign-in yet",
+        "session": {
+          "title": "Paste the Cults3D sign-in",
+          "paste": "Paste browser sign-in",
+          "save": "Save",
+          "placeholder": "The request headers of a signed-in cults3d.com page",
+          "steps": [
+            "Easiest: with Thingport Grab, just open cults3d.com while signed in. It sends the sign-in itself.",
+            "Or by hand: open your browser's developer tools (F12) on a signed-in cults3d.com page and reload it.",
+            "Under Network, pick the page's own request, copy its request headers (with the Cookie and User-Agent) and paste them below. It only works when Thingport reaches the internet from the same address as that browser."
+          ]
+        }
+      },
       "printables": {
         "alwaysConnected": "Printables is connected by default: it needs no account or key."
       },
@@ -2644,7 +2673,7 @@
           "takenBy": "Synced with \"{{name}}\"",
           "loadFailed": "Couldn't load the collections.",
           "lookupFailed": "Couldn't find that collection.",
-          "notALink": "Paste a MakerWorld, Printables, Thingiverse, MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud, NexPrint or Thangs collection link.",
+          "notALink": "Paste a MakerWorld, Printables, Thingiverse, MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud, NexPrint, Thangs or Cults3D collection link.",
           "usernameFailed": "Couldn't save the username.",
           "openProviders": "Open Providers",
           "notConnected": {
@@ -2656,7 +2685,8 @@
             "makeronline": "Connect MakerOnline in Configuration > Providers, or visit it with Thingport Grab, to see your likes and collections here.",
             "crealitycloud": "Connect Creality Cloud in Configuration > Providers, or visit it with Thingport Grab, to see your likes and collections here.",
             "nexprint": "Connect NexPrint in Configuration > Providers, or visit it with Thingport Grab, to see your collections here.",
-            "thangs": "Connect Thangs in Configuration > Providers, or visit it with Thingport Grab, to see your likes and collections here."
+            "thangs": "Connect Thangs in Configuration > Providers, or visit it with Thingport Grab, to see your likes and collections here.",
+            "cults3d": "Enter your Cults3D nickname and API key in Configuration > Providers to see your likes and printlists here."
           },
           "usernameLabel": "Your {{provider}} username",
           "usernameHint": {

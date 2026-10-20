@@ -50,6 +50,8 @@ const PASTE_EXAMPLES: Record<BrowsableProvider, string> = {
   crealitycloud: "https://www.crealitycloud.com/collection/…",
   nexprint: "https://www.nexprint.com/en/…/home?component=UserCollect&subComp=UserCollectDetail&collectionId=G…",
   thangs: "https://thangs.com/designer/…/collection/…",
+  // Cults3D's API shows no one's printlists but the user's own, so someone else's means their likes.
+  cults3d: "https://cults3d.com/en/users/…/likes",
 };
 
 // Listed with the user's own sign-in, which already says who they are, so no username is asked for.
@@ -60,6 +62,7 @@ const SIGNED_IN = new Set<BrowsableProvider>([
   "crealitycloud",
   "nexprint",
   "thangs",
+  "cults3d",
 ]);
 
 /** The one the user's slicer goes with, unless it isn't connected; then the first that is. Only from `available`,

@@ -24,6 +24,7 @@ export const MAPPED_PROVIDERS = [
   "crealitycloud",
   "nexprint",
   "thangs",
+  "cults3d",
 ] as const satisfies readonly ImportProvider[];
 export type MappedProvider = (typeof MAPPED_PROVIDERS)[number];
 

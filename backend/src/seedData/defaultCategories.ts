@@ -1,6 +1,6 @@
 /** Starter category tree modeled on MakerWorld's, with matching Thingiverse, Printables, MyMiniFactory, Snapmaker,
- * MakerOnline, Creality Cloud, NexPrint and Thangs ids so imports are auto-categorized from the start. NexPrint's are
- * text: they're 16 digits long. Thangs has no ids, so its are category paths ("Parent/Child"). */
+ * MakerOnline, Creality Cloud, NexPrint, Thangs and Cults3D ids so imports are auto-categorized from the start. NexPrint's
+ * are text: they're 16 digits long. Thangs has no ids, so its are category paths ("Parent/Child"). */
 export type DefaultCategoryNode = {
   name: string;
   tags?: string[];
@@ -15,6 +15,7 @@ export type DefaultCategoryNode = {
   crealitycloudCatIds?: number[];
   nexprintCatIds?: string[];
   thangsCatIds?: string[];
+  cults3dCatIds?: number[];
   children?: DefaultCategoryNode[];
 };
 
@@ -53,6 +54,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           "3D Printer Parts & Accessories/Maintenance Tools",
           "3D Printer Parts & Accessories/Print Bed Accessories",
         ],
+        cults3dCatIds: [101],
       },
       {
         name: "3D Printer Parts",
@@ -101,6 +103,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     crealitycloudCatIds: [1670],
     nexprintCatIds: ["1422473858908165"],
     thangsCatIds: ["Art & Decor"],
+    cults3dCatIds: [23],
     children: [
       {
         name: "2D Art",
@@ -127,6 +130,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         crealitycloudCatIds: [1341],
         nexprintCatIds: ["1422473859022853"],
         thangsCatIds: ["Art & Decor/Trophies & Awards"],
+        cults3dCatIds: [36, 51],
       },
       {
         name: "Signs & Logos",
@@ -138,6 +142,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         myminifactoryCatIds: [105],
         makeronlineCatIds: [73],
         nexprintCatIds: ["1422473859022855"],
+        cults3dCatIds: [44],
       },
       {
         name: "Sculptures",
@@ -153,6 +158,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         crealitycloudCatIds: [1584],
         nexprintCatIds: ["1422473859022854"],
         thangsCatIds: ["Art & Decor/Sculptures & Statues", "Art & Decor/Busts"],
+        cults3dCatIds: [43, 42],
       },
       {
         name: "Other Art Models",
@@ -167,6 +173,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         crealitycloudCatIds: [1997, 6005],
         nexprintCatIds: ["1422473859022851", "1422473859022852", "1422473859022857"],
         thangsCatIds: ["Art & Decor/Textured & Patterned"],
+        cults3dCatIds: [37, 38, 39, 35],
       },
     ],
   },
@@ -183,6 +190,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     makeronlineCatIds: [82],
     crealitycloudCatIds: [1501],
     thangsCatIds: ["Educational & Scientific"],
+    cults3dCatIds: [116],
     children: [
       {
         name: "Biology",
@@ -286,6 +294,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     crealitycloudCatIds: [1175],
     nexprintCatIds: ["1422473858908164"],
     thangsCatIds: ["Fashion & Jewelry"],
+    cults3dCatIds: [24],
     children: [
       {
         name: "Bags",
@@ -297,6 +306,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         snapmakerCatIds: [135],
         makeronlineCatIds: [80],
         nexprintCatIds: ["1422473859014676"],
+        cults3dCatIds: [49],
       },
       {
         name: "Clothes",
@@ -321,6 +331,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         thingiverseCatIds: [139],
         myminifactoryCatIds: [405],
         thangsCatIds: ["Fashion & Jewelry/Earrings"],
+        cults3dCatIds: [53],
       },
       {
         name: "Footwear",
@@ -331,6 +342,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         myminifactoryCatIds: [140],
         snapmakerCatIds: [137],
         nexprintCatIds: ["1422473859022848"],
+        cults3dCatIds: [122],
       },
       {
         name: "Glasses",
@@ -340,6 +352,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makerworldCatIds: [203],
         thingiverseCatIds: [83],
         myminifactoryCatIds: [147],
+        cults3dCatIds: [47],
       },
       {
         name: "Jewelry",
@@ -357,6 +370,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           "Fashion & Jewelry/Bracelets",
           "Fashion & Jewelry/Jewelry Storage",
         ],
+        cults3dCatIds: [26, 50, 55, 52],
       },
       {
         name: "Rings",
@@ -367,6 +381,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         thingiverseCatIds: [85],
         myminifactoryCatIds: [406],
         thangsCatIds: ["Fashion & Jewelry/Rings"],
+        cults3dCatIds: [56],
       },
       {
         name: "Other Fashion Models",
@@ -398,6 +413,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     crealitycloudCatIds: [1519],
     nexprintCatIds: ["1422473858908163"],
     thangsCatIds: ["Hobby & DIY"],
+    cults3dCatIds: [102],
     children: [
       {
         name: "Electronics",
@@ -422,6 +438,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           "1422473859014660",
         ],
         thangsCatIds: ["Hobby & DIY/Electronics"],
+        cults3dCatIds: [84],
       },
       {
         name: "Music",
@@ -437,6 +454,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         crealitycloudCatIds: [1420],
         nexprintCatIds: ["1422473859022856"],
         thangsCatIds: ["Hobby & DIY/Music & Audio"],
+        cults3dCatIds: [78],
       },
       {
         name: "RC",
@@ -453,6 +471,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makeronlineCatIds: [51],
         nexprintCatIds: ["1422473859014656"],
         thangsCatIds: ["Hobby & DIY/RC"],
+        cults3dCatIds: [97, 83],
       },
       {
         name: "Robotics",
@@ -467,6 +486,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makeronlineCatIds: [52],
         crealitycloudCatIds: [1648],
         thangsCatIds: ["Hobby & DIY/Robotics"],
+        cults3dCatIds: [41],
       },
       {
         name: "Sport & Outdoors",
@@ -482,6 +502,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         crealitycloudCatIds: [1246],
         nexprintCatIds: ["1422473859014671"],
         thangsCatIds: ["Hobby & DIY/Outdoor", "Health & Fitness/Sports"],
+        cults3dCatIds: [121, 89],
       },
       {
         name: "Vehicles",
@@ -496,6 +517,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         crealitycloudCatIds: [1194],
         nexprintCatIds: ["1422473859014672"],
         thangsCatIds: ["Hobby & DIY/Automotive"],
+        cults3dCatIds: [86, 8],
       },
       {
         name: "Other Hobby & DIY",
@@ -510,6 +532,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         crealitycloudCatIds: [6004],
         nexprintCatIds: ["1422473859014673"],
         thangsCatIds: ["Hobby & DIY/Baking and Cooking", "Hobby & DIY/Photography & Video"],
+        cults3dCatIds: [79, 118, 119],
       },
     ],
   },
@@ -527,6 +550,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     crealitycloudCatIds: [1010],
     nexprintCatIds: ["1422473858908162"],
     thangsCatIds: ["Home & Garden"],
+    cults3dCatIds: [30],
     children: [
       {
         name: "Decor",
@@ -548,6 +572,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           "Art & Decor/Lamps & Lighting",
           "Art & Decor/Vases & Planters",
         ],
+        cults3dCatIds: [61, 64, 71, 70, 72],
       },
       {
         name: "Festivities",
@@ -566,6 +591,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           "Seasonal/Halloween & Fall",
           "Seasonal/Holidays & Winter",
         ],
+        cults3dCatIds: [120],
       },
       {
         name: "Garden",
@@ -580,6 +606,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makeronlineCatIds: [39],
         nexprintCatIds: ["1422473859014668"],
         thangsCatIds: ["Home & Garden/Outdoor & Garden"],
+        cults3dCatIds: [67],
       },
       {
         name: "Office",
@@ -594,6 +621,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makeronlineCatIds: [41],
         nexprintCatIds: ["1422473859014664"],
         thangsCatIds: ["Tools & Organizers/Office & Desk"],
+        cults3dCatIds: [66],
       },
       {
         name: "Pets",
@@ -608,6 +636,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         crealitycloudCatIds: [1151],
         nexprintCatIds: ["1422473859014669"],
         thangsCatIds: ["Home & Garden/Pet Accessories"],
+        cults3dCatIds: [68],
       },
       {
         name: "Other Household Models",
@@ -632,6 +661,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           "Health & Fitness/Wellness",
           "Health & Fitness/Accessibility",
         ],
+        cults3dCatIds: [63, 57, 60, 58, 59, 65, 69, 62, 113],
       },
     ],
   },
@@ -649,6 +679,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     crealitycloudCatIds: [1952],
     nexprintCatIds: ["1422473859006464"],
     thangsCatIds: ["Miniatures & Tabletop"],
+    cults3dCatIds: [98],
     children: [
       {
         name: "Animals",
@@ -659,6 +690,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         thingiverseCatIds: [107],
         printablesCatIds: [61],
         snapmakerCatIds: [157],
+        cults3dCatIds: [34],
       },
       {
         name: "Architecture",
@@ -673,6 +705,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makeronlineCatIds: [100],
         crealitycloudCatIds: [1846],
         thangsCatIds: ["Miniatures & Tabletop/Dioramas & Scenery"],
+        cults3dCatIds: [32, 75, 73, 74, 76, 77, 115],
       },
       {
         name: "Creatures",
@@ -698,6 +731,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         myminifactoryCatIds: [785, 780, 782, 783, 784, 1145],
         snapmakerCatIds: [156],
         makeronlineCatIds: [101],
+        cults3dCatIds: [40],
       },
       {
         name: "Other Miniatures",
@@ -760,6 +794,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         snapmakerCatIds: [122],
         makeronlineCatIds: [93],
         thangsCatIds: ["Costumes & Cosplay/Masks & Helmets"],
+        cults3dCatIds: [48],
       },
       {
         name: "Cosplay Weapons",
@@ -770,6 +805,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         myminifactoryCatIds: [542, 156, 304],
         snapmakerCatIds: [124],
         thangsCatIds: ["Costumes & Cosplay/Armor & Props"],
+        cults3dCatIds: [46],
       },
       {
         name: "Other Props & Cosplays",
@@ -798,6 +834,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     crealitycloudCatIds: [1671],
     nexprintCatIds: ["1422473858908166"],
     thangsCatIds: ["Tools & Organizers", "Functional Prints"],
+    cults3dCatIds: [27],
     children: [
       {
         name: "Gadgets",
@@ -809,6 +846,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         printablesCatIds: [21, 25, 27, 26, 28, 100, 140, 43],
         myminifactoryCatIds: [94, 330, 368, 388],
         makeronlineCatIds: [56],
+        cults3dCatIds: [25, 85, 82, 81, 80],
       },
       {
         name: "Hand Tools",
@@ -820,6 +858,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         snapmakerCatIds: [161],
         makeronlineCatIds: [60],
         thangsCatIds: ["Tools & Organizers/Utility & Tools", "Functional Prints/Tools"],
+        cults3dCatIds: [103],
       },
       {
         name: "Machine Tools",
@@ -831,6 +870,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         snapmakerCatIds: [165],
         makeronlineCatIds: [59],
         thangsCatIds: ["Functional Prints/Jigs & Fixtures"],
+        cults3dCatIds: [104],
       },
       {
         name: "Measure Tools",
@@ -852,6 +892,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         ],
         makeronlineCatIds: [58],
         crealitycloudCatIds: [1160, 1192, 1765, 6001],
+        cults3dCatIds: [117, 114],
       },
       {
         name: "Organizers",
@@ -871,6 +912,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           "Tools & Organizers/Storage Solutions",
           "Tools & Organizers/Shop & Garage",
         ],
+        cults3dCatIds: [106],
       },
       {
         name: "Other Tools",
@@ -888,6 +930,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           "Functional Prints/Replacement Parts",
           "Functional Prints/Customizable",
         ],
+        cults3dCatIds: [105],
       },
     ],
   },
@@ -905,6 +948,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
     crealitycloudCatIds: [1809],
     nexprintCatIds: ["1422473858908160"],
     thangsCatIds: ["Toys & Games"],
+    cults3dCatIds: [31, 99],
     children: [
       {
         name: "Board Games",
@@ -920,6 +964,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         crealitycloudCatIds: [1575],
         nexprintCatIds: ["1422473859006466"],
         thangsCatIds: ["Toys & Games/Board Game Accessories"],
+        cults3dCatIds: [91],
       },
       {
         name: "Characters",
@@ -934,6 +979,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         snapmakerCatIds: [171],
         makeronlineCatIds: [104, 69, 110],
         thangsCatIds: ["Toys & Games/Action Figures & Collectibles", "Toys & Games/Articulated"],
+        cults3dCatIds: [87],
       },
       {
         name: "Outdoor Toys",
@@ -958,6 +1004,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         snapmakerCatIds: [169],
         makeronlineCatIds: [65],
         thangsCatIds: ["Toys & Games/Puzzles"],
+        cults3dCatIds: [93],
       },
       {
         name: "Construction Sets",
@@ -971,6 +1018,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
         makeronlineCatIds: [67],
         crealitycloudCatIds: [1141],
         nexprintCatIds: ["1422473859006465"],
+        cults3dCatIds: [94],
       },
       {
         name: "Other Toys & Games",
@@ -991,6 +1039,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           "Toys & Games/Keychains",
           "Toys & Games/Video Games",
         ],
+        cults3dCatIds: [90, 100, 88, 96, 92, 95, 54],
       },
     ],
   },
@@ -1010,6 +1059,7 @@ export const DEFAULT_CATEGORIES: DefaultCategoryNode[] = [
           "Transform your favorite images into stunning 3D art pieces with Hueforge and create mesmerizing lithophanes that glow with light.",
         makerworldCatIds: [2001],
         thangsCatIds: ["Art & Decor/Hueforge", "Art & Decor/Lithophanes"],
+        cults3dCatIds: [33],
       },
       {
         name: "Make My Sign",

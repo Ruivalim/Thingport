@@ -16,6 +16,7 @@ import {
   CREALITYCLOUD_SESSION_CODE,
   NEXPRINT_SESSION_CODE,
   THANGS_SESSION_CODE,
+  CULTS3D_SESSION_CODE,
   checkImportStatus,
   downloadImportToTemp,
   findImportedExternalIds,
@@ -130,6 +131,18 @@ import {
   THANGS_CONNECT,
   withThangsToken,
 } from "../services/thangsSessionService";
+import {
+  Cults3dAuthError,
+  cults3dLikesName,
+  type Cults3dListing,
+  Cults3dRateLimitError,
+  fetchCults3dLikes,
+  fetchCults3dOrders,
+  fetchCults3dPrintlist,
+  parseCults3dLikesUrl,
+  parseCults3dPrintlistUrl,
+} from "../services/cults3dApi";
+import { CULTS3D_CONNECT, getUserCults3dCredentials, markCults3dApiRejected } from "../services/cults3dSessionService";
 import { addPrintsToCollection, findOrCreateCollectionByName } from "../services/collectionService";
 import { listZipEntries } from "../services/zipService";
 import { createJob, createJobItems, getActiveJob, getJob, listJobItems } from "../services/importJobService";
@@ -142,6 +155,7 @@ import {
   runNexprintCollectionImportJob,
   runNexprintProfilesImportJob,
   runThangsListImportJob,
+  runCults3dListImportJob,
   runLinksImportJob,
   runMakerworldProfilesImportJob,
   runMyminifactoryCollectionImportJob,
@@ -320,6 +334,7 @@ const statusBatchSchema = z.object({
     "crealitycloud",
     "nexprint",
     "thangs",
+    "cults3d",
   ]),
   // Creality Cloud's ids are its models' aliases, made of their titles.
   external_ids: z.array(z.string().max(200)).max(10_000),
@@ -755,6 +770,64 @@ router.post(
         title: e.title,
         cover: e.cover,
         already_imported: alreadyImported.has(e.modelId),
+      })),
+    });
+  }),
+);
+
+/** A user's likes, or one of the user's own printlists, from a Cults3D link, read with their API key. Their orders say
+ *  which paid models they own, which the listing keeps. */
+async function cults3dListOf(userId: string, url: string): Promise<{ title: string; listing: Cults3dListing }> {
+  const likes = parseCults3dLikesUrl(url);
+  const printlist = likes ? null : parseCults3dPrintlistUrl(url);
+  if (!likes && !printlist) throw new HttpError(400, "Not a link to Cults3D likes or one of your printlists");
+  const credentials = await getUserCults3dCredentials(userId);
+  if (!credentials) throw new HttpError(400, CULTS3D_CONNECT, CULTS3D_SESSION_CODE);
+  try {
+    const owned = new Set((await fetchCults3dOrders(credentials)).keys());
+    if (likes) {
+      const listing = await fetchCults3dLikes(credentials, likes.nick, owned);
+      if (!listing) throw new HttpError(404, `There's no Cults3D user called "${likes.nick}".`);
+      return { title: cults3dLikesName(likes.nick), listing };
+    }
+    if (printlist!.nick.toLowerCase() !== credentials.nick.toLowerCase()) {
+      throw new HttpError(403, "Only your own Cults3D printlists can be imported: Cults3D's API shows no one else's.");
+    }
+    const found = await fetchCults3dPrintlist(credentials, printlist!.key, owned);
+    if (!found) throw new HttpError(404, "That printlist can't be found. It may have been deleted.");
+    return { title: found.info.name, listing: found };
+  } catch (err) {
+    if (err instanceof Cults3dAuthError) {
+      await markCults3dApiRejected(userId);
+      // 400, not 401: the frontend treats any 401 as an expired Thingport session.
+      throw new HttpError(400, err.message, CULTS3D_SESSION_CODE);
+    }
+    if (err instanceof Cults3dRateLimitError) throw new HttpError(429, err.message);
+    throw err;
+  }
+}
+
+router.post(
+  "/import/cults3d-list/entries",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(importRequestSchema, req.body);
+    const url = await enabledImportUrl(body.url);
+    const { title, listing } = await cults3dListOf(req.userId!, url);
+    if (!listing.entries.length) throw new HttpError(400, `"${title}" has no models Thingport can import`);
+    const alreadyImported = await findImportedExternalIds(
+      req.userId!,
+      "cults3d",
+      listing.entries.map((e) => e.slug),
+    );
+    res.json({
+      title,
+      total: listing.total,
+      truncated: listing.truncated,
+      entries: listing.entries.map((e) => ({
+        design_id: e.slug,
+        title: e.title,
+        cover: e.cover,
+        already_imported: alreadyImported.has(e.slug),
       })),
     });
   }),
@@ -1226,6 +1299,36 @@ router.post(
       total: body.model_ids.length,
     });
     void runThangsListImportJob(job.id, req.userId!, { ...body, url, title });
+    res.status(202).json({ job_id: job.id });
+  }),
+);
+
+const cults3dListImportRequestSchema = importRequestSchema.extend({
+  model_ids: z
+    .array(
+      z
+        .string()
+        .regex(/^[a-z0-9][a-z0-9_-]*$/i)
+        .max(200),
+    )
+    .min(1)
+    .max(1000),
+});
+
+router.post(
+  "/import/cults3d-list",
+  requireCaptcha("import"),
+  asyncHandler(async (req, res) => {
+    const body = parseBody(cults3dListImportRequestSchema, req.body);
+    await assertNoActiveJob(req.userId!);
+    const url = await enabledImportUrl(body.url);
+    const { title } = await cults3dListOf(req.userId!, url);
+    const job = await createJob(req.userId!, "COLLECTION", {
+      sourceUrl: url,
+      provider: "cults3d",
+      total: body.model_ids.length,
+    });
+    void runCults3dListImportJob(job.id, req.userId!, { ...body, url, title });
     res.status(202).json({ job_id: job.id });
   }),
 );

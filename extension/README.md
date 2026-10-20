@@ -1,7 +1,7 @@
 # Thingport Grab
 
 A browser extension for Chrome, Edge and Firefox that imports MakerWorld, Thingiverse, Printables
-MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud, NexPrint and Thangs models into your self-hosted Thingport instance without leaving the provider's site.
+MyMiniFactory, Snapmaker Space, MakerOnline, Creality Cloud, NexPrint, Thangs and Cults3D models into your self-hosted Thingport instance without leaving the provider's site.
 Visiting a model, collection, or Thingiverse Likes page shows a floating Thingport icon; clicking it
 opens a small panel to pick what to import (and, for a single model, an optional destination
 collection), then imports it the same way Thingport's own "+ Add > Import" does.
@@ -221,12 +221,23 @@ download it, which costs none of your daily downloads, and says so up front for 
 one you don't own. On your own **Liked** page, or any collection page, the panel imports the listed models and can keep
 them in sync.
 
+### Cults3D: your API key, and the browser's sign-in
+
+Thingport reads Cults3D with your own API key, which you enter once in **Configuration > Providers**. Its files sit
+behind a Cloudflare check only your browser passes, so opening cults3d.com signed in sends Thingport the sign-in and
+the clearance Cloudflare gave this browser; your instance then downloads as this browser would. That only works while
+your instance reaches the internet from the same address as the browser, as it does at home. A free model you haven't
+downloaded yet is added to your Cults3D downloads first, as its own Download button does; on a paid one you don't own,
+the panel says so up front. On anyone's likes page, or one of your own printlists, the panel imports the listed
+models and can keep them in sync.
+
 ## What counts as "importable"
 
 - A single model page (MakerWorld, a Thingiverse Thing, a Printables Model, a MyMiniFactory object, a Snapmaker Space,
-  MakerOnline, Creality Cloud, NexPrint or Thangs model) -- hidden automatically once you've already imported that exact page.
+  MakerOnline, Creality Cloud, NexPrint, Thangs or Cults3D model) -- hidden automatically once you've already imported that exact page.
 - A MakerWorld collection, a Thingiverse Collection or Likes page, a Printables, MyMiniFactory, MakerOnline, Creality
-  Cloud, NexPrint or Thangs collection, your MakerOnline, Creality Cloud or Thangs likes, or your own Snapmaker Space likes and bookmarks -- lets you import the listed designs in one go.
+  Cloud, NexPrint, Thangs or Cults3D collection, your MakerOnline, Creality Cloud or Thangs likes, anyone's Cults3D likes,
+  or your own Snapmaker Space likes and bookmarks -- lets you import the listed designs in one go.
 
 Picking a destination collection is only offered for a single-model import; a batch import instead
 lands in Thingport's own auto-named collection for that batch (e.g. "Thingiverse likes (@username)"), matching

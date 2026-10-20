@@ -37,6 +37,8 @@ import {
   isNexprintModelUrl,
   isThangsListUrl,
   isThangsModelUrl,
+  isCults3dListUrl,
+  isCults3dModelUrl,
   isThingiverseCollectionUrl,
   isThingiverseLikesUrl,
   isThingiverseThingUrl,
@@ -81,6 +83,7 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
     startNexprintProfilesImport,
     startNexprintCollectionImport,
     startThangsListImport,
+    startCults3dListImport,
     startLinksImport,
   } = useImportJob();
   const isBusy = uploading || importing || zipPrompt.isOpen || collectionPrompt.isOpen || importModePrompt.isOpen;
@@ -483,6 +486,33 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
         return;
       }
 
+      if (isCults3dListUrl(url)) {
+        setImporting(false);
+        await collectionPrompt.prompt({
+          label: url,
+          loadEntries: async () => {
+            try {
+              return await importsApi.listCults3dListEntries(payload);
+            } catch (err) {
+              if (err instanceof UnauthorizedError) onUnauthorized?.();
+              throw err;
+            }
+          },
+          onImportSelected: async (modelIds: string[]) => {
+            try {
+              await startCults3dListImport({ ...payload, model_ids: modelIds });
+            } catch (err) {
+              if (err instanceof UnauthorizedError) {
+                onUnauthorized?.();
+                return;
+              }
+              throw err;
+            }
+          },
+        });
+        return;
+      }
+
       if (isCrealitycloudListUrl(url)) {
         setImporting(false);
         await collectionPrompt.prompt({
@@ -571,7 +601,8 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
         isSnapmakerModelUrl(url) ||
         isCrealitycloudModelUrl(url) ||
         isNexprintModelUrl(url) ||
-        isThangsModelUrl(url)
+        isThangsModelUrl(url) ||
+        isCults3dModelUrl(url)
       ) {
         // The backend splits these into plates itself.
         const imported = await importsApi.fromLink(payload);

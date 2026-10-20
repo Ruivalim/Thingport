@@ -500,6 +500,30 @@ export const importsApi = {
     return res.json();
   },
 
+  /** A Cults3D user's likes, or one of the user's printlists, read with their API key. */
+  listCults3dListEntries: async (payload: ImportLinkPayload): Promise<ImportCollectionEntriesResult> => {
+    const res = await fetch(`${apiBase()}/import/cults3d-list/entries`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Could not load this list"));
+    return res.json();
+  },
+
+  /** Returns immediately; ImportJobContext polls the job. */
+  fromCults3dList: async (payload: ImportLinkPayload & { model_ids: string[] }): Promise<{ job_id: string }> => {
+    const res = await fetch(`${apiBase()}/import/cults3d-list`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Cults3D import failed"));
+    return res.json();
+  },
+
   /** MakerOnline gives its files only to its own pages: the link waits for Thingport Grab's next visit there. */
   queueMakeronline: async (
     payload: ImportLinkPayload & { scope: MakerworldProfileScope },

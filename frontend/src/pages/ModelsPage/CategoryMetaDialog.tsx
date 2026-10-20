@@ -42,6 +42,7 @@ export default function CategoryMetaDialog({ category, showSiteCatIds, onClose, 
     crealitycloud: category.crealitycloud_cat_ids,
     nexprint: category.nexprint_cat_ids,
     thangs: category.thangs_cat_ids,
+    cults3d: category.cults3d_cat_ids,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +63,7 @@ export default function CategoryMetaDialog({ category, showSiteCatIds, onClose, 
         crealitycloudCatIds: catIds.crealitycloud,
         nexprintCatIds: catIds.nexprint,
         thangsCatIds: catIds.thangs,
+        cults3dCatIds: catIds.cults3d,
       });
       onClose();
     } catch (err) {

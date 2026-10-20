@@ -500,6 +500,7 @@ export type ImportedPageMetadata = {
     | "crealitycloud"
     | "nexprint"
     | "thangs"
+    | "cults3d"
     | null;
   /** Lets a second profile of an imported design be added as its own plate. MakerWorld only. */
   makerworldProfile?: MakerworldProfileRef;

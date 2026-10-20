@@ -7996,5 +7996,512 @@
       "name": "Video Games",
       "parent": "Toys & Games"
     }
+  ],
+  "cults3d": [
+    {
+      "id": "23",
+      "name": "Art",
+      "parent": null
+    },
+    {
+      "id": "37",
+      "name": "Fan Art",
+      "parent": "23"
+    },
+    {
+      "id": "43",
+      "name": "Sculptures & Busts",
+      "parent": "23"
+    },
+    {
+      "id": "34",
+      "name": "Animals & Creatures",
+      "parent": "23"
+    },
+    {
+      "id": "40",
+      "name": "People",
+      "parent": "23"
+    },
+    {
+      "id": "33",
+      "name": "2D Lithophanes",
+      "parent": "23"
+    },
+    {
+      "id": "38",
+      "name": "Low Poly",
+      "parent": "23"
+    },
+    {
+      "id": "44",
+      "name": "Signs & Logos",
+      "parent": "23"
+    },
+    {
+      "id": "42",
+      "name": "Scans & Replicas",
+      "parent": "23"
+    },
+    {
+      "id": "39",
+      "name": "Math Art",
+      "parent": "23"
+    },
+    {
+      "id": "35",
+      "name": "Art Tools",
+      "parent": "23"
+    },
+    {
+      "id": "36",
+      "name": "Coins",
+      "parent": "23"
+    },
+    {
+      "id": "24",
+      "name": "Fashion",
+      "parent": null
+    },
+    {
+      "id": "46",
+      "name": "Cosplay Props",
+      "parent": "24"
+    },
+    {
+      "id": "48",
+      "name": "Masks",
+      "parent": "24"
+    },
+    {
+      "id": "122",
+      "name": "Shoes",
+      "parent": "24"
+    },
+    {
+      "id": "47",
+      "name": "Glasses",
+      "parent": "24"
+    },
+    {
+      "id": "49",
+      "name": "Wallets",
+      "parent": "24"
+    },
+    {
+      "id": "26",
+      "name": "Jewelry",
+      "parent": null
+    },
+    {
+      "id": "54",
+      "name": "Keychains",
+      "parent": "26"
+    },
+    {
+      "id": "53",
+      "name": "Earrings",
+      "parent": "26"
+    },
+    {
+      "id": "50",
+      "name": "Bracelets",
+      "parent": "26"
+    },
+    {
+      "id": "55",
+      "name": "Necklaces",
+      "parent": "26"
+    },
+    {
+      "id": "56",
+      "name": "Rings",
+      "parent": "26"
+    },
+    {
+      "id": "51",
+      "name": "Brooches & Badges",
+      "parent": "26"
+    },
+    {
+      "id": "52",
+      "name": "Cufflinks",
+      "parent": "26"
+    },
+    {
+      "id": "30",
+      "name": "Home",
+      "parent": null
+    },
+    {
+      "id": "66",
+      "name": "Office",
+      "parent": "30"
+    },
+    {
+      "id": "63",
+      "name": "Kitchen",
+      "parent": "30"
+    },
+    {
+      "id": "57",
+      "name": "Bathroom",
+      "parent": "30"
+    },
+    {
+      "id": "67",
+      "name": "Outdoor & Garden",
+      "parent": "30"
+    },
+    {
+      "id": "60",
+      "name": "Furniture",
+      "parent": "30"
+    },
+    {
+      "id": "61",
+      "name": "Home Decor",
+      "parent": "30"
+    },
+    {
+      "id": "64",
+      "name": "Lamps",
+      "parent": "30"
+    },
+    {
+      "id": "71",
+      "name": "Vases",
+      "parent": "30"
+    },
+    {
+      "id": "68",
+      "name": "Pets",
+      "parent": "30"
+    },
+    {
+      "id": "70",
+      "name": "Planters",
+      "parent": "30"
+    },
+    {
+      "id": "58",
+      "name": "Cookie Cutters",
+      "parent": "30"
+    },
+    {
+      "id": "59",
+      "name": "Food & Drink",
+      "parent": "30"
+    },
+    {
+      "id": "65",
+      "name": "Molds",
+      "parent": "30"
+    },
+    {
+      "id": "72",
+      "name": "Wall-mounted",
+      "parent": "30"
+    },
+    {
+      "id": "69",
+      "name": "Piggy Banks",
+      "parent": "30"
+    },
+    {
+      "id": "62",
+      "name": "Household Supplies",
+      "parent": "30"
+    },
+    {
+      "id": "32",
+      "name": "Architecture",
+      "parent": null
+    },
+    {
+      "id": "75",
+      "name": "Houses & Buildings",
+      "parent": "32"
+    },
+    {
+      "id": "73",
+      "name": "Castles",
+      "parent": "32"
+    },
+    {
+      "id": "74",
+      "name": "Famous Monuments",
+      "parent": "32"
+    },
+    {
+      "id": "76",
+      "name": "Landscapes",
+      "parent": "32"
+    },
+    {
+      "id": "77",
+      "name": "Maps",
+      "parent": "32"
+    },
+    {
+      "id": "25",
+      "name": "Gadget",
+      "parent": null
+    },
+    {
+      "id": "85",
+      "name": "Phones & Tablets",
+      "parent": "25"
+    },
+    {
+      "id": "82",
+      "name": "Consoles & Video Games",
+      "parent": "25"
+    },
+    {
+      "id": "81",
+      "name": "Computers",
+      "parent": "25"
+    },
+    {
+      "id": "84",
+      "name": "Electronics",
+      "parent": "25"
+    },
+    {
+      "id": "41",
+      "name": "Robots",
+      "parent": "25"
+    },
+    {
+      "id": "83",
+      "name": "Drones",
+      "parent": "25"
+    },
+    {
+      "id": "86",
+      "name": "Vehicle Accessories",
+      "parent": "25"
+    },
+    {
+      "id": "80",
+      "name": "Clocks & Watches",
+      "parent": "25"
+    },
+    {
+      "id": "78",
+      "name": "Audio & Music",
+      "parent": "25"
+    },
+    {
+      "id": "79",
+      "name": "Cameras & Videos",
+      "parent": "25"
+    },
+    {
+      "id": "31",
+      "name": "Game",
+      "parent": null
+    },
+    {
+      "id": "98",
+      "name": "RPG & Tabletop",
+      "parent": "31"
+    },
+    {
+      "id": "87",
+      "name": "Action Figures",
+      "parent": "31"
+    },
+    {
+      "id": "90",
+      "name": "Auto & Moto",
+      "parent": "31"
+    },
+    {
+      "id": "99",
+      "name": "Toys",
+      "parent": "31"
+    },
+    {
+      "id": "97",
+      "name": "RC Vehicles",
+      "parent": "31"
+    },
+    {
+      "id": "89",
+      "name": "Airsoft",
+      "parent": "31"
+    },
+    {
+      "id": "100",
+      "name": "Trains",
+      "parent": "31"
+    },
+    {
+      "id": "91",
+      "name": "Board Games",
+      "parent": "31"
+    },
+    {
+      "id": "93",
+      "name": "Brainteasers & Puzzles",
+      "parent": "31"
+    },
+    {
+      "id": "88",
+      "name": "Aircraft & Space",
+      "parent": "31"
+    },
+    {
+      "id": "96",
+      "name": "Mechanical Toys",
+      "parent": "31"
+    },
+    {
+      "id": "94",
+      "name": "Construction Toys",
+      "parent": "31"
+    },
+    {
+      "id": "92",
+      "name": "Boats & Submarines",
+      "parent": "31"
+    },
+    {
+      "id": "95",
+      "name": "Magic",
+      "parent": "31"
+    },
+    {
+      "id": "27",
+      "name": "Tool",
+      "parent": null
+    },
+    {
+      "id": "101",
+      "name": "3D Printing & Accessories",
+      "parent": "27"
+    },
+    {
+      "id": "105",
+      "name": "Spare Parts",
+      "parent": "27"
+    },
+    {
+      "id": "8",
+      "name": "Vehicle Spare Parts",
+      "parent": "27"
+    },
+    {
+      "id": "103",
+      "name": "Hand Tools",
+      "parent": "27"
+    },
+    {
+      "id": "102",
+      "name": "DIY",
+      "parent": "27"
+    },
+    {
+      "id": "104",
+      "name": "Machine Tools",
+      "parent": "27"
+    },
+    {
+      "id": "106",
+      "name": "Tool Holders & Boxes",
+      "parent": "27"
+    },
+    {
+      "id": "28",
+      "name": "Naughties",
+      "parent": null
+    },
+    {
+      "id": "112",
+      "name": "People NSFW",
+      "parent": "28"
+    },
+    {
+      "id": "111",
+      "name": "Sextoys",
+      "parent": "28"
+    },
+    {
+      "id": "108",
+      "name": "Dildos & Vibrators",
+      "parent": "28"
+    },
+    {
+      "id": "109",
+      "name": "Hentai",
+      "parent": "28"
+    },
+    {
+      "id": "107",
+      "name": "Creatures",
+      "parent": "28"
+    },
+    {
+      "id": "110",
+      "name": "Lithophanes",
+      "parent": "28"
+    },
+    {
+      "id": "29",
+      "name": "Various",
+      "parent": null
+    },
+    {
+      "id": "120",
+      "name": "Seasonal & Celebrations",
+      "parent": "29"
+    },
+    {
+      "id": "121",
+      "name": "Sports & Outdoor",
+      "parent": "29"
+    },
+    {
+      "id": "118",
+      "name": "Prototyping",
+      "parent": "29"
+    },
+    {
+      "id": "116",
+      "name": "Education",
+      "parent": "29"
+    },
+    {
+      "id": "117",
+      "name": "Medical",
+      "parent": "29"
+    },
+    {
+      "id": "114",
+      "name": "Dental",
+      "parent": "29"
+    },
+    {
+      "id": "115",
+      "name": "Dioramas",
+      "parent": "29"
+    },
+    {
+      "id": "113",
+      "name": "Books & Reading",
+      "parent": "29"
+    },
+    {
+      "id": "119",
+      "name": "Recycling & Upcycling",
+      "parent": "29"
+    },
+    {
+      "id": "7",
+      "name": "Software",
+      "parent": "29"
+    }
   ]
 }

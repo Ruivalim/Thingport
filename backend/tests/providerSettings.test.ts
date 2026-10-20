@@ -40,6 +40,7 @@ afterAll(async () => {
     "crealitycloud",
     "nexprint",
     "thangs",
+    "cults3d",
   ] as const)
     await setProviderEnabled(provider, true);
 });
@@ -58,13 +59,14 @@ describe("turning providers off", () => {
       crealitycloud: true,
       nexprint: true,
       thangs: true,
+      cults3d: true,
     });
 
     expect(
       (await request(app).patch("/api/settings/providers/thingiverse").set(as(member)).send({ enabled: false })).status,
     ).toBe(403);
     expect(
-      (await request(app).patch("/api/settings/providers/cults3d").set(as(admin)).send({ enabled: false })).status,
+      (await request(app).patch("/api/settings/providers/no-such-site").set(as(admin)).send({ enabled: false })).status,
     ).toBe(404);
 
     const off = await request(app).patch("/api/settings/providers/thingiverse").set(as(admin)).send({ enabled: false });
@@ -79,6 +81,7 @@ describe("turning providers off", () => {
       crealitycloud: true,
       nexprint: true,
       thangs: true,
+      cults3d: true,
     });
   });
 

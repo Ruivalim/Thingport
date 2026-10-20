@@ -23,6 +23,8 @@ import { resolveMakeronlineModel } from "./makeronlineApi";
 import { resolveCrealitycloudModel } from "./crealitycloudApi";
 import { resolveNexprintModel } from "./nexprintApi";
 import { resolveThangsModel } from "./thangsApi";
+import { resolveCults3dModel } from "./cults3dApi";
+import { getUserCults3dCredentials } from "./cults3dSessionService";
 import { getDisabledProviders } from "./providerSettingsService";
 
 // Links models that only know their author by name: first by name matching, then by looking the
@@ -38,6 +40,7 @@ const LOOKUP_PROVIDERS = [
   "crealitycloud",
   "nexprint",
   "thangs",
+  "cults3d",
 ] as const;
 type LookupProvider = (typeof LOOKUP_PROVIDERS)[number];
 
@@ -219,6 +222,13 @@ async function lookUpAuthor(
     case "thangs": {
       await maybeSleep(IMPORT_COLLECTION_DELAY_MS);
       return (await resolveThangsModel(candidate.externalId))?.meta.author ?? null;
+    }
+    case "cults3d": {
+      // Its API reads only with a user's own key: the model's importer's.
+      const credentials = await getUserCults3dCredentials(candidate.userId);
+      if (!credentials) return null;
+      await maybeSleep(IMPORT_COLLECTION_DELAY_MS);
+      return (await resolveCults3dModel(candidate.externalId, credentials))?.meta.author ?? null;
     }
     case "makerworld": {
       const cookie = await getUserMakerworldCookie(candidate.userId);

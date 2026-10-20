@@ -9,7 +9,8 @@ export type ImportProviderKey =
   | "makeronline"
   | "crealitycloud"
   | "nexprint"
-  | "thangs";
+  | "thangs"
+  | "cults3d";
 
 function parseUrl(url: string): URL | null {
   try {
@@ -32,6 +33,7 @@ export function detectImportProvider(url: string): ImportProviderKey | null {
   if (host === "crealitycloud.com" || host === "www.crealitycloud.com") return "crealitycloud";
   if (host === "nexprint.com" || host === "www.nexprint.com") return "nexprint";
   if (host === "thangs.com" || host === "www.thangs.com") return "thangs";
+  if (host === "cults3d.com" || host === "www.cults3d.com") return "cults3d";
   return null;
 }
 
@@ -221,6 +223,69 @@ export function isThangsListUrl(url: string): boolean {
   );
 }
 
+/** Cults3D's path segments, decoded and lower-cased: it writes them in each of its languages, accents and all. */
+function cults3dSegments(url: string): string[] | null {
+  const parsed = parseUrl(url);
+  if (!parsed || !/^(www\.)?cults3d\.com$/i.test(parsed.hostname)) return null;
+  const parts = parsed.pathname.split("/").filter(Boolean);
+  try {
+    return parts.map((part) => decodeURIComponent(part).toLowerCase());
+  } catch {
+    return parts.map((part) => part.toLowerCase());
+  }
+}
+
+// What each of Cults3D's languages calls a model page, likes and printlists ("design collections"). Kept in step
+// with the backend's cults3dApi.ts.
+const CULTS3D_MODEL_WORDS = new Set([
+  "3d-model",
+  "modell-3d",
+  "modelo-3d",
+  "modèle-3d",
+  "modello-3d",
+  "3d-moderu",
+  "3d-móxíng",
+]);
+const CULTS3D_LIKES_WORDS = new Set(["likes", "mi-piace", "iine-ichiran", "curtidas", "laiki", "beğeniler", "xǐhuān"]);
+const CULTS3D_PRINTLIST_WORDS = new Set([
+  "design-collections",
+  "drucklisten",
+  "colecciones-de-diseños",
+  "collections-de-designs",
+  "raccolta-progetti",
+  "dezain-korekushon",
+  "designs-colecoes",
+  "dizain-kollektsii",
+  "tasarım-koleksiyonlar",
+  "shèjì-xìliè",
+]);
+const CULTS3D_LIST_PAGES = new Set([
+  "latest",
+  "popular",
+  "selected",
+  "trending",
+  "best-sellers",
+  "random",
+  "mine",
+  "new",
+]);
+
+/** See isThingiverseThingUrl. `/<locale>/3d-model/<category>/<slug>` in any of its languages, or
+ *  `/<locale>/creations/<slug>`. */
+export function isCults3dModelUrl(url: string): boolean {
+  const parts = cults3dSegments(url);
+  if (!parts || !/^[a-z]{2}$/.test(parts[0] ?? "")) return false;
+  if (CULTS3D_MODEL_WORDS.has(parts[1]) && parts.length >= 4) return true;
+  return parts[1] === "creations" && parts.length === 3 && !CULTS3D_LIST_PAGES.has(parts[2]);
+}
+
+/** A user's likes (`/<locale>/users/<nick>/likes`) or a printlist (`/<locale>/design-collections/<nick>/<slug>`). */
+export function isCults3dListUrl(url: string): boolean {
+  const parts = cults3dSegments(url);
+  if (!parts || parts.length !== 4 || !/^[a-z]{2}$/.test(parts[0])) return false;
+  return CULTS3D_LIKES_WORDS.has(parts[3]) || CULTS3D_PRINTLIST_WORDS.has(parts[1]);
+}
+
 export const IMPORT_LINK_EXAMPLES: Record<ImportProviderKey, { model: string; collection: string }> = {
   makerworld: {
     model: "https://makerworld.com/en/models/123456-example-model",
@@ -257,5 +322,9 @@ export const IMPORT_LINK_EXAMPLES: Record<ImportProviderKey, { model: string; co
   thangs: {
     model: "https://thangs.com/designer/username/3d-model/Example%20Model-1234567",
     collection: "https://thangs.com/designer/username/collection/Example%20Collection-123456",
+  },
+  cults3d: {
+    model: "https://cults3d.com/en/3d-model/art/example-model",
+    collection: "https://cults3d.com/en/design-collections/username/example-printlist",
   },
 };

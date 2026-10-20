@@ -82,6 +82,13 @@ import {
 } from "../services/nexprintSessionService";
 import { checkThangsAuth, refreshThangsToken, ThangsAuthError } from "../services/thangsApi";
 import { getThangsConnection, normalizeThangsSession, setUserThangsSession } from "../services/thangsSessionService";
+import { checkCults3dCredentials } from "../services/cults3dApi";
+import {
+  getCults3dConnection,
+  normalizeCults3dBrowser,
+  setUserCults3dBrowser,
+  setUserCults3dCredentials,
+} from "../services/cults3dSessionService";
 import { SLICER_IDS, getUserSlicer, setUserSlicer } from "../services/slicerPreferenceService";
 import { CATEGORIES_VIEWS, getCategoriesView, setCategoriesView } from "../services/categoriesViewService";
 import {
@@ -864,6 +871,79 @@ router.patch(
     }
     const configured = await setUserThangsSession(req.userId!, session);
     res.json({ configured });
+  }),
+);
+
+// Per-user: Cults3D's API credentials, the user's nickname and an API key made on the site, and the browser's sign-in,
+// which Thingport Grab sends whenever it changes.
+router.get(
+  "/settings/cults3d",
+  asyncHandler(async (req, res) => {
+    const connection = await getCults3dConnection(req.userId!);
+    res.json({
+      configured: connection.api !== "disconnected",
+      expired: connection.api === "expired",
+      nick: connection.nick,
+      session_configured: connection.site !== "disconnected",
+      session_expired: connection.site === "expired",
+    });
+  }),
+);
+
+const cults3dCredentialsSchema = z.object({
+  nick: z.string().trim().max(100).nullable(),
+  api_key: z.string().trim().max(200).nullable(),
+  verify: z.boolean().optional(),
+});
+router.patch(
+  "/settings/cults3d",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(cults3dCredentialsSchema, req.body);
+    if (!body.nick || !body.api_key) {
+      if (body.nick || body.api_key) throw new HttpError(422, "Enter both your Cults3D nickname and the API key.");
+      await setUserCults3dCredentials(req.userId!, null);
+      res.json({ configured: false, nick: null });
+      return;
+    }
+    let nick = body.nick.replace(/^@/, "");
+    if (body.verify) {
+      const check = await checkCults3dCredentials({ nick, apiKey: body.api_key });
+      if (check === "rejected") {
+        throw new HttpError(
+          422,
+          "Cults3D didn't accept this nickname and API key. Check both -- the nickname's capitals count -- or make a " +
+            "new key at cults3d.com/en/api/keys.",
+        );
+      }
+      // 503, not 422: nothing is known to be wrong with them.
+      if (check === "unreachable")
+        throw new HttpError(503, "Couldn't reach Cults3D to check them. Try again in a moment.");
+      nick = check.nick;
+    }
+    await setUserCults3dCredentials(req.userId!, { nick, apiKey: body.api_key });
+    res.json({ configured: true, nick });
+  }),
+);
+
+// `session`: a Cookie header with _session_id (and cf_clearance), or a signed-in cults3d.com request's copied headers;
+// `user_agent` the browser's, when `session` doesn't carry it. Null forgets it.
+const cults3dSessionSchema = z.object({
+  session: z.string().max(20_000).nullable(),
+  user_agent: z.string().max(1000).nullable().optional(),
+});
+router.patch(
+  "/settings/cults3d-session",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(cults3dSessionSchema, req.body);
+    const browser = normalizeCults3dBrowser(body.session, body.user_agent);
+    if (body.session?.trim() && !browser) {
+      throw new HttpError(
+        422,
+        "That doesn't look like a Cults3D sign-in: paste the request headers of a signed-in cults3d.com page, with its _session_id cookie.",
+      );
+    }
+    await setUserCults3dBrowser(req.userId!, browser);
+    res.json({ configured: !!browser });
   }),
 );
 
