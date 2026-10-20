@@ -25,7 +25,7 @@ const fadeIn = keyframes`
 type Props = {
   open: boolean;
   onClose: () => void;
-  /** Resets; reports its own failure. */
+  /** Resets; reports its own failure, then rejects to keep the dialog open. */
   onConfirm: () => Promise<void>;
   onUnauthorized?: () => void;
 };
@@ -129,6 +129,8 @@ export default function CategoryResetDialog({ open, onClose, onConfirm, onUnauth
     try {
       await onConfirm();
       onClose();
+    } catch {
+      // onConfirm has reported it; staying open keeps the preview for a retry.
     } finally {
       setResetting(false);
     }

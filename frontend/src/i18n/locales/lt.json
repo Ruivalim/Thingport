@@ -1644,6 +1644,7 @@
       "off": "Išjungta",
       "accent": "Akcento spalva",
       "accentFailed": "Nepavyko išsaugoti akcento spalvos.",
+      "themeFailed": "Nepavyko išsaugoti temos.",
       "accents": {
         "green": "Thingport žalia",
         "blue": "Thingiverse mėlyna",

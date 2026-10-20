@@ -111,15 +111,18 @@ describe("POST /api/categories/reset-defaults", () => {
     const extra = await create(`Extra ${stamp}`, child.id);
     const nested = await create(`Nested ${stamp}`, extra);
     const fromNested = await createPrint(`Clash ${stamp}`, nested);
+    // Lands after the first one has taken its name.
+    const suffixed = await createPrint(`Clash ${stamp} (2)`, nested);
+    await prisma.print.update({ where: { id: suffixed.id }, data: { createdAt: new Date(Date.now() + 1000) } });
 
     const planned = await preview();
     expect(planned.added).toEqual([]);
     expect(planned.restored).toEqual([]);
     expect(planned.removed).toEqual([
       { path: [firstRoot.name, firstChild.name, `Extra ${stamp}`], models: 0 },
-      { path: [firstRoot.name, firstChild.name, `Extra ${stamp}`, `Nested ${stamp}`], models: 1 },
+      { path: [firstRoot.name, firstChild.name, `Extra ${stamp}`, `Nested ${stamp}`], models: 2 },
     ]);
-    expect(planned).toMatchObject({ models_moved: 1, models_uncategorized: 0, models_renamed: 1 });
+    expect(planned).toMatchObject({ models_moved: 2, models_uncategorized: 0, models_renamed: 2 });
 
     expect((await reset()).status).toBe(200);
     const after = await list();
@@ -131,5 +134,6 @@ describe("POST /api/categories/reset-defaults", () => {
     expect(moved.categoryId).toBe(child.id);
     expect(moved.categorySource).toBe("MANUAL");
     expect(moved.name).toBe(`Clash ${stamp} (2)`);
+    expect((await prisma.print.findUniqueOrThrow({ where: { id: suffixed.id } })).name).toBe(`Clash ${stamp} (2) (2)`);
   });
 });

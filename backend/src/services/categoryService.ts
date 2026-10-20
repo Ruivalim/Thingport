@@ -2,7 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { HttpError } from "../utils/fileUtils";
 import { DEFAULT_CATEGORIES, type DefaultCategoryNode } from "../seedData/defaultCategories";
-import { availableModelName, reorganizeManagedPrints } from "./printService";
+import { availableModelName, reorganizeManagedPrints, sanitizePathSegment } from "./printService";
 
 export const CATEGORY_KINDS = ["category", "folder"] as const;
 export type CategoryKind = (typeof CATEGORY_KINDS)[number];
@@ -188,24 +188,27 @@ async function planCategoryReset(db: Prisma.TransactionClient, userId: string): 
   const modelsIn = new Map<string, number>();
   for (const p of prints) modelsIn.set(p.categoryId!, (modelsIn.get(p.categoryId!) ?? 0) + 1);
 
-  // A moved model is renamed when its name is already taken where it lands, by a model there or one moved earlier.
+  // A moved model is renamed as availableModelName will at reset: suffixed past names taken where it lands, by a model
+  // there or one moved earlier.
   let renamed = 0;
   if (moves.length) {
-    const names = [...new Set(moves.map((m) => m.name.trim().toLowerCase()))];
     const targets = [...new Set(moves.map((m) => m.target).filter((t): t is string => t !== null))];
     const staying = await db.print.findMany({
       where: {
         userId,
-        nameNormalized: { in: names },
         OR: [{ categoryId: { in: targets } }, ...(moves.some((m) => !m.target) ? [{ categoryId: null }] : [])],
       },
       select: { categoryId: true, nameNormalized: true },
     });
     const taken = new Set(staying.map((p) => `${p.categoryId}\u0000${p.nameNormalized}`));
     for (const m of moves) {
-      const key = `${m.target}\u0000${m.name.trim().toLowerCase()}`;
-      if (taken.has(key)) renamed++;
-      else taken.add(key);
+      const base = sanitizePathSegment(m.name, "Model");
+      let candidate = base;
+      for (let suffix = 2; taken.has(`${m.target}\u0000${candidate.trim().toLowerCase()}`); suffix++) {
+        candidate = `${base} (${suffix})`;
+      }
+      taken.add(`${m.target}\u0000${candidate.trim().toLowerCase()}`);
+      if (candidate !== m.name) renamed++;
     }
   }
 

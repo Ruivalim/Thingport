@@ -43,7 +43,7 @@ const MAX_SEGMENTED_LANGUAGES = 4;
 
 type Props = {
   theme: ThemeSelection;
-  onThemeChange: (theme: ThemeSelection) => void;
+  onThemeChange: (theme: ThemeSelection) => Promise<boolean>;
   onUnauthorized?: () => void;
 };
 
@@ -69,10 +69,17 @@ export default function AppearancePanel({ theme, onThemeChange, onUnauthorized }
     themeSaves.current = request.catch(() => undefined);
     return request;
   };
+  const [themeError, setThemeError] = React.useState<string | null>(null);
   const [cardPreviewError, setCardPreviewError] = React.useState<string | null>(null);
   const [hoverSlideshow, setHoverSlideshow] = useHoverSlideshowEnabled();
   const [hoverSlideshowError, setHoverSlideshowError] = React.useState<string | null>(null);
   const confirm = useConfirm();
+
+  const changeTheme = async (next: ThemeSelection) => {
+    setThemeError(null);
+    // A lapsed session also signs out, where the theme lives.
+    if (!(await onThemeChange(next))) setThemeError(t("appearance.themeFailed"));
+  };
 
   const changeCardPreview = async (next: CardPreview) => {
     setCardPreviewError(null);
@@ -162,7 +169,7 @@ export default function AppearancePanel({ theme, onThemeChange, onUnauthorized }
     });
     if (!confirmed) return;
     // Only what differs is saved; each keeps its own error message if its save fails.
-    if (theme !== DEFAULT_THEME) onThemeChange(DEFAULT_THEME);
+    if (theme !== DEFAULT_THEME) void changeTheme(DEFAULT_THEME);
     // A new accent puts the render colour back to following it.
     if (!accentAtDefault) void changeAccent(DEFAULT_ACCENT);
     if (cardPreview !== null && cardPreview !== DEFAULT_CARD_PREVIEW) void changeCardPreview(DEFAULT_CARD_PREVIEW);
@@ -217,9 +224,14 @@ export default function AppearancePanel({ theme, onThemeChange, onUnauthorized }
           <Segmented
             label={t("userMenu.theme")}
             value={theme}
-            onChange={onThemeChange}
+            onChange={(next) => void changeTheme(next)}
             options={THEMES.map((value) => ({ value, label: t(`appearance.themes.${value}`) }))}
           />
+          {themeError && (
+            <Typography variant="caption" color="error" sx={{ display: "block", mt: 1 }}>
+              {themeError}
+            </Typography>
+          )}
         </div>
         <div>
           <SectionLabel>{t("appearance.accent")}</SectionLabel>

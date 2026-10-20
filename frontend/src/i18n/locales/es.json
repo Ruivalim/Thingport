@@ -1578,6 +1578,7 @@
       "off": "Desactivado",
       "accent": "Color de acento",
       "accentFailed": "No se pudo guardar el color de acento.",
+      "themeFailed": "No se pudo guardar el tema.",
       "accents": {
         "green": "Verde Thingport",
         "blue": "Azul Thingiverse",

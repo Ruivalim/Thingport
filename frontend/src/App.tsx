@@ -43,6 +43,7 @@ import AiPage from "./pages/AiPage";
 import { healthApi, type HealthInfo } from "./api/health";
 import { authApi, type AuthUser } from "./api/auth";
 import { settingsApi, type PreviewMode } from "./api/settings";
+import { UnauthorizedError } from "./api/client";
 import { clearToken, clearUser, readToken, readUser, storeToken, storeUser } from "./utils/auth";
 import { type AppSettings, type MakerWorldSettings, loadSettings, saveSettings } from "./utils/settings";
 import { useResolvedTheme } from "./hooks/useResolvedTheme";
@@ -63,7 +64,7 @@ type AppShellProps = {
   previewMode: PreviewMode;
   setPreviewMode: (mode: PreviewMode) => void;
   themeSelection: ThemeSelection;
-  onThemeChange: (theme: ThemeSelection) => void;
+  onThemeChange: (theme: ThemeSelection) => Promise<boolean>;
   resolvedTheme: ResolvedTheme;
   muiTheme: ReturnType<typeof buildTheme>;
   onUnauthorized: () => void;
@@ -356,10 +357,6 @@ export default function App() {
       active = false;
     };
   }, [token]);
-  const handleThemeChange = React.useCallback((selected: ThemeSelection) => {
-    setThemeSelection(selected);
-    void settingsApi.updateTheme({ theme: selected }).catch(() => {});
-  }, []);
   React.useEffect(() => {
     saveSettings(settings);
   }, [settings]);
@@ -385,6 +382,26 @@ export default function App() {
     setTokenTtl(null);
     setShowExpiredToast(true);
   }, []);
+
+  // Picks can overlap; only the latest one's failure puts the theme back.
+  const latestThemeSave = React.useRef(0);
+  /** Resolves false when the save failed and the theme went back. */
+  const handleThemeChange = React.useCallback(
+    async (selected: ThemeSelection): Promise<boolean> => {
+      const previous = themeSelection;
+      const save = ++latestThemeSave.current;
+      setThemeSelection(selected);
+      try {
+        await settingsApi.updateTheme({ theme: selected });
+        return true;
+      } catch (err) {
+        if (save === latestThemeSave.current) setThemeSelection(previous);
+        if (err instanceof UnauthorizedError) handleUnauthorized();
+        return false;
+      }
+    },
+    [themeSelection, handleUnauthorized],
+  );
 
   const handleLogout = () => {
     // Fire-and-forget: local logout proceeds immediately.
