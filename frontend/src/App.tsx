@@ -312,6 +312,7 @@ export default function App() {
   const [previewMode, setPreviewMode] = React.useState<PreviewMode>("automatic");
   // Server-persisted so it follows the account across devices.
   const [themeSelection, setThemeSelection] = React.useState<ThemeSelection>("light");
+  const confirmedTheme = React.useRef<ThemeSelection>("light");
   const resolvedTheme = useResolvedTheme(themeSelection);
   const accent = useAccentColor();
   const muiTheme = React.useMemo(() => buildTheme(resolvedTheme, accent), [resolvedTheme, accent]);
@@ -348,7 +349,10 @@ export default function App() {
         // An answer for a token that's since changed belongs to someone else's session.
         if (!active) return;
         // Null means never set: the theme stays as it is, the accent is the default.
-        if (saved.theme) setThemeSelection(saved.theme);
+        if (saved.theme) {
+          confirmedTheme.current = saved.theme;
+          setThemeSelection(saved.theme);
+        }
         setCachedAccentColor(saved.accent ?? DEFAULT_ACCENT);
         setCachedRenderColor(saved.renderColor);
       } catch {}
@@ -383,24 +387,29 @@ export default function App() {
     setShowExpiredToast(true);
   }, []);
 
-  // Picks can overlap; only the latest one's failure puts the theme back.
+  // Saves run one at a time so a failure rolls back to the last saved theme, never a pending pick.
+  const themeSaves = React.useRef<Promise<unknown>>(Promise.resolve());
   const latestThemeSave = React.useRef(0);
   /** Resolves false when the save failed and the theme went back. */
   const handleThemeChange = React.useCallback(
-    async (selected: ThemeSelection): Promise<boolean> => {
-      const previous = themeSelection;
+    (selected: ThemeSelection): Promise<boolean> => {
       const save = ++latestThemeSave.current;
       setThemeSelection(selected);
-      try {
-        await settingsApi.updateTheme({ theme: selected });
-        return true;
-      } catch (err) {
-        if (save === latestThemeSave.current) setThemeSelection(previous);
-        if (err instanceof UnauthorizedError) handleUnauthorized();
-        return false;
-      }
+      const result = themeSaves.current.then(async () => {
+        try {
+          await settingsApi.updateTheme({ theme: selected });
+          confirmedTheme.current = selected;
+          return true;
+        } catch (err) {
+          if (save === latestThemeSave.current) setThemeSelection(confirmedTheme.current);
+          if (err instanceof UnauthorizedError) handleUnauthorized();
+          return false;
+        }
+      });
+      themeSaves.current = result;
+      return result;
     },
-    [themeSelection, handleUnauthorized],
+    [handleUnauthorized],
   );
 
   const handleLogout = () => {
