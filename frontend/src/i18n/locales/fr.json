@@ -1917,7 +1917,7 @@
         "makeronline": {
           "summary": "La plateforme de modèles d’Anycubic : modèles gratuits et payants, concours de créateurs et un outil d’IA qui transforme du texte en 3D.",
           "signIn": "Aucune pour importer ; votre connexion ajoute vos « J’aime » et vos collections privées.",
-          "grab": "Grab télécharge chaque fichier MakerOnline, dans une page makeronline.com. Les importations lancées ailleurs l’attendent.",
+          "grab": "Grab télécharge chaque fichier MakerOnline depuis une page de makeronline.com. Les importations lancées ailleurs l’attendent.",
           "setup": [
             "Installez Thingport Grab et activez-le sur MakerOnline.",
             "Importez depuis la page d’un modèle, ou ouvrez n’importe quelle page makeronline.com pour faire venir les modèles qui attendent Grab.",
@@ -3028,7 +3028,8 @@
       "enter": "Sélectionner des modèles",
       "exit": "Terminer la sélection",
       "toolbar": "Actions pour les modèles sélectionnés",
-      "count": "{{count}} sélectionné(s)",
+      "count_one": "{{count}} sélectionné",
+      "count_other": "{{count}} sélectionnés",
       "selectAllLoaded": "Sélectionner tous les modèles chargés",
       "aiActions": "Actions IA",
       "improveDescriptions": "Améliorer les descriptions avec l’IA",
@@ -3048,7 +3049,7 @@
       "deleted_other": "{{count}} modèles supprimés",
       "deletePartlyFailed_one": "{{count}} modèle n’a pas pu être supprimé",
       "deletePartlyFailed_other": "{{count}} modèles n’ont pas pu être supprimés",
-      "confirmManual_one": "{{count}} des modèles sélectionnés a une catégorie que vous avez choisie vous-même. Laisser l’IA le recatégoriser aussi ?",
+      "confirmManual_one": "{{count}} modèle sélectionné a une catégorie que vous avez choisie vous-même. Laisser l’IA le recatégoriser aussi ?",
       "confirmManual_other": "{{count}} des modèles sélectionnés ont une catégorie que vous avez choisie vous-même. Laisser l’IA les recatégoriser aussi ?",
       "includeManual": "Les inclure",
       "skipManual": "Les ignorer",
