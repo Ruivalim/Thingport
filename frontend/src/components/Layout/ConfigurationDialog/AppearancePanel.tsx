@@ -34,15 +34,19 @@ export default function AppearancePanel({ theme, onThemeChange, onUnauthorized }
   const language = matchLanguage(i18n.resolvedLanguage ?? i18n.language);
   const accent = useAccentColor();
   const [accentError, setAccentError] = React.useState<string | null>(null);
+  // Picks can overlap; only the latest one's failure may put the accent back.
+  const latestAccentSave = React.useRef(0);
 
   const changeAccent = async (next: AccentColor) => {
     const previous = accent;
+    const save = ++latestAccentSave.current;
     setAccentError(null);
     // The whole app recolours straight away; put back if the save fails.
     setCachedAccentColor(next);
     try {
       await settingsApi.updateTheme({ accent: next });
     } catch (err) {
+      if (save !== latestAccentSave.current) return;
       setCachedAccentColor(previous);
       if (err instanceof UnauthorizedError) onUnauthorized?.();
       else setAccentError(t("appearance.accentFailed"));
