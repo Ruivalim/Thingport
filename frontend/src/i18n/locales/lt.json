@@ -1630,6 +1630,11 @@
     "appearance": {
       "title": "Išvaizda",
       "subtitle": "Pasirinkite, kaip Thingport atrodo ir veikia.",
+      "reset": {
+        "action": "Atkurti numatytuosius",
+        "title": "Atkurti išvaizdą?",
+        "message": "Tema, spalvos, modelių kortelės, skaidrių peržiūra užvedus ir autoriaus peržiūra grįš į numatytąsias reikšmes. Kalba liks tokia pati."
+      },
       "themes": {
         "light": "Šviesi",
         "dark": "Tamsi",

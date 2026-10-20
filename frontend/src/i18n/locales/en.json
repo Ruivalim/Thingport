@@ -1564,6 +1564,11 @@
     "appearance": {
       "title": "Appearance",
       "subtitle": "Choose how Thingport looks and behaves.",
+      "reset": {
+        "action": "Reset to defaults",
+        "title": "Reset appearance?",
+        "message": "Theme, colors, model cards, hover slideshow and author preview go back to their defaults. Your language stays as it is."
+      },
       "themes": {
         "light": "Light",
         "dark": "Dark",

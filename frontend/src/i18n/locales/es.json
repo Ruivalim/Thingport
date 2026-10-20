@@ -1564,6 +1564,11 @@
     "appearance": {
       "title": "Apariencia",
       "subtitle": "Elige cómo se ve y se comporta Thingport.",
+      "reset": {
+        "action": "Restablecer valores predeterminados",
+        "title": "¿Restablecer la apariencia?",
+        "message": "El tema, los colores, las tarjetas de modelos, la presentación al pasar el cursor y la vista previa del autor vuelven a sus valores predeterminados. Tu idioma no cambia."
+      },
       "themes": {
         "light": "Claro",
         "dark": "Oscuro",

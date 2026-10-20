@@ -1,5 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
+import RestartAltIcon from "@mui/icons-material/RestartAlt";
+import Button from "@mui/material/Button";
 import MenuItem from "@mui/material/MenuItem";
 import Select from "@mui/material/Select";
 import Stack from "@mui/material/Stack";
@@ -9,6 +11,7 @@ import { settingsApi, type CardPreview } from "../../../api/settings";
 import { matchLanguage, SUPPORTED_LANGUAGES } from "../../../constants/languages";
 import {
   ACCENT_COLORS,
+  DEFAULT_ACCENT,
   RENDER_COLORS,
   renderColorLabelKey,
   type AccentColor,
@@ -26,12 +29,15 @@ import { setCachedAuthorPreviewEnabled, useAuthorPreviewEnabled } from "../../..
 import { useCardPreview } from "../../../hooks/useCardPreview";
 import { useHoverSlideshowEnabled } from "../../../hooks/useHoverSlideshowEnabled";
 import { accentSwatch, renderSwatch } from "../../../theme";
+import { useConfirm } from "../../ConfirmProvider";
 import ColorSwatches from "../../controls/ColorSwatches";
 import Segmented from "../../controls/Segmented";
 import HelpTip from "../../HelpTip";
 import { PanelHeader, SectionLabel } from "./parts";
 
 const THEMES: ThemeSelection[] = ["light", "dark", "system"];
+const DEFAULT_THEME: ThemeSelection = "system";
+const DEFAULT_CARD_PREVIEW: CardPreview = "images";
 // More languages than this no longer fit a segmented control comfortably.
 const MAX_SEGMENTED_LANGUAGES = 4;
 
@@ -66,6 +72,7 @@ export default function AppearancePanel({ theme, onThemeChange, onUnauthorized }
   const [cardPreviewError, setCardPreviewError] = React.useState<string | null>(null);
   const [hoverSlideshow, setHoverSlideshow] = useHoverSlideshowEnabled();
   const [hoverSlideshowError, setHoverSlideshowError] = React.useState<string | null>(null);
+  const confirm = useConfirm();
 
   const changeCardPreview = async (next: CardPreview) => {
     setCardPreviewError(null);
@@ -138,9 +145,47 @@ export default function AppearancePanel({ theme, onThemeChange, onUnauthorized }
     }
   };
 
+  // Language is left alone: it's the one choice a reset could leave someone unable to read.
+  const accentAtDefault = accent === DEFAULT_ACCENT && getCachedRenderColor() === null;
+  const atDefaults =
+    theme === DEFAULT_THEME &&
+    accentAtDefault &&
+    (cardPreview ?? DEFAULT_CARD_PREVIEW) === DEFAULT_CARD_PREVIEW &&
+    hoverSlideshow &&
+    authorPreview;
+
+  const resetToDefaults = async () => {
+    const confirmed = await confirm({
+      title: t("appearance.reset.title"),
+      message: t("appearance.reset.message"),
+      confirmLabel: t("appearance.reset.action"),
+    });
+    if (!confirmed) return;
+    // Only what differs is saved; each keeps its own error message if its save fails.
+    if (theme !== DEFAULT_THEME) onThemeChange(DEFAULT_THEME);
+    // A new accent puts the render colour back to following it.
+    if (!accentAtDefault) void changeAccent(DEFAULT_ACCENT);
+    if (cardPreview !== null && cardPreview !== DEFAULT_CARD_PREVIEW) void changeCardPreview(DEFAULT_CARD_PREVIEW);
+    if (!hoverSlideshow) void toggleHoverSlideshow(true);
+    if (!authorPreview) void toggleAuthorPreview(true);
+  };
+
   return (
     <>
-      <PanelHeader title={t("appearance.title")} subtitle={t("appearance.subtitle")} />
+      <PanelHeader
+        title={t("appearance.title")}
+        subtitle={t("appearance.subtitle")}
+        action={
+          <Button
+            size="small"
+            disabled={atDefaults}
+            startIcon={<RestartAltIcon fontSize="small" />}
+            onClick={() => void resetToDefaults()}
+          >
+            {t("appearance.reset.action")}
+          </Button>
+        }
+      />
       <Stack spacing={2.5}>
         <div>
           <SectionLabel>{t("profile.language.heading")}</SectionLabel>
