@@ -77,12 +77,13 @@ function renderCover(plateId: string | null): Picture | null {
   }
 }
 
-/** Each of `tags`' pictures, from its newest models that have one; joins images and plates for those alone. */
+/** Each of `tags`' pictures of each kind, from its newest models that have one; joins images and plates for those
+ *  alone, once for every kind. */
 export async function tagPictures(
   prints: TaggedPrint[],
   tags: string[],
-  kind: MosaicKind = "images",
-): Promise<Map<string, Picture[]>> {
+  kinds: readonly MosaicKind[] = ["images"],
+): Promise<Map<MosaicKind, Map<string, Picture[]>>> {
   const candidates = new Map(tags.map((tag) => [tag, [] as string[]]));
   for (const print of prints) {
     for (const tag of new Set(print.tags.map(normalizeTag))) {
@@ -99,31 +100,39 @@ export async function tagPictures(
     },
   });
   const byId = new Map(rows.map((row) => [row.id, row]));
-  // A model under several of the tags is looked up on disk once.
-  const covers = new Map<string, Picture | null>();
-  const coverOf = (id: string) => {
-    if (!covers.has(id)) {
-      const row = byId.get(id);
-      const plateId = row?.plates[0]?.id ?? null;
-      covers.set(
-        id,
-        !row ? null : kind === "renders" ? renderCover(plateId) : printCover(row.previewImages[0]?.id ?? null, plateId),
-      );
+  const byKind = new Map<MosaicKind, Map<string, Picture[]>>();
+  for (const kind of kinds) {
+    // A model under several of the tags is looked up on disk once.
+    const covers = new Map<string, Picture | null>();
+    const coverOf = (id: string) => {
+      if (!covers.has(id)) {
+        const row = byId.get(id);
+        const plateId = row?.plates[0]?.id ?? null;
+        covers.set(
+          id,
+          !row
+            ? null
+            : kind === "renders"
+              ? renderCover(plateId)
+              : printCover(row.previewImages[0]?.id ?? null, plateId),
+        );
+      }
+      return covers.get(id);
+    };
+    const pictures = new Map<string, Picture[]>();
+    for (const [tag, ids] of candidates) {
+      const found: Picture[] = [];
+      // Stops at ten, so the rest of the candidates aren't looked up on disk.
+      for (const id of ids) {
+        if (found.length >= TAG_MOSAIC_PICTURES) break;
+        const cover = coverOf(id);
+        if (cover) found.push(cover);
+      }
+      pictures.set(tag, found);
     }
-    return covers.get(id);
-  };
-  const pictures = new Map<string, Picture[]>();
-  for (const [tag, ids] of candidates) {
-    const found: Picture[] = [];
-    // Stops at ten, so the rest of the candidates aren't looked up on disk.
-    for (const id of ids) {
-      if (found.length >= TAG_MOSAIC_PICTURES) break;
-      const cover = coverOf(id);
-      if (cover) found.push(cover);
-    }
-    pictures.set(tag, found);
+    byKind.set(kind, pictures);
   }
-  return pictures;
+  return byKind;
 }
 
 /** Changes whenever the pictures, or their order, do: each picture's URL carries its file's mtime. */
@@ -202,7 +211,7 @@ export async function ensureTagMosaic(
 ): Promise<string | null> {
   const tag = normalizeTag(rawTag);
   if (!tag) return null;
-  const pictures = (await tagPictures(await printsTagged(userId, tag), [tag], kind)).get(tag) ?? [];
+  const pictures = (await tagPictures(await printsTagged(userId, tag), [tag], [kind])).get(kind)?.get(tag) ?? [];
   if (!pictures.length) return null;
   const dir = userDir(userId);
   const prefix = tagPrefix(tag);

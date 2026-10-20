@@ -55,16 +55,19 @@ router.get(
     const page = matching.slice(offset, offset + limit);
 
     // Pictures for this page's tags alone, joined in one query; the browser picks which mosaic to show.
-    const names = page.map(([name]) => name);
-    const [pictures, renders] = await Promise.all([tagPictures(prints, names), tagPictures(prints, names, "renders")]);
+    const pictures = await tagPictures(
+      prints,
+      page.map(([name]) => name),
+      ["images", "renders"],
+    );
 
     res.json({
       items: page.map(([name, count]) => ({
         name,
         count,
         bookmarked: bookmarked.has(name),
-        mosaic_url: tagMosaicUrl(name, pictures.get(name) ?? []),
-        render_mosaic_url: tagMosaicUrl(name, renders.get(name) ?? [], "renders"),
+        mosaic_url: tagMosaicUrl(name, pictures.get("images")?.get(name) ?? []),
+        render_mosaic_url: tagMosaicUrl(name, pictures.get("renders")?.get(name) ?? [], "renders"),
       })),
       total: matching.length,
       // Every tag, whatever its count: tells "none match the filter" from "no tags at all".

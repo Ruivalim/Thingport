@@ -27,14 +27,15 @@ export default function DashboardModelThumb({ model }: { model: DashboardModel }
       <ViewInArIcon fontSize="small" />
     </Avatar>
   );
-  const showRender = Boolean(model.render_url) && !renderUnavailable && (preference === "renders" || !photo);
+  const renderUrl =
+    model.render_url && !renderUnavailable && (preference === "renders" || !photo) ? model.render_url : null;
   return (
     <ListItemAvatar sx={{ minWidth: 48 }}>
-      {showRender ? (
+      {renderUrl ? (
         <Box sx={{ width: SIZE, height: SIZE, borderRadius: 1, overflow: "hidden" }}>
           <ModelRender
-            key={model.render_url}
-            url={model.render_url!}
+            key={renderUrl}
+            url={renderUrl}
             alt={model.name}
             onUnavailable={onUnavailable}
             placeholder={photo ? photoAvatar : undefined}
