@@ -23,7 +23,7 @@ import {
   type AssetFile,
   type AssetHome,
 } from "./modelAssets";
-import type { Category, Plate, Print } from "@prisma/client";
+import type { Category, Plate, Prisma, Print } from "@prisma/client";
 
 export const STORAGE_TEMPLATE_TOKENS = [
   "category-or-folder",
@@ -364,13 +364,14 @@ export async function availableModelName(
   requested: string,
   categoryId: string | null,
   excludeId?: string,
+  db: Prisma.TransactionClient = prisma,
 ): Promise<string> {
   const base = sanitizePathSegment(requested, "Model");
   let candidate = base;
   let suffix = 2;
   // Small categories in practice; a loop of sequential existence checks is simple and correct.
   for (;;) {
-    const existing = await prisma.print.findFirst({
+    const existing = await db.print.findFirst({
       where: {
         userId,
         categoryId: categoryId ?? null,

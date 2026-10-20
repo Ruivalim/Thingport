@@ -1580,6 +1580,11 @@
     "appearance": {
       "title": "Apparence",
       "subtitle": "Choisissez l’apparence et le comportement de Thingport.",
+      "reset": {
+        "action": "Rétablir les valeurs par défaut",
+        "title": "Réinitialiser l'apparence ?",
+        "message": "Le thème, les couleurs, les cartes de modèle, le diaporama au survol et l'aperçu de l'auteur reviennent à leurs valeurs par défaut. Votre langue reste inchangée."
+      },
       "themes": {
         "light": "Clair",
         "dark": "Sombre",
@@ -1589,6 +1594,7 @@
       "off": "Désactivé",
       "accent": "Couleur d’accent",
       "accentFailed": "Impossible d’enregistrer la couleur d’accent.",
+      "themeFailed": "Impossible d’enregistrer le thème.",
       "accents": {
         "green": "Vert Thingport",
         "blue": "Bleu Thingiverse",
@@ -3005,6 +3011,7 @@
       "createCategoryFailed": "Impossible de créer la catégorie. Veuillez réessayer.",
       "renameCategoryFailed": "Impossible de renommer la catégorie. Veuillez réessayer.",
       "deleteCategoryFailed": "Impossible de supprimer la catégorie. Veuillez réessayer.",
+      "resetCategoriesFailed": "Impossible de réinitialiser les catégories. Veuillez réessayer.",
       "reorderCategoryFailed": "Impossible de réorganiser les catégories. Veuillez réessayer.",
       "moveCategoryFailed": "Impossible de déplacer la sous-catégorie. Veuillez réessayer.",
       "updateCategoryMetaFailed": "Impossible d’enregistrer les détails de la catégorie. Veuillez réessayer.",
@@ -3018,9 +3025,27 @@
       "empty": "Aucune catégorie pour le moment",
       "noSubcategories": "Aucune sous-catégorie pour le moment",
       "manageTooltip": "Gérer les catégories",
+      "reset": {
+        "title": "Rétablir les catégories par défaut ?",
+        "added": "Ajoutées",
+        "restored": "Rétablies",
+        "removed": "Supprimées",
+        "modelsUncategorized_one": "{{count}} modèle perdra sa catégorie.",
+        "modelsUncategorized_other": "{{count}} modèles perdront leur catégorie.",
+        "modelsMoved_one": "{{count}} modèle va dans la catégorie parente conservée la plus proche.",
+        "modelsMoved_other": "{{count}} modèles vont dans la catégorie parente conservée la plus proche.",
+        "modelsRenamed_one": "{{count}} modèle déplacé est renommé pour éviter un doublon de nom.",
+        "modelsRenamed_other": "{{count}} modèles déplacés sont renommés pour éviter un doublon de nom.",
+        "modelCount_one": "{{count}} modèle",
+        "modelCount_other": "{{count}} modèles",
+        "noop": "Vos catégories correspondent déjà aux valeurs par défaut.",
+        "foldersKept": "Les dossiers ne sont pas modifiés.",
+        "previewFailed": "Impossible de déterminer ce qu'une réinitialisation changerait."
+      },
       "manager": {
         "title": "Gérer les catégories",
         "addCategory": "Ajouter une catégorie",
+        "reset": "Rétablir les valeurs par défaut",
         "addSubcategory": "Ajouter une sous-catégorie",
         "noCategories": "Aucune catégorie pour le moment. Ajoutez-en une pour commencer.",
         "confirmDeleteCategory": "Supprimer « {{name}} » ? Les modèles qu’elle contient passeront dans Non attribué.",

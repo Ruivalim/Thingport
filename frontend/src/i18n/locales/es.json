@@ -1567,6 +1567,11 @@
     "appearance": {
       "title": "Apariencia",
       "subtitle": "Elige cómo se ve y se comporta Thingport.",
+      "reset": {
+        "action": "Restablecer valores predeterminados",
+        "title": "¿Restablecer la apariencia?",
+        "message": "El tema, los colores, las tarjetas de modelos, la presentación al pasar el cursor y la vista previa del autor vuelven a sus valores predeterminados. Tu idioma no cambia."
+      },
       "themes": {
         "light": "Claro",
         "dark": "Oscuro",
@@ -1576,6 +1581,7 @@
       "off": "Desactivado",
       "accent": "Color de acento",
       "accentFailed": "No se pudo guardar el color de acento.",
+      "themeFailed": "No se pudo guardar el tema.",
       "accents": {
         "green": "Verde Thingport",
         "blue": "Azul Thingiverse",
@@ -2992,6 +2998,7 @@
       "createCategoryFailed": "No se pudo crear la categoría. Inténtalo de nuevo.",
       "renameCategoryFailed": "No se pudo renombrar la categoría. Inténtalo de nuevo.",
       "deleteCategoryFailed": "No se pudo eliminar la categoría. Inténtalo de nuevo.",
+      "resetCategoriesFailed": "No se pudieron restablecer las categorías. Inténtalo de nuevo.",
       "reorderCategoryFailed": "No se pudieron reordenar las categorías. Inténtalo de nuevo.",
       "moveCategoryFailed": "No se pudo mover la subcategoría. Inténtalo de nuevo.",
       "updateCategoryMetaFailed": "No se pudieron guardar los detalles de la categoría. Inténtalo de nuevo.",
@@ -3005,9 +3012,27 @@
       "empty": "Aún no hay categorías",
       "noSubcategories": "Aún no hay subcategorías",
       "manageTooltip": "Gestionar categorías",
+      "reset": {
+        "title": "¿Restablecer las categorías predeterminadas?",
+        "added": "Añadidas",
+        "restored": "Restauradas",
+        "removed": "Eliminadas",
+        "modelsUncategorized_one": "{{count}} modelo se quedará sin categoría.",
+        "modelsUncategorized_other": "{{count}} modelos se quedarán sin categoría.",
+        "modelsMoved_one": "{{count}} modelo pasa a la categoría superior conservada más cercana.",
+        "modelsMoved_other": "{{count}} modelos pasan a la categoría superior conservada más cercana.",
+        "modelsRenamed_one": "{{count}} modelo movido se renombra para evitar un nombre repetido.",
+        "modelsRenamed_other": "{{count}} modelos movidos se renombran para evitar nombres repetidos.",
+        "modelCount_one": "{{count}} modelo",
+        "modelCount_other": "{{count}} modelos",
+        "noop": "Tus categorías ya coinciden con las predeterminadas.",
+        "foldersKept": "Las carpetas no cambian.",
+        "previewFailed": "No se pudo calcular qué cambiaría el restablecimiento."
+      },
       "manager": {
         "title": "Gestionar categorías",
         "addCategory": "Añadir categoría",
+        "reset": "Restablecer valores predeterminados",
         "addSubcategory": "Añadir subcategoría",
         "noCategories": "Aún no hay categorías. Añade una para empezar.",
         "confirmDeleteCategory": "¿Eliminar «{{name}}»? Los modelos que contenga pasarán a Sin asignar.",

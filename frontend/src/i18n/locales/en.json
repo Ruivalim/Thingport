@@ -1567,6 +1567,11 @@
     "appearance": {
       "title": "Appearance",
       "subtitle": "Choose how Thingport looks and behaves.",
+      "reset": {
+        "action": "Reset to defaults",
+        "title": "Reset appearance?",
+        "message": "Theme, colors, model cards, hover slideshow and author preview go back to their defaults. Your language stays as it is."
+      },
       "themes": {
         "light": "Light",
         "dark": "Dark",
@@ -1576,6 +1581,7 @@
       "off": "Off",
       "accent": "Accent color",
       "accentFailed": "Couldn't save the accent color.",
+      "themeFailed": "Couldn't save the theme.",
       "accents": {
         "green": "Thingport green",
         "blue": "Thingiverse blue",
@@ -2992,6 +2998,7 @@
       "createCategoryFailed": "Failed to create the category. Please try again.",
       "renameCategoryFailed": "Failed to rename the category. Please try again.",
       "deleteCategoryFailed": "Failed to delete the category. Please try again.",
+      "resetCategoriesFailed": "Failed to reset the categories. Please try again.",
       "reorderCategoryFailed": "Failed to reorder categories. Please try again.",
       "moveCategoryFailed": "Failed to move the subcategory. Please try again.",
       "updateCategoryMetaFailed": "Failed to save category details. Please try again.",
@@ -3005,9 +3012,27 @@
       "empty": "No categories yet",
       "noSubcategories": "No subcategories yet",
       "manageTooltip": "Manage categories",
+      "reset": {
+        "title": "Reset categories to defaults?",
+        "added": "Added",
+        "restored": "Restored",
+        "removed": "Deleted",
+        "modelsUncategorized_one": "{{count}} model will lose its category.",
+        "modelsUncategorized_other": "{{count}} models will lose their category.",
+        "modelsMoved_one": "{{count}} model moves to the nearest kept parent category.",
+        "modelsMoved_other": "{{count}} models move to the nearest kept parent category.",
+        "modelsRenamed_one": "{{count}} moved model is renamed to avoid a name clash.",
+        "modelsRenamed_other": "{{count}} moved models are renamed to avoid a name clash.",
+        "modelCount_one": "{{count}} model",
+        "modelCount_other": "{{count}} models",
+        "noop": "Your categories already match the defaults.",
+        "foldersKept": "Folders aren't touched.",
+        "previewFailed": "Couldn't work out what a reset would change."
+      },
       "manager": {
         "title": "Manage Categories",
         "addCategory": "Add category",
+        "reset": "Reset to defaults",
         "addSubcategory": "Add subcategory",
         "noCategories": "No categories yet. Add one to get started.",
         "confirmDeleteCategory": "Delete \"{{name}}\"? Any models in it move to Unassigned.",
