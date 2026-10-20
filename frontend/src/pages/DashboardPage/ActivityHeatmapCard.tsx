@@ -8,7 +8,7 @@ import InsightsIcon from "@mui/icons-material/Insights";
 import { activityApi, type ActivityDay } from "../../api/activity";
 import { UnauthorizedError } from "../../api/client";
 import Heatmap from "../ProfilePage/activity/Heatmap";
-import { addDays, lastYearRange, localToday, weekday, type DateRange } from "../ProfilePage/activity/calendar";
+import { addDays, localToday, weekday, type DateRange } from "../ProfilePage/activity/calendar";
 
 // The heatmap's cell and gap, and room for its weekday labels.
 const WEEK_WIDTH = 14;
@@ -46,12 +46,13 @@ export default function ActivityHeatmapCard({ onUnauthorized }: Props) {
     return () => observer.disconnect();
   }, []);
 
-  // A whole year once, so resizing only changes how much of it shows.
+  // The widest range the card can show, once, so resizing only changes how much of it shows. MAX_WEEKS
+  // whole columns reach up to six days further back than a year.
   useEffect(() => {
     let active = true;
-    const year = lastYearRange(localToday());
+    const to = localToday();
     activityApi
-      .get(year.from, year.to)
+      .get(addDays(to, -(MAX_WEEKS * 7 - 1)), to)
       .then((data) => {
         if (active) setDays(data.days);
       })
