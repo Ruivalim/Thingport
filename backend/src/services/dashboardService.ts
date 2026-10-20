@@ -1,9 +1,7 @@
-import fs from "node:fs";
 import { createHash } from "node:crypto";
 import { prisma } from "../db";
 import { RENDERABLE_MODEL_EXTS } from "../config";
-import { renderUrl } from "../dto";
-import { plateThumbExists, plateThumbPath } from "./printService";
+import { plateThumbUrl, renderUrl } from "../dto";
 
 const TOP_MODELS_PREVIEW = 3;
 const TOP_MODELS_LIST_MAX = 50;
@@ -53,22 +51,18 @@ type PrintForModelSummary = {
   viewCount: number;
   printCount: number;
   createdAt: Date;
+  assetsPath: string | null;
   plates: { id: string; filename: string }[];
 };
 
 export function toModelSummary(print: PrintForModelSummary): DashboardModel {
   const first = print.plates[0];
   const plateId = first?.id ?? null;
-  let thumbUrl: string | null = null;
-  if (plateId && plateThumbExists(plateId)) {
-    const mtime = fs.statSync(plateThumbPath(plateId)).mtimeMs;
-    thumbUrl = `/plate/${plateId}/thumb.jpg?v=${mtime}`;
-  }
   return {
     id: print.id,
     name: print.name,
-    thumbUrl,
-    renderUrl: first ? renderUrl(first) : null,
+    thumbUrl: plateId ? plateThumbUrl(plateId, print.assetsPath) : null,
+    renderUrl: first ? renderUrl(first, print.assetsPath) : null,
     viewCount: print.viewCount,
     printCount: print.printCount,
     createdAt: print.createdAt,
@@ -81,6 +75,7 @@ export const MODEL_SUMMARY_SELECT = {
   viewCount: true,
   printCount: true,
   createdAt: true,
+  assetsPath: true,
   plates: { take: 1, orderBy: { position: "asc" as const }, select: { id: true, filename: true } },
 };
 

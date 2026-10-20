@@ -265,6 +265,9 @@ model Print {
   authorId                 String?
   author                   Author?                  @relation(fields: [authorId], references: [id], onDelete: SetNull)
   sourcePath               String?
+  // The folder beside its files that holds the model's pictures (see services/modelAssets.ts), relative to
+  // storage. Null for a model from before, whose pictures are still in the shared folders keyed by id.
+  assetsPath               String?                  @unique
   plates                   Plate[]
   previewImages            PreviewImage[]
   descriptionImages        DescriptionImage[]

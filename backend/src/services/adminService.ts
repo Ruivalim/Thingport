@@ -17,7 +17,7 @@ import { deleteAllPrintFiles } from "./printFileService";
 import { deleteAllPreviewImages } from "./previewImageService";
 import { deleteAllDescriptionImages } from "./descriptionImageService";
 import { deletePlateFiles } from "./printCreation";
-import { plateThumbPath } from "./printService";
+import { removeAssetHome, removePlatePictures } from "./printService";
 import { loadFullPrint } from "./printLoader";
 import { removeUserTagMosaics } from "./tagMosaicService";
 
@@ -122,8 +122,9 @@ export async function deleteAllPrintsForUser(userId: string): Promise<number> {
     await prisma.print.delete({ where: { id } });
     for (const plate of full.plates) {
       await deletePlateFiles(plate);
-      await fs.rm(plateThumbPath(plate.id), { force: true }).catch(() => undefined);
+      await removePlatePictures(plate.id, full.print.assetsPath);
     }
+    await removeAssetHome(full.print.assetsPath);
   }
   // With no models left the user has no tags, so none of their tag pictures is needed.
   await removeUserTagMosaics(userId);
@@ -172,9 +173,15 @@ let diskUsage: { at: number; value: Promise<DiskUsage> } | null = null;
 function measureDisk(): Promise<DiskUsage> {
   if (diskUsage && Date.now() - diskUsage.at < DISK_USAGE_TTL_MS) return diskUsage.value;
   const sum = async (dirs: string[]) => (await Promise.all(dirs.map(folderBytes))).reduce((a, b) => a + b, 0);
+  // Each model's pictures folder, beside its files, and the shared folders older ones may still be in.
+  const pictureFolders = prisma.print
+    .findMany({ where: { assetsPath: { not: null } }, select: { assetsPath: true } })
+    .then((prints) => prints.map((print) => path.join(STORAGE, print.assetsPath!)));
   const value = Promise.all([
     folderBytes(STORAGE),
-    sum([THUMBS, PREVIEWS, DESCRIPTION_IMAGES, MODEL_PREVIEWS, TAG_MOSAICS]),
+    pictureFolders.then((folders) =>
+      sum([...folders, THUMBS, PREVIEWS, DESCRIPTION_IMAGES, MODEL_PREVIEWS, TAG_MOSAICS]),
+    ),
     sum([NORMALIZED_3MFS, BUNDLES]),
   ]).then(([totalBytes, pictureBytes, otherGeneratedBytes]) => ({ totalBytes, pictureBytes, otherGeneratedBytes }));
   diskUsage = { at: Date.now(), value };
