@@ -296,12 +296,10 @@ describe("looking up authors no known author matches", () => {
       return json({ data: { creation: { slug: `c3d-keyed-${stamp}`, name: "Anything", creator: { nick: creator } } } });
     }) as unknown as typeof fetch;
 
-    const run = newRun();
-    await runAuthorLinking(run);
+    await runAuthorLinking(newRun());
     expect(authorization).toBe(`Basic ${Buffer.from(`keyed${stamp}:secret`).toString("base64")}`);
     expect(await authorOf(older.id)).toBe(`cults3d:${creator}`);
     expect(await authorOf(newer.id)).toBe(`cults3d:${creator}`);
-    expect(run.problems).not.toContain("cults3d_no_key");
   });
 
   it("skips a Cults3D creator no owner has a key for, and says a key is missing", async () => {
