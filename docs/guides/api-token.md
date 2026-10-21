@@ -49,7 +49,9 @@ on. See [Connect an AI assistant with MCP](mcp.md).
 
 - **Read:** anything you can see in Thingport yourself, such as models, collections, tags, search, the dashboard and
   your activity.
-- **Not write:** any request that would add, change or delete something is refused with `403 API tokens are read-only`.
+- **Not write over the REST API:** any request that would add, change or delete something is refused with
+  `403 API tokens are read-only`. Only the [MCP tools](mcp.md) you turn on can change your library, and none of them
+  deletes or overwrites anything.
 - **Not manage itself:** a token can't be used to generate a new token, revoke one or sign in, so a leaked token can't
   be turned into anything more.
 - **Not reach administration:** even an admin's token can't open the admin pages or settings, which hold instance
@@ -64,4 +66,4 @@ On your **Profile**:
 
 Do either if a token might have leaked. Generating and revoking tokens are recorded in the admin logs.
 
-Treat the token like a password: anyone who has it can read your whole library.
+Treat the token like a password: anyone who has it can read your whole library, and use any MCP tool you turned on.
