@@ -1,11 +1,12 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
 import { createApp } from "../src/app";
 import { prisma } from "../src/db";
 import { DEFAULT_MCP_TOOL_NAMES, MCP_TOOLS, mcpImportTiming } from "../src/mcp/tools";
+import { setMcpAccess } from "../src/services/settingsService";
 
 // /api/mcp end to end: who gets in, which tools each token sees, and that every tool only ever
 // reads the token owner's own library.
@@ -421,6 +422,12 @@ describe("the tools that write", () => {
     });
     expect(second.data.added).toEqual([]);
     expect(second.data.already_in).toEqual([own]);
+    // Logged once, for the one model actually added.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const logs = await prisma.log.findMany({
+      where: { userId: writer.userId, action: "collection_item_added", targetId: collection.id },
+    });
+    expect(logs.map((log) => (log.details as { count: number }).count)).toEqual([1]);
   });
 
   it("add_to_collection won't touch another user's collection or a built-in one", async () => {
@@ -513,8 +520,106 @@ describe("the tools that write", () => {
     }
   });
 
+  it("import_model refuses another user's category before importing anything", async () => {
+    const bobCategory = await prisma.category.findFirstOrThrow({ where: { userId: bob.userId } });
+    mockFile();
+    try {
+      const before = await prisma.print.count({ where: { userId: writer.userId } });
+      const result = await callTool(writer.token, "import_model", { url: FILE_URL, category_id: bobCategory.id });
+      expect(result.isError).toBe(true);
+      expect(result.text).toMatch(/category not found/i);
+      expect(await prisma.print.count({ where: { userId: writer.userId } })).toBe(before);
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it("get_import_status won't read an import the web app started", async () => {
+    const restUrl = "https://93.184.215.14/files/mcp-rest-widget.stl";
+    global.fetch = (async (input: RequestInfo | URL) => {
+      if (String(input) !== restUrl) throw new Error(`Unexpected fetch to ${String(input)}`);
+      return new Response("solid rest\nendsolid rest\n", { headers: { "content-type": "application/octet-stream" } });
+    }) as typeof fetch;
+    try {
+      const started = await request(app).post("/api/import?async=1").set(auth(writer.session)).send({ url: restUrl });
+      expect(started.status).toBe(202);
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      const result = await callTool(writer.token, "get_import_status", { task_id: started.body.task_id });
+      expect(result.isError).toBe(true);
+      expect(result.text).toMatch(/import_model/);
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
   it("get_import_status says when it doesn't know the import", async () => {
     const unknown = await callTool(writer.token, "get_import_status", { task_id: "no-such-task" });
     expect(unknown.isError).toBe(true);
+  });
+});
+
+describe("the instance's MCP access", () => {
+  const WRITE_TOOLS = ["import_model", "create_collection", "add_to_collection"];
+  let writer: Account;
+
+  beforeAll(async () => {
+    const user = await register("access");
+    writer = {
+      ...user,
+      token: await apiToken(user.session, { mcp_tools: [...DEFAULT_MCP_TOOL_NAMES, ...WRITE_TOOLS] }),
+    };
+  });
+
+  // Instance-wide: put back the default whatever a test leaves behind.
+  afterEach(() => setMcpAccess("write"));
+
+  it("can be changed by an admin only", async () => {
+    const res = await request(app).post("/api/settings/mcp").set(auth(writer.session)).send({ access: "off" });
+    expect(res.status).toBe(403);
+  });
+
+  it("turned off, shuts the endpoint and the token's tool choice", async () => {
+    await setMcpAccess("off");
+    const res = await mcp(writer.token, "tools/list");
+    expect(res.status).toBe(403);
+    expect(res.body.error.message).toMatch(/turned MCP off/i);
+
+    const profile = await request(app).get("/api/profile/api-token").set(auth(writer.session));
+    expect(profile.body.mcp_access).toBe("off");
+    expect(profile.body.available_mcp_tools).toEqual([]);
+    const put = await request(app)
+      .put("/api/profile/api-token/mcp-tools")
+      .set(auth(writer.session))
+      .send({ mcp_tools: DEFAULT_MCP_TOOL_NAMES });
+    expect(put.status).toBe(403);
+  });
+
+  it("read only, hides the write tools without forgetting them", async () => {
+    await setMcpAccess("read");
+    expect(await toolNames(writer.token)).toEqual([...DEFAULT_MCP_TOOL_NAMES].toSorted());
+    const call = await mcp(writer.token, "tools/call", { name: "create_collection", arguments: { name: "Nope" } });
+    expect(call.body.error ?? (call.body.result?.isError ? call.body.result : null)).toBeTruthy();
+
+    const profile = await request(app).get("/api/profile/api-token").set(auth(writer.session));
+    expect(profile.body.available_mcp_tools.every((tool: { read_only: boolean }) => tool.read_only)).toBe(true);
+
+    const refused = await request(app)
+      .put("/api/profile/api-token/mcp-tools")
+      .set(auth(writer.session))
+      .send({ mcp_tools: ["import_model"] });
+    expect(refused.status).toBe(403);
+
+    // Unticking a read tool keeps the hidden write ticks, so they come back with read and change.
+    const kept = await request(app)
+      .put("/api/profile/api-token/mcp-tools")
+      .set(auth(writer.session))
+      .send({ mcp_tools: DEFAULT_MCP_TOOL_NAMES.filter((name) => name !== "library_stats") });
+    expect(kept.status).toBe(200);
+    expect(kept.body.mcp_tools).toEqual(expect.arrayContaining(WRITE_TOOLS));
+
+    await setMcpAccess("write");
+    const names = await toolNames(writer.token);
+    for (const tool of WRITE_TOOLS) expect(names).toContain(tool);
+    expect(names).not.toContain("library_stats");
   });
 });

@@ -106,13 +106,13 @@ export async function addModelsToCollection(
   );
   const unique = [...new Set(printIds)];
   const added = unique.filter((id) => owned.has(id) && !present.has(id));
-  await addPrintsToCollection(collection.id, [...owned]);
-  if (owned.size) {
+  await addPrintsToCollection(collection.id, added);
+  if (added.length) {
     void createLog({
       userId,
       action: "collection_item_added",
       targetId: collection.id,
-      details: { name: collection.name, count: owned.size },
+      details: { name: collection.name, count: added.length },
     });
   }
   return {

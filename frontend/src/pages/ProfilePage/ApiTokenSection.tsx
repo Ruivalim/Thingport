@@ -11,11 +11,12 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import CheckIcon from "@mui/icons-material/Check";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import { authApi, type ApiTokenInfo } from "../../api/auth";
 import { UnauthorizedError } from "../../api/client";
 import { useConfirm } from "../../components/ConfirmProvider";
 import { relativeTime } from "../../utils/relativeTime";
-import ApiTokenMcpTools from "./ApiTokenMcpTools";
+import ApiTokenPermissionsDialog from "./ApiTokenPermissionsDialog";
 
 /** Same origin as the app: nginx (or Vite in dev) passes /api through to the backend. */
 function mcpEndpoint(): string {
@@ -33,10 +34,12 @@ export default function ApiTokenSection({ onUnauthorized }: Props) {
   const confirm = useConfirm();
   const [info, setInfo] = React.useState<ApiTokenInfo | null>(null);
   const [newToken, setNewToken] = React.useState<string | null>(null);
-  const [copied, setCopied] = React.useState(false);
+  const [copied, setCopied] = React.useState<"token" | "command" | null>(null);
   const [busy, setBusy] = React.useState(false);
+  const [permissionsOpen, setPermissionsOpen] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const tokenInput = React.useRef<HTMLInputElement>(null);
+  const commandBox = React.useRef<HTMLPreElement>(null);
 
   const handleError = React.useCallback(
     (err: unknown) => {
@@ -73,7 +76,7 @@ export default function ApiTokenSection({ onUnauthorized }: Props) {
       const { token, ...rest } = await authApi.generateApiToken();
       setInfo(rest);
       setNewToken(token);
-      setCopied(false);
+      setCopied(null);
     } catch (err) {
       handleError(err);
     } finally {
@@ -107,9 +110,22 @@ export default function ApiTokenSection({ onUnauthorized }: Props) {
     if (!newToken) return;
     try {
       await navigator.clipboard.writeText(newToken);
-      setCopied(true);
+      setCopied("token");
     } catch {
       tokenInput.current?.select();
+    }
+  };
+
+  const mcpCommand = newToken
+    ? `claude mcp add --transport http thingport ${mcpEndpoint()} \\\n  --header "Authorization: Bearer ${newToken}"`
+    : "";
+  const copyCommand = async () => {
+    try {
+      await navigator.clipboard.writeText(mcpCommand);
+      setCopied("command");
+    } catch {
+      // As with the token: selected, to copy by hand.
+      if (commandBox.current) window.getSelection()?.selectAllChildren(commandBox.current);
     }
   };
 
@@ -145,7 +161,18 @@ export default function ApiTokenSection({ onUnauthorized }: Props) {
           </Typography>
         </Box>
         {info && (
-          <Stack direction="row" gap={0.5} flexShrink={0}>
+          <Stack direction="row" gap={0.5} flexShrink={0} alignItems="center">
+            {info.configured && (
+              <Tooltip title={t("profile.apiToken.permissions.title")}>
+                <IconButton
+                  size="small"
+                  onClick={() => setPermissionsOpen(true)}
+                  aria-label={t("profile.apiToken.permissions.title")}
+                >
+                  <SettingsOutlinedIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
             {info.configured && (
               <Button variant="text" color="error" disabled={busy} onClick={revoke}>
                 {t("profile.apiToken.revoke")}
@@ -173,9 +200,9 @@ export default function ApiTokenSection({ onUnauthorized }: Props) {
                 input: {
                   endAdornment: (
                     <InputAdornment position="end">
-                      <Tooltip title={copied ? t("profile.apiToken.copied") : t("profile.apiToken.copy")}>
+                      <Tooltip title={copied === "token" ? t("profile.apiToken.copied") : t("profile.apiToken.copy")}>
                         <IconButton size="small" edge="end" onClick={copy} aria-label={t("profile.apiToken.copy")}>
-                          {copied ? <CheckIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
+                          {copied === "token" ? <CheckIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
                         </IconButton>
                       </Tooltip>
                     </InputAdornment>
@@ -183,18 +210,53 @@ export default function ApiTokenSection({ onUnauthorized }: Props) {
                 },
               }}
             />
-            <Typography variant="body2">{t("profile.apiToken.mcp.connect")}</Typography>
-            <Box
-              component="pre"
-              sx={{ m: 0, p: 1, borderRadius: 1, bgcolor: "action.hover", fontSize: "0.75rem", overflowX: "auto" }}
-            >
-              {`claude mcp add --transport http thingport ${mcpEndpoint()} \\\n  --header "Authorization: Bearer ${newToken}"`}
-            </Box>
+            {info?.mcp_access !== "off" && (
+              <>
+                <Typography variant="body2">{t("profile.apiToken.mcp.connect")}</Typography>
+                <Box sx={{ position: "relative" }}>
+                  <Box
+                    component="pre"
+                    ref={commandBox}
+                    sx={{
+                      m: 0,
+                      p: 1,
+                      pr: 5,
+                      borderRadius: 1,
+                      bgcolor: "action.hover",
+                      fontSize: "0.75rem",
+                      overflowX: "auto",
+                    }}
+                  >
+                    {mcpCommand}
+                  </Box>
+                  <Tooltip
+                    title={copied === "command" ? t("profile.apiToken.copied") : t("profile.apiToken.mcp.copyCommand")}
+                  >
+                    <IconButton
+                      size="small"
+                      onClick={() => void copyCommand()}
+                      aria-label={t("profile.apiToken.mcp.copyCommand")}
+                      sx={{ position: "absolute", top: 4, right: 4 }}
+                    >
+                      {copied === "command" ? <CheckIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              </>
+            )}
           </Stack>
         </Alert>
       )}
 
-      {info?.configured && <ApiTokenMcpTools info={info} onChange={setInfo} onUnauthorized={onUnauthorized} />}
+      {info?.configured && (
+        <ApiTokenPermissionsDialog
+          open={permissionsOpen}
+          onClose={() => setPermissionsOpen(false)}
+          info={info}
+          onChange={setInfo}
+          onUnauthorized={onUnauthorized}
+        />
+      )}
 
       {error && (
         <Alert severity="error" onClose={() => setError(null)}>

@@ -197,7 +197,7 @@
         "regenerate": "Regenerate",
         "revoke": "Revoke",
         "regenerateTitle": "Regenerate API token?",
-        "regenerateMessage": "The current token stops working at once. Anything using it will need the new one.",
+        "regenerateMessage": "The current token stops working at once. Anything using it will need the new one, and its MCP tools go back to the ones that only read.",
         "revokeTitle": "Revoke API token?",
         "revokeMessage": "The token stops working at once, and anything using it loses access to your library.",
         "copyNow": "Copy your token now. It won't be shown again.",
@@ -205,7 +205,7 @@
         "copied": "Copied",
         "failed": "Something went wrong with your API token. Please try again.",
         "mcp": {
-          "heading": "MCP tools",
+          "heading": "MCP",
           "description": "What an AI assistant connected with this token (over MCP, at /api/mcp) may use. Changes apply straight away, without a new token.",
           "connect": "To connect an AI assistant, for example Claude Code:",
           "writes": "Changes your library",
@@ -266,7 +266,16 @@
           },
           "writeConfirmTitle": "Let the assistant use “{{tool}}”?",
           "writeConfirmMessage": "This tool changes your library. An assistant connected with this token will be able to use it without asking you each time. Nothing it does deletes models.",
-          "writeConfirm": "Turn on"
+          "writeConfirm": "Turn on",
+          "adminOff": "An admin has turned MCP off on this Thingport.",
+          "adminReadOnly": "An admin allows only the tools that read.",
+          "copyCommand": "Copy command",
+          "reads": "Reads your library",
+          "allow": "Allow",
+          "deny": "Deny"
+        },
+        "permissions": {
+          "title": "Token permissions"
         }
       },
       "language": {
@@ -1318,7 +1327,8 @@
           "grab_connected": "Thingport Grab connected",
           "grab_disconnected": "Thingport Grab removed",
           "collections_merged": "Collections merged",
-          "tags_merged": "Tags merged"
+          "tags_merged": "Tags merged",
+          "mcp_access_changed": "Changed the MCP access"
         },
         "authorsLinked": "{{count}} model(s) linked",
         "descriptionsRefetched": "{{email}} — {{updated}} of {{total}} description(s) changed",
@@ -1536,6 +1546,23 @@
         "saving": "Saving…",
         "saved": "Saved.",
         "failed": "Couldn't save the public URL."
+      },
+      "mcp": {
+        "heading": "AI assistants (MCP)",
+        "subtitle": "What API tokens may do at /api/mcp.",
+        "accessLabel": "MCP access",
+        "help": "Each user still chooses their own token's tools within this. Tools that change the library import without a captcha, as Thingport Grab does.",
+        "failed": "Couldn't save the MCP access. Please try again.",
+        "levels": {
+          "off": "Off",
+          "read": "Read only",
+          "write": "Read and change"
+        },
+        "levelHelp": {
+          "off": "No API token can connect over MCP.",
+          "read": "Tokens can search and read their own library, never change it.",
+          "write": "Tokens can also import models and file them into collections, if their user turns that on."
+        }
       }
     },
     "download": {

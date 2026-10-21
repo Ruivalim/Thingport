@@ -1,3 +1,4 @@
+import type { McpAccess } from "./settings";
 import { authHeaders } from "../utils/auth";
 import { apiBase, assertOk, readErrorMessage, EmailNotVerifiedError, UnauthorizedError } from "./client";
 import type { CaptchaAnswer } from "./captcha";
@@ -24,8 +25,10 @@ export type ApiTokenInfo = {
   last_used_at: string | null;
   /** The MCP tools the token may call at /api/mcp. Empty without a token. */
   mcp_tools: string[];
-  /** Every tool the instance offers, to choose from. */
+  /** Every tool the instance's MCP access offers, to choose from. */
   available_mcp_tools: McpToolInfo[];
+  /** What an admin lets API tokens do over MCP. */
+  mcp_access: McpAccess;
 };
 export type GeneratedApiToken = ApiTokenInfo & { token: string };
 

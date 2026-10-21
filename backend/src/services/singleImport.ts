@@ -1,3 +1,4 @@
+import { prisma } from "../db";
 import { toPrintOut } from "../dto";
 import { HttpError } from "../utils/fileUtils";
 import { normalizeImportUrl } from "../utils/urlUtils";
@@ -25,7 +26,7 @@ export async function withStoredMakerworldCookie<T extends { makerworld_cookie?:
 }
 
 /** The checks before an import starts: the stored MakerWorld cookie, a normalized public URL (never an
- *  internal address) and a provider an admin hasn't turned off. */
+ *  internal address), a provider an admin hasn't turned off, and a category of the user's own. */
 export async function prepareSingleImport<T extends SingleImportBody>(
   userId: string,
   body: T,
@@ -33,6 +34,10 @@ export async function prepareSingleImport<T extends SingleImportBody>(
   const withCookie = await withStoredMakerworldCookie(userId, body);
   const url = await normalizeImportUrl(withCookie.url);
   await assertCanImportUrl(userId, url);
+  if (withCookie.category_id) {
+    const owned = await prisma.category.count({ where: { id: withCookie.category_id, userId } });
+    if (!owned) throw new HttpError(404, "Category not found");
+  }
   return { url, body: withCookie };
 }
 

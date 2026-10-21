@@ -3,6 +3,9 @@ import { apiBase, assertOk, readErrorMessage, UnauthorizedError } from "./client
 import type { AccentColor, RenderColor, ThemeSelection } from "../constants/settingsOptions";
 import { invalidateAiCategorizationStatus } from "./aiCategorization";
 
+/** What API tokens may do at /api/mcp, instance-wide. */
+export type McpAccess = "off" | "read" | "write";
+
 export type StorageToken =
   "category-or-folder" | "collection" | "tags" | "creator" | "model" | "filename" | "id" | "plate";
 
@@ -263,6 +266,24 @@ export const settingsApi = {
     const res = await fetch(`${apiBase()}/settings/storage/move`, { headers: authHeaders() });
     assertOk(res, "Failed to load the file move");
     return (await res.json()).move;
+  },
+
+  getMcp: async (): Promise<{ access: McpAccess }> => {
+    const res = await fetch(`${apiBase()}/settings/mcp`, { headers: authHeaders() });
+    if (res.status === 401) throw new UnauthorizedError();
+    assertOk(res, "Failed to load MCP settings");
+    return res.json();
+  },
+
+  updateMcp: async (access: McpAccess): Promise<{ access: McpAccess }> => {
+    const res = await fetch(`${apiBase()}/settings/mcp`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ access }),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to update MCP settings"));
+    return res.json();
   },
 
   getPreviews: async (): Promise<{ mode: PreviewMode }> => {

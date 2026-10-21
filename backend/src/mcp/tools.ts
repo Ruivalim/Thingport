@@ -1,14 +1,19 @@
 import { z } from "zod";
 import { prisma } from "../db";
-import { PUBLIC_URL } from "../config";
 import { toAuthorOut, type PrintOut } from "../dto";
 import { HttpError } from "../utils/fileUtils";
-import { SYSTEM_COLLECTIONS, systemCollectionKeyForId } from "../services/collectionService";
+import type { McpAccess } from "../services/settingsService";
+import {
+  addModelsToCollection,
+  createCollection,
+  isSystemCollectionId,
+  SYSTEM_COLLECTIONS,
+  systemCollectionKeyForId,
+} from "../services/collectionService";
 import { getDashboardSummary } from "../services/dashboardService";
 import { printOutById } from "../services/printLoader";
-import { listPrints, PRINT_SORT_MODES, SELF_AUTHOR_ID } from "../services/printQuery";
+import { listPrints, PRINT_SORT_MODES, SELF_AUTHOR_ID, type PrintListPage } from "../services/printQuery";
 import { search } from "../services/searchService";
-import { addModelsToCollection, createCollection, isSystemCollectionId } from "../services/collectionService";
 import { getImportTask, startImportTask, type ImportTaskState } from "../services/importTaskService";
 import { importAndDescribe, prepareSingleImport } from "../services/singleImport";
 
@@ -19,7 +24,11 @@ import { importAndDescribe, prepareSingleImport } from "../services/singleImport
 // A token reaches only the tools its user ticked (see routes/mcp.ts). A tool that writes must say so with
 // `readOnly: false`: it's then off for every token until its user turns it on.
 
-export type McpToolContext = { userId: string };
+export type McpToolContext = {
+  userId: string;
+  /** The instance's address as an admin set it, "" when unset: see getPublicUrl. */
+  publicUrl: string;
+};
 
 export type McpToolDefinition = {
   name: string;
@@ -43,11 +52,11 @@ const pageArgs = {
 };
 
 /** The model's page in the Thingport web app, when the instance knows its own address. */
-function modelUrl(id: string): string | null {
-  return PUBLIC_URL ? `${PUBLIC_URL}/models/${id}` : null;
+function modelUrl(ctx: McpToolContext, id: string): string | null {
+  return ctx.publicUrl ? `${ctx.publicUrl}/models/${id}` : null;
 }
 
-function modelSummary(print: PrintOut) {
+function modelSummary(ctx: McpToolContext, print: PrintOut) {
   return {
     id: print.id,
     title: print.title || print.name,
@@ -60,12 +69,16 @@ function modelSummary(print: PrintOut) {
     print_count: print.print_count,
     favorite: print.is_favorite,
     added_at: print.created_at,
-    url: modelUrl(print.id),
+    url: modelUrl(ctx, print.id),
   };
 }
 
-function page(prints: PrintOut[], total: number, hasMore: boolean, nextOffset: number) {
-  return { models: prints.map(modelSummary), total, next_offset: hasMore ? nextOffset : null };
+function page(ctx: McpToolContext, result: PrintListPage) {
+  return {
+    models: result.prints.map((print) => modelSummary(ctx, print)),
+    total: result.total,
+    next_offset: result.hasMore ? result.nextOffset : null,
+  };
 }
 
 const searchModels: McpToolDefinition = {
@@ -79,10 +92,11 @@ const searchModels: McpToolDefinition = {
     query: z.string().min(1).describe("Words to look for, e.g. 'benchy' or 'cable clip'."),
     limit: z.number().int().min(1).max(25).optional().describe("How many models to return, up to 25."),
   },
-  async run({ userId }, args) {
+  async run(ctx, args) {
+    const { userId } = ctx;
     const result = await search(userId, args.query as string, args.limit as number | undefined);
     return {
-      models: result.models.map(modelSummary),
+      models: result.models.map((print) => modelSummary(ctx, print)),
       more_models: result.has_more_models,
       collections: result.collections.map((c) => ({ id: c.id, name: c.name, model_count: c.item_count })),
       tags: result.tags.map((t) => ({ tag: t.tag, model_count: t.count })),
@@ -115,7 +129,8 @@ const listModels: McpToolDefinition = {
       .describe("newest (default), popular (most viewed), downloads (most printed), or relevance (needs query)."),
     ...pageArgs,
   },
-  async run({ userId }, args) {
+  async run(ctx, args) {
+    const { userId } = ctx;
     const result = await listPrints(
       userId,
       {
@@ -131,7 +146,7 @@ const listModels: McpToolDefinition = {
         offset: args.offset as number | undefined,
       },
     );
-    return page(result.prints, result.total, result.hasMore, result.nextOffset);
+    return page(ctx, result);
   },
 };
 
@@ -143,7 +158,8 @@ const getModel: McpToolDefinition = {
     "imported from, and how often it was viewed and printed.",
   readOnly: true,
   inputSchema: { id: z.string().min(1).describe("The model's id, from search_models or list_models.") },
-  async run({ userId }, args) {
+  async run(ctx, args) {
+    const { userId } = ctx;
     // printOutById, not GET /print/:id: an assistant looking at a model isn't the user viewing it, so
     // its view count and Browsing History stay as they are.
     const print = await printOutById(userId, args.id as string);
@@ -152,7 +168,7 @@ const getModel: McpToolDefinition = {
       select: { collection: { select: { id: true, name: true } } },
     });
     return {
-      ...modelSummary(print),
+      ...modelSummary(ctx, print),
       description: print.notes,
       author: print.author
         ? {
@@ -177,7 +193,8 @@ const listCollections: McpToolDefinition = {
   description: "The user's collections, with how many models each holds, plus Favourites and Browsing History.",
   readOnly: true,
   inputSchema: {},
-  async run({ userId }) {
+  async run(ctx) {
+    const { userId } = ctx;
     const [collections, favoriteCount, historyCount] = await Promise.all([
       prisma.collection.findMany({
         where: { userId },
@@ -213,7 +230,8 @@ const getCollection: McpToolDefinition = {
     id: z.string().min(1).describe("The collection's id, from list_collections ('favorites' and 'history' work too)."),
     ...pageArgs,
   },
-  async run({ userId }, args) {
+  async run(ctx, args) {
+    const { userId } = ctx;
     const id = args.id as string;
     const systemKey = systemCollectionKeyForId(id);
     const collection = systemKey
@@ -228,7 +246,7 @@ const getCollection: McpToolDefinition = {
       { collectionId: id },
       { limit: (args.limit as number | undefined) ?? DEFAULT_PAGE, offset: args.offset as number | undefined },
     );
-    return { ...collection, ...page(result.prints, result.total, result.hasMore, result.nextOffset) };
+    return { ...collection, ...page(ctx, result) };
   },
 };
 
@@ -243,7 +261,8 @@ const listTags: McpToolDefinition = {
     query: z.string().optional().describe("Only tags containing this, ignoring case, e.g. 'drag' for 'dragon'."),
     limit: z.number().int().min(1).max(500).optional().describe("How many to return, up to 500 (default 200)."),
   },
-  async run({ userId }, args) {
+  async run(ctx, args) {
+    const { userId } = ctx;
     const query = ((args.query as string | undefined) ?? "").trim().toLowerCase();
     const rows = await prisma.print.findMany({ where: { userId }, select: { tags: true } });
     // Counted case-insensitively, under the spelling seen first, as the library's tag list does.
@@ -270,7 +289,8 @@ const listCategories: McpToolDefinition = {
     "list_models' category_id.",
   readOnly: true,
   inputSchema: {},
-  async run({ userId }) {
+  async run(ctx) {
+    const { userId } = ctx;
     const [categories, counts] = await Promise.all([
       prisma.category.findMany({
         where: { userId },
@@ -301,7 +321,8 @@ const getAuthor: McpToolDefinition = {
     id: z.string().min(1).describe("The author's id, from a model's author."),
     ...pageArgs,
   },
-  async run({ userId }, args) {
+  async run(ctx, args) {
+    const { userId } = ctx;
     // Authors are shared across users; only this user's models of theirs are listed.
     const author = await prisma.author.findUnique({ where: { id: args.id as string } });
     if (!author) throw new HttpError(404, "Author not found");
@@ -318,7 +339,7 @@ const getAuthor: McpToolDefinition = {
       provider: out.provider,
       bio: out.bio_translated ?? out.bio,
       links: out.links,
-      ...page(result.prints, result.total, result.hasMore, result.nextOffset),
+      ...page(ctx, result),
     };
   },
 };
@@ -331,7 +352,8 @@ const libraryStats: McpToolDefinition = {
     "most recently added models, top authors and the sites models came from.",
   readOnly: true,
   inputSchema: {},
-  async run({ userId }) {
+  async run(ctx) {
+    const { userId } = ctx;
     const summary = await getDashboardSummary(userId);
     const model = (m: (typeof summary.topViewed)[number]) => ({
       id: m.id,
@@ -339,7 +361,7 @@ const libraryStats: McpToolDefinition = {
       view_count: m.viewCount,
       print_count: m.printCount,
       added_at: m.createdAt.toISOString(),
-      url: modelUrl(m.id),
+      url: modelUrl(ctx, m.id),
     });
     return {
       model_count: summary.modelCount,
@@ -368,7 +390,7 @@ export const mcpImportTiming = { waitMs: 25_000, pollMs: 250 };
 type ImportedModel = PrintOut & { import_outcome: "created" | "already_imported" | "profile_added" };
 
 /** What a finished, failed or still running import looks like to the assistant. */
-function importStateOut(taskId: string, state: ImportTaskState) {
+function importStateOut(ctx: McpToolContext, taskId: string, state: ImportTaskState) {
   if (state.status === "running") {
     return {
       status: "running",
@@ -377,11 +399,13 @@ function importStateOut(taskId: string, state: ImportTaskState) {
     };
   }
   if (state.status === "error") throw new HttpError(state.http_status, state.detail);
-  const result = state.result as { model: ImportedModel; collection: { id: string; name: string } | null };
+  const result = state.result as { model?: ImportedModel; collection?: { id: string; name: string } | null };
+  // A task id from POST /import?async=1 belongs to the same user but holds a bare model.
+  if (!result?.model) throw new HttpError(404, "No such import from import_model");
   return {
     status: result.model.import_outcome,
-    model: modelSummary(result.model),
-    collection: result.collection,
+    model: modelSummary(ctx, result.model),
+    collection: result.collection ?? null,
   };
 }
 
@@ -402,7 +426,8 @@ const importModel: McpToolDefinition = {
     category_id: z.string().optional().describe("A category to file it in (an id from list_categories)."),
     collection_id: z.string().optional().describe("A collection to add it to (an id from list_collections)."),
   },
-  async run({ userId }, args) {
+  async run(ctx, args) {
+    const { userId } = ctx;
     const collectionId = args.collection_id as string | undefined;
     // Checked first, so a bad collection doesn't leave an import half done.
     if (collectionId) {
@@ -410,8 +435,8 @@ const importModel: McpToolDefinition = {
       const owned = await prisma.collection.count({ where: { id: collectionId, userId } });
       if (!owned) throw new HttpError(404, "Collection not found");
     }
-    // No captcha: like Thingport Grab, an assistant has nowhere to show one, and the token's user turned
-    // this tool on themselves.
+    // No captcha: like Thingport Grab, an assistant has nowhere to show one. The token's user turned this
+    // tool on themselves, and an admin who doesn't want that sets MCP to read only.
     const { url, body } = await prepareSingleImport(userId, {
       url: args.url as string,
       title: (args.title as string | undefined) ?? null,
@@ -429,7 +454,7 @@ const importModel: McpToolDefinition = {
       await new Promise((resolve) => setTimeout(resolve, mcpImportTiming.pollMs));
       state = getImportTask(taskId, userId)!;
     }
-    return importStateOut(taskId, state);
+    return importStateOut(ctx, taskId, state);
   },
 };
 
@@ -439,12 +464,13 @@ const getImportStatus: McpToolDefinition = {
   description: "How an import that import_model left running is getting on, and the model once it's done.",
   readOnly: true,
   inputSchema: { task_id: z.string().min(1).describe("The task_id import_model returned.") },
-  async run({ userId }, args) {
+  async run(ctx, args) {
+    const { userId } = ctx;
     const taskId = args.task_id as string;
     const state = getImportTask(taskId, userId);
     // Tasks live in memory for a while after they finish; a restart forgets them.
     if (!state) throw new HttpError(404, "No such import: it may have finished a while ago, or the server restarted");
-    return importStateOut(taskId, state);
+    return importStateOut(ctx, taskId, state);
   },
 };
 
@@ -458,7 +484,8 @@ const createCollectionTool: McpToolDefinition = {
     description: z.string().trim().max(2000).optional(),
     tags: z.array(z.string()).optional(),
   },
-  async run({ userId }, args) {
+  async run(ctx, args) {
+    const { userId } = ctx;
     const collection = await createCollection(userId, {
       name: args.name as string,
       description: (args.description as string | undefined) ?? null,
@@ -484,7 +511,8 @@ const addToCollection: McpToolDefinition = {
       .max(100)
       .describe("The models, ids from search_models or list_models."),
   },
-  async run({ userId }, args) {
+  async run(ctx, args) {
+    const { userId } = ctx;
     const result = await addModelsToCollection(userId, args.collection_id as string, args.model_ids as string[]);
     return {
       collection: { id: result.collection.id, name: result.collection.name },
@@ -513,13 +541,21 @@ export const MCP_TOOLS: readonly McpToolDefinition[] = [
 
 export const MCP_TOOL_NAMES = MCP_TOOLS.map((tool) => tool.name);
 
-/** What the profile page offers to tick. */
-export const MCP_TOOL_CATALOG = MCP_TOOLS.map((tool) => ({
-  name: tool.name,
-  title: tool.title,
-  description: tool.description,
-  read_only: tool.readOnly,
-}));
+/** The tools the instance's MCP access lets a token reach, ticked or not. */
+export function mcpToolsFor(access: McpAccess): readonly McpToolDefinition[] {
+  if (access === "off") return [];
+  return access === "read" ? MCP_TOOLS.filter((tool) => tool.readOnly) : MCP_TOOLS;
+}
+
+/** What the profile page offers to tick under this access. */
+export function mcpToolCatalog(access: McpAccess) {
+  return mcpToolsFor(access).map((tool) => ({
+    name: tool.name,
+    title: tool.title,
+    description: tool.description,
+    read_only: tool.readOnly,
+  }));
+}
 
 /** What a new token gets when its user doesn't choose: every tool that only reads. */
 export const DEFAULT_MCP_TOOL_NAMES = MCP_TOOLS.filter((tool) => tool.readOnly).map((tool) => tool.name);

@@ -198,7 +198,7 @@
         "regenerate": "Generuoti iš naujo",
         "revoke": "Atšaukti",
         "regenerateTitle": "Generuoti API raktą iš naujo?",
-        "regenerateMessage": "Dabartinis raktas iškart nustos veikti. Viskam, kas jį naudoja, reikės naujo rakto.",
+        "regenerateMessage": "Dabartinis raktas iškart nustos veikti. Viskam, kas jį naudoja, reikės naujo, o jo MCP įrankiai vėl bus tik skaitantys.",
         "revokeTitle": "Atšaukti API raktą?",
         "revokeMessage": "Raktas iškart nustos veikti, ir viskas, kas jį naudoja, praras prieigą prie jūsų bibliotekos.",
         "copyNow": "Nukopijuokite raktą dabar. Jis daugiau nebus rodomas.",
@@ -206,7 +206,7 @@
         "copied": "Nukopijuota",
         "failed": "Kažkas nepavyko su jūsų API raktu. Bandykite dar kartą.",
         "mcp": {
-          "heading": "MCP įrankiai",
+          "heading": "MCP",
           "description": "Ką gali naudoti DI asistentas, prijungtas su šiuo raktu (per MCP, adresu /api/mcp). Pakeitimai įsigalioja iš karto, naujo rakto nereikia.",
           "connect": "Kad prijungtumėte DI asistentą, pavyzdžiui Claude Code:",
           "writes": "Keičia biblioteką",
@@ -267,7 +267,16 @@
           },
           "writeConfirmTitle": "Leisti asistentui naudoti „{{tool}}“?",
           "writeConfirmMessage": "Šis įrankis keičia jūsų biblioteką. Su šiuo raktu prijungtas asistentas galės jį naudoti kiekvieną kartą jūsų neklausdamas. Jis niekada netrina modelių.",
-          "writeConfirm": "Įjungti"
+          "writeConfirm": "Įjungti",
+          "adminOff": "Administratorius šiame Thingport išjungė MCP.",
+          "adminReadOnly": "Administratorius leidžia tik skaitančius įrankius.",
+          "copyCommand": "Kopijuoti komandą",
+          "reads": "Skaito biblioteką",
+          "allow": "Leisti",
+          "deny": "Drausti"
+        },
+        "permissions": {
+          "title": "Rakto leidimai"
         }
       },
       "language": {
@@ -1347,7 +1356,8 @@
           "grab_connected": "Prijungtas Thingport Grab",
           "grab_disconnected": "Pašalintas Thingport Grab",
           "collections_merged": "Kolekcijos sujungtos",
-          "tags_merged": "Žymos sujungtos"
+          "tags_merged": "Žymos sujungtos",
+          "mcp_access_changed": "Pakeitė MCP prieigą"
         },
         "authorsLinked": "Susieta modelių: {{count}}",
         "descriptionsRefetched": "{{email}} — pakeista aprašymų: {{updated}} iš {{total}}",
@@ -1577,6 +1587,23 @@
         "saving": "Saugoma…",
         "saved": "Išsaugota.",
         "failed": "Nepavyko išsaugoti viešo adreso."
+      },
+      "mcp": {
+        "heading": "DI asistentai (MCP)",
+        "subtitle": "Ką API raktai gali daryti per /api/mcp.",
+        "accessLabel": "MCP prieiga",
+        "help": "Kiekvienas naudotojas vis tiek pats pasirenka savo rakto įrankius šiose ribose. Biblioteką keičiantys įrankiai importuoja be captcha, kaip ir Thingport Grab.",
+        "failed": "Nepavyko išsaugoti MCP prieigos. Bandykite dar kartą.",
+        "levels": {
+          "off": "Išjungta",
+          "read": "Tik skaityti",
+          "write": "Skaityti ir keisti"
+        },
+        "levelHelp": {
+          "off": "Joks API raktas negali prisijungti per MCP.",
+          "read": "Raktai gali ieškoti ir skaityti savo biblioteką, bet niekada jos nekeisti.",
+          "write": "Raktai taip pat gali importuoti modelius ir dėti juos į kolekcijas, jei naudotojas tai įjungia."
+        }
       }
     },
     "download": {

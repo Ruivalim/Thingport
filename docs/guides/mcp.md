@@ -8,16 +8,17 @@ file them into collections: "import this Printables link into my Benchies collec
 It's built into the backend, so there's nothing extra to install or run. The endpoint is `/api/mcp` on the same address
 you open Thingport at, and the assistant signs in with your [API token](api-token.md).
 
-## 1. Generate a token and pick its tools
+## 1. Generate a token and choose its tools
 
 1. Open the user menu (your avatar, top right) and choose **Profile**.
 2. Next to **API token**, click **Generate**, and copy the token straight away: it's shown only once.
-3. Under **MCP tools**, tick or untick what the assistant may use. Changes apply at once, to the token you already
-   have.
+3. Click the cog next to the token to open **Token permissions**, and under **MCP** set each tool to **Allow** or
+   **Deny**. Changes apply at once, to the token you already have.
 
 A new token gets every tool that only reads. The tools that change your library are marked **Changes your library**,
 stay off until you turn them on, and ask you to confirm when you do. The token still can't change anything over the
-REST API, and an MCP tool is only reachable if it's ticked here.
+REST API, and an MCP tool is only reachable if it's allowed here. Regenerating the token sets its tools back to the ones
+that only read.
 
 ## 2. Add Thingport to your assistant
 
@@ -71,7 +72,25 @@ view, so it doesn't change your Browsing History or your most viewed models.
 If your instance has a public address set (`PUBLIC_URL`), models come back with a link to their page in Thingport, so
 the assistant can hand you one.
 
+## What an admin decides
+
+On the admin **Auth** page, **AI assistants (MCP)** sets what every API token on the instance may do over MCP:
+
+- **Read and change** (the default): each user picks their token's tools, including the ones that change the library.
+- **Read only**: only the tools that read are offered or answered. A tool someone already allowed stays allowed, and works
+  again if the admin goes back to **Read and change**.
+- **Off**: `/api/mcp` turns every token away.
+
+Since an MCP import doesn't ask for a captcha, an admin who requires one for imports may want **Read only**.
+
+## A word on what the assistant reads
+
+Model descriptions come from the sites they were imported from, and the assistant reads them. A description written to
+look like instructions could talk it into calling another tool you gave it. The worst it can do is import models or
+file them into collections, since no tool deletes anything, but keep the tools that change the library off unless you
+use them.
+
 ## Turn it off
 
-- **Untick tools** on your Profile to take them away from the assistant without replacing the token.
+- **Deny tools** in **Token permissions** to take them away from the assistant without replacing the token.
 - **Revoke** the token to cut the assistant off altogether. Anything else using the same token loses access too.

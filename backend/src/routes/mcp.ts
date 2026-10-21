@@ -3,13 +3,14 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { asyncHandler } from "../utils/asyncHandler";
 import { findApiTokenUser, isApiToken } from "../services/apiTokenService";
 import { buildMcpServer } from "../mcp/server";
-import { MCP_TOOL_NAMES } from "../mcp/tools";
+import { mcpToolsFor } from "../mcp/tools";
+import { getMcpAccess, getPublicUrl } from "../services/settingsService";
 
 // The MCP endpoint (Streamable HTTP, stateless): an assistant connects with the user's API token.
 //
 // Not behind requireAuth, which refuses an API token anything but GET: every MCP message is a POST.
 // The read-only promise is kept by the tools instead. A token only ever reaches the ones its user
-// ticked, and a tool that writes is off until they do. Mounted before every router that applies
+// ticked and the instance's MCP access offers, and a tool that writes is off until they do. Mounted before every router that applies
 // requireAuth to all its paths, or those would turn the POST away first.
 
 const router = Router();
@@ -36,8 +37,14 @@ router.post(
       jsonRpcError(res, 401, "Send your Thingport API token as 'Authorization: Bearer tp_...'");
       return;
     }
-    const allowed = new Set(user.apiTokenMcpTools.filter((name) => MCP_TOOL_NAMES.includes(name)));
-    const server = buildMcpServer({ userId: user.id }, allowed);
+    const access = await getMcpAccess();
+    if (access === "off") {
+      jsonRpcError(res, 403, "An admin has turned MCP off on this Thingport");
+      return;
+    }
+    const offered = new Set(mcpToolsFor(access).map((tool) => tool.name));
+    const allowed = new Set(user.apiTokenMcpTools.filter((name) => offered.has(name)));
+    const server = buildMcpServer({ userId: user.id, publicUrl: await getPublicUrl() }, allowed);
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
     res.on("close", () => {
       void transport.close();

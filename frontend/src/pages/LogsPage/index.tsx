@@ -36,6 +36,7 @@ const ACTION_COLORS: Record<LogAction, ActionColor> = {
   api_token_revoked: "default",
   // Can turn on a tool that writes.
   api_token_mcp_tools_changed: "warning",
+  mcp_access_changed: "warning",
   user_invited: "info",
   authors_linked: "success",
   descriptions_refetched: "warning",
