@@ -69,8 +69,9 @@ assistant follows it with `get_import_status`.
 Every tool sees only your own library, exactly as you do in Thingport. Looking a model up through MCP doesn't count as a
 view, so it doesn't change your Browsing History or your most viewed models.
 
-If your instance has a public address set (`PUBLIC_URL`), models come back with a link to their page in Thingport, so
-the assistant can hand you one.
+If your instance has a public address set under **Administration → Auth → Public URL**, models come back with a link to
+their page in Thingport, so the assistant can hand you one. The setting starts out as `PUBLIC_URL`; once an admin
+changes it, that change is kept.
 
 ## What an admin decides
 
