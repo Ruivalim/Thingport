@@ -113,15 +113,6 @@ export async function listPrints(
     },
   });
   const prints = tagList.length ? allMatching.filter((p) => matchesTagList(p.tags, tagList)) : allMatching;
-  const printIds = prints.map((p) => p.id);
-  const files = printIds.length ? await prisma.printFile.findMany({ where: { printId: { in: printIds } } }) : [];
-  const filesByPrint = new Map<string, typeof files>();
-  for (const f of files) {
-    const list = filesByPrint.get(f.printId) ?? [];
-    list.push(f);
-    filesByPrint.set(f.printId, list);
-  }
-
   // Under "newest", Favourites and Browsing History sort by when they were favorited/viewed.
   const systemKey = systemCollectionKeyForId(filters.collectionId?.trim() ?? "");
   const recencyField = systemKey === "favorites" ? "favoritedAt" : systemKey === "history" ? "lastViewedAt" : null;
@@ -145,6 +136,15 @@ export async function listPrints(
 
   const start = options.limit !== undefined ? (options.offset ?? 0) : 0;
   const paged = options.limit !== undefined ? sorted.slice(start, start + options.limit) : sorted;
+  // Files only for the page: the sort above reads nothing but Print columns.
+  const pagedIds = paged.map((p) => p.id);
+  const files = pagedIds.length ? await prisma.printFile.findMany({ where: { printId: { in: pagedIds } } }) : [];
+  const filesByPrint = new Map<string, typeof files>();
+  for (const f of files) {
+    const list = filesByPrint.get(f.printId) ?? [];
+    list.push(f);
+    filesByPrint.set(f.printId, list);
+  }
 
   return {
     prints: paged.map((p) => {
