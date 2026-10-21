@@ -11,10 +11,13 @@ import {
   addPrintsToCollection,
   createCollection,
   assertCollectionNameAvailable,
+  deleteCollections,
   isSystemCollectionId,
   listSystemCollectionOuts,
   loadSystemCollectionOut,
+  mergeCollections,
   normalizeCollectionName,
+  previewCollectionMerge,
   systemCollectionKeyForId,
 } from "../services/collectionService";
 import {
@@ -97,6 +100,60 @@ router.post(
     const body = parseBody(collectionSchema, req.body);
     const collection = await createCollection(req.userId!, body);
     res.json(toCollectionOut(collection, 0, [], false));
+  }),
+);
+
+const idsSchema = z.object({ ids: z.array(z.string()).min(1).max(1000) });
+const mergeSchema = z.object({ primary_id: z.string(), ids: z.array(z.string()).min(1).max(1000) });
+
+router.post(
+  "/collections/merge/preview",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(idsSchema, req.body);
+    res.json(await previewCollectionMerge(req.userId!, body.ids));
+  }),
+);
+
+// `ids` are merged into `primary_id` and deleted; it may list `primary_id` too.
+router.post(
+  "/collections/merge",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(mergeSchema, req.body);
+    const { primary, merged, added } = await mergeCollections(req.userId!, body.primary_id, body.ids);
+    const [itemCount, covers, bookmarked, sync] = await Promise.all([
+      prisma.collectionItem.count({ where: { collectionId: primary.id } }),
+      coverPrints(req.userId!, primary.id),
+      prisma.bookmark.findFirst({ where: { userId: req.userId, type: "COLLECTION", collectionId: primary.id } }),
+      prisma.collectionSync.findUnique({ where: { collectionId: primary.id } }),
+    ]);
+    res.json({
+      collection: toCollectionOut(primary, itemCount, covers, Boolean(bookmarked), sync),
+      merged_ids: merged.map((c) => c.id),
+      added,
+    });
+    void createLog({
+      userId: req.userId!,
+      action: "collections_merged",
+      targetId: primary.id,
+      details: { name: primary.name, merged: merged.map((c) => c.name), added },
+    });
+  }),
+);
+
+router.post(
+  "/collections/delete",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(idsSchema, req.body);
+    const deleted = await deleteCollections(req.userId!, body.ids);
+    res.json({ deleted: deleted.map((c) => c.id) });
+    for (const collection of deleted) {
+      void createLog({
+        userId: req.userId!,
+        action: "collection_deleted",
+        targetId: collection.id,
+        details: { name: collection.name },
+      });
+    }
   }),
 );
 

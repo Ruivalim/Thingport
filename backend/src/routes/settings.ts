@@ -93,13 +93,10 @@ import { SLICER_IDS, getUserSlicer, setUserSlicer } from "../services/slicerPref
 import { CATEGORIES_VIEWS, getCategoriesView, setCategoriesView } from "../services/categoriesViewService";
 import {
   DASHBOARD_LAYOUTS,
-  DASHBOARD_THUMBNAILS,
   DASHBOARD_WIDGETS,
   getDashboardLayout,
-  getDashboardThumbnails,
   getDashboardWidgets,
   setDashboardLayout,
-  setDashboardThumbnails,
   setDashboardWidgets,
 } from "../services/dashboardWidgetsService";
 import {
@@ -111,8 +108,15 @@ import {
   setConsumeSettings,
 } from "../services/consumeService";
 import { CONSUME_DIR } from "../config";
-import { THEME_SELECTIONS, getUserTheme, setUserTheme } from "../services/themePreferenceService";
+import {
+  ACCENT_COLORS,
+  RENDER_COLORS,
+  THEME_SELECTIONS,
+  getUserThemePreferences,
+  setUserThemePreferences,
+} from "../services/themePreferenceService";
 import { getUserAuthorPreviewEnabled, setUserAuthorPreviewEnabled } from "../services/authorPreviewPreferenceService";
+import { getHoverSlideshowEnabled, setHoverSlideshowEnabled } from "../services/hoverSlideshowService";
 import { checkForUpdates } from "../services/versionService";
 import { getWeatherLocation, setWeatherLocation, weatherLocationSchema } from "../services/weatherLocationService";
 import { dropPreviewsAffectedBySimplification } from "../services/modelPreviewCache";
@@ -128,6 +132,7 @@ import {
   updateAiConnection,
 } from "../services/aiConnectionService";
 import { getDisabledProviders, PROVIDERS, setProviderEnabled } from "../services/providerSettingsService";
+import { CARD_PREVIEWS, getCardPreview, setCardPreview } from "../services/cardPreviewService";
 import { createLog } from "../services/auditLog";
 import { testFlaresolverr } from "../services/flaresolverr";
 
@@ -968,17 +973,20 @@ router.patch(
 router.get(
   "/settings/theme",
   asyncHandler(async (req, res) => {
-    res.json({ theme: await getUserTheme(req.userId!) });
+    res.json(await getUserThemePreferences(req.userId!));
   }),
 );
 
-const themeSettingsSchema = z.object({ theme: z.enum(THEME_SELECTIONS).nullable() });
+const themeSettingsSchema = z.object({
+  theme: z.enum(THEME_SELECTIONS).nullable().optional(),
+  accent: z.enum(ACCENT_COLORS).nullable().optional(),
+  renderColor: z.enum(RENDER_COLORS).nullable().optional(),
+});
 router.patch(
   "/settings/theme",
   asyncHandler(async (req, res) => {
     const body = parseBody(themeSettingsSchema, req.body);
-    const theme = await setUserTheme(req.userId!, body.theme);
-    res.json({ theme });
+    res.json(await setUserThemePreferences(req.userId!, body));
   }),
 );
 
@@ -1061,18 +1069,18 @@ router.patch(
 );
 
 router.get(
-  "/settings/dashboard-thumbnails",
+  "/settings/card-preview",
   asyncHandler(async (req, res) => {
-    res.json({ thumbnails: await getDashboardThumbnails(req.userId!) });
+    res.json({ preview: await getCardPreview(req.userId!) });
   }),
 );
 
-const dashboardThumbnailsSchema = z.object({ thumbnails: z.enum(DASHBOARD_THUMBNAILS) });
+const cardPreviewSchema = z.object({ preview: z.enum(CARD_PREVIEWS) });
 router.patch(
-  "/settings/dashboard-thumbnails",
+  "/settings/card-preview",
   asyncHandler(async (req, res) => {
-    const body = parseBody(dashboardThumbnailsSchema, req.body);
-    res.json({ thumbnails: await setDashboardThumbnails(req.userId!, body.thumbnails) });
+    const body = parseBody(cardPreviewSchema, req.body);
+    res.json({ preview: await setCardPreview(req.userId!, body.preview) });
   }),
 );
 
@@ -1106,6 +1114,22 @@ router.patch(
   asyncHandler(async (req, res) => {
     const body = parseBody(authorPreviewSettingsSchema, req.body);
     res.json({ enabled: await setUserAuthorPreviewEnabled(req.userId!, body.enabled) });
+  }),
+);
+
+router.get(
+  "/settings/hover-slideshow",
+  asyncHandler(async (req, res) => {
+    res.json({ enabled: await getHoverSlideshowEnabled(req.userId!) });
+  }),
+);
+
+const hoverSlideshowSchema = z.object({ enabled: z.boolean() });
+router.patch(
+  "/settings/hover-slideshow",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(hoverSlideshowSchema, req.body);
+    res.json({ enabled: await setHoverSlideshowEnabled(req.userId!, body.enabled) });
   }),
 );
 

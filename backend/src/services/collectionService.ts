@@ -2,6 +2,7 @@ import { prisma } from "../db";
 import { HttpError } from "../utils/fileUtils";
 import { printOutsByIds } from "./printLoader";
 import { relocatePrintsForToken } from "./printService";
+import { moveCollectionBookmark } from "./bookmarkService";
 import { toSystemCollectionOut, type CollectionOut, type SystemCollectionKey } from "../dto";
 import { normalizeTags } from "../utils/tagNormalization";
 import { createLog } from "./auditLog";
@@ -176,4 +177,82 @@ export async function listSystemCollectionOuts(userId: string): Promise<Collecti
   return Promise.all(
     (Object.keys(SYSTEM_COLLECTIONS) as SystemCollectionKey[]).map((key) => loadSystemCollectionOut(userId, key)),
   );
+}
+
+/** The user's own real collections with these ids, in the order given. A system or unknown id is an error, so a bulk
+ *  action never quietly does less than asked. */
+async function ownCollections(userId: string, ids: string[]): Promise<Collection[]> {
+  if (ids.some(isSystemCollectionId)) throw new HttpError(400, "Built-in collections can't be merged or deleted");
+  const unique = [...new Set(ids)];
+  const rows = await prisma.collection.findMany({ where: { id: { in: unique }, userId } });
+  if (rows.length !== unique.length) throw new HttpError(404, "Collection not found");
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  return unique.map((id) => byId.get(id)!);
+}
+
+/** How many models the merged collection would hold: every model in any of them, once. The same whichever one is
+ *  kept, so the dialog can switch it without asking again. */
+export async function previewCollectionMerge(userId: string, ids: string[]): Promise<{ models: number }> {
+  const collections = await ownCollections(userId, ids);
+  const rows = await prisma.collectionItem.findMany({
+    where: { collectionId: { in: collections.map((c) => c.id) } },
+    distinct: ["printId"],
+    select: { printId: true },
+  });
+  return { models: rows.length };
+}
+
+/** Moves the others' models into `primaryId` after its own, in the others' order, then deletes the others with their
+ *  syncs. The kept one keeps its name, description, tags and sync, and takes over a bookmark if it had none. */
+export async function mergeCollections(
+  userId: string,
+  primaryId: string,
+  ids: string[],
+): Promise<{ primary: Collection; merged: Collection[]; added: number }> {
+  const [primary, ...merged] = await ownCollections(userId, [primaryId, ...ids]);
+  if (!merged.length) throw new HttpError(400, "Pick at least one other collection to merge");
+  const mergedIds = merged.map((c) => c.id);
+  const order = new Map(mergedIds.map((id, index) => [id, index]));
+  const items = (
+    await prisma.collectionItem.findMany({
+      where: { collectionId: { in: mergedIds } },
+      orderBy: { position: "asc" },
+      select: { collectionId: true, printId: true },
+    })
+  ).toSorted((a, b) => order.get(a.collectionId)! - order.get(b.collectionId)!);
+  const printIds = [...new Set(items.map((item) => item.printId))];
+
+  const added = await prisma.$transaction(async (tx) => {
+    const last = await tx.collectionItem.findFirst({
+      where: { collectionId: primary.id },
+      orderBy: { position: "desc" },
+    });
+    let position = (last?.position ?? -1) + 1;
+    const { count } = await tx.collectionItem.createMany({
+      data: printIds.map((printId) => ({ collectionId: primary.id, printId, position: position++ })),
+      skipDuplicates: true,
+    });
+    await moveCollectionBookmark(userId, mergedIds, primary.id, tx);
+    await tx.collection.deleteMany({ where: { id: { in: mergedIds } } });
+    return count;
+  });
+  await relocatePrintsForToken("collection", printIds);
+  return { primary, merged, added };
+}
+
+/** Deletes them together, so a model in several is moved on disk once. Their models stay. */
+export async function deleteCollections(userId: string, ids: string[]): Promise<Collection[]> {
+  const collections = await ownCollections(userId, ids);
+  const collectionIds = collections.map((c) => c.id);
+  const items = await prisma.collectionItem.findMany({
+    where: { collectionId: { in: collectionIds } },
+    distinct: ["printId"],
+    select: { printId: true },
+  });
+  await prisma.collection.deleteMany({ where: { id: { in: collectionIds } } });
+  await relocatePrintsForToken(
+    "collection",
+    items.map((item) => item.printId),
+  );
+  return collections;
 }

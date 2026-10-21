@@ -576,8 +576,7 @@
         "allHidden": "Every dashboard box is hidden.",
         "sections": {
           "layout": "Layout",
-          "panels": "Panels",
-          "thumbnails": "Thumbnails"
+          "panels": "Panels"
         },
         "layoutSubtitle": "Choose how your dashboard arranges its boxes. The coloured part shows where the counts go.",
         "layouts": {
@@ -587,17 +586,6 @@
           "bottom": "Counts at the bottom, three columns",
           "topTwo": "Counts on top, two columns",
           "puzzle": "Puzzle"
-        },
-        "thumbnailsSubtitle": "The pictures beside models in the dashboard lists.",
-        "thumbnails": {
-          "none": "Hidden",
-          "photos": "Photos",
-          "monochrome": "Monochrome"
-        },
-        "thumbnailsHelp": {
-          "none": "The lists show names only.",
-          "photos": "Each model's preview image.",
-          "monochrome": "Each model drawn in one tone on a transparent background, made by the server the first time it's needed. Files it can't draw show their photo."
         }
       }
     },
@@ -796,7 +784,7 @@
         "heading": "Storage Structure",
         "subtitle": "Choose how managed model files are organized on disk.",
         "templateHeading": "Folder structure",
-        "templateDesc": "The folders each model's files are saved in, and how the files are named. Every user's files sit in a folder of their own first, so a file ends up at e.g. <user>/Props/Workshop/Cable clip/Cable clip.3mf. Two models can have the same name if they're in different categories, so the path must include Model ID, or both Category or folder and Model name; otherwise their files could land in the same folder.",
+        "templateDesc": "The folders each model's files are saved in, and how the files are named. Every user's files sit in a folder of their own first, so a file ends up at e.g. <user>/Props/Workshop/Cable clip/Cable clip.3mf. Two models can have the same name if they're in different categories, so the path must include Model ID, or both Category or folder and Model name; otherwise their files could land in the same folder. A model's supporting files go beside its model files, and its pictures in an Images folder next to them.",
         "templateLabel": "Template",
         "save": "Save & move files",
         "saving": "Saving…",
@@ -1328,7 +1316,9 @@
           "sign_in_connected": "Sign-in provider connected",
           "sign_in_disconnected": "Sign-in provider disconnected",
           "grab_connected": "Thingport Grab connected",
-          "grab_disconnected": "Thingport Grab removed"
+          "grab_disconnected": "Thingport Grab removed",
+          "collections_merged": "Collections merged",
+          "tags_merged": "Tags merged"
         },
         "authorsLinked": "{{count}} model(s) linked",
         "descriptionsRefetched": "{{email}} — {{updated}} of {{total}} description(s) changed",
@@ -1342,7 +1332,8 @@
         "providerOff": "{{provider}} turned off",
         "aiRunSummary": "{{done}} of {{total}} checked — {{suggested}} suggested, {{applied}} applied, {{failed}} failed",
         "aiRunStopped": "(stopped)",
-        "viaProvider": "via {{provider}}"
+        "viaProvider": "via {{provider}}",
+        "merged": "{{merged}} → {{name}}"
       },
       "rendering": {
         "heading": "Rendering",
@@ -1445,6 +1436,14 @@
         "folderSummary_one": "{{count}} file · {{size}}",
         "folderSummary_other": "{{count}} files · {{size}}",
         "ofModel": "model \"{{name}}\"",
+        "kind": {
+          "plate": "Model file",
+          "file": "Supporting file",
+          "image": "Image",
+          "description": "Description image",
+          "thumb": "Thumbnail",
+          "render": "Render"
+        },
         "location": {
           "source": "At its source",
           "missing": "Missing"
@@ -1633,13 +1632,48 @@
     "appearance": {
       "title": "Appearance",
       "subtitle": "Choose how Thingport looks and behaves.",
+      "reset": {
+        "action": "Reset to defaults",
+        "title": "Reset appearance?",
+        "message": "Theme, colors, model cards, hover slideshow and author preview go back to their defaults. Your language stays as it is."
+      },
       "themes": {
         "light": "Light",
         "dark": "Dark",
         "system": "System"
       },
       "on": "On",
-      "off": "Off"
+      "off": "Off",
+      "accent": "Accent color",
+      "accentFailed": "Couldn't save the accent color.",
+      "themeFailed": "Couldn't save the theme.",
+      "accents": {
+        "green": "Thingport green",
+        "blue": "Thingiverse blue",
+        "orange": "Printables orange",
+        "amber": "Thangs yellow",
+        "teal": "MyMiniFactory teal",
+        "purple": "Cults3D purple",
+        "graphite": "Graphite"
+      },
+      "cardPreview": {
+        "heading": "Model cards",
+        "images": "Images",
+        "renders": "3D renders",
+        "failed": "Couldn't save the model card choice.",
+        "help": "What model cards show first. Images: the pictures a model came with, or a 3D render where it has none. 3D renders: a render of every model in your render color, or its pictures where the file can't be drawn."
+      },
+      "hoverSlideshow": {
+        "heading": "Hover slideshow",
+        "failed": "Couldn't save the hover slideshow choice.",
+        "help": "Model cards cycle through a model's pictures while the pointer rests on them."
+      },
+      "renderColor": {
+        "heading": "Render color",
+        "light": "Light grey (no tint)",
+        "failed": "Couldn't save the render color.",
+        "help": "The color generated 3D renders and the 3D preview are drawn in. Picking an accent sets it to match; pick here to change it separately."
+      }
     },
     "configuration": {
       "title": "Configuration",
@@ -2677,16 +2711,7 @@
         "spin": "Spin",
         "zoomIn": "Zoom in",
         "zoomOut": "Zoom out",
-        "colorLabel": "Model color: {{name}}",
-        "colors": {
-          "red": "Red",
-          "orange": "Orange",
-          "yellow": "Yellow",
-          "green": "Green",
-          "blue": "Blue",
-          "purple": "Purple",
-          "grey": "Grey"
-        }
+        "color": "Model color"
       },
       "downloadFailed": "Download failed. Please try again.",
       "deleteFailed": "Failed to delete the model.",
@@ -2958,6 +2983,24 @@
             "myminifactory": "Thingport stops listing your MyMiniFactory collections until you give your username again. Syncs already set up keep their models."
           }
         }
+      },
+      "sortByModels": "Most models",
+      "selection": {
+        "enter": "Select collections",
+        "toolbar": "Actions for the selected collections",
+        "builtIn": "Built-in collections can't be merged or deleted",
+        "bookmarked_one": "Bookmarked {{count}} collection",
+        "bookmarked_other": "Bookmarked {{count}} collections",
+        "unbookmarked_one": "Removed {{count}} collection from bookmarks",
+        "unbookmarked_other": "Removed {{count}} collections from bookmarks",
+        "deleteTitle_one": "Delete {{count}} collection?",
+        "deleteTitle_other": "Delete {{count}} collections?",
+        "deleteMessage_one": "The models in it are kept. This can't be undone.",
+        "deleteMessage_other": "The models in them are kept. This can't be undone.",
+        "deleted_one": "Deleted {{count}} collection",
+        "deleted_other": "Deleted {{count}} collections",
+        "merged_one": "Merged {{count}} collection into “{{name}}”",
+        "merged_other": "Merged {{count}} collections into “{{name}}”"
       }
     },
     "tags": {
@@ -2982,6 +3025,25 @@
         "title": "{{name}}",
         "subtitle": "Tag",
         "empty": "No models with this tag yet."
+      },
+      "selection": {
+        "enter": "Select tags",
+        "toolbar": "Actions for the selected tags",
+        "selectAllLoaded": "Select all loaded",
+        "bookmarked_one": "Bookmarked {{count}} tag",
+        "bookmarked_other": "Bookmarked {{count}} tags",
+        "unbookmarked_one": "Removed {{count}} tag from bookmarks",
+        "unbookmarked_other": "Removed {{count}} tags from bookmarks",
+        "deleteTitle_one": "Delete {{count}} tag?",
+        "deleteTitle_other": "Delete {{count}} tags?",
+        "deleteMessage_one": "It's removed from every model that has it. The models themselves are kept.",
+        "deleteMessage_other": "They're removed from every model that has them. The models themselves are kept.",
+        "deleteConfirm_one": "Delete tag",
+        "deleteConfirm_other": "Delete tags",
+        "deleted_one": "Deleted {{count}} tag",
+        "deleted_other": "Deleted {{count}} tags",
+        "merged_one": "Merged {{count}} tag into “{{name}}”",
+        "merged_other": "Merged {{count}} tags into “{{name}}”"
       }
     },
     "downloadZip": {
@@ -3001,6 +3063,7 @@
       "createCategoryFailed": "Failed to create the category. Please try again.",
       "renameCategoryFailed": "Failed to rename the category. Please try again.",
       "deleteCategoryFailed": "Failed to delete the category. Please try again.",
+      "resetCategoriesFailed": "Failed to reset the categories. Please try again.",
       "reorderCategoryFailed": "Failed to reorder categories. Please try again.",
       "moveCategoryFailed": "Failed to move the subcategory. Please try again.",
       "updateCategoryMetaFailed": "Failed to save category details. Please try again.",
@@ -3014,9 +3077,27 @@
       "empty": "No categories yet",
       "noSubcategories": "No subcategories yet",
       "manageTooltip": "Manage categories",
+      "reset": {
+        "title": "Reset categories to defaults?",
+        "added": "Added",
+        "restored": "Restored",
+        "removed": "Deleted",
+        "modelsUncategorized_one": "{{count}} model will lose its category.",
+        "modelsUncategorized_other": "{{count}} models will lose their category.",
+        "modelsMoved_one": "{{count}} model moves to the nearest kept parent category.",
+        "modelsMoved_other": "{{count}} models move to the nearest kept parent category.",
+        "modelsRenamed_one": "{{count}} moved model is renamed to avoid a name clash.",
+        "modelsRenamed_other": "{{count}} moved models are renamed to avoid a name clash.",
+        "modelCount_one": "{{count}} model",
+        "modelCount_other": "{{count}} models",
+        "noop": "Your categories already match the defaults.",
+        "foldersKept": "Folders aren't touched.",
+        "previewFailed": "Couldn't work out what a reset would change."
+      },
       "manager": {
         "title": "Manage Categories",
         "addCategory": "Add category",
+        "reset": "Reset to defaults",
         "addSubcategory": "Add subcategory",
         "noCategories": "No categories yet. Add one to get started.",
         "confirmDeleteCategory": "Delete \"{{name}}\"? Any models in it move to Unassigned.",
@@ -3104,6 +3185,46 @@
       "confirmRemoveFromCollection_other": "Remove {{count}} models from this collection? The models themselves are kept.",
       "removedFromCollection_one": "Removed {{count}} model from the collection",
       "removedFromCollection_other": "Removed {{count}} models from the collection"
+    },
+    "merge": {
+      "action": "Merge",
+      "needTwo": "Select at least 2 to merge",
+      "previewFailed": "Couldn't work out what the merge would do. Please try again.",
+      "failed": "Merge failed. Please try again.",
+      "keep": "Merge into",
+      "kept": "Kept",
+      "after": "After the merge",
+      "modelUnit_one": "model",
+      "modelUnit_other": "models",
+      "new_one": "new",
+      "new_other": "new",
+      "quoted": "“{{name}}”",
+      "andMore_one": "{{count}} more",
+      "andMore_other": "{{count}} more",
+      "syncsWith": "syncs with {{provider}}",
+      "bookmarkMoves": "Its bookmark moves to “{{name}}”.",
+      "cantUndo": "A merge can't be undone.",
+      "mergeInto": "Merge into “{{name}}”",
+      "collections": {
+        "title_one": "Merge {{count}} collection",
+        "title_other": "Merge {{count}} collections",
+        "keepHelp": "Pick the collection to keep. The others' models are added to it, then the others are deleted.",
+        "goes": "Deleted",
+        "othersGo_one": "{{names}} is deleted. Its models aren't: they move into “{{name}}”.",
+        "othersGo_other": "{{names}} are deleted. Their models aren't: they move into “{{name}}”.",
+        "keepsOwn": "“{{name}}” keeps its name, description, tags and sync.",
+        "syncStops_one": "{{names}} syncs with a provider collection, and that sync stops. Keep it instead to carry on syncing.",
+        "syncStops_other": "{{names}} sync with provider collections, and those syncs stop. Keep one of them instead to carry on syncing it."
+      },
+      "tags": {
+        "title_one": "Merge {{count}} tag",
+        "title_other": "Merge {{count}} tags",
+        "keepHelp": "Pick the tag to keep. Every model with one of the others gets it instead, then the others are removed.",
+        "goes": "Removed",
+        "othersGo_one": "{{names}} is removed. Its models are tagged “{{name}}” instead.",
+        "othersGo_other": "{{names}} are removed. Their models are tagged “{{name}}” instead.",
+        "keepsOwn": "Models already tagged “{{name}}” stay as they are."
+      }
     }
   }
 }

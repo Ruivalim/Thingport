@@ -1,6 +1,6 @@
 import { authHeaders } from "../utils/auth";
 import { apiBase, assertOk, readErrorMessage, UnauthorizedError } from "./client";
-import type { ThemeSelection } from "../constants/settingsOptions";
+import type { AccentColor, RenderColor, ThemeSelection } from "../constants/settingsOptions";
 import { invalidateAiCategorizationStatus } from "./aiCategorization";
 
 export type StorageToken =
@@ -75,8 +75,9 @@ export type DashboardWidgetId =
 export type WeatherLocation = { lat: number; lon: number; name: string | null; source: "device" | "manual" };
 // Kept in sync by hand with the backend's DASHBOARD_LAYOUTS.
 export type DashboardLayout = "left" | "top" | "right" | "bottom" | "topTwo" | "puzzle";
-// Kept in sync by hand with the backend's DASHBOARD_THUMBNAILS.
-export type DashboardThumbnails = "none" | "photos" | "monochrome";
+/** What model pictures lead with, on cards, dashboard lists and tag tiles: the model's own pictures, or our render
+ *  tinted with the render colour. */
+export type CardPreview = "images" | "renders";
 /** Only the widgets the user has switched; the rest follow their default. */
 export type DashboardWidgetChoices = Partial<Record<DashboardWidgetId, boolean>>;
 
@@ -183,6 +184,13 @@ export type VersionCheck = {
 export const FRONTEND_VERSION: string = import.meta.env.VITE_APP_VERSION as string;
 
 export const FRONTEND_GIT_SHA: string | null = (import.meta.env.VITE_GIT_SHA as string | undefined) || null;
+
+export type ThemePreferences = {
+  theme: ThemeSelection | null;
+  accent: AccentColor | null;
+  /** Null follows the accent. */
+  renderColor: RenderColor | null;
+};
 
 export const settingsApi = {
   getAiCategorization: async (): Promise<AiCategorizationSettings> => {
@@ -670,17 +678,17 @@ export const settingsApi = {
   },
 
   // Null means never set.
-  getTheme: async (): Promise<{ theme: ThemeSelection | null }> => {
+  getTheme: async (): Promise<ThemePreferences> => {
     const res = await fetch(`${apiBase()}/settings/theme`, { headers: authHeaders() });
     assertOk(res, "Failed to load theme setting");
     return res.json();
   },
 
-  updateTheme: async (theme: ThemeSelection): Promise<{ theme: ThemeSelection | null }> => {
+  updateTheme: async (patch: Partial<ThemePreferences>): Promise<ThemePreferences> => {
     const res = await fetch(`${apiBase()}/settings/theme`, {
       method: "PATCH",
       headers: authHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ theme }),
+      body: JSON.stringify(patch),
     });
     if (res.status === 401) throw new UnauthorizedError();
     if (!res.ok) {
@@ -742,20 +750,20 @@ export const settingsApi = {
     return res.json();
   },
 
-  getDashboardThumbnails: async (): Promise<{ thumbnails: DashboardThumbnails }> => {
-    const res = await fetch(`${apiBase()}/settings/dashboard-thumbnails`, { headers: authHeaders() });
-    assertOk(res, "Failed to load the dashboard thumbnails setting");
+  getCardPreview: async (): Promise<{ preview: CardPreview }> => {
+    const res = await fetch(`${apiBase()}/settings/card-preview`, { headers: authHeaders() });
+    assertOk(res, "Failed to load the model card preview setting");
     return res.json();
   },
 
-  updateDashboardThumbnails: async (thumbnails: DashboardThumbnails): Promise<{ thumbnails: DashboardThumbnails }> => {
-    const res = await fetch(`${apiBase()}/settings/dashboard-thumbnails`, {
+  updateCardPreview: async (preview: CardPreview): Promise<{ preview: CardPreview }> => {
+    const res = await fetch(`${apiBase()}/settings/card-preview`, {
       method: "PATCH",
       headers: authHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ thumbnails }),
+      body: JSON.stringify({ preview }),
     });
     if (res.status === 401) throw new UnauthorizedError();
-    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to update the dashboard thumbnails setting"));
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to update the model card preview setting"));
     return res.json();
   },
 
@@ -808,6 +816,25 @@ export const settingsApi = {
     if (res.status === 401) throw new UnauthorizedError();
     if (!res.ok) {
       throw new Error(await readErrorMessage(res, "Failed to update author preview setting"));
+    }
+    return res.json();
+  },
+
+  getHoverSlideshow: async (): Promise<{ enabled: boolean }> => {
+    const res = await fetch(`${apiBase()}/settings/hover-slideshow`, { headers: authHeaders() });
+    assertOk(res, "Failed to load hover slideshow setting");
+    return res.json();
+  },
+
+  updateHoverSlideshow: async (enabled: boolean): Promise<{ enabled: boolean }> => {
+    const res = await fetch(`${apiBase()}/settings/hover-slideshow`, {
+      method: "PATCH",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ enabled }),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) {
+      throw new Error(await readErrorMessage(res, "Failed to update hover slideshow setting"));
     }
     return res.json();
   },
